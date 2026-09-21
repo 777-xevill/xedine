@@ -73,7 +73,8 @@ const accessOf = (t: TableRow): string => {
   if (t.kind === 'custom') return `custom — ${t.notes ?? 'see policies'}`;
   const write =
     (t.write_roles ?? []).length > 0 ? (t.write_roles ?? []).join(', ') : 'service role only';
-  return `read: ${(t.read_roles ?? []).join(', ')}; write: ${write}`;
+  const note = t.notes ? ` (${t.notes})` : '';
+  return `read: ${(t.read_roles ?? []).join(', ')}; write: ${write}${note}`;
 };
 
 const esc = (s: string) => s.replaceAll('|', '\\|').replaceAll('\n', ' ');

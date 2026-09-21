@@ -16,7 +16,7 @@
 ## Tenancy & security
 - `organizations` → `branches`. `memberships(user_id, org_id, role, branch scope: all | list)`. One role per membership; a person holding two roles across orgs or branches holds two memberships.
 - **Auth: email + password; managers join by invite** — the invite link creates the user and the `memberships` row together, so a manager can never exist without a branch scope ([ADR 0003](decisions/0003-auth-and-identity.md)).
-- SQL helpers (security definer, fixed `search_path`, `stable`): `is_org_member(org)`, `has_role(org, roles[])`, `can_access_branch(branch)`, `can_see_money(org)`. Policies call helpers; wrap `auth.uid()` as `(select auth.uid())`; index every `org_id` / `branch_id`.
+- SQL helpers (security definer, fixed `search_path`, `stable`): `is_org_member(org)`, `has_role(org, roles[])`, `can_access_branch(org, branch)`, `can_access_branch_role(org, branch, roles[])`, `can_see_money(org)` — all in the non-exposed `private` schema, and every table is registered with a policy engine (`private.apply_policies` / `register_table`) that a test checks. Policies call helpers; wrap `auth.uid()` as `(select auth.uid())`; index every `org_id` / `branch_id`.
 - **Money visibility:** cost, margin, profit and finding ৳ impacts are owner/accountant only, enforced at the metric-function layer via `can_see_money(org)` ([ADR 0007](decisions/0007-money-visibility-by-role.md)). The assistant inherits the caller's permissions.
 - Shared POS devices: device registered to a branch; staff switch with a 4–6 digit PIN (hashed); every action records `staff_id` + `device_id`.
 - Service role only in server jobs/webhooks, always with explicit `org_id` filters and tests.
@@ -73,4 +73,4 @@ WhatsApp Cloud API: per-recipient opt-in, approved templates for briefs/alerts/c
 Google Business Profile (reviews) · weather API (forecasting) · reference prices via CSV import (e.g., TCB market prices) · delivery platforms via manual tagging/CSV · subscription payments (provider TBD) · CSV/Excel exports for accountants · lender-partner report (later).
 
 ## Observability & quality
-Sentry for errors · structured logs · `job_runs` · `ai_usage` dashboard · CI (typecheck, lint, unit, DB tests incl. RLS isolation, POS e2e, AI evals on AI changes) · backups (Supabase point-in-time recovery on a paid plan) · demo orgs from the seed for sales demos.
+Sentry for errors · structured logs · `job_runs` · `ai_usage` dashboard · CI (typecheck, lint, format, unit; a `database` job on real Supabase — DB tests incl. per-table RLS isolation, seed + manifest validation, generated data-model doc; an `e2e` job — Playwright; AI evals on AI changes). Without Docker, `pnpm db:test:embedded` runs the same DB suite on an in-process Postgres (ADR 0011) · backups (Supabase point-in-time recovery on a paid plan) · demo orgs from the seed for sales demos.

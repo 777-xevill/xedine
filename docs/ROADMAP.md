@@ -38,37 +38,35 @@ Tolerances: sums exact · finding ৳ impact within ±10% of manifest · every d
 ---
 
 ## Phase 0 — Foundation
-Status: ☐ · Size: 1–2 weeks
+Status: ◐ built and verified locally · **awaiting the first CI run against real Supabase** · Size: 1–2 weeks
 **Goal:** secure multi-tenant skeleton, test harness, demo data.
+**Evidence so far (2026-09-22):** `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm unit` (95 tests) pass; `pnpm db:test:embedded` (662 DB tests, every table's RLS isolation) passes on an in-process Postgres — an emulation, see ADR 0011. **Not yet run:** real-Supabase CI (`database` and `e2e` jobs), the full-year seed + manifest validation, and the Playwright journey.
 **Build**
-Decisions already settled: ADRs 0002–0010. Read them before planning.
-- [ ] Verify latest stable versions; scaffold Next.js (App Router, TS strict), Tailwind, shadcn/ui, ESLint/Prettier, Vitest, Playwright, pnpm; write ADR 0001-stack
-- [ ] `git init` at repo root + private GitHub remote (ADR 0002); `.gitignore` excludes `files (4)*`
-- [ ] Supabase local (CLI + Docker) and a free dev cloud project; migrations; generated types; `.env.example`
-- [ ] Auth: email + password; manager invite creates user + membership atomically (ADR 0003); device registration + staff PIN switching for POS
-- [ ] Tenancy: organizations, branches, memberships, roles, org_settings (incl. `price_includes_vat`, VAT rate, cutoff hour, dayparts, week start), org_profile; RLS helpers incl. `can_see_money` (ADR 0007); org/branch switcher
-- [ ] Full core schema migrated per ARCHITECTURE.md's entity list, so RLS + isolation tests are written once (ADR 0006)
-- [ ] Money helper: VAT decomposition + poisha rounding, one shared function (ADR 0005)
-- [ ] Injected clock module; lint rule banning `now()` / `new Date()` in business logic (ADR 0006)
-- [ ] audit_log + helper; job_runs; `pg_cron` bootstrap + an alert on missing runs (ADR 0004)
-- [ ] i18n bn/en; formatters: BDT (poisha), lakh grouping, Bangla digits, Asia/Dhaka, business_date(cutoff)
-- [ ] App shell with route groups (dashboard, pos, kds, qr, admin) on the BRAND.md colour tokens, dark theme, system font stack (ADR 0009)
-- [ ] Synthetic data generator + manifest with `anchor_date` and per-scenario `available_from_phase`; one command for db reset + seed
-- [ ] CI: typecheck, lint, unit, DB tests
-- [ ] Fill "Commands" in CLAUDE.md; start docs/DATA-MODEL.md
+Decisions already settled: ADRs 0001–0012. Read them before planning.
+- [x] Verify latest stable versions; scaffold Next.js (App Router, TS strict), Tailwind, ESLint/Prettier, Vitest, Playwright, pnpm; ADR 0001-stack (three "latest" releases rejected and why). Component primitives are hand-written on the brand tokens, not the shadcn CLI
+- [x] `git init` at repo root + private GitHub remote (`777-xevill/xedine`, ADR 0002); `.gitignore` excludes `files (4)*`
+- [ ] Supabase local (CLI + Docker) and a free dev cloud project — **CLI project configured (`supabase/config.toml`); Docker could not be installed on this machine (ADR 0011) and no cloud project has been created yet (needs the founder's Supabase account)**. `.env.example` done; generated types via `pnpm db:types` once a database is reachable
+- [x] Auth: email + password; manager invite creates user + membership atomically (ADR 0003); device registration, pairing codes and staff PIN sessions with lockout — **database and RPCs only; the POS PIN screen and the device's own credential are Phase 1** (ADR 0012 §7)
+- [x] Tenancy: organizations, branches, memberships, roles, org_settings (incl. `price_includes_vat`, VAT rate, cutoff, dayparts, week start), org_profile; RLS helpers incl. `can_see_money` (ADR 0007); org/branch switcher
+- [x] Full core schema migrated per ARCHITECTURE.md's entity list (93 tables), so RLS + isolation tests are written once (ADR 0006)
+- [x] Money helper: VAT decomposition + poisha rounding, one shared function (ADR 0005)
+- [x] Injected clock module; lint rule banning `new Date()` / `Date.now()` in business logic (ADR 0006) — proven to fire by a deliberate violation
+- [x] audit_log + helper; job_runs; `pg_cron` bootstrap + an alert on missing runs (`job_health()`, ADR 0004)
+- [x] i18n bn/en; formatters: BDT (poisha), lakh grouping, Bangla digits, Asia/Dhaka, business_date(cutoff)
+- [x] App shell with route groups (dashboard, pos, kds, qr, admin) on the BRAND.md colour tokens, dark theme, system font stack (ADR 0009)
+- [x] Synthetic data generator + manifest with `anchor_date` and per-scenario `available_from_phase`; one command for db reset + seed (`pnpm db:reset:seed`)
+- [ ] CI: typecheck, lint, unit, DB tests — **workflow written, not yet run**: it needs the `workflow` scope on the GitHub token to be pushed
+- [x] Fill "Commands" in CLAUDE.md; docs/DATA-MODEL.md is generated from the live schema (`pnpm db:docs`)
 **Done when**
-- [ ] Owner signs up, creates an org with branches, invites a manager limited to one branch
-- [ ] RLS suite proves org A users can't read/write any org B row (**every table, with fixture rows inserted as org A** — an empty table proves nothing)
-- [ ] A branch manager cannot read any cost, margin or profit value, proven at the SQL layer
-- [ ] Seed runs from scratch in one command; **manifest validates for phase-0 scenarios (S1, S2, S3-commission, S13)**
-- [ ] bn/en switch works; formatters unit-tested (1,23,45,678; business_date around 00:00 and 04:00)
-- [ ] VAT decomposition tested both ways: a receipt's lines sum to its total under `price_includes_vat` true and false
+- [ ] Owner signs up, creates an org with branches, invites a manager limited to one branch — *Playwright journey written (`tests/e2e/onboarding.spec.ts`); not yet run*
+- [ ] RLS suite proves org A users can't read/write any org B row (**every table, with fixture rows inserted as org A**) — *525 isolation tests over 93 tables pass on embedded Postgres; real-Supabase run pending*
+- [ ] A branch manager cannot read any cost, margin or profit value, proven at the SQL layer — *`tests/db/money-visibility.test.ts` passes on embedded Postgres; real-Supabase run pending*
+- [ ] Seed runs from scratch in one command; **manifest validates for phase-0 scenarios (S1, S2, S3-commission, S13)** — *generator + manifest verified (unit); loader and validator verified on a 10-day slice; the full 105k-order year needs real Postgres (CI)*
+- [ ] bn/en switch works; formatters unit-tested (1,23,45,678; business_date around 00:00 and 04:00) — *formatters and message-parity unit-tested ✓; the live switch is covered by the Playwright journey, not yet run*
+- [x] VAT decomposition tested both ways: a receipt's lines sum to its total under `price_includes_vat` true and false — `src/lib/money/money.test.ts`
 - [ ] CI green
 
-**Open questions to settle during Phase 0 (do not guess):**
-- **Invoice numbering vs offline POS.** A gapless VAT invoice sequence can't be minted on a disconnected tablet. Proposal: server assigns the invoice number on sync; the offline receipt prints a provisional token. Needs an ADR and, eventually, an accountant's confirmation.
-- **`business_date` storage** — stored generated column on `orders` vs computed at query time. Affects every index and query plan on the seeded year.
-- **Data retention / PII** — customer phone retention window, soft-delete policy, log masking.
+**Open questions from the kit — settled in [ADR 0012](decisions/0012-phase-0-design-decisions.md):** invoice numbering (server-assigned; offline receipts carry a provisional number) · `business_date` (stored, set at insert). **Still open, deliberately:** PII retention window and deletion flow (needs legal review; Phase 8) · device credential (Phase 1).
 
 ## Phase 1 — POS, KDS, orders & cash
 Status: ☐ · Size: 3–4 weeks

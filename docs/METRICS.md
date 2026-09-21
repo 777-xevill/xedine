@@ -5,8 +5,8 @@ Rules: money in poisha · quantities in base units · periods use `business_date
 ## Sales
 | ID | Definition |
 |---|---|
-| sales.gross | Σ(qty × unit price before discounts), completed orders |
-| sales.discounts | Σ order- and item-level discounts |
+| sales.gross | Σ `net_before_discount_poisha` of completed orders — the VAT-exclusive value before discounts. (Summing the printed menu price would include VAT for VAT-inclusive restaurants and make orgs incomparable; ADR 0005) |
+| sales.discounts | Σ `discount_net_poisha` — order- and item-level discounts on the VAT-exclusive basis, so `gross − discounts = net` holds under both price bases |
 | sales.refunds | Σ refunded value |
 | sales.net | gross − discounts − refunds (excludes VAT and service charge). Read from the order line's stored `net_poisha`, which is decomposed at sale time per the org's `price_includes_vat` setting — never re-derived from a menu price ([ADR 0005](decisions/0005-vat-and-price-basis.md)) |
 | sales.vat, sales.service_charge | collected amounts, reported separately |
@@ -46,7 +46,7 @@ Rules: money in poisha · quantities in base units · periods use `business_date
 ## Costs & P&L
 - `labour.daily` = Σ(monthly salaries + allowances) ÷ days in month (per branch); `labour.pct` = labour ÷ sales.net; `sales.per_staff`
 - `fixed.daily` = Σ monthly fixed costs (rent, utilities, gas, generator/fuel, internet, other) ÷ days in month
-- `commission.value` = Σ(channel sales.net × commission % + fixed fees) + restaurant-funded platform discounts
+- `commission.value` = Σ(channel sales.net × commission % + fixed fees) + restaurant-funded platform discounts. **Rounding:** `mulBps(period net, bps)` rounded half-up **once per (branch, channel, period)**, not per order; a per-order sum differs by up to one poisha per order. The seed manifest defines it this way (ADR 0012 §7)
 - `pnl.flash.estimated_profit` = sales.net − COGS (actual for the period if counts exist, else TFC) − commission − labour.daily − fixed.daily
 - `gp.pct` = (sales.net − COGS) ÷ sales.net · `prime_cost.pct` = (COGS + labour) ÷ sales.net
 - `breakeven.sales_today` = (labour.daily + fixed.daily) ÷ (1 − variable ratio); variable ratio = (COGS + commission) ÷ sales.net, trailing 28 days

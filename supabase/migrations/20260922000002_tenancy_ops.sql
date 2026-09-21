@@ -470,7 +470,7 @@ begin
   end if;
 
   insert into public.memberships (user_id, org_id, role, branch_scope)
-  values (v_uid, v_inv.org_id, v_inv.role, case when v_inv.role = 'accountant' then 'all' else 'list' end)
+  values (v_uid, v_inv.org_id, v_inv.role, (case when v_inv.role = 'accountant' then 'all' else 'list' end)::public.branch_scope)
   on conflict (user_id, org_id, role) do nothing
   returning id into v_membership;
   if v_membership is null then
@@ -526,7 +526,7 @@ begin
   end if;
 
   update public.memberships
-  set role = v_role, branch_scope = case when v_role = 'accountant' then 'all' else 'list' end
+  set role = v_role, branch_scope = (case when v_role = 'accountant' then 'all' else 'list' end)::public.branch_scope
   where id = v_m.id;
   delete from public.membership_branches where membership_id = v_m.id;
   insert into public.membership_branches (membership_id, branch_id, org_id)

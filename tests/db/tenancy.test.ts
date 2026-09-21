@@ -145,11 +145,15 @@ describe('invitation rules', () => {
     role: string,
     branches: string[],
   ) =>
-    asUser(owner, (s) =>
-      s.attempt<{ r: { token: string } }>(
-        'select public.create_invitation($1, $2, $3::public.app_role, $4::uuid[]) as r',
-        [orgId, email, role, `{${branches.join(',')}}`],
-      ),
+    // Committed: later steps (accept, revoke, expire) rely on the invitation existing.
+    asUser(
+      owner,
+      (s) =>
+        s.attempt<{ r: { token: string } }>(
+          'select public.create_invitation($1, $2, $3::public.app_role, $4::uuid[]) as r',
+          [orgId, email, role, `{${branches.join(',')}}`],
+        ),
+      { commit: true },
     );
 
   it('cannot be accepted by a different email', async () => {

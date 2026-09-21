@@ -11,7 +11,7 @@ Founder: solo developer (Xevill). You are the senior engineer.
 - Phases, acceptance criteria, test oracle: docs/ROADMAP.md
 - Tables: docs/DATA-MODEL.md · Decisions: docs/decisions/ · Visual rules: docs/BRAND.md
 
-**Decisions already made (read before Phase 0):** ADR 0002 repo/environments · 0003 auth · 0004 jobs · 0005 VAT & price basis · 0006 test-oracle clock & P0 scope · 0007 money visibility by role · 0008 provisional pricing · 0009 brand tokens · 0010 external approvals. ADR 0001 is reserved for the stack ADR Phase 0 writes.
+**Decisions already made (read before planning):** ADR 0001 stack & versions · 0002 repo/environments · 0003 auth · 0004 jobs · 0005 VAT & price basis · 0006 test-oracle clock & P0 scope · 0007 money visibility by role · 0008 provisional pricing · 0009 brand tokens · 0010 external approvals · 0011 verification without Docker · 0012 Phase 0 design decisions.
 
 ## Non-negotiables
 1. **Numbers are deterministic.** Every figure shown to a user comes from a metric function defined in docs/METRICS.md (SQL/TS). LLMs never calculate, estimate, or invent numbers; they explain, route, and draft. Any LLM text containing numbers must pass the numeric-consistency validator (every number appears in the tool results) or it is rejected.
@@ -26,7 +26,7 @@ Founder: solo developer (Xevill). You are the senior engineer.
 10. **Money visibility.** Cost, margin, profit and finding ৳ impacts are visible to owner and accountant only — enforced in SQL via `can_see_money(org)`, not in the UI. The AI assistant inherits the caller's permissions (ADR 0007).
 
 ## Stack
-Confirm latest stable versions in Phase 0 and record them in docs/decisions/0001-stack.md.
+Versions and the reasons three "latest" releases were rejected are in docs/decisions/0001-stack.md — re-check them at the start of each phase.
 Next.js (App Router, TypeScript strict) · Tailwind + shadcn/ui · Supabase (Postgres, Auth, RLS, Realtime, Storage, CLI migrations) · Zod · TanStack Query where client caching is needed · i18n library (bn/en) · PWA + IndexedDB for offline POS · Vitest · Playwright · Anthropic API through a server-only gateway · WhatsApp Cloud API through a messaging gateway · pnpm · GitHub Actions · Vercel.
 Scheduled work runs on **Supabase `pg_cron` → authenticated job routes**, not Vercel Cron (ADR 0004). Auth is **email + password, managers by invite** (ADR 0003).
 
@@ -46,11 +46,11 @@ Domain logic lives in `src/modules/*` (server-only files import `server-only`). 
 ## Commands (keep current)
 - dev: `pnpm dev` · typecheck: `pnpm typecheck` · lint: `pnpm lint` · format: `pnpm format` / `pnpm format:check` · unit: `pnpm unit`
 - db start/stop: `pnpm db:start` / `pnpm db:stop` (needs Docker — see ADR 0011) · db reset + seed: `pnpm db:reset:seed`
-- db tests (structure, RLS isolation for every table, tenancy, money visibility, PINs, audit, time, jobs): `pnpm db:test`
+- db tests (structure, RLS isolation for every table, tenancy, money visibility, PINs, audit, time, jobs): `pnpm db:test` (real Supabase; needs Docker) · **no Docker:** `pnpm db:test:embedded` (same suite on an in-process Postgres, ~25s — an emulation, CI is the authority)
 - seed only: `pnpm db:seed` · regenerate the manifest without a DB: `pnpm manifest:build` · validate it against the DB: `pnpm manifest:validate` (`SEED_PHASE=n`)
 - regenerate docs/DATA-MODEL.md from the live schema: `pnpm db:docs` (CI fails if it is stale) · TS types from the schema: `pnpm db:types`
 - e2e: `pnpm build && pnpm e2e` (needs a running Supabase and `.env.local`) · ai evals: `pnpm ai:evals` (Phase 3–4)
-- **Without Docker** (this founder's machine, ADR 0011): `pnpm typecheck && pnpm lint && pnpm unit` run locally; everything needing a database runs in GitHub Actions (`.github/workflows/ci.yml`).
+- **Without Docker** (this founder's machine, ADR 0011): `pnpm typecheck && pnpm lint && pnpm unit && pnpm db:test:embedded` run locally; real-Supabase checks (seed + manifest, e2e, data-model) run in GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Repo conventions
 - New tenant table → register it with the policy engine (`private.apply_policies` / `private.register_table`) and add a `COMMENT ON TABLE 'purpose | written by: module | phase: n'`. `tests/db/structure.test.ts` and `tests/db/isolation.test.ts` fail if you forget; the isolation suite covers every table automatically.

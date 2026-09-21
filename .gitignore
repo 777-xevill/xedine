@@ -34,3 +34,6 @@ Thumbs.db
 
 # claude local
 .claude/settings.local.json
+
+# local experiments
+.scratch/

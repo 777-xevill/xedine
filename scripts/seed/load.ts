@@ -209,10 +209,11 @@ export async function loadStatic(client: pg.PoolClient, org: OrgCfg): Promise<vo
     );
     await client.query(
       `insert into auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
-       values ($1, $1, $2::jsonb, 'email', $1::text, now(), now(), now())`,
+       values ($1::uuid, $1::uuid, $2::jsonb, 'email', $3::text, now(), now(), now())`,
       [
         userId(u.email),
         JSON.stringify({ sub: userId(u.email), email: u.email, email_verified: true }),
+        userId(u.email),
       ],
     );
   }

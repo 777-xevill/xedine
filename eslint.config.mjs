@@ -27,6 +27,7 @@ export default defineConfig([
     'coverage/**',
     'node_modules/**',
     'files (4)/**',
+    '.scratch/**',
     'next-env.d.ts',
     'supabase/**',
   ]),

@@ -12,7 +12,10 @@ export const DATABASE_URL =
 let pool: pg.Pool | undefined;
 
 export function getPool(): pg.Pool {
-  pool ??= new pg.Pool({ connectionString: DATABASE_URL, max: 4 });
+  pool ??= new pg.Pool({
+    connectionString: DATABASE_URL,
+    max: Number(process.env.PG_POOL_MAX ?? 4),
+  });
   return pool;
 }
 

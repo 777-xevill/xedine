@@ -31,6 +31,26 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      {
+        // The same DB suite on an in-process Postgres (PGlite): no Docker. An emulation of Supabase — CI is the
+        // authority (ADR 0011). The `pg` module is swapped for tests/db/embedded/pg.ts; the V8 flags keep
+        // WASM compilation small enough for a memory-constrained machine.
+        extends: true,
+        resolve: {
+          alias: { ...alias, pg: path.resolve(import.meta.dirname, 'tests/db/embedded/pg.ts') },
+        },
+        test: {
+          name: 'db-embedded',
+          environment: 'node',
+          include: ['tests/db/**/*.test.ts'],
+          exclude: ['tests/db/embedded/**'],
+          testTimeout: 120_000,
+          hookTimeout: 240_000,
+          fileParallelism: false,
+          pool: 'forks',
+          execArgv: ['--liftoff-only', '--no-wasm-tier-up'],
+        },
+      },
     ],
   },
 });

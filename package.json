@@ -24,6 +24,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:reset:seed": "supabase db reset && tsx scripts/seed.ts",
     "db:test": "vitest run --project db",
+    "db:test:embedded": "vitest run --project db-embedded",
     "db:types": "supabase gen types typescript --local > src/lib/db/database.types.ts",
     "db:docs": "tsx scripts/gen-data-model.ts",
     "manifest:build": "tsx scripts/build-manifest.ts",
@@ -45,6 +46,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.13.6",

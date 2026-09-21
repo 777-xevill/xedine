@@ -11,3 +11,4 @@ docs
 *.md
 supabase/seed/manifest.json
 docs
+.scratch

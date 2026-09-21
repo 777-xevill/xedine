@@ -5,7 +5,7 @@
  */
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
-import { mulBps } from '../src/lib/money';
+import { computeLine, mulBps } from '../src/lib/money';
 import { MANIFEST_PATH } from './seed/build';
 import { ANCHOR_DATE, CUTOFF_MINUTES, ORGS, type OrgCfg } from './seed/config';
 import { ids } from './seed/generate';
@@ -14,7 +14,9 @@ import { excessOverBaseline, ManifestSchema, rateRatioX100, type Manifest } from
 
 const url = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 const phase = Number(process.env.SEED_PHASE ?? 0);
-const manifest: Manifest = ManifestSchema.parse(JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')));
+const manifest: Manifest = ManifestSchema.parse(
+  JSON.parse(readFileSync(process.env.MANIFEST_FILE ?? MANIFEST_PATH, 'utf8')),
+);
 
 const pool = new pg.Pool({ connectionString: url, max: 2 });
 const q = async <T extends Record<string, unknown>>(sql: string, params: unknown[] = []) =>
@@ -22,18 +24,28 @@ const q = async <T extends Record<string, unknown>>(sql: string, params: unknown
 const n = (v: unknown) => Number(v ?? 0);
 
 const failures: string[] = [];
+/** JSON with object keys sorted, so two equal objects compare equal regardless of key order. */
+const canonical = (v: unknown): string =>
+  JSON.stringify(v, (_key, value: unknown) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+      : value,
+  );
 const check = (path: string, expected: unknown, actual: unknown) => {
-  if (JSON.stringify(expected) !== JSON.stringify(actual))
-    failures.push(
-      `${path}: manifest ${JSON.stringify(expected)} ≠ database ${JSON.stringify(actual)}`,
-    );
+  if (canonical(expected) !== canonical(actual)) {
+    failures.push(`${path}: manifest ${canonical(expected)} ≠ database ${canonical(actual)}`);
+  }
 };
 const checkAll = (
   path: string,
   expected: Record<string, unknown>,
   actual: Record<string, unknown>,
 ) => {
-  for (const key of Object.keys(expected)) check(`${path}.${key}`, expected[key], actual[key]);
+  for (const key of Object.keys(expected)) {
+    // Descriptive facts ("staff": "rafiq") label a scenario; only numbers are recomputed from the database.
+    if (typeof expected[key] === 'string') continue;
+    check(`${path}.${key}`, expected[key], actual[key]);
+  }
 };
 
 async function branchFacts(org: OrgCfg, branchKey: string) {
@@ -161,9 +173,10 @@ try {
       const actual = await branchFacts(org, b.key);
       const e = expected.branches[b.key]!;
       const path = `orgs.${org.key}.branches.${b.key}`;
-      checkAll(path, { ...e, by_channel: undefined, item_qty: undefined }, actual);
-      check(`${path}.by_channel`, e.by_channel, actual.by_channel);
-      check(`${path}.item_qty`, e.item_qty, actual.item_qty);
+      const { by_channel: expectedChannels, item_qty: expectedQty, ...expectedTotals } = e;
+      checkAll(path, expectedTotals, actual);
+      check(`${path}.by_channel`, expectedChannels, actual.by_channel);
+      check(`${path}.item_qty`, expectedQty, actual.item_qty);
     }
     check(
       `orgs.${org.key}.price_includes_vat`,
@@ -285,6 +298,35 @@ try {
         [ids.org(kacchi)],
       );
       check('S3.foodpanda_commission_bps (configured in the database)', bps, n(commission!.bps));
+
+      // The combo's printed price and VAT-exclusive unit value, recomputed from the database's own settings.
+      const [combo] = await q(
+        `select mi.base_price_poisha as price, s.price_includes_vat as inc, s.vat_rate_bps as vat
+         from public.menu_items mi join public.org_settings s on s.org_id = mi.org_id
+         where mi.id = $1`,
+        [
+          ids.item(
+            kacchi,
+            kacchi.menu.find((m) => m.key === 'family_combo')!,
+          ),
+        ],
+      );
+      const netUnit = computeLine(
+        { unitPricePoisha: n(combo!.price), quantity: 1 },
+        {
+          priceIncludesVat: combo!.inc === true,
+          vatRateBps: n(combo!.vat),
+          serviceChargeBps: 0,
+          vatOnServiceCharge: false,
+        },
+      ).netPoisha;
+      check('S3.combo_printed_price_poisha', f.combo_printed_price_poisha, n(combo!.price));
+      check('S3.combo_net_unit_poisha', f.combo_net_unit_poisha, netUnit);
+      check(
+        'S3.combo_commission_per_unit_poisha',
+        f.combo_commission_per_unit_poisha,
+        mulBps(netUnit, bps),
+      );
     } else if (s.id === 'S13') {
       const staff = await staffCounts(cafe, 'gulshan', ['tania', 'imran', 'meherun']);
       checkAll('S13', f, {

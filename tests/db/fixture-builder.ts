@@ -243,7 +243,14 @@ export async function ensureRow(
       // Deterministic: the requested branch, else the org's first branch.
       parent = { id: opts.branchId ?? ctx.branchIds[0] };
     } else {
-      parent = await ensureRow(fk.refTable, ctx, {}, depth + 1);
+      // Carry the branch down so a second-branch row gets its own parents (staff, stock count, …) rather
+      // than colliding on a unique constraint with the first branch's row.
+      parent = await ensureRow(
+        fk.refTable,
+        ctx,
+        opts.branchId ? { branchId: opts.branchId } : {},
+        depth + 1,
+      );
     }
     fk.cols.forEach((c, i) => {
       values[c] = c === 'org_id' ? ctx.orgId : parent[fk.refCols[i]!];

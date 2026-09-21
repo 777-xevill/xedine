@@ -149,20 +149,25 @@ try {
   check('anchor_date', manifest.anchor_date, ANCHOR_DATE);
   check('cutoff_minutes', manifest.cutoff_minutes, CUTOFF_MINUTES);
 
-  // Independent invariants that need no manifest.
+  // Independent invariants that need no manifest. Scoped to the demo organizations: a shared database
+  // (CI runs the DB tests first) also holds test orgs whose orders are stamped with the real current time.
+  const demoOrgs = ORGS.map((o) => ids.org(o));
   const [badDates] = await q(
-    `select count(*) as c from public.orders where business_date <> private.business_date(placed_at, $1)`,
-    [CUTOFF_MINUTES],
+    `select count(*) as c from public.orders
+     where org_id = any($2::uuid[]) and business_date <> private.business_date(placed_at, $1)`,
+    [CUTOFF_MINUTES, demoOrgs],
   );
   check('invariant: orders.business_date agrees with private.business_date()', 0, n(badDates!.c));
   const [unpaid] = await q(
     `select count(*) as c from public.orders o
-     where o.order_status = 'completed' and o.total_poisha <> (select coalesce(sum(p.amount_poisha), 0) from public.payments p where p.order_id = o.id)`,
+     where o.org_id = any($1::uuid[]) and o.order_status = 'completed'
+       and o.total_poisha <> (select coalesce(sum(p.amount_poisha), 0) from public.payments p where p.order_id = o.id)`,
+    [demoOrgs],
   );
   check('invariant: every completed order is paid in full', 0, n(unpaid!.c));
   const [afterNow] = await q(
-    `select count(*) as c from public.orders where placed_at > $1::timestamptz`,
-    [manifest.frozen_now],
+    `select count(*) as c from public.orders where org_id = any($2::uuid[]) and placed_at > $1::timestamptz`,
+    [manifest.frozen_now, demoOrgs],
   );
   check('invariant: no order after the frozen now', 0, n(afterNow!.c));
 

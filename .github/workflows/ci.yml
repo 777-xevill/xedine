@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+jobs:
+  # Fast feedback: types, lint (incl. the no-hardcoded-strings / no-wall-clock / service-role rules), format, unit tests.
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm unit
+
+  # Real Supabase: migrations, the RLS isolation suite for every table, the seed and its ground-truth manifest.
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start Supabase (applies every migration)
+        run: pnpm exec supabase start
+      - name: Database tests (structure, RLS isolation for every table, tenancy, money visibility, PINs, audit, time, jobs)
+        run: pnpm db:test
+      - name: Seed the synthetic Dhaka dataset
+        run: pnpm db:seed
+      - name: Manifest validates against the database (S1, S2, S3, S13 at SEED_PHASE=0)
+        run: pnpm manifest:validate
+      - name: The committed manifest is exactly what the generator produced
+        run: git diff --exit-code supabase/seed/manifest.json
+      - name: Regenerate docs/DATA-MODEL.md from the live schema
+        run: pnpm db:docs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-model
+          path: docs/DATA-MODEL.md
+      - name: DATA-MODEL.md is up to date
+        run: git diff --exit-code docs/DATA-MODEL.md
+      - name: Supabase logs on failure
+        if: failure()
+        run: pnpm exec supabase status || true
+
+  # The owner → organization → one-branch-manager journey, in a browser, against a real Supabase.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase start
+      - name: Write .env.local from the running stack
+        run: |
+          eval "$(pnpm exec supabase status -o env | sed 's/^/export /')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000"
+            echo "JOB_SECRET=ci-job-secret-0123456789abcdef"
+          } > .env.local
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+        env:
+          JOB_SECRET: ci-job-secret-0123456789abcdef
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

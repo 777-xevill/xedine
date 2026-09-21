@@ -1,0 +1,13 @@
+node_modules
+.next
+coverage
+pnpm-lock.yaml
+files (4)
+Brand_assets
+supabase/migrations
+supabase/config.toml
+docs
+.claude
+*.md
+supabase/seed/manifest.json
+docs

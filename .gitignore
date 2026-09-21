@@ -1,0 +1,36 @@
+# archive of the original kit download
+files (4)/
+files (4).zip
+
+# dependencies & build
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# tooling
+.vercel/
+playwright-report/
+test-results/
+.turbo/
+supabase/.branches/
+supabase/.temp/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# claude local
+.claude/settings.local.json

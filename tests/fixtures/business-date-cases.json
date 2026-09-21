@@ -1,0 +1,95 @@
+{
+  "_comment": "Shared by src/lib/time/business-date.test.ts and tests/db/business-date.test.ts (ADR 0006). Dhaka is UTC+6, no DST. Instants around 00:00 and the 04:00 cutoff.",
+  "cases": [
+    {
+      "name": "23:59 Dhaka, before midnight",
+      "instant": "2026-09-21T17:59:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-21"
+    },
+    {
+      "name": "00:00 Dhaka belongs to the previous business day",
+      "instant": "2026-09-21T18:00:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-21"
+    },
+    {
+      "name": "01:30 Dhaka",
+      "instant": "2026-09-21T19:30:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-21"
+    },
+    {
+      "name": "03:59 Dhaka, last minute of the old day",
+      "instant": "2026-09-21T21:59:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-21"
+    },
+    {
+      "name": "04:00 Dhaka opens the new day",
+      "instant": "2026-09-21T22:00:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-22"
+    },
+    {
+      "name": "04:01 Dhaka",
+      "instant": "2026-09-21T22:01:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-22"
+    },
+    {
+      "name": "midday",
+      "instant": "2026-09-22T06:00:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-22"
+    },
+    {
+      "name": "cutoff 00:00 — midnight starts the new day",
+      "instant": "2026-09-21T18:00:00Z",
+      "cutoff": 0,
+      "expected": "2026-09-22"
+    },
+    {
+      "name": "cutoff 00:00 — 23:59",
+      "instant": "2026-09-21T17:59:00Z",
+      "cutoff": 0,
+      "expected": "2026-09-21"
+    },
+    {
+      "name": "cutoff 06:00 — 05:59 Dhaka",
+      "instant": "2026-09-21T23:59:00Z",
+      "cutoff": 360,
+      "expected": "2026-09-21"
+    },
+    {
+      "name": "cutoff 06:00 — 06:00 Dhaka",
+      "instant": "2026-09-22T00:00:00Z",
+      "cutoff": 360,
+      "expected": "2026-09-22"
+    },
+    {
+      "name": "month boundary",
+      "instant": "2026-09-30T19:00:00Z",
+      "cutoff": 240,
+      "expected": "2026-09-30"
+    },
+    {
+      "name": "month boundary after cutoff",
+      "instant": "2026-09-30T22:00:00Z",
+      "cutoff": 240,
+      "expected": "2026-10-01"
+    },
+    {
+      "name": "year boundary",
+      "instant": "2026-12-31T20:00:00Z",
+      "cutoff": 240,
+      "expected": "2026-12-31"
+    },
+    {
+      "name": "year boundary after cutoff",
+      "instant": "2026-12-31T22:00:00Z",
+      "cutoff": 240,
+      "expected": "2027-01-01"
+    }
+  ]
+}

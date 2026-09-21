@@ -1,0 +1,92 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+ * Brand tokens (docs/BRAND.md, ADR 0009). Components never hardcode a colour: everything reads these
+ * variables, so a rebrand is a token swap. Dark is the only theme.
+ */
+:root {
+  --bg: #05060a;
+  --bg-secondary: #080b16;
+  --surface: #0d1120;
+  --surface-elevated: #12182a;
+
+  --text: #f7f8fc;
+  --text-secondary: #a7adbf;
+  /* Fails AA for body text (3.8:1): large labels only, never a figure. */
+  --text-muted: #687087;
+  --text-disabled: #41485a;
+
+  --border: #1b2133;
+  --border-strong: #2a3248;
+
+  --accent-pink: #e84cff;
+  --accent-purple: #7c3cff;
+  --accent-blue: #267bff;
+  --accent-cyan: #17d9ff;
+  --brand-gradient: linear-gradient(135deg, #e84cff, #7c3cff, #267bff, #17d9ff);
+  /* Blue → cyan with dark text passes AA (5.6:1 and 12.5:1); white on the pink/purple end does not. */
+  --action-gradient: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  --on-action: var(--bg);
+
+  --success: #3dda9a;
+  --warning: #ffbe55;
+  --danger: #ff667a;
+  --info: #4a9aff;
+
+  --radius-input: 0.5rem;
+  --radius-card: 0.75rem;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-background-secondary: var(--bg-secondary);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-foreground: var(--text);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-disabled: var(--text-disabled);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-pink: var(--accent-pink);
+  --color-purple: var(--accent-purple);
+  --color-blue: var(--accent-blue);
+  --color-cyan: var(--accent-cyan);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-on-action: var(--on-action);
+  --radius-input: var(--radius-input);
+  --radius-card: var(--radius-card);
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Hind Siliguri', 'Nirmala UI',
+    Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+body {
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+.bg-action {
+  background-image: var(--action-gradient);
+}
+.bg-brand {
+  background-image: var(--brand-gradient);
+}

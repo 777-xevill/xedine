@@ -1,0 +1,7 @@
+# Native build scripts are denied unless listed here (supply-chain hygiene).
+# Platform binaries for these ship as optionalDependencies; the scripts only re-verify them.
+allowBuilds:
+  '@parcel/watcher': false
+  '@swc/core': false
+  esbuild: false
+  unrs-resolver: false

@@ -1,0 +1,378 @@
+{
+  "version": 1,
+  "seed": "xedine-oracle-v1",
+  "anchor_date": "2026-09-21",
+  "first_date": "2025-09-22",
+  "days": 365,
+  "frozen_now": "2026-09-21T17:30:00Z",
+  "cutoff_minutes": 240,
+  "orgs": {
+    "demo_kacchi_house": {
+      "slug": "demo-kacchi-house",
+      "price_includes_vat": true,
+      "vat_rate_bps": 500,
+      "service_charge_bps": 0,
+      "qty_item_key": "kacchi_mutton",
+      "branches": {
+        "dhanmondi": {
+          "orders_completed": 34548,
+          "orders_cancelled": 82,
+          "gross_poisha": 1766044118,
+          "discount_net_poisha": 5048722,
+          "net_poisha": 1760995396,
+          "vat_poisha": 88044504,
+          "service_charge_poisha": 0,
+          "total_poisha": 1849039900,
+          "payments_poisha": 1849039900,
+          "by_channel": {
+            "dine_in": {
+              "orders": 18807,
+              "net_poisha": 894066811
+            },
+            "foodpanda": {
+              "orders": 5304,
+              "net_poisha": 371119597
+            },
+            "own_delivery": {
+              "orders": 3491,
+              "net_poisha": 166321268
+            },
+            "pathao_food": {
+              "orders": 1829,
+              "net_poisha": 90691074
+            },
+            "takeaway": {
+              "orders": 5117,
+              "net_poisha": 238796646
+            }
+          },
+          "item_qty": {
+            "last_2h": 4,
+            "today": 27,
+            "yesterday": 31,
+            "last_7d": 234,
+            "month_to_date": 795,
+            "total": 15361
+          }
+        },
+        "mirpur": {
+          "orders_completed": 26731,
+          "orders_cancelled": 180,
+          "gross_poisha": 1372791515,
+          "discount_net_poisha": 4128297,
+          "net_poisha": 1368663218,
+          "vat_poisha": 68429082,
+          "service_charge_poisha": 0,
+          "total_poisha": 1437092300,
+          "payments_poisha": 1437092300,
+          "by_channel": {
+            "dine_in": {
+              "orders": 14404,
+              "net_poisha": 684260944
+            },
+            "foodpanda": {
+              "orders": 4217,
+              "net_poisha": 303200931
+            },
+            "own_delivery": {
+              "orders": 2758,
+              "net_poisha": 128456774
+            },
+            "pathao_food": {
+              "orders": 1332,
+              "net_poisha": 62859971
+            },
+            "takeaway": {
+              "orders": 4020,
+              "net_poisha": 189884598
+            }
+          },
+          "item_qty": {
+            "last_2h": 7,
+            "today": 19,
+            "yesterday": 28,
+            "last_7d": 217,
+            "month_to_date": 643,
+            "total": 11639
+          }
+        },
+        "uttara": {
+          "orders_completed": 22946,
+          "orders_cancelled": 68,
+          "gross_poisha": 1179587196,
+          "discount_net_poisha": 3661687,
+          "net_poisha": 1175925509,
+          "vat_poisha": 58792741,
+          "service_charge_poisha": 0,
+          "total_poisha": 1234718250,
+          "payments_poisha": 1234718250,
+          "by_channel": {
+            "dine_in": {
+              "orders": 12512,
+              "net_poisha": 597480421
+            },
+            "foodpanda": {
+              "orders": 3540,
+              "net_poisha": 250946448
+            },
+            "own_delivery": {
+              "orders": 2357,
+              "net_poisha": 110079840
+            },
+            "pathao_food": {
+              "orders": 1185,
+              "net_poisha": 55841490
+            },
+            "takeaway": {
+              "orders": 3352,
+              "net_poisha": 161577310
+            }
+          },
+          "item_qty": {
+            "last_2h": 2,
+            "today": 17,
+            "yesterday": 21,
+            "last_7d": 175,
+            "month_to_date": 593,
+            "total": 10305
+          }
+        }
+      },
+      "totals": {
+        "orders_completed": 84225,
+        "orders_cancelled": 330,
+        "gross_poisha": 4318422829,
+        "discount_net_poisha": 12838706,
+        "net_poisha": 4305584123,
+        "vat_poisha": 215266327,
+        "service_charge_poisha": 0,
+        "total_poisha": 4520850450,
+        "payments_poisha": 4520850450
+      }
+    },
+    "demo_cafe": {
+      "slug": "demo-cafe",
+      "price_includes_vat": false,
+      "vat_rate_bps": 500,
+      "service_charge_bps": 500,
+      "qty_item_key": "cappuccino",
+      "branches": {
+        "gulshan": {
+          "orders_completed": 21192,
+          "orders_cancelled": 52,
+          "gross_poisha": 1288712000,
+          "discount_net_poisha": 4260050,
+          "net_poisha": 1284451950,
+          "vat_poisha": 64222649,
+          "service_charge_poisha": 38517976,
+          "total_poisha": 1387192575,
+          "payments_poisha": 1387192575,
+          "by_channel": {
+            "dine_in": {
+              "orders": 12717,
+              "net_poisha": 770358900
+            },
+            "foodpanda": {
+              "orders": 2221,
+              "net_poisha": 133792200
+            },
+            "takeaway": {
+              "orders": 6254,
+              "net_poisha": 380300850
+            }
+          },
+          "item_qty": {
+            "last_2h": 0,
+            "today": 21,
+            "yesterday": 8,
+            "last_7d": 134,
+            "month_to_date": 461,
+            "total": 7817
+          }
+        }
+      },
+      "totals": {
+        "orders_completed": 21192,
+        "orders_cancelled": 52,
+        "gross_poisha": 1288712000,
+        "discount_net_poisha": 4260050,
+        "net_poisha": 1284451950,
+        "vat_poisha": 64222649,
+        "service_charge_poisha": 38517976,
+        "total_poisha": 1387192575,
+        "payments_poisha": 1387192575
+      }
+    }
+  },
+  "tolerances": {
+    "sums": "exact",
+    "finding_impact_pct": 10,
+    "max_false_positives_per_branch_week_on_clean_org": 1
+  },
+  "scenarios": [
+    {
+      "id": "S1",
+      "title": "Mirpur cashier voids after KOT on cash orders at ~6× baseline",
+      "status": "planted",
+      "available_from_phase": 0,
+      "detected_in_phase": 2,
+      "org": "demo_kacchi_house",
+      "branch": "mirpur",
+      "facts": {
+        "staff": "rafiq",
+        "staff_orders": 10164,
+        "staff_void_count": 373,
+        "staff_void_value_poisha": 9668602,
+        "peer_orders": 16747,
+        "peer_void_count": 107,
+        "peer_void_value_poisha": 2736196,
+        "void_rate_ratio_x100": 574,
+        "excess_void_value_poisha": 8007965
+      }
+    },
+    {
+      "id": "S2",
+      "title": "Uttara manager gives ~3× normal discounts on Thursdays",
+      "status": "planted",
+      "available_from_phase": 0,
+      "detected_in_phase": 2,
+      "org": "demo_kacchi_house",
+      "branch": "uttara",
+      "facts": {
+        "staff": "habib",
+        "weekday": "thursday",
+        "staff_orders": 891,
+        "staff_discount_count": 76,
+        "staff_discount_poisha": 456350,
+        "staff_discounts_without_reason": 36,
+        "peer_orders": 22123,
+        "peer_discount_count": 647,
+        "peer_discount_poisha": 3388400,
+        "peer_discounts_without_reason": 67,
+        "discount_rate_ratio_x100": 292,
+        "excess_discount_poisha": 319883
+      }
+    },
+    {
+      "id": "S3",
+      "title": "A delivery combo is negative-margin after foodpanda commission",
+      "status": "planted",
+      "available_from_phase": 0,
+      "detected_in_phase": 2,
+      "org": "demo_kacchi_house",
+      "facts": {
+        "combo_key": "family_combo",
+        "combo_printed_price_poisha": 125000,
+        "combo_net_unit_poisha": 119048,
+        "foodpanda_commission_bps": 3000,
+        "combo_commission_per_unit_poisha": 35714,
+        "branches": {
+          "dhanmondi": {
+            "foodpanda_orders": 5304,
+            "foodpanda_net_poisha": 371119597,
+            "foodpanda_commission_poisha": 111335879,
+            "combo_units_via_foodpanda": 1308,
+            "combo_units_total": 2011
+          },
+          "mirpur": {
+            "foodpanda_orders": 4217,
+            "foodpanda_net_poisha": 303200931,
+            "foodpanda_commission_poisha": 90960279,
+            "combo_units_via_foodpanda": 1151,
+            "combo_units_total": 1722
+          },
+          "uttara": {
+            "foodpanda_orders": 3540,
+            "foodpanda_net_poisha": 250946448,
+            "foodpanda_commission_poisha": 75283934,
+            "combo_units_via_foodpanda": 920,
+            "combo_units_total": 1382
+          }
+        }
+      },
+      "note": "Commission drag is detectable in Phase 2. Proving the combo is negative-margin needs its recipe cost (Phase 3)."
+    },
+    {
+      "id": "S13",
+      "title": "Demo Café is clean (false-positive control)",
+      "status": "planted",
+      "available_from_phase": 0,
+      "detected_in_phase": 2,
+      "org": "demo_cafe",
+      "facts": {
+        "planted_anomalies": 0,
+        "orders": 21244,
+        "void_after_kot_count": 154,
+        "void_value_poisha": 4832000,
+        "discount_count": 670,
+        "discount_poisha": 4260050
+      },
+      "note": "Only baseline noise. Detectors must raise at most one finding per branch-week here."
+    },
+    {
+      "id": "S4",
+      "title": "Beef price spike (week 20) pushes Beef Tehari below target margin",
+      "status": "pending",
+      "available_from_phase": 3,
+      "detected_in_phase": 3
+    },
+    {
+      "id": "S5",
+      "title": "One Dog and one Puzzle item on the menu (Shahi Tukra, Kala Bhuna)",
+      "status": "pending",
+      "available_from_phase": 3,
+      "detected_in_phase": 3,
+      "note": "Menu items already seeded with low popularity; margins need recipe costs."
+    },
+    {
+      "id": "S6",
+      "title": "Unrecorded chicken transfers Dhanmondi → Mirpur twice a week",
+      "status": "pending",
+      "available_from_phase": 5,
+      "detected_in_phase": 6
+    },
+    {
+      "id": "S7",
+      "title": "Mirpur over-portions kacchi mutton by ~12%",
+      "status": "pending",
+      "available_from_phase": 5,
+      "detected_in_phase": 6
+    },
+    {
+      "id": "S8",
+      "title": "Dhanmondi purchaser pays 9–12% above median for beef on some days",
+      "status": "pending",
+      "available_from_phase": 5,
+      "detected_in_phase": 6
+    },
+    {
+      "id": "S9",
+      "title": "Uttara unlogged rice waste ≈ 4 kg/day",
+      "status": "pending",
+      "available_from_phase": 5,
+      "detected_in_phase": 6
+    },
+    {
+      "id": "S10",
+      "title": "Ramadan iftar surge, Eid closure + rebound, salary-week lift, rainy-day dine-in dip",
+      "status": "pending",
+      "available_from_phase": 0,
+      "detected_in_phase": 7,
+      "note": "The seasonal shape is already in the generated orders; forecast ground truth is defined in Phase 7."
+    },
+    {
+      "id": "S11",
+      "title": "Dhanmondi Friday 20:00–22:00 ticket times double; \"slow\" complaints",
+      "status": "pending",
+      "available_from_phase": 8,
+      "detected_in_phase": 8
+    },
+    {
+      "id": "S12",
+      "title": "Uttara regulars lapse after a price increase",
+      "status": "pending",
+      "available_from_phase": 8,
+      "detected_in_phase": 8
+    }
+  ]
+}

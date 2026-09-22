@@ -32,7 +32,7 @@ Implementation notes:
 ## Consequences
 - Easier: the blast radius of a compromised or departing manager account is small; the sensitive-data story is simple to explain to a prospect.
 - Harder — and this needs revisiting:
-  - **M13 manager scorecards and "gap to best branch in ৳" become owner-only views.** A manager cannot see their own scorecard if it contains money. Either the scorecard gets a money-free variant (quantities, ticket times, discipline score, variance in *units* not taka) or it stays an owner tool.
+  - **M13 manager scorecards and "gap to best branch in ৳" become owner-only views.** A manager cannot see their own scorecard if it contains money. Either the scorecard gets a money-free variant (quantities, ticket times, discipline score, variance in *units* not BDT) or it stays an owner tool.
   - **Findings lose their action loop for managers.** The person who can fix over-portioning at Mirpur can't see the ৳18,400. Phase 6 needs a decision on how a finding is *delegated* — probably an owner-authored task carrying the evidence but not the impact figure.
   - Every metric function needs a permission test, roughly doubling the metric test matrix.
 - **Revisit at Pilot gate A**, with a specific question for pilot owners: do you want your branch managers to see their own branch's food-cost % and leak values? If yes, this ADR is superseded by a per-org `managers_see_money` setting rather than a code change.

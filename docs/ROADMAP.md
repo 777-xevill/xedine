@@ -165,7 +165,7 @@ Status: ☐ · Size: 3 weeks
 
 ## Phase 6 — Leak Detector v2 (full "Where am I losing money?")
 Status: ☐ · Size: 2 weeks
-**Goal:** explain the food-cost gap in taka, by cause, branch and item.
+**Goal:** explain the food-cost gap in BDT, by cause, branch and item.
 **Build**
 - [ ] Actual COGS between counts; ingredient usage variance
 - [ ] Variance bridge: logged waste, price effect, unexplained usage, count-uncertainty band

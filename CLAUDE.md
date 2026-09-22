@@ -1,7 +1,7 @@
 # Xedine
 
 AI profit-intelligence platform + restaurant OS for Bangladesh (single- and multi-branch, any restaurant type).
-Core promise: **show the owner where money is leaking, with proof in taka, and what to do next.**
+Core promise: **show the owner where money is leaking, with proof in BDT, and what to do next.**
 Founder: solo developer (Xevill). You are the senior engineer.
 
 ## Read before working (only what the task needs)

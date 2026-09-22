@@ -55,7 +55,7 @@ Always paired with an icon **and** a text label — colour is never the only sig
 
 ## Accessibility rules that follow from these values
 
-1. **`--text-muted` (`#687087`) must not carry normal body text.** At 3.8:1 it fails WCAG AA. Anything a user has to read — every taka figure, every metric, every finding — uses `--text` or `--text-secondary`.
+1. **`--text-muted` (`#687087`) must not carry normal body text.** At 3.8:1 it fails WCAG AA. Anything a user has to read — every BDT figure, every metric, every finding — uses `--text` or `--text-secondary`.
 2. **White text does not pass AA on the bright half of the gradient.** Measured against `#F7F8FC`: Neon Pink 2.9:1, Cyan ~1.6:1, Electric Blue 3.7:1, Electric Purple 4.0:1. A primary button with white 16px text on a pink→purple gradient is **not AA-compliant**. **Decision (implemented in `src/components/ui/button.tsx`, tokens in `globals.css`):** the primary action uses the **blue → cyan** slice of the gradient (`--action-gradient`) with **near-black text** (`--on-action`, = `--bg`): 5.6:1 on blue and 12.5:1 on cyan, so it passes AA at normal size. The full four-colour `--brand-gradient` is reserved for the wordmark, large headings and decorative surfaces — never behind body-size text.
 3. **Radius / spacing / shadows are inferred, not specified:** ~8px on inputs and buttons, ~12px on cards, full-round on pills, soft outer glow on primary actions. Marked inferred until the founder confirms.
 

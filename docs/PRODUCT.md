@@ -1,7 +1,7 @@
 # Xedine — Product Spec
 
 ## One line
-Xedine is the system a Bangladeshi restaurant owner opens to see today's profit, where money is leaking (with proof in taka), and what to do next — built on a POS that captures every order.
+Xedine is the system a Bangladeshi restaurant owner opens to see today's profit, where money is leaking (with proof in BDT), and what to do next — built on a POS that captures every order.
 
 ## Who it's for
 - Single-branch restaurants (most of the market) and multi-branch chains (best early customers: they feel branch variance and have staff to maintain inputs).

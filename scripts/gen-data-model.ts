@@ -27,11 +27,11 @@ const rows = (
   await pool.query<TableRow>(
     `select r.table_name, r.kind, r.scope, r.read_roles::text[] as read_roles, r.write_roles::text[] as write_roles, r.notes,
             obj_description(c.oid, 'pg_class') as comment,
-            (select array_agg(a.attname order by k.o) from pg_constraint con
+            (select array_agg(a.attname::text order by k.o) from pg_constraint con
                cross join lateral unnest(con.conkey) with ordinality k(n, o)
                join pg_attribute a on a.attrelid = con.conrelid and a.attnum = k.n
              where con.conrelid = c.oid and con.contype = 'p') as pk,
-            (select array_agg(distinct fc.relname order by fc.relname) from pg_constraint con
+            (select array_agg(distinct fc.relname::text order by fc.relname) from pg_constraint con
                join pg_class fc on fc.oid = con.confrelid join pg_namespace fn on fn.oid = fc.relnamespace
              where con.conrelid = c.oid and con.contype = 'f' and fn.nspname = 'public' and fc.relname not in ('organizations')) as fks,
             exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'org_id' and not a.attisdropped) as has_org,

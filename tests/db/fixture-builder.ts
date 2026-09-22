@@ -86,10 +86,10 @@ async function loadMeta() {
       ref_cols: string[];
     }>(
       `select cl.relname as tbl,
-              array(select a.attname from unnest(con.conkey) with ordinality k(n, o)
+              array(select a.attname::text from unnest(con.conkey) with ordinality k(n, o)
                     join pg_attribute a on a.attrelid = con.conrelid and a.attnum = k.n order by k.o) as cols,
               fcl.relname as ref_tbl, fns.nspname as ref_schema,
-              array(select a.attname from unnest(con.confkey) with ordinality k(n, o)
+              array(select a.attname::text from unnest(con.confkey) with ordinality k(n, o)
                     join pg_attribute a on a.attrelid = con.confrelid and a.attnum = k.n order by k.o) as ref_cols
        from pg_constraint con
        join pg_class cl on cl.oid = con.conrelid
@@ -109,7 +109,7 @@ async function loadMeta() {
 
     const pks = await admin<{ tbl: string; cols: string[] }>(
       `select cl.relname as tbl,
-              array(select a.attname from unnest(con.conkey) with ordinality k(n, o)
+              array(select a.attname::text from unnest(con.conkey) with ordinality k(n, o)
                     join pg_attribute a on a.attrelid = con.conrelid and a.attnum = k.n order by k.o) as cols
        from pg_constraint con
        join pg_class cl on cl.oid = con.conrelid

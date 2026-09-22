@@ -34,6 +34,10 @@ create function auth.jwt() returns jsonb language sql stable as $$
                   nullif(current_setting('request.jwt.claims', true), ''))::jsonb
 $$;
 
+-- Every Supabase project ships an empty `supabase_realtime` publication by default; migrations add
+-- tables to it (e.g. for the KDS) with `alter publication ... add table`.
+create publication supabase_realtime;
+
 -- Supabase's default privileges: every new table is granted to the API roles, and RLS decides access.
 grant usage on schema public, auth, extensions to anon, authenticated, service_role;
 grant execute on all functions in schema auth to anon, authenticated, service_role;

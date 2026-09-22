@@ -6,6 +6,7 @@ files (4)
 Brand_assets
 supabase/migrations
 supabase/config.toml
+*.sql
 docs
 .claude
 *.md

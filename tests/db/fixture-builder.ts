@@ -48,7 +48,7 @@ async function loadMeta() {
     };
 
     const enumRows = await admin<{ typname: string; labels: string[] }>(
-      `select t.typname, array_agg(e.enumlabel order by e.enumsortorder) as labels
+      `select t.typname, array_agg(e.enumlabel::text order by e.enumsortorder) as labels
        from pg_type t join pg_enum e on e.enumtypid = t.oid group by t.typname`,
     );
     const enums = new Map(enumRows.map((r) => [r.typname, r.labels]));

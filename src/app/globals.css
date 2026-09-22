@@ -90,3 +90,50 @@ body {
 .bg-brand {
   background-image: var(--brand-gradient);
 }
+
+/*
+ * Receipt / KOT print templates (ARCHITECTURE.md: "browser print with 58/80 mm CSS templates").
+ * The brand does not apply here (BRAND.md) — pure black on white, no gradient, no colour.
+ */
+.print-sheet {
+  display: none;
+}
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 2mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+  .print-sheet {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 76mm;
+    background: #fff;
+    color: #000;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .print-sheet .rule {
+    border-top: 1px dashed #000;
+    margin: 4px 0;
+  }
+  .print-sheet .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .print-sheet .center {
+    text-align: center;
+  }
+  .print-sheet .bold {
+    font-weight: 700;
+  }
+}

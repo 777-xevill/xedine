@@ -12,7 +12,7 @@ const menuItem = 'block w-full rounded-input px-3 py-2 text-start text-sm hover:
 
 /** Org and branch switchers are <details> menus and plain forms: they work with no client JavaScript. */
 export async function AppHeader({ ctx }: { ctx: OrgContext }) {
-  const t = await getTranslations('nav');
+  const [t, tMenu] = await Promise.all([getTranslations('nav'), getTranslations('menu')]);
   const tc = await getTranslations('common');
   const selectedBranch = ctx.branches.find((b) => b.id === ctx.selectedBranchId);
   const base = `/${ctx.org.slug}`;
@@ -85,6 +85,12 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
           </Link>
           {ctx.isOwner ? (
             <>
+              <Link
+                href={`${base}/menu`}
+                className="rounded-input px-3 py-2 text-sm text-secondary hover:text-foreground"
+              >
+                {tMenu('title')}
+              </Link>
               <Link
                 href={`${base}/team`}
                 className="rounded-input px-3 py-2 text-sm text-secondary hover:text-foreground"

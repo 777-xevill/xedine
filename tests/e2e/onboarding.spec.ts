@@ -17,6 +17,18 @@ async function signUp(page: Page, fullName: string, email: string) {
   await page.getByRole('button', { name: 'Create account' }).click();
 }
 
+/**
+ * Sign in and wait for the redirect to land. Navigating before it completes races the session
+ * cookie: the proxy would bounce the next request straight back to /sign-in.
+ */
+async function signInAsOwner(page: Page) {
+  await page.goto('/sign-in');
+  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(new RegExp(`/${slug}$`));
+}
+
 test.describe.serial('owner onboarding and a one-branch manager', () => {
   let inviteLink = '';
 
@@ -40,11 +52,7 @@ test.describe.serial('owner onboarding and a one-branch manager', () => {
   });
 
   test('a duplicate web address is refused with a friendly message', async ({ page }) => {
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(ownerEmail);
-    await page.getByLabel('Password').fill(password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(new RegExp(`/${slug}$`));
+    await signInAsOwner(page);
 
     await page.goto('/onboarding');
     await page.getByLabel('Restaurant name').fill('Copycat');
@@ -55,10 +63,7 @@ test.describe.serial('owner onboarding and a one-branch manager', () => {
   });
 
   test('the owner invites a manager who can see only Mirpur', async ({ page }) => {
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(ownerEmail);
-    await page.getByLabel('Password').fill(password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await signInAsOwner(page);
 
     await page.goto(`/${slug}/team`);
     await page.getByLabel('Their email').fill(managerEmail);
@@ -99,11 +104,7 @@ test.describe.serial('owner onboarding and a one-branch manager', () => {
   test('the language switches between English and Bangla and persists across pages', async ({
     page,
   }) => {
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(ownerEmail);
-    await page.getByLabel('Password').fill(password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page).toHaveURL(new RegExp(`/${slug}$`));
+    await signInAsOwner(page);
 
     await page.getByRole('button', { name: 'বাংলা' }).click();
     await expect(page.getByRole('heading', { level: 1 })).toContainText('স্বাগতম');
@@ -116,10 +117,7 @@ test.describe.serial('owner onboarding and a one-branch manager', () => {
   });
 
   test('the price basis is editable until the first order, and settings save', async ({ page }) => {
-    await page.goto('/sign-in');
-    await page.getByLabel('Email').fill(ownerEmail);
-    await page.getByLabel('Password').fill(password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+    await signInAsOwner(page);
     await page.goto(`/${slug}/settings`);
 
     await page.getByLabel('VAT rate (%)').fill('7.5');

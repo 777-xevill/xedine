@@ -38,14 +38,14 @@ Tolerances: sums exact · finding ৳ impact within ±10% of manifest · every d
 ---
 
 ## Phase 0 — Foundation
-Status: ◐ built and verified locally · **awaiting the first CI run against real Supabase** · Size: 1–2 weeks
+Status: ☑ **done — CI green against real Supabase** (run 35695870786, 2026-09-22) · Size: 1–2 weeks
 **Goal:** secure multi-tenant skeleton, test harness, demo data.
-**Evidence so far (2026-09-22):** `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm unit` (95 tests) pass; `pnpm db:test:embedded` (662 DB tests, every table's RLS isolation) passes on an in-process Postgres — an emulation, see ADR 0011. **Not yet run:** real-Supabase CI (`database` and `e2e` jobs), the full-year seed + manifest validation, and the Playwright journey.
+**Evidence:** `quality` (typecheck, lint, format, 95 unit tests) · `database` — 662 DB tests over 93 tables on real Supabase, seed of **105,417 completed orders in 64s**, `✓ Manifest matches the database exactly` (S1, S2, S3, S13 validated; S4–S12 pending by design), `docs/DATA-MODEL.md` regenerated from the live schema and verified not stale · `e2e` — 10/10 Playwright tests.
 **Build**
 Decisions already settled: ADRs 0001–0012. Read them before planning.
 - [x] Verify latest stable versions; scaffold Next.js (App Router, TS strict), Tailwind, ESLint/Prettier, Vitest, Playwright, pnpm; ADR 0001-stack (three "latest" releases rejected and why). Component primitives are hand-written on the brand tokens, not the shadcn CLI
 - [x] `git init` at repo root + private GitHub remote (`777-xevill/xedine`, ADR 0002); `.gitignore` excludes `files (4)*`
-- [ ] Supabase local (CLI + Docker) and a free dev cloud project — **CLI project configured (`supabase/config.toml`); Docker could not be installed on this machine (ADR 0011) and no cloud project has been created yet (needs the founder's Supabase account)**. `.env.example` done; generated types via `pnpm db:types` once a database is reachable
+- [ ] Supabase local (CLI + Docker) and a free dev cloud project — **CLI project configured and proven in CI (`supabase start` applies every migration); Docker could not be installed on this machine (ADR 0011), and no cloud dev project exists yet (needs the founder's Supabase account)**. `.env.example` done; `pnpm db:types` runs once a database is reachable
 - [x] Auth: email + password; manager invite creates user + membership atomically (ADR 0003); device registration, pairing codes and staff PIN sessions with lockout — **database and RPCs only; the POS PIN screen and the device's own credential are Phase 1** (ADR 0012 §7)
 - [x] Tenancy: organizations, branches, memberships, roles, org_settings (incl. `price_includes_vat`, VAT rate, cutoff, dayparts, week start), org_profile; RLS helpers incl. `can_see_money` (ADR 0007); org/branch switcher
 - [x] Full core schema migrated per ARCHITECTURE.md's entity list (93 tables), so RLS + isolation tests are written once (ADR 0006)
@@ -55,16 +55,18 @@ Decisions already settled: ADRs 0001–0012. Read them before planning.
 - [x] i18n bn/en; formatters: BDT (poisha), lakh grouping, Bangla digits, Asia/Dhaka, business_date(cutoff)
 - [x] App shell with route groups (dashboard, pos, kds, qr, admin) on the BRAND.md colour tokens, dark theme, system font stack (ADR 0009)
 - [x] Synthetic data generator + manifest with `anchor_date` and per-scenario `available_from_phase`; one command for db reset + seed (`pnpm db:reset:seed`)
-- [ ] CI: typecheck, lint, unit, DB tests — **workflow written, not yet run**: it needs the `workflow` scope on the GitHub token to be pushed
+- [x] CI: typecheck, lint, unit, DB tests — plus seed, manifest validation, generated data-model doc and the browser journey
 - [x] Fill "Commands" in CLAUDE.md; docs/DATA-MODEL.md is generated from the live schema (`pnpm db:docs`)
 **Done when**
-- [ ] Owner signs up, creates an org with branches, invites a manager limited to one branch — *Playwright journey written (`tests/e2e/onboarding.spec.ts`); not yet run*
-- [ ] RLS suite proves org A users can't read/write any org B row (**every table, with fixture rows inserted as org A**) — *525 isolation tests over 93 tables pass on embedded Postgres; real-Supabase run pending*
-- [ ] A branch manager cannot read any cost, margin or profit value, proven at the SQL layer — *`tests/db/money-visibility.test.ts` passes on embedded Postgres; real-Supabase run pending*
-- [ ] Seed runs from scratch in one command; **manifest validates for phase-0 scenarios (S1, S2, S3-commission, S13)** — *generator + manifest verified (unit); loader and validator verified on a 10-day slice; the full 105k-order year needs real Postgres (CI)*
-- [ ] bn/en switch works; formatters unit-tested (1,23,45,678; business_date around 00:00 and 04:00) — *formatters and message-parity unit-tested ✓; the live switch is covered by the Playwright journey, not yet run*
+- [x] Owner signs up, creates an org with branches, invites a manager limited to one branch — `tests/e2e/onboarding.spec.ts`, 10/10 green
+- [x] RLS suite proves org A users can't read/write any org B row (**every table, with fixture rows inserted as org A**) — 525 isolation assertions over 93 tables, real Supabase
+- [x] A branch manager cannot read any cost, margin or profit value, proven at the SQL layer — `tests/db/money-visibility.test.ts`
+- [x] Seed runs from scratch in one command; **manifest validates for phase-0 scenarios (S1, S2, S3-commission, S13)** — 105,417 orders, `✓ Manifest matches the database exactly`
+- [x] bn/en switch works; formatters unit-tested (1,23,45,678; business_date around 00:00 and 04:00) — unit tests + the live switch in the browser journey
 - [x] VAT decomposition tested both ways: a receipt's lines sum to its total under `price_includes_vat` true and false — `src/lib/money/money.test.ts`
-- [ ] CI green
+- [x] CI green
+
+**What running it for real caught** (none of it visible from reading the code): `name[]` arrays — FK/PK columns and enum labels — come back from node-postgres unparsed, so the fixture builder read `"{"` as an enum value; an enum-typed `CASE` in two RPCs; an ambiguously typed parameter in the seed loader; a `DISTINCT`/`ORDER BY` mismatch in the doc generator; and a session-cookie race in the browser tests. The embedded Postgres check (ADR 0011) missed the first and last classes — it is a pre-flight, not the authority.
 
 **Open questions from the kit — settled in [ADR 0012](decisions/0012-phase-0-design-decisions.md):** invoice numbering (server-assigned; offline receipts carry a provisional number) · `business_date` (stored, set at insert). **Still open, deliberately:** PII retention window and deletion flow (needs legal review; Phase 8) · device credential (Phase 1).
 

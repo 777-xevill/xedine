@@ -177,7 +177,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_branch_scorecard` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_campaign_results` | `p_campaign uuid, p_now timestamp with time zone` |
 | `metric_commission` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
-| `metric_compliance` | `p_org uuid, p_now timestamp with time zone` |
+| `metric_compliance` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_customer_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_customers` | `p_org uuid, p_branch uuid, p_now timestamp with time zone, p_segment text DEFAULT NULL::text, p_limit integer DEFAULT 100` |
 | `metric_discipline` | `p_org uuid, p_branch uuid, p_from date, p_to date` |

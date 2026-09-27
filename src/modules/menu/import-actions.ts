@@ -59,13 +59,20 @@ export async function readMenuPhotoAction(
   )
     return { error: 'photoInvalid' };
   const supabase = await createClient();
-  // Only an owner may create drafts (RLS); check membership before spending the org's AI allowance.
-  const { data: member } = await supabase
-    .from('organizations')
-    .select('id')
-    .eq('id', parsed.data.orgId)
-    .maybeSingle();
-  if (!member) return { error: 'notAllowed' };
+  // Only an owner may create drafts (RLS insert policy) — checked here too, before spending the org's AI
+  // allowance: reading `organizations` only proves membership (any active role), not ownership.
+  const { data: auth } = await supabase.auth.getUser();
+  const { data: owner } = auth.user
+    ? await supabase
+        .from('memberships')
+        .select('role')
+        .eq('org_id', parsed.data.orgId)
+        .eq('user_id', auth.user.id)
+        .eq('status', 'active')
+        .eq('role', 'owner')
+        .maybeSingle()
+    : { data: null };
+  if (!owner) return { error: 'notAllowed' };
   let read;
   try {
     read = await readMenuPhoto({

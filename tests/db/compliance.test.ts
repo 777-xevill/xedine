@@ -63,8 +63,9 @@ describe('compliance', () => {
 
   it('bands each licence by days left and puts the next VAT return on the org’s due day', async () => {
     const rows = await asUser(manager, (s) =>
-      s.q<Row>('select *, due_on::text as due from public.metric_compliance($1, $2)', [
+      s.q<Row>('select *, due_on::text as due from public.metric_compliance($1, $2, $3)', [
         org.id,
+        null,
         NOW,
       ]),
     );
@@ -85,8 +86,9 @@ describe('compliance', () => {
       org.id,
     ]);
     const later = await asUser(manager, (s) =>
-      s.q<Row>('select *, due_on::text as due from public.metric_compliance($1, $2)', [
+      s.q<Row>('select *, due_on::text as due from public.metric_compliance($1, $2, $3)', [
         org.id,
+        null,
         NOW,
       ]),
     );
@@ -98,7 +100,7 @@ describe('compliance', () => {
     expect(
       (
         await asUser(cashier, (s) =>
-          s.attempt('select * from public.metric_compliance($1, $2)', [org.id, NOW]),
+          s.attempt('select * from public.metric_compliance($1, $2, $3)', [org.id, null, NOW]),
         )
       ).ok,
     ).toBe(false);
@@ -144,6 +146,49 @@ describe('compliance', () => {
       [org.id],
     );
     expect(audit.map((a) => a.action)).toContain('licence.update');
+  });
+
+  it('a manager scoped to one branch sees only that branch’s licences, plus org-wide ones; the accountant sees all', async () => {
+    const chain = await createOrg({ branches: ['Dhanmondi', 'Uttara'] });
+    const [dhanmondi, uttara] = chain.branchIds as [string, string];
+    const dhManager = await addMember(chain, 'manager', [dhanmondi]);
+    const accountant = await addMember(chain, 'accountant');
+    const orgWide = await id(
+      `insert into public.licences (org_id, kind, expires_on) values ($1, 'Trade licence', $2) returning id`,
+      [chain.id, addDays(TODAY, 90)],
+    );
+    const dhOnly = await id(
+      `insert into public.licences (org_id, branch_id, kind, expires_on) values ($1, $2, 'Fire (Dhanmondi)', $3) returning id`,
+      [chain.id, dhanmondi, addDays(TODAY, 90)],
+    );
+    const utOnly = await id(
+      `insert into public.licences (org_id, branch_id, kind, expires_on) values ($1, $2, 'Fire (Uttara)', $3) returning id`,
+      [chain.id, uttara, addDays(TODAY, 90)],
+    );
+    const seenByManager = await asUser(dhManager, (s) =>
+      s.q<{ id: string }>('select ref_id as id from public.metric_compliance($1, $2, $3)', [
+        chain.id,
+        null,
+        NOW,
+      ]),
+    );
+    expect(new Set(seenByManager.map((r) => r.id))).toEqual(new Set([orgWide, dhOnly, null]));
+    expect(seenByManager.some((r) => r.id === utOnly)).toBe(false);
+    const seenByAccountant = await asUser(accountant, (s) =>
+      s.q<{ id: string }>('select ref_id as id from public.metric_compliance($1, $2, $3)', [
+        chain.id,
+        null,
+        NOW,
+      ]),
+    );
+    expect(seenByAccountant.map((r) => r.id)).toEqual(
+      expect.arrayContaining([orgWide, dhOnly, utOnly]),
+    );
+    // Direct table access is scoped the same way — the metric function isn't the only guard.
+    const direct = await asUser(dhManager, (s) =>
+      s.q<{ id: string }>('select id from public.licences where org_id = $1', [chain.id]),
+    );
+    expect(new Set(direct.map((r) => r.id))).toEqual(new Set([orgWide, dhOnly]));
   });
 });
 

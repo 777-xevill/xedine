@@ -44,10 +44,18 @@ export async function draftGrowthIdea(args: {
     schema: Output,
     maxTokens: 700,
   });
-  // The one number this may cite is already in the fact: refuse any other (CLAUDE.md #1).
+  // The one number this may cite is already in the fact: refuse any other (CLAUDE.md #1). Every field
+  // the owner will read is checked — a hallucinated figure in the title is exactly as invented as one in
+  // the caption, and the title isn't editable at approval time (approve_growth_draft only takes captions).
   const numbers = (s: string) => new Set(s.match(/[0-9০-৯]+/g) ?? []);
   const allowed = numbers(args.fact);
-  for (const text of [result.output.caption_bn, result.output.caption_en, result.output.hook])
+  for (const text of [
+    result.output.title,
+    result.output.hook,
+    result.output.shot_list,
+    result.output.caption_bn,
+    result.output.caption_en,
+  ])
     for (const x of numbers(text)) if (!allowed.has(x)) throw new Error('invented_number');
   return { ...result.output, model: result.model, promptVersion: result.prompt.version };
 }

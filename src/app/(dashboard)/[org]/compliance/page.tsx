@@ -56,7 +56,11 @@ export default async function CompliancePage({ params }: { params: Promise<{ org
   const lastTo = addDays(monthStart, -1);
   const lastFrom = `${lastTo.slice(0, 7)}-01`;
   const [{ data: items }, { data: settings }, vat] = await Promise.all([
-    supabase.rpc('metric_compliance', { p_org: ctx.org.id, p_now: now().toISOString() }),
+    supabase.rpc('metric_compliance', {
+      p_org: ctx.org.id,
+      p_branch: ctx.selectedBranchId,
+      p_now: now().toISOString(),
+    }),
     supabase
       .from('org_settings')
       .select('vat_return_due_day')

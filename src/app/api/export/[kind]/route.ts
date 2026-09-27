@@ -72,6 +72,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
   } else {
     const rows: Record<string, unknown>[] = [];
+    // Every order in the period, deliberately including cancelled/open ones — this is a raw export for
+    // the accountant, not a sales report. metric_vat_summary is the one that restricts to 'completed'.
     // Paged: PostgREST caps a response, and a year of orders is far more than one page.
     for (let page = 0; page < 200; page++) {
       const { data, error } = await supabase

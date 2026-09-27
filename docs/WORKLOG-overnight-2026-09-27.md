@@ -306,3 +306,20 @@ Checklist:
   Bangladesh licence and VAT-due-day defaults from an accountant; pick a payment provider; pick a
   rate-limiting backing store before onboarding paying customers (see `docs/SECURITY.md`); run the timed
   < 2 h onboarding test with a real menu.
+
+### Phase 10 fixes (from the phase-reviewer pass, ADR 0023)
+Ran a `phase-reviewer` subagent over Phase 10 per the ROADMAP's own gate. No Critical issues; three
+Important ones, all fixed same session:
+- `licences` was registered `scope='org'` (any manager could read every branch's licence data, both
+  directly and through `metric_compliance`) — re-registered `scope='branch'` like `attendance`; owner and
+  accountant still see everything (their memberships are always `branch_scope='all'`, a table constraint).
+  A new test proves a branch-scoped manager sees only their branch's licences plus org-wide ones, both via
+  the metric function and by querying the table directly. Migration `20261010000001_phase10_fixes.sql`.
+- The growth-idea number check (CLAUDE.md #1) validated captions and the hook but not the title or shot
+  list — extended to cover every field the owner reads.
+- Reading a menu photo (an AI vision call, real cost) only checked org membership, not ownership, before
+  spending the org's AI allowance — a non-owner could trigger the spend even though the insert would then
+  fail under RLS. Now checks `role = 'owner'` explicitly first.
+- Two optional/cosmetic notes (a redundant GROUP BY column, a comment on the orders export's status filter)
+  — the second applied, the first left alone (no behaviour change, low value for the risk of touching an
+  already-pushed migration again).

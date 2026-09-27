@@ -65,8 +65,14 @@ stops at S13); "done" is evidenced by hand-worked DB tests and the checklist in 
   the first autonomous send in the product, breaking CLAUDE.md #4.
 
 ## Consequences
-- Tests: `tests/db/compliance.test.ts` (7), `tests/db/onboarding.test.ts` (3), `tests/db/billing.test.ts` (3),
+- Tests: `tests/db/compliance.test.ts` (8), `tests/db/onboarding.test.ts` (3), `tests/db/billing.test.ts` (3),
   `tests/db/growth.test.ts` (4) — all hand-worked, no test-oracle scenario exists for this phase.
+- A `phase-reviewer` pass (the ROADMAP's own Phase 10 gate) found no Critical issues and three Important
+  ones, fixed the same session (`20261010000001_phase10_fixes.sql`): `licences` was registered `scope='org'`
+  so any manager could read every branch's licence data, not just their own — re-registered `scope='branch'`;
+  the growth-idea invented-number check missed the title and shot list; reading a menu photo could be
+  triggered by any org member (spending the org's AI allowance) before the owner-only insert failed under
+  RLS, not just an owner. See the worklog's "Phase 10 fixes" entry for the full list.
 - `scripts/seed/config.ts`'s demo orgs count as `active` Growth regardless of subscriptions, so the demo
   never expires or loses AI/WhatsApp.
 - **Run by hand:** insert the founder's own `user_id` into `platform_admins` to use `/admin`; source real

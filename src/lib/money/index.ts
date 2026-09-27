@@ -172,3 +172,10 @@ export function parseTakaToPoisha(input: string): Poisha | null {
   if (!Number.isSafeInteger(poisha)) return null;
   return sign === '-' ? -poisha : poisha;
 }
+
+/** Poisha as a plain decimal taka string for files (e.g. CSV): exact integer maths, no float rounding. */
+export function poishaToTakaText(poisha: number): string {
+  if (!Number.isSafeInteger(poisha)) throw new RangeError('poishaToTakaText needs integer poisha');
+  const abs = Math.abs(poisha);
+  return `${poisha < 0 ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+}

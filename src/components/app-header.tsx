@@ -69,6 +69,12 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
     ...(ctx.isOwner || has('accountant')
       ? [{ href: `${base}/benchmarks`, label: t('benchmarks') }]
       : []),
+    ...(ctx.isOwner || isManager || has('accountant')
+      ? [
+          { href: `${base}/compliance`, label: t('compliance') },
+          { href: `${base}/staff/records`, label: t('staffRecords') },
+        ]
+      : []),
     ...(ctx.isOwner || isManager
       ? [
           { href: `${base}/branch`, label: t('branchSetup') },

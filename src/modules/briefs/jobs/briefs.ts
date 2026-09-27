@@ -214,7 +214,7 @@ export async function composeBrief(args: {
 }
 
 /** The owner's opted-in WhatsApp number and language, or null. */
-async function recipient(sb: Supabase, orgId: string) {
+export async function ownerRecipient(sb: Supabase, orgId: string) {
   const { data } = await sb
     .from('org_profile')
     .select('owner_whatsapp, owner_whatsapp_opt_in_at, brief_language')
@@ -231,7 +231,7 @@ export async function queueBrief(
   kind: BriefKind,
   at: Date,
 ): Promise<'queued' | 'no_recipient'> {
-  const to = await recipient(sb, orgId);
+  const to = await ownerRecipient(sb, orgId);
   if (!to) return 'no_recipient';
   const brief = await composeBrief({ sb, orgId, kind, at, locale: to.locale });
   const { data: settings } = await sb

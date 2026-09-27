@@ -4,6 +4,7 @@ import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
 import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/time/business-date';
 import { queueBrief } from '@/modules/briefs/jobs/briefs';
+import { sendComplianceReminders } from '@/modules/compliance/jobs/reminders';
 import { runAutoCampaigns, sendFeedbackRequests } from '@/modules/customers/jobs/retention';
 import { runOutbox } from '@/modules/messaging/jobs/outbox';
 
@@ -109,6 +110,8 @@ async function briefEveryOrg(supabase: Supabase, at: Date, kind: 'morning' | 'ev
           await queueBrief(supabase, org.id as string, 'weekly', at);
         // Campaigns the owner approved to run by themselves (Phase 8; off unless switched on).
         await runAutoCampaigns(supabase, org.id as string, at);
+        // Licence and VAT-return reminders to the owner (Phase 10; once per threshold).
+        await sendComplianceReminders(supabase, org.id as string, at);
       } else {
         await queueBrief(supabase, org.id as string, 'evening', at);
       }

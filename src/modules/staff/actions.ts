@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
+import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -92,4 +93,66 @@ export async function revokeDeviceAction(formData: FormData): Promise<void> {
   const { error } = await supabase.rpc('revoke_device', { p_device: id.data });
   if (error) console.error('device revoke', error.code);
   revalidatePath(`/${orgSlug.data}/staff`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Staff-lite (ROADMAP Phase 10): advances (owner; money, audited) and attendance (owner/manager).
+// ---------------------------------------------------------------------------------------------
+export async function recordAdvanceAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = z
+    .object({
+      orgId: z.uuid(),
+      orgSlug: z.string().regex(SLUG),
+      staffId: z.uuid(),
+      kind: z.enum(['given', 'repaid']),
+      amount: z.string().trim().min(1).max(20),
+      occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      note: z.string().trim().max(200).optional(),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'advanceInvalid' };
+  const poisha = parseTakaToPoisha(parsed.data.amount);
+  if (poisha === null || poisha <= 0) return { error: 'advanceInvalid' };
+  const supabase = await createClient();
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('branch_id')
+    .eq('id', parsed.data.staffId)
+    .eq('org_id', parsed.data.orgId)
+    .maybeSingle();
+  if (!staff) return { error: 'notAllowed' };
+  const { error } = await supabase.from('advances').insert({
+    org_id: parsed.data.orgId,
+    branch_id: staff.branch_id,
+    staff_id: parsed.data.staffId,
+    amount_poisha: parsed.data.kind === 'given' ? poisha : -poisha,
+    occurred_on: parsed.data.occurredOn,
+    note: parsed.data.note || null,
+  });
+  if (error) return { error: mapDbError(error) };
+  revalidatePath(`/${parsed.data.orgSlug}/staff/records`);
+  return { ok: true };
+}
+
+export async function markAttendanceAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({
+      orgSlug: z.string().regex(SLUG),
+      staffId: z.uuid(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      status: z.enum(['present', 'absent', 'leave', 'half_day']),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('mark_attendance', {
+    p_staff: parsed.data.staffId,
+    p_date: parsed.data.date,
+    p_status: parsed.data.status,
+  });
+  if (error) console.error('mark attendance', error.code);
+  revalidatePath(`/${parsed.data.orgSlug}/staff/records`);
 }

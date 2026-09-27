@@ -114,7 +114,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (70)
+## RPC functions (72)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -138,6 +138,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `end_staff_session` | `p_session uuid` |
 | `ensure_org_defaults` | `p_org uuid` |
 | `finding_events` | `p_finding uuid` |
+| `import_reference_prices` | `p_org uuid, p_rows jsonb` |
 | `insight_action` | `p_insight uuid, p_action text, p_reason text DEFAULT NULL::text, p_until date DEFAULT NULL::date` |
 | `job_backfill_item_costs` | `p_org uuid, p_from date, p_to date` |
 | `job_close_business_day` | `p_org uuid, p_date date` |
@@ -162,6 +163,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_staff_exceptions` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_stock_status` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_stock_variance` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_variance_bridge` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_waste_board` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_window` | `p_org uuid, p_window text, p_now timestamp with time zone` |
 | `open_shift` | `p_org uuid, p_branch uuid, p_device uuid, p_staff uuid, p_opening_float bigint` |

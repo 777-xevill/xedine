@@ -206,3 +206,20 @@ Checklist:
   would have failed CI); the unchanged rows came out identical to CI's last version, so the generator agrees.
 - Checks: typecheck, lint, format, 150 unit, 800 DB tests (embedded) — all green.
 - **Run by hand:** with the API key set, try Purchases → "From photo or voice" with a real bazar chit.
+---
+
+## Phase 6 — Leak Detector v2
+
+Checklist:
+- [x] 6.1 Migration: variance bridge, usage / transfer / price / transfer-hygiene detectors, count-aligned periods, flash P&L on recipes, reference price import
+- [x] 6.2 DB tests (hand-worked) + seed cross-check recovering S6–S9, café quiet
+- [x] 6.3 CI golden checks at SEED_PHASE=6
+- [x] 6.4 UI: evidence for new types + actions + ask assistant; resolved tab; bridge on Stock; market prices import
+- [x] 6.5 Assistant tools (explain_finding, stock, food-cost gap) + deterministic answers
+- [x] 6.6 i18n, ADR 0019, ROADMAP, DATA-MODEL.md, commit, push
+
+### Phase 6 log
+- Migration `20261002000001_leak_detector_v2.sql`. ADR 0019 — **please confirm §2 (a leak's ৳ is only what
+  goes beyond other branches' normal loss) and §4 (the 50% match rule for suspected transfers).**
+- Branch pushed to GitHub (you asked); still no pull request, so CI has not run.
+- Checks: typecheck, lint, 152 unit, 809 DB tests (embedded) — all green.

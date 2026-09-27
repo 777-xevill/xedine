@@ -168,18 +168,19 @@ Status: ◐ **built; local checks green; seed checks written for CI** (2026-10-0
 - [ ] S6 visible as phantom variance / unconfirmed transfer — Dhanmondi chicken +35.8 kg, Mirpur −29.2 kg over four weeks; proven on the last four seeded weeks locally (`seed-inventory.test.ts`), **full seed in CI** (`manifest:validate`, `metrics:validate` at SEED_PHASE=5)
 - [ ] Days of cover and discipline scores match manifest — same two checks; **CI**
 ## Phase 6 — Leak Detector v2 (full "Where am I losing money?")
-Status: ☐ · Size: 2 weeks
+Status: ◐ **built; local checks green; full-seed checks written for CI** (2026-10-02) · Size: 2 weeks
 **Goal:** explain the food-cost gap in BDT, by cause, branch and item.
+**Evidence so far (local):** `tests/db/leaks-v2.test.ts` (9 hand-worked tests: bridge identity, unexplained usage vs peers, mirrored transfer, price drift vs market-wide rise, reference prices, unconfirmed transfer, flash P&L on recipes); `tests/db/seed-inventory.test.ts` runs the detectors on the last 8 seeded weeks and recovers S6–S9 within ±10% with the café quiet. Decisions in [ADR 0019](decisions/0019-phase-6-leak-detector-v2.md). **Needs CI:** `metrics:validate` at SEED_PHASE=6.
 **Build**
-- [ ] Actual COGS between counts; ingredient usage variance
-- [ ] Variance bridge: logged waste, price effect, unexplained usage, count-uncertainty band
-- [ ] Over-portioning suspects by item × branch; theft-pattern hints cross-checked with POS exceptions
-- [ ] Purchase Price Watch: own history, cross-branch same day, reference_prices CSV import
-- [ ] Findings ranked by ৳ × confidence; "explain this" via assistant; resolution tracking
+- [x] Actual COGS between counts; ingredient usage variance — `metric_variance_bridge`, `metric_stock_variance`
+- [x] Variance bridge: logged waste, price effect, unexplained usage, count-uncertainty band — an exact identity (ADR 0019 §1); Stock → Counts & gaps
+- [x] Over-portioning suspects by item × branch; theft-pattern hints cross-checked with POS exceptions — evidence on `usage.unexplained` (dishes, voided-dish usage, POS findings)
+- [x] Purchase Price Watch: own history, cross-branch same day, reference_prices CSV import — `price.drift`, Purchases → Suppliers → Market prices
+- [x] Findings ranked by ৳ × confidence; "explain this" via assistant; resolution tracking — `explain_finding` tool + deterministic answer; Resolved tab, "came back" badges
 **Done when**
-- [ ] S7, S8, S9 detected and ranked with ৳ within ±10%
-- [ ] Clean-org false positives within tolerance
-- [ ] Finding → evidence → action in ≤ 3 clicks
+- [ ] S7, S8, S9 detected and ranked with ৳ within ±10% — met on the last 8 seeded weeks locally; **full seed in CI**
+- [ ] Clean-org false positives within tolerance — café quiet locally; **CI**
+- [x] Finding → evidence → action in ≤ 3 clicks — dashboard insight → evidence page → action buttons on the same page
 
 ## Phase 7 — Forecasting & Bazar List Assistant
 Status: ☐ · Size: 2–3 weeks

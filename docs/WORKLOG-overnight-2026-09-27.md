@@ -59,3 +59,36 @@ Checklist:
   e2e spec for the Phase 1 journey (CI only). 104 unit + 725 DB tests green locally.
 - Not done: optional QR table ordering (deferred by the roadmap itself); tablet check on a real device.
 - Couldn't run `pnpm build` locally (1.8 GB free memory); CI builds it.
+
+---
+
+## Phase 2 — Metrics layer, Health Monitor & zero-input leaks
+
+Plan (decisions go in ADR 0015):
+- One SQL implementation per metric (`private.m_*`), thin `public.metric_*` wrappers that check branch
+  access, and `can_see_money()` for anything with cost/profit/commission (ADR 0007). Clock is a parameter.
+- Detectors in SQL too, so the nightly job and the CI golden check run the same code.
+- S1/S2 baseline = the staff member's peers at the same branch over the same period (that is how the
+  manifest defines "excess"); z-score + count floor + ৳ floor keep the clean café quiet.
+- Commission drag = monthly structural-cost finding; anomaly findings weekly.
+
+Checklist:
+- [x] 2.1 Migration: helpers, sales / by-channel / by-daypart / by-payment / item velocity / pace metrics
+- [x] 2.2 Money metrics: commission, labour.daily, fixed.daily, flash P&L, break-even (owner/accountant only)
+- [x] 2.3 Findings engine: void, discount, refund, cash share (daypart-normalised), cash over/short, commission drag; upsert + status workflow RPC; day-close job (auto-complete paid orders, run detectors)
+- [x] 2.4 DB tests: exact metrics on fixtures, windows with a frozen clock, money gating, detectors fire/stay quiet, workflow audited
+- [x] 2.5 CI golden script: metrics = manifest, S1/S2/S3 within ±10%, S13 quiet, dashboard p95 < 2 s
+- [x] 2.6 TS metric module + job route fan-out per org
+- [x] 2.7 UI: Health Monitor (today), Item velocity explorer, "Where am I losing money?", costs setup (assumed food cost %, fixed costs, salaries)
+- [x] 2.8 i18n bn/en, checks, ADR 0015, ROADMAP, commit
+
+### Phase 2 log
+- Migration `20260928000001_metrics_and_leaks.sql`: metrics, money metrics, 5 detectors, findings upsert,
+  owner workflow + scan, evidence rows, day-close job. ADR 0015 lists the definitions I had to settle —
+  **please confirm §1 (refunds net of VAT), §2 (split-tender pro rata) and §5 (peer baseline).**
+- UI: Health Monitor on the overview, `/sales` explorer, `/leaks` + evidence page, `/costs` setup.
+- Tests: 25 DB tests; `pnpm metrics:validate` golden script added to CI (runs after the seed).
+- Not built: summary tables (deferred until the CI p95 check needs them); price-override detector (no
+  manual override exists in the till).
+- **Run by hand:** after CI seeds the demo org, open Demo Kacchi House → Leaks → "Scan the last 4 weeks"
+  (or wait for the nightly job) to see findings in the UI; the golden script doesn't write findings.

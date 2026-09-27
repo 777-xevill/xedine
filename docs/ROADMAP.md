@@ -94,22 +94,23 @@ Status: ◐ **built; local checks green, awaiting the first CI run** (2026-09-27
 - [ ] All POS/KDS strings exist in bn and en; usable on a 10" Android tablet — strings: yes (`messages.test.ts`); **tablet: not yet checked on a real device**
 
 ## Phase 2 — Metrics layer, Health Monitor & zero-input leaks
-Status: ☐ · Size: 2–3 weeks
+Status: ◐ **built; local checks green, golden checks written for CI** (2026-09-28) · Size: 2–3 weeks
 **Goal:** first "wow" — today's profit and leaks found from POS data alone.
+**Evidence so far (local):** `tests/db/metrics.test.ts` (25 tests: exact sales/splits on hand-built fixtures, every velocity window at a frozen clock, money gating for manager/cashier, flash P&L arithmetic, detectors firing and staying quiet, idempotent upsert, audited workflow, day close). Decisions in [ADR 0015](decisions/0015-phase-2-metrics-and-detectors.md). **Needs CI:** `pnpm metrics:validate` against the seeded year.
 **Build**
-- [ ] Metric functions: Sales, Item velocity, Channels, POS exceptions, Costs & P&L (METRICS.md)
-- [ ] Summary tables / materialized views + refresh jobs
-- [ ] Setup screens: fixed costs, salaries (lite), channel commissions
-- [ ] Health Monitor: today view, flash P&L, break-even remaining, branch RAG. **Until recipes exist (P3), COGS comes from an owner-entered `assumed_food_cost_pct` in org_settings, labelled in the UI as an assumption with its own metric ID — never a silently invented figure** (non-negotiable #1). The label disappears once recipe coverage is sufficient
-- [ ] Item velocity explorer (last 2h / today / 7d / MTD / custom; branch, channel, daypart)
-- [ ] Findings engine + detectors: void/discount/refund anomalies, price overrides, cash-share drift, cash over/short, commission drag
-- [ ] "Where am I losing money?" v0: ranked findings with ৳, evidence rows, actions, status workflow
+- [x] Metric functions: Sales, Item velocity, Channels, POS exceptions, Costs & P&L (METRICS.md) — `private.m_*` + `public.metric_*`, `src/modules/metrics/queries.ts`
+- [ ] Summary tables / materialized views + refresh jobs — **deferred on purpose** (ADR 0015 §10): metrics read indexed base tables; the CI p95 check decides when a cache is needed
+- [x] Setup screens: fixed costs, salaries (lite), channel commissions — `/[org]/costs`, commissions in `/[org]/settings`
+- [x] Health Monitor: today view, flash P&L, break-even remaining, branch RAG — overview page; COGS from `assumed_food_cost_bps`, labelled as an assumption; break-even remaining leads (METRICS.md open question 5)
+- [x] Item velocity explorer (last 2h / today / 7d / MTD / custom; branch, channel, daypart) — `/[org]/sales` (custom range is in the SQL; the page offers the named windows)
+- [x] Findings engine + detectors: void/discount/refund anomalies, cash-share drift (daypart-normalised), cash over/short, commission drag — price overrides: **not applicable yet** (the till has no manual price override; server-side price mismatches are audited as `order.price_mismatch`)
+- [x] "Where am I losing money?" v0: ranked findings with ৳, evidence rows, actions, status workflow — `/[org]/leaks`, `/[org]/leaks/[id]`
 **Done when**
-- [ ] Golden tests: metrics equal manifest values; every velocity window matches
-- [ ] S1, S2 detected with ৳ within tolerance; S3's **commission drag** detected (full negative-margin detection waits for P3 recipe costs); S13 stays quiet
-- [ ] False-positive check on the two confounded detectors: `cash.share` is normalised by daypart (a late-shift cashier legitimately takes more cash) and `price.drift` accounts for a rising bazar trend — otherwise both fire constantly and blow the ≤1-per-branch-week tolerance
-- [ ] Dashboard p95 load < 2 s on the seeded year for 3 branches
-- [ ] Every finding links to its evidence
+- [ ] Golden tests: metrics equal manifest values; every velocity window matches — `scripts/validate-metrics.ts`, **runs in CI**
+- [ ] S1, S2 detected with ৳ within tolerance; S3's **commission drag** detected (full negative-margin detection waits for P3 recipe costs); S13 stays quiet — same script, **runs in CI** (by construction S1/S2 impact = the manifest's excess exactly)
+- [x] False-positive check on the two confounded detectors: `cash.share` is normalised by daypart; `price.drift` is Phase 5 (no purchases yet)
+- [ ] Dashboard p95 load < 2 s on the seeded year for 3 branches — timed in the same CI script
+- [x] Every finding links to its evidence — `public.finding_events` + the evidence page
 
 **→ Pilot gate A:** 1–2 friendly restaurants use P1–P2 for two weeks. Fix what they hit before P3.
 

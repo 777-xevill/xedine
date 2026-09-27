@@ -31,6 +31,10 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
 
   const items: NavItem[] = [
     { href: base, label: t('overview'), exact: true },
+    ...(ctx.isOwner || isManager || has('accountant')
+      ? [{ href: `${base}/sales`, label: t('sales') }]
+      : []),
+    ...(ctx.isOwner || has('accountant') ? [{ href: `${base}/leaks`, label: t('leaks') }] : []),
     ...(ctx.isOwner ? [{ href: `${base}/menu`, label: tMenu('title') }] : []),
     ...(ctx.isOwner || isManager
       ? [
@@ -40,6 +44,7 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
       : []),
     ...(ctx.isOwner
       ? [
+          { href: `${base}/costs`, label: t('costs') },
           { href: `${base}/team`, label: t('team') },
           { href: `${base}/settings`, label: t('settings') },
         ]

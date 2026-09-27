@@ -53,6 +53,8 @@ jobs:
         run: pnpm manifest:validate
       - name: The committed manifest is exactly what the generator produced
         run: git diff --exit-code supabase/seed/manifest.json
+      - name: Phase 2 golden checks (metrics = manifest, S1/S2/S3 detected, S13 quiet, dashboard p95)
+        run: pnpm metrics:validate
       - name: Regenerate docs/DATA-MODEL.md from the live schema
         run: pnpm db:docs
       - uses: actions/upload-artifact@v4

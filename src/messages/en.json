@@ -41,7 +41,9 @@
     "priceBasisLocked": "The price basis cannot change after the first order.",
     "invalidPrice": "Enter a valid price.",
     "pinInvalid": "PIN must be 4 to 6 digits.",
-    "nameTaken": "That name is already used here."
+    "nameTaken": "That name is already used here.",
+    "reasonRequired": "Please give a reason.",
+    "dateRequired": "Please choose a date."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -90,7 +92,10 @@
     "allBranches": "All branches",
     "main": "Main",
     "openPos": "POS",
-    "openKds": "Kitchen"
+    "openKds": "Kitchen",
+    "sales": "Sales",
+    "leaks": "Leaks",
+    "costs": "Costs"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -477,5 +482,210 @@
     "addModifier": "Add",
     "saveGroups": "Save",
     "selectRange": "pick {min}–{max}"
+  },
+  "health": {
+    "subtitle": "Business day {date}. Figures update as orders are completed.",
+    "today": "Today so far",
+    "openExplorer": "Open the sales explorer",
+    "rag": {
+      "green": "On pace",
+      "amber": "Behind usual",
+      "red": "Well behind",
+      "none": "No history yet"
+    },
+    "netSales": "Net sales",
+    "paceNone": "Not enough past weeks to compare yet.",
+    "paceOf": "{pct} of a typical day by this time",
+    "orders": "Orders",
+    "aov": "Avg. order",
+    "covers": "Guests",
+    "breakevenRemaining": "{amount} more sales to break even today",
+    "breakevenReached": "Break-even reached for today",
+    "estimatedProfit": "Estimated profit today:",
+    "assumedCogs": "Estimate: food cost assumed at {pct} of sales until recipes are set up.",
+    "allBranches": "All branches",
+    "channelMix": "Sales by channel",
+    "noSalesYet": "No completed sales yet today.",
+    "ordersCount": "{count} orders",
+    "topItems": "Top items today",
+    "leaksTitle": "Where you're losing money",
+    "seeAllLeaks": "See all",
+    "findingType": {
+      "void_after_kot": "Voids after the kitchen ticket",
+      "discount_rate": "Unusual discounts",
+      "refund_rate": "Unusual refunds",
+      "cash_share": "Unusually high cash share",
+      "cash_over_short": "Cash drawer shortages",
+      "commission_drag": "Delivery commission"
+    }
+  },
+  "sales": {
+    "title": "Sales explorer",
+    "subtitle": "What sold, how many and when — by branch, channel and time of day.",
+    "window": "Period",
+    "windows": {
+      "last_2h": "Last 2 hours",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "last_7d": "Last 7 days",
+      "week_to_date": "This week",
+      "month_to_date": "This month",
+      "last_30d": "Last 30 days"
+    },
+    "channel": "Channel",
+    "allChannels": "All channels",
+    "daypart": "Time of day",
+    "allDayparts": "All day",
+    "dayparts": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "snacks": "Snacks",
+      "dinner": "Dinner",
+      "late": "Late night",
+      "other": "Other"
+    },
+    "apply": "Apply",
+    "range": "{from} to {to}",
+    "netSales": "Net sales",
+    "orders": "Orders",
+    "aov": "Avg. order",
+    "itemsTitle": "Items sold",
+    "noSales": "Nothing sold in this period.",
+    "col": {
+      "item": "Item",
+      "qty": "Qty",
+      "net": "Net sales"
+    },
+    "byDaypart": "By time of day",
+    "byHour": "By hour",
+    "hour": "{hour}:00",
+    "notSold": "Not sold in this period"
+  },
+  "leaks": {
+    "title": "Where am I losing money?",
+    "subtitle": "Found from your till data alone, ranked by taka and confidence. Every one shows its evidence.",
+    "scanNow": "Scan the last 4 weeks",
+    "scanned": "Scan finished.",
+    "filter": "Show",
+    "open": "Open",
+    "all": "All",
+    "empty": "No leaks found",
+    "emptyBody": "Checks run every night after the day closes. You can also scan now.",
+    "allBranches": "All branches",
+    "rank": "#{n}",
+    "type": {
+      "void_after_kot": "Voids after the kitchen ticket",
+      "discount_rate": "Unusual discounts",
+      "refund_rate": "Unusual refunds",
+      "cash_share": "Unusually high cash share",
+      "cash_over_short": "Cash drawer shortages",
+      "commission_drag": "Delivery commission"
+    },
+    "period": "{from} – {to}",
+    "impactLabel": {
+      "void_after_kot": "Above colleagues' voids",
+      "discount_rate": "Above colleagues' discounts",
+      "refund_rate": "Above colleagues' refunds",
+      "cash_share": "Extra cash taken",
+      "cash_over_short": "Net shortage",
+      "commission_drag": "Paid to the platform"
+    },
+    "confidence": {
+      "low": "Low confidence",
+      "medium": "Medium confidence",
+      "high": "High confidence"
+    },
+    "status": {
+      "new": "New",
+      "acknowledged": "Looking into it",
+      "snoozed": "Snoozed",
+      "resolved": "Resolved",
+      "dismissed": "Dismissed"
+    },
+    "evidenceTitle": "Evidence",
+    "evidence": {
+      "staffVsPeers": "{count} in {orders} orders ({value}); colleagues' rate would predict {expected}.",
+      "peers": "Colleagues at this branch: {count} in {orders} orders ({value}).",
+      "withoutReason": "{count} had no reason recorded.",
+      "cashShare": "{share} of their {orders} orders were cash; {expected} expected for the same times of day.",
+      "overShort": "{short} of {shifts} shifts closed short; net {net}.",
+      "commission": "{orders} orders, {net} in sales; commission {pct} = {commission}. All platform costs: {share} of its sales."
+    },
+    "seeEvidence": "See every row behind this",
+    "metricRefs": "Metrics: {refs}",
+    "actionsTitle": "What to do",
+    "action": {
+      "review_voids": "Go through these voids with the cashier and the kitchen.",
+      "require_manager_on_cash_voids": "Make every void after the ticket need a manager's PIN (already on) and check who approved these.",
+      "talk_to_staff": "Talk to the staff member before drawing conclusions.",
+      "review_discounts": "Check who these discounts went to.",
+      "require_reason_codes": "Require a reason on every discount.",
+      "set_discount_limit": "Make large discounts need a manager's approval.",
+      "review_refunds": "Check each refund against its original order.",
+      "check_digital_payments_offered": "Check that bKash, Nagad and card are offered at this till.",
+      "spot_count_drawer": "Do a surprise cash count during this person's shift.",
+      "recount_with_manager": "Count the drawer with a manager at every close for two weeks.",
+      "blind_cash_count": "Ask for the cash count before showing the expected amount.",
+      "raise_platform_prices": "Price items higher on the platform to cover commission.",
+      "push_own_delivery": "Move regulars to your own delivery.",
+      "review_combo_margins": "Check which combos still make money after commission."
+    },
+    "ownerNote": "Your note: {note}",
+    "acknowledge": "I'm looking into it",
+    "resolve": "Mark resolved",
+    "reopen": "Reopen",
+    "moreOptions": "Snooze or dismiss",
+    "snoozeUntil": "Snooze until",
+    "snooze": "Snooze",
+    "dismissReason": "Why is this not a problem?",
+    "dismiss": "Dismiss",
+    "evidencePageTitle": "Evidence: {type}",
+    "backToLeaks": "Back to leaks",
+    "noEvents": "No rows found for this period.",
+    "col": {
+      "day": "Day",
+      "when": "When",
+      "orders": "Orders",
+      "order": "Order",
+      "reason": "Reason",
+      "value_void": "Voided",
+      "value_discount": "Discount",
+      "value_refund": "Refunded",
+      "value_shift": "Over / short",
+      "value_channel_day": "Net sales",
+      "value_staff_day": "Cash taken"
+    }
+  },
+  "costs": {
+    "title": "Costs",
+    "subtitle": "What your restaurant spends outside food, so the daily profit estimate is real.",
+    "foodCostTitle": "Food cost assumption",
+    "foodCostBody": "Until your recipes are set up, the daily profit estimate assumes food costs this share of sales. It is always shown as an assumption.",
+    "foodCostPct": "Food cost (% of sales)",
+    "save": "Save",
+    "currentAssumption": "Currently assumed: {pct}",
+    "fixedTitle": "Monthly fixed costs",
+    "branch": "Branch",
+    "allBranches": "Whole restaurant",
+    "kind": "Type",
+    "kinds": {
+      "rent": "Rent",
+      "utilities": "Electricity & water",
+      "gas": "Gas",
+      "fuel": "Generator fuel",
+      "internet": "Internet",
+      "other": "Other"
+    },
+    "label": "Note",
+    "monthly": "Per month (৳)",
+    "addFixed": "Add cost",
+    "noFixed": "No fixed costs yet.",
+    "perMonth": "{amount}/month",
+    "end": "End",
+    "salaryTitle": "Salaries for {month}",
+    "salaryBody": "Monthly salary and allowances per person. Used for the daily labour cost.",
+    "noStaff": "Add staff first.",
+    "salary": "Salary (৳)",
+    "allowances": "Allowances (৳)"
   }
 }

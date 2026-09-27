@@ -1,19 +1,71 @@
 import { ChefHat, ClipboardList, MonitorSmartphone, Store, Users } from 'lucide-react';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
-import { Card, PageTitle } from '@/components/ui/form';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { BarList } from '@/components/metrics/bar-list';
+import { StatusBadge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import { Card, CardTitle, EmptyState, PageTitle, Stat } from '@/components/ui/form';
+import {
+  formatBDT,
+  formatBps,
+  formatDhakaDate,
+  formatNumber,
+  type Locale,
+} from '@/lib/i18n/format';
+import {
+  businessToday,
+  findings,
+  flashPnl,
+  itemVelocity,
+  pace,
+  sales,
+  salesSplit,
+  type FlashPnlRow,
+  type PaceRow,
+} from '@/modules/metrics/queries';
 import { getOrgContext } from '@/modules/tenancy/context';
+
+const RAG_TONE = { green: 'success', amber: 'warning', red: 'danger', none: 'neutral' } as const;
 
 export default async function OverviewPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
-  const [ctx, t, roles] = await Promise.all([
+  const [ctx, t, th, roles, locale] = await Promise.all([
     getOrgContext(org),
     getTranslations('dashboard'),
+    getTranslations('health'),
     getTranslations('roles'),
+    getLocale(),
   ]);
+  const loc = locale as Locale;
+  const money = (p: number) => formatBDT(p, loc, { poisha: 'never' });
   const isAllBranches = ctx.branches.length > 0 && ctx.isOwner;
   const has = (r: (typeof ctx.roles)[number]) => ctx.roles.includes(r);
+  const canSeeMoney = has('owner') || has('accountant');
+  const seesSales = canSeeMoney || has('manager');
   const base = `/${ctx.org.slug}`;
+  const scope = ctx.selectedBranchId;
+  const branchName = (id: string | null) => ctx.branches.find((b) => b.id === id)?.name ?? '';
+
+  // Every figure below comes from a metric function (CLAUDE.md #1); this page only formats.
+  const today = seesSales && ctx.branches.length > 0 ? await businessToday(ctx.org.id) : null;
+  const [salesToday, paceToday, channels, topItems, pnl, openFindings] = today
+    ? await Promise.all([
+        sales(ctx.org.id, scope, today.date, today.date),
+        pace(ctx.org.id, scope),
+        salesSplit(ctx.org.id, scope, today.date, today.date, 'channel'),
+        itemVelocity(ctx.org.id, scope, 'today'),
+        canSeeMoney ? flashPnl(ctx.org.id, scope).catch(() => null) : Promise.resolve(null),
+        canSeeMoney ? findings(ctx.org.id, { limit: 3 }).catch(() => null) : Promise.resolve(null),
+      ])
+    : [null, null, null, null, null, null];
+
+  const branchRows = (salesToday?.rows ?? []).filter((r) => r.branch_id !== null);
+  const totalRow = salesToday?.rows.find((r) => r.branch_id === null) ?? null;
+  const paceBy = new Map((paceToday?.rows ?? []).map((p) => [p.branch_id, p]));
+  const pnlBy = new Map((pnl?.rows ?? []).map((p) => [p.branch_id, p]));
+  const hasAnySales =
+    (totalRow?.orders_completed ?? 0) > 0 ||
+    (paceToday?.rows ?? []).some((p) => p.typical_net_poisha);
 
   const actions = [
     ...(ctx.isOwner || has('manager') || has('cashier')
@@ -57,9 +109,187 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
       : []),
   ];
 
+  const paceText = (p: PaceRow | undefined) =>
+    !p || p.rag === 'none' || p.pace_bps === null
+      ? th('paceNone')
+      : th('paceOf', { pct: formatBps(p.pace_bps, loc) });
+
+  const moneyBlock = (p: FlashPnlRow | undefined) =>
+    p ? (
+      <div className="mt-4 space-y-2 border-t border-line pt-3">
+        <p className="text-sm">
+          {p.breakeven_remaining_poisha > 0 ? (
+            <span className="font-semibold">
+              {th('breakevenRemaining', { amount: money(p.breakeven_remaining_poisha) })}
+            </span>
+          ) : (
+            <span className="font-semibold text-success">{th('breakevenReached')}</span>
+          )}
+        </p>
+        <p className="text-sm text-secondary">
+          {th('estimatedProfit')}{' '}
+          <span className="font-semibold text-foreground tabular-nums">
+            {money(p.estimated_profit_poisha)}
+          </span>
+        </p>
+        <p className="text-xs text-muted">
+          {th('assumedCogs', { pct: formatBps(p.assumed_food_cost_bps, loc) })}
+        </p>
+      </div>
+    ) : null;
+
   return (
     <>
-      <PageTitle title={t('welcome', { name: ctx.fullName })} subtitle={t('subtitle')} />
+      <PageTitle
+        title={t('welcome', { name: ctx.fullName })}
+        subtitle={
+          today
+            ? th('subtitle', { date: formatDhakaDate(new Date(`${today.date}T06:00:00Z`), loc) })
+            : t('subtitle')
+        }
+      />
+
+      {today && hasAnySales ? (
+        <section aria-labelledby="today-heading" className="mb-8">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <h2 id="today-heading" className="text-lg font-bold tracking-tight">
+              {th('today')}
+            </h2>
+            <Link
+              href={`${base}/sales`}
+              className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+            >
+              {th('openExplorer')}
+            </Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {branchRows.map((r) => {
+              const p = paceBy.get(r.branch_id!);
+              return (
+                <Card key={r.branch_id} className="p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold">{branchName(r.branch_id)}</h3>
+                    <StatusBadge tone={RAG_TONE[p?.rag ?? 'none']}>
+                      {th(`rag.${p?.rag ?? 'none'}`)}
+                    </StatusBadge>
+                  </div>
+                  <p className="mt-3 text-xs font-medium tracking-wide text-secondary uppercase">
+                    {th('netSales')}
+                  </p>
+                  <p className="text-3xl font-extrabold tabular-nums">{money(r.net_poisha)}</p>
+                  <p className="mt-1 text-sm text-secondary">{paceText(p)}</p>
+                  <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <dt className="text-xs text-secondary">{th('orders')}</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {formatNumber(r.orders_completed, loc)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-secondary">{th('aov')}</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {r.aov_poisha === null ? '—' : money(r.aov_poisha)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-secondary">{th('covers')}</dt>
+                      <dd className="font-semibold tabular-nums">
+                        {r.covers_orders > 0 ? formatNumber(r.covers, loc) : '—'}
+                      </dd>
+                    </div>
+                  </dl>
+                  {moneyBlock(pnlBy.get(r.branch_id))}
+                </Card>
+              );
+            })}
+            {branchRows.length > 1 && totalRow ? (
+              <Card className="p-5">
+                <h3 className="font-bold">{th('allBranches')}</h3>
+                <p className="mt-3 text-xs font-medium tracking-wide text-secondary uppercase">
+                  {th('netSales')}
+                </p>
+                <p className="text-3xl font-extrabold tabular-nums">{money(totalRow.net_poisha)}</p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Stat label={th('orders')} value={formatNumber(totalRow.orders_completed, loc)} />
+                  <Stat
+                    label={th('aov')}
+                    value={totalRow.aov_poisha === null ? '—' : money(totalRow.aov_poisha)}
+                  />
+                </div>
+                {moneyBlock(pnlBy.get(null))}
+              </Card>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <Card className="p-5">
+              <CardTitle>{th('channelMix')}</CardTitle>
+              {(channels?.rows ?? []).length === 0 ? (
+                <p className="text-sm text-secondary">{th('noSalesYet')}</p>
+              ) : (
+                <BarList
+                  label={th('channelMix')}
+                  items={(channels?.rows ?? []).map((c) => ({
+                    key: c.key,
+                    label: c.label || c.key,
+                    value: c.net_poisha,
+                    display: money(c.net_poisha),
+                    hint: th('ordersCount', { count: c.orders }),
+                  }))}
+                />
+              )}
+            </Card>
+            <Card className="p-5">
+              <CardTitle>{th('topItems')}</CardTitle>
+              {(topItems?.rows ?? []).length === 0 ? (
+                <p className="text-sm text-secondary">{th('noSalesYet')}</p>
+              ) : (
+                <BarList
+                  label={th('topItems')}
+                  items={(topItems?.rows ?? []).slice(0, 6).map((i) => ({
+                    key: i.menu_item_id ?? i.name,
+                    label: i.name,
+                    value: i.qty,
+                    display: formatNumber(i.qty, loc),
+                  }))}
+                />
+              )}
+            </Card>
+          </div>
+
+          {openFindings && openFindings.rows.length > 0 ? (
+            <Card className="mt-4 p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="mb-0">{th('leaksTitle')}</CardTitle>
+                <Link
+                  href={`${base}/leaks`}
+                  className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+                >
+                  {th('seeAllLeaks')}
+                </Link>
+              </div>
+              <ul className="space-y-2">
+                {openFindings.rows.map((f) => (
+                  <li
+                    key={f.id}
+                    className="glass-tile flex flex-wrap items-center justify-between gap-2 rounded-input p-3"
+                  >
+                    <span className="text-sm">
+                      {th(`findingType.${f.type.replace('.', '_')}`)}
+                      {f.subject.staff_name || f.subject.channel_name
+                        ? ` · ${String(f.subject.staff_name ?? f.subject.channel_name)}`
+                        : ''}
+                      {f.branch_id ? ` · ${branchName(f.branch_id)}` : ''}
+                    </span>
+                    <span className="font-bold tabular-nums">{money(f.impact_poisha)}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+        </section>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <h2 className="text-sm font-medium text-secondary">{t('yourRole')}</h2>
@@ -106,10 +336,9 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
         </section>
       ) : null}
 
-      <Card className="mt-8">
-        <h2 className="text-lg font-bold">{t('emptyTitle')}</h2>
-        <p className="mt-1 text-secondary">{t('emptyBody')}</p>
-      </Card>
+      {!hasAnySales ? (
+        <EmptyState className="mt-8" title={t('emptyTitle')} body={t('emptyBody')} />
+      ) : null}
     </>
   );
 }

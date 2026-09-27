@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { businessDate } from '../../src/lib/time/business-date';
 import { ANCHOR_DATE, CUTOFF_MINUTES, DEMO_CAFE, FROZEN_NOW, KACCHI_HOUSE, ORGS } from './config';
 import { allDates, generateDay, type DayRows } from './generate';
+import { Inventory, S6, S7, S8, S9 } from './inventory';
 import { Ledger } from './ledger';
 import { ManifestSchema, type Manifest } from './manifest';
 
@@ -117,12 +118,17 @@ describe('generator: the planted scenarios and the clean control', () => {
   beforeAll(() => {
     // One full pass over the year. Streaming, so memory stays flat.
     const ledger = new Ledger();
+    const inventory = new Inventory();
     for (const org of ORGS) {
       for (const date of allDates()) {
-        for (const b of org.branches) ledger.add(org, b.key, generateDay(org, b, date));
+        for (const b of org.branches) {
+          const rows = generateDay(org, b, date);
+          ledger.add(org, b.key, rows);
+          inventory.day(org, b, date, rows);
+        }
       }
     }
-    manifest = ledger.manifest();
+    manifest = ledger.manifest(inventory);
   }, 120_000);
 
   it('Phase 3 plants hold: combo loses on foodpanda, the spike pushes Tehari over target, a Dog and a Puzzle', () => {
@@ -143,6 +149,53 @@ describe('generator: the planted scenarios and the clean control', () => {
     const matrix = facts('S5').matrix as unknown as Record<string, string>;
     expect(matrix.shahi_tukra).toBe('dog');
     expect(matrix.kala_bhuna).toBe('puzzle');
+  });
+
+  it('Phase 5–6 plants show up in the recorded stock the way a detector will see them', () => {
+    type Plant =
+      'moved_qty' | 'from_variance_qty' | 'to_variance_qty' | 'wasted_qty' | 'variance_qty';
+    const facts = (id: string) =>
+      manifest.scenarios.find((s) => s.id === id)!.facts as unknown as Record<Plant, number>;
+    const v = manifest.inventory.orgs.demo_kacchi_house!.branches;
+    const bps = (b: string, ing: string) =>
+      (v[b]!.variance[ing]!.variance_qty * 10000) / v[b]!.variance[ing]!.usage_theoretical_qty;
+    // S6: Dhanmondi's chicken looks over-used and Mirpur's under-used, each by roughly what moved.
+    const s6 = facts('S6');
+    expect(s6.moved_qty).toBe(8 * S6.grams); // eight Tuesdays and Saturdays in the four weeks
+    expect(s6.from_variance_qty).toBeGreaterThan(s6.moved_qty);
+    expect(s6.from_variance_qty).toBeLessThan(s6.moved_qty * 1.2);
+    expect(-s6.to_variance_qty).toBeGreaterThan(s6.moved_qty * 0.8);
+    expect(-s6.to_variance_qty).toBeLessThan(s6.moved_qty);
+    // S7: Mirpur's mutton variance is the 12% over-portion plus the normal 1% and cooked-then-voided dishes.
+    expect(bps(S7.branch, S7.ing)).toBeGreaterThan(1200);
+    expect(bps(S7.branch, S7.ing)).toBeLessThan(1500);
+    for (const b of ['dhanmondi', 'uttara']) expect(bps(b, S7.ing)).toBeLessThan(200);
+    // S8: overpaid days are 9–12% over, on roughly a third of days.
+    const s8 = manifest.scenarios.find((s) => s.id === 'S8')!.facts as {
+      days: { bps: number }[];
+    };
+    expect(s8.days.length).toBeGreaterThan(4);
+    for (const d of s8.days) {
+      expect(d.bps).toBeGreaterThanOrEqual(S8.minBps);
+      expect(d.bps).toBeLessThanOrEqual(S8.maxBps);
+    }
+    // S9: Uttara's rice variance is the 4 kg a day nobody logged.
+    expect(facts('S9').wasted_qty).toBe(28 * S9.grams);
+    expect(facts('S9').variance_qty).toBeGreaterThan(facts('S9').wasted_qty);
+    // The clean café: the normal 1% loss plus cooked-then-voided dishes at the baseline void rate —
+    // at most the low end of the 2–5% 'watch' band, never a problem.
+    for (const [ing, x] of Object.entries(
+      manifest.inventory.orgs.demo_cafe!.branches.gulshan!.variance,
+    )) {
+      if (x.usage_theoretical_qty > 0)
+        expect(Math.abs((x.variance_qty * 10000) / x.usage_theoretical_qty), ing).toBeLessThan(300);
+    }
+    // Discipline: Mirpur skips the waste log at weekends, Uttara missed the 13 September count.
+    const d = (b: string) => manifest.inventory.orgs.demo_kacchi_house!.branches[b]!.discipline;
+    expect(d('mirpur')['2026-09-18']).toBe(85);
+    expect(d('mirpur')['2026-09-17']).toBe(100);
+    expect(d('uttara')['2026-09-13']).toBe(75);
+    expect(Object.values(d('dhanmondi')).every((s) => s === 100)).toBe(true);
   });
 
   it('the manifest satisfies its own schema', () => {

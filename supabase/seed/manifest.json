@@ -440,30 +440,154 @@
     {
       "id": "S6",
       "title": "Unrecorded chicken transfers Dhanmondi → Mirpur twice a week",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 5,
-      "detected_in_phase": 6
+      "detected_in_phase": 6,
+      "org": "demo_kacchi_house",
+      "facts": {
+        "period_from": "2026-08-23",
+        "period_to": "2026-09-20",
+        "ingredient_key": "chicken",
+        "from_branch": "dhanmondi",
+        "to_branch": "mirpur",
+        "moved_qty": 32000,
+        "unit_cost_poisha_per_base": 32,
+        "moved_value_poisha": 1024000,
+        "from_variance_qty": 35755,
+        "to_variance_qty": -29179
+      },
+      "note": "Visible from Phase 5 as mirrored chicken variance; Phase 6 names it a suspected unrecorded transfer."
     },
     {
       "id": "S7",
       "title": "Mirpur over-portions kacchi mutton by ~12%",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 5,
-      "detected_in_phase": 6
+      "detected_in_phase": 6,
+      "org": "demo_kacchi_house",
+      "branch": "mirpur",
+      "facts": {
+        "period_from": "2026-08-23",
+        "period_to": "2026-09-20",
+        "ingredient_key": "mutton",
+        "extra_bps": 1200,
+        "extra_qty": 19400,
+        "extra_value_poisha": 2134000,
+        "normal_loss_qty": 1618,
+        "voided_dish_qty": 1230,
+        "unlogged_waste_qty": 0,
+        "variance_qty": 22248,
+        "usage_theoretical_qty": 161670
+      }
     },
     {
       "id": "S8",
       "title": "Dhanmondi purchaser pays 9–12% above median for beef on some days",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 5,
-      "detected_in_phase": 6
+      "detected_in_phase": 6,
+      "org": "demo_kacchi_house",
+      "branch": "dhanmondi",
+      "facts": {
+        "period_from": "2026-08-23",
+        "period_to": "2026-09-20",
+        "ingredient_key": "beef",
+        "overpay_days": 10,
+        "overpaid_poisha": 276538,
+        "days": [
+          {
+            "date": "2026-08-24",
+            "qty": 1000,
+            "paid": 80122,
+            "standard": 72000,
+            "bps": 1128
+          },
+          {
+            "date": "2026-08-25",
+            "qty": 3000,
+            "paid": 241575,
+            "standard": 216000,
+            "bps": 1184
+          },
+          {
+            "date": "2026-08-27",
+            "qty": 4000,
+            "paid": 322012,
+            "standard": 288000,
+            "bps": 1181
+          },
+          {
+            "date": "2026-08-30",
+            "qty": 1000,
+            "paid": 78883,
+            "standard": 72000,
+            "bps": 956
+          },
+          {
+            "date": "2026-09-01",
+            "qty": 6000,
+            "paid": 483540,
+            "standard": 432000,
+            "bps": 1193
+          },
+          {
+            "date": "2026-09-02",
+            "qty": 4000,
+            "paid": 320400,
+            "standard": 288000,
+            "bps": 1125
+          },
+          {
+            "date": "2026-09-03",
+            "qty": 4000,
+            "paid": 317088,
+            "standard": 288000,
+            "bps": 1010
+          },
+          {
+            "date": "2026-09-06",
+            "qty": 2000,
+            "paid": 157536,
+            "standard": 144000,
+            "bps": 940
+          },
+          {
+            "date": "2026-09-07",
+            "qty": 4000,
+            "paid": 317548,
+            "standard": 288000,
+            "bps": 1026
+          },
+          {
+            "date": "2026-09-11",
+            "qty": 6000,
+            "paid": 477834,
+            "standard": 432000,
+            "bps": 1061
+          }
+        ]
+      },
+      "note": "Onion costs every branch 15% more from 10 to 23 August: a market move that must not be flagged."
     },
     {
       "id": "S9",
       "title": "Uttara unlogged rice waste ≈ 4 kg/day",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 5,
-      "detected_in_phase": 6
+      "detected_in_phase": 6,
+      "org": "demo_kacchi_house",
+      "branch": "uttara",
+      "facts": {
+        "period_from": "2026-08-23",
+        "period_to": "2026-09-20",
+        "ingredient_key": "rice",
+        "wasted_qty": 112000,
+        "wasted_value_poisha": 1568000,
+        "normal_loss_qty": 3086,
+        "voided_dish_qty": 670,
+        "variance_qty": 115756,
+        "usage_theoretical_qty": 308500
+      }
     },
     {
       "id": "S10",
@@ -487,5 +611,1651 @@
       "available_from_phase": 8,
       "detected_in_phase": 8
     }
-  ]
+  ],
+  "inventory": {
+    "from": "2026-06-28",
+    "count_weekday": 0,
+    "period": {
+      "from": "2026-08-23",
+      "to": "2026-09-20"
+    },
+    "orgs": {
+      "demo_kacchi_house": {
+        "branches": {
+          "dhanmondi": {
+            "stock": {
+              "mutton": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 6791,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 88060,
+                "days_of_cover_x100": 108,
+                "band": "green"
+              },
+              "beef": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2518,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 46880,
+                "days_of_cover_x100": 75,
+                "band": "yellow"
+              },
+              "chicken": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 6386,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 100820,
+                "days_of_cover_x100": 89,
+                "band": "yellow"
+              },
+              "egg": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 73,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 587,
+                "days_of_cover_x100": 174,
+                "band": "green"
+              },
+              "potato": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 5403,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 70700,
+                "days_of_cover_x100": 107,
+                "band": "green"
+              },
+              "onion": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1848,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 34840,
+                "days_of_cover_x100": 74,
+                "band": "yellow"
+              },
+              "cucumber": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 534,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 9300,
+                "days_of_cover_x100": 80,
+                "band": "yellow"
+              },
+              "mint": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 470,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 3250,
+                "days_of_cover_x100": 202,
+                "band": "green"
+              },
+              "yogurt": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2453,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 44430,
+                "days_of_cover_x100": 77,
+                "band": "yellow"
+              },
+              "milk": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 5531,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 46350,
+                "days_of_cover_x100": 167,
+                "band": "green"
+              },
+              "bread": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 3,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 42,
+                "days_of_cover_x100": 100,
+                "band": "green"
+              },
+              "rice": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 78747,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 215300,
+                "days_of_cover_x100": 512,
+                "band": "yellow"
+              },
+              "oil": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2891,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 13925,
+                "days_of_cover_x100": 291,
+                "band": "red"
+              },
+              "ghee": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 8827,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 12285,
+                "days_of_cover_x100": 1006,
+                "band": "green"
+              },
+              "spices": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 10303,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 15295,
+                "days_of_cover_x100": 943,
+                "band": "green"
+              },
+              "sugar": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 5761,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 6705,
+                "days_of_cover_x100": 1203,
+                "band": "green"
+              },
+              "nuts": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 735,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 705,
+                "days_of_cover_x100": 1460,
+                "band": "green"
+              },
+              "soft": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 452,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 528,
+                "days_of_cover_x100": 1198,
+                "band": "green"
+              },
+              "water": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 149,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 200,
+                "days_of_cover_x100": 1043,
+                "band": "green"
+              }
+            },
+            "variance": {
+              "mutton": {
+                "opening_qty": 6335,
+                "closing_qty": 6371,
+                "purchases_qty": 187000,
+                "purchases_poisha": 20570000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 184180,
+                "waste_qty": 270,
+                "usage_actual_qty": 186964,
+                "variance_qty": 2514
+              },
+              "beef": {
+                "opening_qty": 3966,
+                "closing_qty": 3698,
+                "purchases_qty": 101000,
+                "purchases_poisha": 7548538,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 99740,
+                "waste_qty": 70,
+                "usage_actual_qty": 101268,
+                "variance_qty": 1458
+              },
+              "chicken": {
+                "opening_qty": 8181,
+                "closing_qty": 7886,
+                "purchases_qty": 236000,
+                "purchases_poisha": 7552000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 200120,
+                "waste_qty": 420,
+                "usage_actual_qty": 236295,
+                "variance_qty": 35755
+              },
+              "egg": {
+                "opening_qty": 49,
+                "closing_qty": 57,
+                "purchases_qty": 1200,
+                "purchases_poisha": 1560000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1174,
+                "waste_qty": 2,
+                "usage_actual_qty": 1192,
+                "variance_qty": 16
+              },
+              "potato": {
+                "opening_qty": 4886,
+                "closing_qty": 5433,
+                "purchases_qty": 151000,
+                "purchases_poisha": 604000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 148250,
+                "waste_qty": 240,
+                "usage_actual_qty": 150453,
+                "variance_qty": 1963
+              },
+              "onion": {
+                "opening_qty": 2922,
+                "closing_qty": 2488,
+                "purchases_qty": 77000,
+                "purchases_poisha": 462000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 74310,
+                "waste_qty": 1970,
+                "usage_actual_qty": 77434,
+                "variance_qty": 1154
+              },
+              "cucumber": {
+                "opening_qty": 1322,
+                "closing_qty": 834,
+                "purchases_qty": 23000,
+                "purchases_poisha": 115000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 23250,
+                "waste_qty": 0,
+                "usage_actual_qty": 23488,
+                "variance_qty": 238
+              },
+              "mint": {
+                "opening_qty": 1076,
+                "closing_qty": 610,
+                "purchases_qty": 6000,
+                "purchases_poisha": 240000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 6380,
+                "waste_qty": 0,
+                "usage_actual_qty": 6466,
+                "variance_qty": 86
+              },
+              "yogurt": {
+                "opening_qty": 3846,
+                "closing_qty": 3283,
+                "purchases_qty": 88000,
+                "purchases_poisha": 1056000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 87300,
+                "waste_qty": 0,
+                "usage_actual_qty": 88563,
+                "variance_qty": 1263
+              },
+              "milk": {
+                "opening_qty": 2792,
+                "closing_qty": 4431,
+                "purchases_qty": 104000,
+                "purchases_poisha": 1040000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 100450,
+                "waste_qty": 0,
+                "usage_actual_qty": 102361,
+                "variance_qty": 1911
+              },
+              "bread": {
+                "opening_qty": 16,
+                "closing_qty": 6,
+                "purchases_qty": 80,
+                "purchases_poisha": 80000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 87,
+                "waste_qty": 0,
+                "usage_actual_qty": 90,
+                "variance_qty": 3
+              },
+              "rice": {
+                "opening_qty": 70199,
+                "closing_qty": 92427,
+                "purchases_qty": 493000,
+                "purchases_poisha": 6902000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 448990,
+                "waste_qty": 15870,
+                "usage_actual_qty": 470772,
+                "variance_qty": 5912
+              },
+              "oil": {
+                "opening_qty": 4072,
+                "closing_qty": 3526,
+                "purchases_qty": 29000,
+                "purchases_poisha": 522000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 29010,
+                "waste_qty": 30,
+                "usage_actual_qty": 29546,
+                "variance_qty": 506
+              },
+              "ghee": {
+                "opening_qty": 6445,
+                "closing_qty": 9685,
+                "purchases_qty": 29000,
+                "purchases_poisha": 4350000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 25346,
+                "waste_qty": 54,
+                "usage_actual_qty": 25760,
+                "variance_qty": 360
+              },
+              "spices": {
+                "opening_qty": 11366,
+                "closing_qty": 11192,
+                "purchases_qty": 40000,
+                "purchases_poisha": 2400000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 8000,
+                "usage_theoretical_qty": 31659,
+                "waste_qty": 46,
+                "usage_actual_qty": 32174,
+                "variance_qty": 469
+              },
+              "sugar": {
+                "opening_qty": 4011,
+                "closing_qty": 6271,
+                "purchases_qty": 17000,
+                "purchases_poisha": 204000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 14475,
+                "waste_qty": 0,
+                "usage_actual_qty": 14740,
+                "variance_qty": 265
+              },
+              "nuts": {
+                "opening_qty": 504,
+                "closing_qty": 805,
+                "purchases_qty": 2000,
+                "purchases_poisha": 300000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1655,
+                "waste_qty": 0,
+                "usage_actual_qty": 1699,
+                "variance_qty": 44
+              },
+              "soft": {
+                "opening_qty": 269,
+                "closing_qty": 496,
+                "purchases_qty": 1344,
+                "purchases_poisha": 2419200,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1104,
+                "waste_qty": 0,
+                "usage_actual_qty": 1117,
+                "variance_qty": 13
+              },
+              "water": {
+                "opening_qty": 71,
+                "closing_qty": 162,
+                "purchases_qty": 504,
+                "purchases_poisha": 504000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 406,
+                "waste_qty": 0,
+                "usage_actual_qty": 413,
+                "variance_qty": 7
+              }
+            },
+            "discipline": {
+              "2026-09-07": 100,
+              "2026-09-08": 100,
+              "2026-09-09": 100,
+              "2026-09-10": 100,
+              "2026-09-11": 100,
+              "2026-09-12": 100,
+              "2026-09-13": 100,
+              "2026-09-14": 100,
+              "2026-09-15": 100,
+              "2026-09-16": 100,
+              "2026-09-17": 100,
+              "2026-09-18": 100,
+              "2026-09-19": 100,
+              "2026-09-20": 100
+            }
+          },
+          "mirpur": {
+            "stock": {
+              "mutton": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 8123,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 80190,
+                "days_of_cover_x100": 142,
+                "band": "green"
+              },
+              "beef": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1820,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 35980,
+                "days_of_cover_x100": 71,
+                "band": "yellow"
+              },
+              "chicken": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 6661,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 85330,
+                "days_of_cover_x100": 109,
+                "band": "green"
+              },
+              "egg": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 75,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 543,
+                "days_of_cover_x100": 193,
+                "band": "green"
+              },
+              "potato": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 4729,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 62490,
+                "days_of_cover_x100": 106,
+                "band": "green"
+              },
+              "onion": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1785,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 28110,
+                "days_of_cover_x100": 89,
+                "band": "yellow"
+              },
+              "cucumber": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 931,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 10200,
+                "days_of_cover_x100": 128,
+                "band": "green"
+              },
+              "mint": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1000,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 2530,
+                "days_of_cover_x100": 553,
+                "band": "green"
+              },
+              "yogurt": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2133,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 34110,
+                "days_of_cover_x100": 88,
+                "band": "yellow"
+              },
+              "milk": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 4080,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 50600,
+                "days_of_cover_x100": 113,
+                "band": "green"
+              },
+              "bread": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 20,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 39,
+                "days_of_cover_x100": 718,
+                "band": "green"
+              },
+              "rice": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 150466,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 185560,
+                "days_of_cover_x100": 1135,
+                "band": "green"
+              },
+              "oil": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2697,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 10915,
+                "days_of_cover_x100": 346,
+                "band": "yellow"
+              },
+              "ghee": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 6406,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 10908,
+                "days_of_cover_x100": 822,
+                "band": "green"
+              },
+              "spices": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 6741,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 12738,
+                "days_of_cover_x100": 741,
+                "band": "green"
+              },
+              "sugar": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1263,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 6290,
+                "days_of_cover_x100": 281,
+                "band": "red"
+              },
+              "nuts": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 497,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 740,
+                "days_of_cover_x100": 940,
+                "band": "green"
+              },
+              "soft": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 201,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 548,
+                "days_of_cover_x100": 514,
+                "band": "yellow"
+              },
+              "water": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 41,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 163,
+                "days_of_cover_x100": 352,
+                "band": "yellow"
+              }
+            },
+            "variance": {
+              "mutton": {
+                "opening_qty": 5901,
+                "closing_qty": 4983,
+                "purchases_qty": 183000,
+                "purchases_poisha": 20130000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 161670,
+                "waste_qty": 0,
+                "usage_actual_qty": 183918,
+                "variance_qty": 22248
+              },
+              "beef": {
+                "opening_qty": 3129,
+                "closing_qty": 3420,
+                "purchases_qty": 73000,
+                "purchases_poisha": 5256000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 70590,
+                "waste_qty": 0,
+                "usage_actual_qty": 72709,
+                "variance_qty": 2119
+              },
+              "chicken": {
+                "opening_qty": 4752,
+                "closing_qty": 4631,
+                "purchases_qty": 142000,
+                "purchases_poisha": 4544000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 171060,
+                "waste_qty": 240,
+                "usage_actual_qty": 142121,
+                "variance_qty": -29179
+              },
+              "egg": {
+                "opening_qty": 40,
+                "closing_qty": 35,
+                "purchases_qty": 1080,
+                "purchases_poisha": 1404000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1073,
+                "waste_qty": 0,
+                "usage_actual_qty": 1085,
+                "variance_qty": 12
+              },
+              "potato": {
+                "opening_qty": 4483,
+                "closing_qty": 3959,
+                "purchases_qty": 128000,
+                "purchases_poisha": 512000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 126150,
+                "waste_qty": 0,
+                "usage_actual_qty": 128524,
+                "variance_qty": 2374
+              },
+              "onion": {
+                "opening_qty": 1884,
+                "closing_qty": 2975,
+                "purchases_qty": 61000,
+                "purchases_poisha": 366000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 54950,
+                "waste_qty": 2560,
+                "usage_actual_qty": 59909,
+                "variance_qty": 2399
+              },
+              "cucumber": {
+                "opening_qty": 1779,
+                "closing_qty": 1381,
+                "purchases_qty": 19000,
+                "purchases_poisha": 95000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 19200,
+                "waste_qty": 0,
+                "usage_actual_qty": 19398,
+                "variance_qty": 198
+              },
+              "mint": {
+                "opening_qty": 463,
+                "closing_qty": 1150,
+                "purchases_qty": 6000,
+                "purchases_poisha": 240000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 5200,
+                "waste_qty": 0,
+                "usage_actual_qty": 5313,
+                "variance_qty": 113
+              },
+              "yogurt": {
+                "opening_qty": 2401,
+                "closing_qty": 3113,
+                "purchases_qty": 73000,
+                "purchases_poisha": 876000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 70770,
+                "waste_qty": 0,
+                "usage_actual_qty": 72288,
+                "variance_qty": 1518
+              },
+              "milk": {
+                "opening_qty": 3055,
+                "closing_qty": 2980,
+                "purchases_qty": 103000,
+                "purchases_poisha": 1030000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 101750,
+                "waste_qty": 0,
+                "usage_actual_qty": 103075,
+                "variance_qty": 1325
+              },
+              "bread": {
+                "opening_qty": 9,
+                "closing_qty": 20,
+                "purchases_qty": 80,
+                "purchases_poisha": 80000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 69,
+                "waste_qty": 0,
+                "usage_actual_qty": 69,
+                "variance_qty": 0
+              },
+              "rice": {
+                "opening_qty": 38804,
+                "closing_qty": 162836,
+                "purchases_qty": 518000,
+                "purchases_poisha": 7252000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 370800,
+                "waste_qty": 11700,
+                "usage_actual_qty": 393968,
+                "variance_qty": 11468
+              },
+              "oil": {
+                "opening_qty": 3519,
+                "closing_qty": 3157,
+                "purchases_qty": 22000,
+                "purchases_poisha": 396000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 21735,
+                "waste_qty": 30,
+                "usage_actual_qty": 22362,
+                "variance_qty": 597
+              },
+              "ghee": {
+                "opening_qty": 2135,
+                "closing_qty": 7199,
+                "purchases_qty": 27000,
+                "purchases_poisha": 4050000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 21581,
+                "waste_qty": 0,
+                "usage_actual_qty": 21936,
+                "variance_qty": 355
+              },
+              "spices": {
+                "opening_qty": 9601,
+                "closing_qty": 7521,
+                "purchases_qty": 24000,
+                "purchases_poisha": 1440000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 25527,
+                "waste_qty": 8,
+                "usage_actual_qty": 26080,
+                "variance_qty": 545
+              },
+              "sugar": {
+                "opening_qty": 2528,
+                "closing_qty": 1553,
+                "purchases_qty": 12000,
+                "purchases_poisha": 144000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 12735,
+                "waste_qty": 0,
+                "usage_actual_qty": 12975,
+                "variance_qty": 240
+              },
+              "nuts": {
+                "opening_qty": 974,
+                "closing_qty": 507,
+                "purchases_qty": 1000,
+                "purchases_poisha": 150000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1445,
+                "waste_qty": 0,
+                "usage_actual_qty": 1467,
+                "variance_qty": 22
+              },
+              "soft": {
+                "opening_qty": 212,
+                "closing_qty": 248,
+                "purchases_qty": 1128,
+                "purchases_poisha": 2030400,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1083,
+                "waste_qty": 0,
+                "usage_actual_qty": 1092,
+                "variance_qty": 9
+              },
+              "water": {
+                "opening_qty": 133,
+                "closing_qty": 49,
+                "purchases_qty": 216,
+                "purchases_poisha": 216000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 298,
+                "waste_qty": 0,
+                "usage_actual_qty": 300,
+                "variance_qty": 2
+              }
+            },
+            "discipline": {
+              "2026-09-07": 100,
+              "2026-09-08": 100,
+              "2026-09-09": 100,
+              "2026-09-10": 100,
+              "2026-09-11": 85,
+              "2026-09-12": 85,
+              "2026-09-13": 100,
+              "2026-09-14": 100,
+              "2026-09-15": 100,
+              "2026-09-16": 100,
+              "2026-09-17": 100,
+              "2026-09-18": 85,
+              "2026-09-19": 85,
+              "2026-09-20": 100
+            }
+          },
+          "uttara": {
+            "stock": {
+              "mutton": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 3128,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 60870,
+                "days_of_cover_x100": 72,
+                "band": "yellow"
+              },
+              "beef": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2560,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 33580,
+                "days_of_cover_x100": 107,
+                "band": "green"
+              },
+              "chicken": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 4214,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 63440,
+                "days_of_cover_x100": 93,
+                "band": "yellow"
+              },
+              "egg": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 33,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 363,
+                "days_of_cover_x100": 127,
+                "band": "green"
+              },
+              "potato": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2929,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 49140,
+                "days_of_cover_x100": 83,
+                "band": "yellow"
+              },
+              "onion": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2810,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 25340,
+                "days_of_cover_x100": 155,
+                "band": "green"
+              },
+              "cucumber": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 894,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 9000,
+                "days_of_cover_x100": 139,
+                "band": "green"
+              },
+              "mint": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 680,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 2120,
+                "days_of_cover_x100": 449,
+                "band": "green"
+              },
+              "yogurt": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1688,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 28710,
+                "days_of_cover_x100": 82,
+                "band": "yellow"
+              },
+              "milk": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2547,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 34250,
+                "days_of_cover_x100": 104,
+                "band": "green"
+              },
+              "bread": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 11,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 18,
+                "days_of_cover_x100": 856,
+                "band": "green"
+              },
+              "rice": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 121948,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 149500,
+                "days_of_cover_x100": 1142,
+                "band": "green"
+              },
+              "oil": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2847,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 9680,
+                "days_of_cover_x100": 412,
+                "band": "yellow"
+              },
+              "ghee": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 7590,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 8200,
+                "days_of_cover_x100": 1296,
+                "band": "green"
+              },
+              "spices": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 4844,
+                "in_transit_qty": 2000,
+                "usage_14d_qty": 10430,
+                "days_of_cover_x100": 650,
+                "band": "yellow"
+              },
+              "sugar": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1440,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 5035,
+                "days_of_cover_x100": 400,
+                "band": "yellow"
+              },
+              "nuts": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 792,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 555,
+                "days_of_cover_x100": 1998,
+                "band": "green"
+              },
+              "soft": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 89,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 351,
+                "days_of_cover_x100": 355,
+                "band": "yellow"
+              },
+              "water": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 101,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 144,
+                "days_of_cover_x100": 982,
+                "band": "green"
+              }
+            },
+            "variance": {
+              "mutton": {
+                "opening_qty": 3700,
+                "closing_qty": 4958,
+                "purchases_qty": 131000,
+                "purchases_poisha": 14410000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 128140,
+                "waste_qty": 180,
+                "usage_actual_qty": 129742,
+                "variance_qty": 1422
+              },
+              "beef": {
+                "opening_qty": 2392,
+                "closing_qty": 2070,
+                "purchases_qty": 65000,
+                "purchases_poisha": 4680000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 64020,
+                "waste_qty": 280,
+                "usage_actual_qty": 65322,
+                "variance_qty": 1022
+              },
+              "chicken": {
+                "opening_qty": 4952,
+                "closing_qty": 4514,
+                "purchases_qty": 135000,
+                "purchases_poisha": 4320000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 133440,
+                "waste_qty": 0,
+                "usage_actual_qty": 135438,
+                "variance_qty": 1998
+              },
+              "egg": {
+                "opening_qty": 36,
+                "closing_qty": 48,
+                "purchases_qty": 780,
+                "purchases_poisha": 1014000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 763,
+                "waste_qty": 0,
+                "usage_actual_qty": 768,
+                "variance_qty": 5
+              },
+              "potato": {
+                "opening_qty": 3622,
+                "closing_qty": 3269,
+                "purchases_qty": 105000,
+                "purchases_poisha": 420000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 104020,
+                "waste_qty": 160,
+                "usage_actual_qty": 105353,
+                "variance_qty": 1173
+              },
+              "onion": {
+                "opening_qty": 1749,
+                "closing_qty": 1630,
+                "purchases_qty": 54000,
+                "purchases_poisha": 324000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 48780,
+                "waste_qty": 4560,
+                "usage_actual_qty": 54119,
+                "variance_qty": 779
+              },
+              "cucumber": {
+                "opening_qty": 626,
+                "closing_qty": 894,
+                "purchases_qty": 18000,
+                "purchases_poisha": 90000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 17550,
+                "waste_qty": 0,
+                "usage_actual_qty": 17732,
+                "variance_qty": 182
+              },
+              "mint": {
+                "opening_qty": 123,
+                "closing_qty": 750,
+                "purchases_qty": 5000,
+                "purchases_poisha": 200000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 4310,
+                "waste_qty": 0,
+                "usage_actual_qty": 4373,
+                "variance_qty": 63
+              },
+              "yogurt": {
+                "opening_qty": 2455,
+                "closing_qty": 1798,
+                "purchases_qty": 59000,
+                "purchases_poisha": 708000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 58830,
+                "waste_qty": 0,
+                "usage_actual_qty": 59657,
+                "variance_qty": 827
+              },
+              "milk": {
+                "opening_qty": 2234,
+                "closing_qty": 3447,
+                "purchases_qty": 70000,
+                "purchases_poisha": 700000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 68100,
+                "waste_qty": 0,
+                "usage_actual_qty": 68787,
+                "variance_qty": 687
+              },
+              "bread": {
+                "opening_qty": 16,
+                "closing_qty": 14,
+                "purchases_qty": 40,
+                "purchases_poisha": 40000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 42,
+                "waste_qty": 0,
+                "usage_actual_qty": 42,
+                "variance_qty": 0
+              },
+              "rice": {
+                "opening_qty": 62704,
+                "closing_qty": 131968,
+                "purchases_qty": 510000,
+                "purchases_poisha": 7140000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 308500,
+                "waste_qty": 16480,
+                "usage_actual_qty": 440736,
+                "variance_qty": 115756
+              },
+              "oil": {
+                "opening_qty": 3782,
+                "closing_qty": 3542,
+                "purchases_qty": 19000,
+                "purchases_poisha": 342000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 18880,
+                "waste_qty": 60,
+                "usage_actual_qty": 19240,
+                "variance_qty": 300
+              },
+              "ghee": {
+                "opening_qty": 2598,
+                "closing_qty": 7976,
+                "purchases_qty": 23000,
+                "purchases_poisha": 3450000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 17389,
+                "waste_qty": 20,
+                "usage_actual_qty": 17622,
+                "variance_qty": 213
+              },
+              "spices": {
+                "opening_qty": 10190,
+                "closing_qty": 5421,
+                "purchases_qty": 9000,
+                "purchases_poisha": 540000,
+                "transfers_in_qty": 6000,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 21437,
+                "waste_qty": 40,
+                "usage_actual_qty": 19769,
+                "variance_qty": -1708
+              },
+              "sugar": {
+                "opening_qty": 4871,
+                "closing_qty": 1720,
+                "purchases_qty": 7000,
+                "purchases_poisha": 84000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 10030,
+                "waste_qty": 0,
+                "usage_actual_qty": 10151,
+                "variance_qty": 121
+              },
+              "nuts": {
+                "opening_qty": 960,
+                "closing_qty": 842,
+                "purchases_qty": 1000,
+                "purchases_poisha": 150000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1110,
+                "waste_qty": 0,
+                "usage_actual_qty": 1118,
+                "variance_qty": 8
+              },
+              "soft": {
+                "opening_qty": 170,
+                "closing_qty": 105,
+                "purchases_qty": 672,
+                "purchases_poisha": 1209600,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 730,
+                "waste_qty": 0,
+                "usage_actual_qty": 737,
+                "variance_qty": 7
+              },
+              "water": {
+                "opening_qty": 37,
+                "closing_qty": 112,
+                "purchases_qty": 360,
+                "purchases_poisha": 360000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 285,
+                "waste_qty": 0,
+                "usage_actual_qty": 285,
+                "variance_qty": 0
+              }
+            },
+            "discipline": {
+              "2026-09-07": 100,
+              "2026-09-08": 100,
+              "2026-09-09": 100,
+              "2026-09-10": 100,
+              "2026-09-11": 100,
+              "2026-09-12": 100,
+              "2026-09-13": 75,
+              "2026-09-14": 100,
+              "2026-09-15": 100,
+              "2026-09-16": 100,
+              "2026-09-17": 100,
+              "2026-09-18": 100,
+              "2026-09-19": 100,
+              "2026-09-20": 100
+            }
+          }
+        }
+      },
+      "demo_cafe": {
+        "branches": {
+          "gulshan": {
+            "stock": {
+              "milk": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 11169,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 158140,
+                "days_of_cover_x100": 99,
+                "band": "yellow"
+              },
+              "cream": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1478,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 7600,
+                "days_of_cover_x100": 272,
+                "band": "green"
+              },
+              "egg": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 33,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 264,
+                "days_of_cover_x100": 175,
+                "band": "green"
+              },
+              "chicken": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2173,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 29220,
+                "days_of_cover_x100": 104,
+                "band": "green"
+              },
+              "lettuce": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 964,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 3360,
+                "days_of_cover_x100": 402,
+                "band": "green"
+              },
+              "potato": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1786,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 27400,
+                "days_of_cover_x100": 91,
+                "band": "yellow"
+              },
+              "bread": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 51,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 714,
+                "days_of_cover_x100": 100,
+                "band": "green"
+              },
+              "beans": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 13695,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 17196,
+                "days_of_cover_x100": 1115,
+                "band": "green"
+              },
+              "tea": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 560,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 575,
+                "days_of_cover_x100": 1363,
+                "band": "green"
+              },
+              "icecream": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 4119,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 11000,
+                "days_of_cover_x100": 524,
+                "band": "yellow"
+              },
+              "butter": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 2616,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 3750,
+                "days_of_cover_x100": 977,
+                "band": "green"
+              },
+              "cheese": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 3489,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 11060,
+                "days_of_cover_x100": 442,
+                "band": "yellow"
+              },
+              "lemon": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 147,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 115,
+                "days_of_cover_x100": 1790,
+                "band": "green"
+              },
+              "sugar": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 12554,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 13075,
+                "days_of_cover_x100": 1344,
+                "band": "green"
+              },
+              "mayo": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1591,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 5880,
+                "days_of_cover_x100": 379,
+                "band": "yellow"
+              },
+              "pasta": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 10700,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 11400,
+                "days_of_cover_x100": 1314,
+                "band": "green"
+              },
+              "oil": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1464,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 4110,
+                "days_of_cover_x100": 499,
+                "band": "yellow"
+              },
+              "flour": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 4323,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 11640,
+                "days_of_cover_x100": 520,
+                "band": "yellow"
+              },
+              "chocolate": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 5114,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 5520,
+                "days_of_cover_x100": 1297,
+                "band": "green"
+              },
+              "biscuit": {
+                "last_count_date": "2026-09-20",
+                "stock_qty": 1542,
+                "in_transit_qty": 0,
+                "usage_14d_qty": 2490,
+                "days_of_cover_x100": 867,
+                "band": "green"
+              }
+            },
+            "variance": {
+              "milk": {
+                "opening_qty": 10186,
+                "closing_qty": 10569,
+                "purchases_qty": 338000,
+                "purchases_poisha": 3380000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 327560,
+                "waste_qty": 5600,
+                "usage_actual_qty": 337617,
+                "variance_qty": 4457
+              },
+              "cream": {
+                "opening_qty": 956,
+                "closing_qty": 958,
+                "purchases_qty": 16000,
+                "purchases_poisha": 800000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 15680,
+                "waste_qty": 0,
+                "usage_actual_qty": 15998,
+                "variance_qty": 318
+              },
+              "egg": {
+                "opening_qty": 30,
+                "closing_qty": 50,
+                "purchases_qty": 540,
+                "purchases_poisha": 702000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 518,
+                "waste_qty": 0,
+                "usage_actual_qty": 520,
+                "variance_qty": 2
+              },
+              "chicken": {
+                "opening_qty": 2418,
+                "closing_qty": 2053,
+                "purchases_qty": 61000,
+                "purchases_poisha": 1952000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 60480,
+                "waste_qty": 0,
+                "usage_actual_qty": 61365,
+                "variance_qty": 885
+              },
+              "lettuce": {
+                "opening_qty": 900,
+                "closing_qty": 1204,
+                "purchases_qty": 9000,
+                "purchases_poisha": 90000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 7380,
+                "waste_qty": 1200,
+                "usage_actual_qty": 8696,
+                "variance_qty": 116
+              },
+              "potato": {
+                "opening_qty": 2762,
+                "closing_qty": 2586,
+                "purchases_qty": 58000,
+                "purchases_poisha": 232000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 57600,
+                "waste_qty": 0,
+                "usage_actual_qty": 58176,
+                "variance_qty": 576
+              },
+              "bread": {
+                "opening_qty": 52,
+                "closing_qty": 76,
+                "purchases_qty": 1500,
+                "purchases_poisha": 1500000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1458,
+                "waste_qty": 0,
+                "usage_actual_qty": 1476,
+                "variance_qty": 18
+              },
+              "beans": {
+                "opening_qty": 6778,
+                "closing_qty": 14838,
+                "purchases_qty": 44000,
+                "purchases_poisha": 11000000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 35409,
+                "waste_qty": 0,
+                "usage_actual_qty": 35940,
+                "variance_qty": 531
+              },
+              "tea": {
+                "opening_qty": 736,
+                "closing_qty": 600,
+                "purchases_qty": 1000,
+                "purchases_poisha": 150000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 1120,
+                "waste_qty": 0,
+                "usage_actual_qty": 1136,
+                "variance_qty": 16
+              },
+              "icecream": {
+                "opening_qty": 4512,
+                "closing_qty": 4569,
+                "purchases_qty": 24000,
+                "purchases_poisha": 960000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 23650,
+                "waste_qty": 0,
+                "usage_actual_qty": 23943,
+                "variance_qty": 293
+              },
+              "butter": {
+                "opening_qty": 3462,
+                "closing_qty": 2856,
+                "purchases_qty": 7000,
+                "purchases_poisha": 840000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 7320,
+                "waste_qty": 180,
+                "usage_actual_qty": 7606,
+                "variance_qty": 106
+              },
+              "cheese": {
+                "opening_qty": 7284,
+                "closing_qty": 3829,
+                "purchases_qty": 18000,
+                "purchases_poisha": 1800000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 21120,
+                "waste_qty": 0,
+                "usage_actual_qty": 21455,
+                "variance_qty": 335
+              },
+              "lemon": {
+                "opening_qty": 80,
+                "closing_qty": 155,
+                "purchases_qty": 300,
+                "purchases_poisha": 150000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 224,
+                "waste_qty": 0,
+                "usage_actual_qty": 225,
+                "variance_qty": 1
+              },
+              "sugar": {
+                "opening_qty": 5146,
+                "closing_qty": 13254,
+                "purchases_qty": 35000,
+                "purchases_poisha": 420000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 26500,
+                "waste_qty": 0,
+                "usage_actual_qty": 26892,
+                "variance_qty": 392
+              },
+              "mayo": {
+                "opening_qty": 1313,
+                "closing_qty": 1971,
+                "purchases_qty": 13000,
+                "purchases_poisha": 520000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 12180,
+                "waste_qty": 0,
+                "usage_actual_qty": 12342,
+                "variance_qty": 162
+              },
+              "pasta": {
+                "opening_qty": 2414,
+                "closing_qty": 11420,
+                "purchases_qty": 33000,
+                "purchases_poisha": 825000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 23520,
+                "waste_qty": 0,
+                "usage_actual_qty": 23994,
+                "variance_qty": 474
+              },
+              "oil": {
+                "opening_qty": 4312,
+                "closing_qty": 1584,
+                "purchases_qty": 6000,
+                "purchases_poisha": 108000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 8640,
+                "waste_qty": 0,
+                "usage_actual_qty": 8728,
+                "variance_qty": 88
+              },
+              "flour": {
+                "opening_qty": 9792,
+                "closing_qty": 5103,
+                "purchases_qty": 19000,
+                "purchases_poisha": 152000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 22980,
+                "waste_qty": 360,
+                "usage_actual_qty": 23689,
+                "variance_qty": 349
+              },
+              "chocolate": {
+                "opening_qty": 3825,
+                "closing_qty": 5514,
+                "purchases_qty": 13000,
+                "purchases_poisha": 1170000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 11120,
+                "waste_qty": 0,
+                "usage_actual_qty": 11311,
+                "variance_qty": 191
+              },
+              "biscuit": {
+                "opening_qty": 2300,
+                "closing_qty": 1572,
+                "purchases_qty": 4000,
+                "purchases_poisha": 120000,
+                "transfers_in_qty": 0,
+                "transfers_out_qty": 0,
+                "usage_theoretical_qty": 4650,
+                "waste_qty": 0,
+                "usage_actual_qty": 4728,
+                "variance_qty": 78
+              }
+            },
+            "discipline": {
+              "2026-09-07": 100,
+              "2026-09-08": 100,
+              "2026-09-09": 100,
+              "2026-09-10": 100,
+              "2026-09-11": 100,
+              "2026-09-12": 100,
+              "2026-09-13": 100,
+              "2026-09-14": 100,
+              "2026-09-15": 100,
+              "2026-09-16": 100,
+              "2026-09-17": 100,
+              "2026-09-18": 100,
+              "2026-09-19": 100,
+              "2026-09-20": 100
+            }
+          }
+        }
+      }
+    }
+  }
 }

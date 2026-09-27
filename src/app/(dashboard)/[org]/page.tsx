@@ -25,6 +25,8 @@ import {
   type PaceRow,
 } from '@/modules/metrics/queries';
 import { createClient } from '@/lib/db/supabase-server';
+import { addDays } from '@/lib/time/business-date';
+import { discipline } from '@/modules/inventory/queries';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 const RAG_TONE = { green: 'success', amber: 'warning', red: 'danger', none: 'neutral' } as const;
@@ -76,6 +78,12 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
             .order('rank', { ascending: false })
         ).data ?? []) as { id: string; finding_id: string; payload: Record<string, unknown> }[])
       : [];
+  // Today's habits (METRICS.md "Discipline score"): what is still missing, per branch, as a nudge.
+  const habits =
+    today && (ctx.isOwner || has('manager'))
+      ? await discipline(ctx.org.id, scope, addDays(today.date, -1), today.date).catch(() => [])
+      : [];
+  const habitBranches = [...new Set(habits.map((h) => h.branch_id))];
   const subjectOf = (s: unknown) => {
     const o = (s ?? {}) as Record<string, unknown>;
     return [o.staff_name, o.item_name, o.channel_name]
@@ -341,6 +349,65 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
             </Card>
           ) : null}
         </section>
+      ) : null}
+
+      {habitBranches.length > 0 && today ? (
+        <Card className="mb-8 p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="mb-0">{th('habitsTitle')}</CardTitle>
+            <Link
+              href={`${base}/stock`}
+              className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+            >
+              {th('openStock')}
+            </Link>
+          </div>
+          <p className="-mt-1 mb-3 text-sm text-secondary">{th('habitsBody')}</p>
+          <ul className="space-y-2">
+            {habitBranches.map((b) => {
+              const now_ = habits.find((h) => h.branch_id === b && h.business_date === today.date);
+              const prev = habits.find((h) => h.branch_id === b && h.business_date !== today.date);
+              const missing = now_?.open_day
+                ? (
+                    [
+                      ['bazar', now_.bazar === 0],
+                      ['waste', now_.waste === 0],
+                      ['count', now_.count === 0],
+                      ['coverage', now_.coverage === 0],
+                    ] as const
+                  )
+                    .filter(([, m]) => m)
+                    .map(([k]) => k)
+                : [];
+              return (
+                <li
+                  key={b}
+                  className="glass-tile flex flex-wrap items-center justify-between gap-2 rounded-input p-3"
+                >
+                  <div>
+                    <p className="font-semibold">{branchName(b)}</p>
+                    <p className="text-xs text-secondary">
+                      {prev?.score !== null && prev?.score !== undefined
+                        ? th('habitsYesterday', { score: formatNumber(prev.score, loc) })
+                        : th('habitsNoYesterday')}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {missing.length === 0 ? (
+                      <StatusBadge tone="success">{th('habitsDone')}</StatusBadge>
+                    ) : (
+                      missing.map((m) => (
+                        <StatusBadge key={m} tone="warning">
+                          {th(`habitMissing.${m}`)}
+                        </StatusBadge>
+                      ))
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">

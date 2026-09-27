@@ -105,6 +105,29 @@ export async function composeBrief(args: {
       figures.breakeven_sales_poisha = num(total.breakeven_sales_poisha);
       lines.push(t('breakeven', { amount: money(num(total.breakeven_sales_poisha)) }));
     }
+    // Phase 5 nudges: branches that skipped yesterday's habits, and ingredients running low.
+    const [habits, stock, { data: branches }] = await Promise.all([
+      rpc(sb, 'metric_discipline', { p_org: orgId, p_branch: null, p_from: y, p_to: y }),
+      rpc(sb, 'metric_stock_status', { p_org: orgId, p_branch: null, p_now: nowIso }),
+      sb.from('branches').select('id, name').eq('org_id', orgId),
+    ]);
+    const nameOf = new Map((branches ?? []).map((b) => [b.id as string, b.name as string]));
+    const slipped = habits.filter((h) => h.score !== null && num(h.score) < 100);
+    if (slipped.length > 0) {
+      figures.discipline = slipped.map((h) => ({
+        branch: nameOf.get(h.branch_id as string),
+        score: num(h.score),
+      }));
+      for (const h of slipped)
+        lines.push(
+          t('habits', { branch: nameOf.get(h.branch_id as string) ?? '', score: n(num(h.score)) }),
+        );
+    }
+    const low = stock.filter((s) => s.band === 'red').length;
+    if (low > 0) {
+      figures.low_stock_ingredients = low;
+      lines.push(t('lowStock', { count: low, n: n(low) }));
+    }
   } else if (kind === 'evening') {
     const [sales, top] = await Promise.all([
       totalSales(sb, orgId, today, today),

@@ -1167,7 +1167,8 @@ describe('defaults for a new restaurant', () => {
               (select count(*)::int from public.stations where org_id = $1) as stations`,
       [org.id],
     );
-    expect(counts).toEqual({ channels: 5, reasons: 10, stations: 2 });
+    // 10 till reasons (void, discount, refund) + 5 waste reasons from Phase 5 (ADR 0018).
+    expect(counts).toEqual({ channels: 5, reasons: 15, stations: 2 });
   });
 });
 

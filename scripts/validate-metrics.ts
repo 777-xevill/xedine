@@ -13,6 +13,7 @@ import pg from 'pg';
 import { MANIFEST_PATH } from './seed/build';
 import { ORGS, type OrgCfg } from './seed/config';
 import { ids } from './seed/generate';
+import { invIds } from './seed/inventory';
 import { QTY_ITEM } from './seed/ledger';
 import { ManifestSchema, type Manifest } from './seed/manifest';
 
@@ -286,6 +287,91 @@ async function phase3() {
     failures.push(`S13: ${cafeMargin.length} margin finding(s) on the clean café`);
 }
 
+/**
+ * Phase 5: the product's stock maths against the stock ledger — stock and days of cover at the anchor,
+ * variance over the four-week period (S6 shows as mirrored chicken variance), discipline by day.
+ */
+async function phase5() {
+  const inv = manifest.inventory;
+  // node-postgres turns a date into local midnight; read it back in local time, not UTC.
+  const day = (v: unknown) => {
+    if (!(v instanceof Date)) return String(v).slice(0, 10);
+    const pad = (x: number) => String(x).padStart(2, '0');
+    return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+  };
+  for (const o of ORGS) {
+    const expected = inv.orgs[o.key];
+    if (!expected) continue;
+    const first = expected.branches[o.branches[0]!.key]!;
+    const ingKey = new Map(Object.keys(first.stock).map((k) => [invIds.ingredient(o, k), k]));
+    const t0 = performance.now();
+    const stock = await q(`select * from private.m_stock($1, $2::uuid[], $3::date)`, [
+      orgId(o),
+      branchIds(o),
+      manifest.anchor_date,
+    ]);
+    notes.push(
+      `${o.key}: stock status for ${o.branches.length} branch(es) in ${(performance.now() - t0).toFixed(0)} ms`,
+    );
+    const variance = await q(
+      `select * from private.m_variance($1, $2::uuid[], $3::date, $4::date)`,
+      [orgId(o), branchIds(o), inv.period.from, inv.period.to],
+    );
+    const discipline = await q(
+      `select * from private.m_discipline($1, $2::uuid[], $3::date, $4::date)`,
+      [orgId(o), branchIds(o), Object.keys(first.discipline)[0], manifest.anchor_date],
+    );
+    for (const b of o.branches) {
+      const e = expected.branches[b.key]!;
+      const bid = ids.branch(o, b);
+      for (const [ing, es] of Object.entries(e.stock)) {
+        const r = stock.find(
+          (x) => x.branch_id === bid && ingKey.get(String(x.ingredient_id)) === ing,
+        );
+        const path = `${o.key}.${b.key}.stock.${ing}`;
+        if (!r) {
+          failures.push(`${path}: no stock row`);
+          continue;
+        }
+        expectEq(`${path}.stock_qty`, es.stock_qty, n(r.stock_qty));
+        expectEq(`${path}.usage_14d_qty`, es.usage_14d_qty, n(r.usage_14d_qty));
+        expectEq(`${path}.in_transit_qty`, es.in_transit_qty, n(r.in_transit_qty));
+        expectEq(
+          `${path}.days_of_cover_x100`,
+          es.days_of_cover_x100 ?? -1,
+          r.days_of_cover === null ? -1 : Math.round(n(r.days_of_cover) * 100),
+        );
+        if (r.band !== es.band)
+          failures.push(`${path}.band: manifest ${es.band} ≠ metric ${String(r.band)}`);
+        if (day(r.last_count_date) !== es.last_count_date)
+          failures.push(
+            `${path}.last_count_date: manifest ${es.last_count_date} ≠ metric ${day(r.last_count_date)}`,
+          );
+      }
+      for (const [ing, ev] of Object.entries(e.variance)) {
+        const r = variance.find(
+          (x) => x.branch_id === bid && ingKey.get(String(x.ingredient_id)) === ing,
+        );
+        const path = `${o.key}.${b.key}.variance.${ing}`;
+        if (!r) {
+          failures.push(`${path}: no variance row`);
+          continue;
+        }
+        for (const [field, value] of Object.entries(ev))
+          expectEq(`${path}.${field}`, value, n(r[field]));
+      }
+      for (const [date, score] of Object.entries(e.discipline)) {
+        const r = discipline.find((x) => x.branch_id === bid && day(x.business_date) === date);
+        expectEq(`${o.key}.${b.key}.discipline.${date}`, score, n(r?.score));
+      }
+    }
+  }
+  const s6 = manifest.scenarios.find((x) => x.id === 'S6')!.facts as Record<string, number>;
+  notes.push(
+    `S6: Dhanmondi chicken variance +${s6.from_variance_qty} g, Mirpur ${s6.to_variance_qty} g (moved ${s6.moved_qty} g)`,
+  );
+}
+
 async function dashboardLatency() {
   const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
   const org = orgId(kacchi);
@@ -321,6 +407,7 @@ try {
   for (const o of ORGS) await metricsMatchManifest(o);
   await scenarios();
   await phase3();
+  if (Number(process.env.SEED_PHASE ?? 0) >= 5) await phase5();
   await dashboardLatency();
   for (const note of notes) console.log(`  · ${note}`);
   if (failures.length > 0) {

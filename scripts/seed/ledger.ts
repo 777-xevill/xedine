@@ -24,6 +24,7 @@ import {
 } from './manifest';
 import { SEED } from './rng';
 import { BEEF_SPIKE_FROM, BEEF_SPIKE_TO, COSTING, unitCostOn } from './costing';
+import type { Inventory } from './inventory';
 
 interface CostAcc {
   qty: number;
@@ -214,7 +215,7 @@ export class Ledger {
     }
   }
 
-  manifest(): Manifest {
+  manifest(inventory: Inventory): Manifest {
     const orgs: Manifest['orgs'] = {};
     for (const org of ORGS) {
       const total = emptyTotals();
@@ -254,7 +255,8 @@ export class Ledger {
         finding_impact_pct: 10,
         max_false_positives_per_branch_week_on_clean_org: 1,
       },
-      scenarios: [...this.plantedScenarios(), ...PENDING_SCENARIOS],
+      scenarios: [...this.plantedScenarios(), ...inventory.scenarios(ORGS), ...PENDING_SCENARIOS],
+      inventory: inventory.facts(ORGS),
     };
   }
 

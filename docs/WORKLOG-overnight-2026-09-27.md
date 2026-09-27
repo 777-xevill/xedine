@@ -159,3 +159,50 @@ Checklist:
 - **Run by hand:** Meta business verification; create the 6 brief templates in Meta (names in the
   migration) and set the WHATSAPP_* env vars (see .env.example); add the `ANTHROPIC_API_KEY` repo secret so
   CI's evals exercise the LLM path. Please confirm ADR 0017 §2 and §5.
+
+---
+
+## Phase 5 — Purchasing, inventory & waste
+
+Resumed 2026-09-27 after you said "go ahead and complete all tasks". Same rules as above; nothing pushed.
+
+Plan (decisions go in ADR 0018):
+- Stock maths in SQL, one implementation each (METRICS.md "Inventory"): theoretical usage explodes recipes
+  in *bought* quantity (qty ÷ yield, sub-recipes included), stock.theoretical from the last submitted count,
+  usage.actual / variance between two counts, days of cover with per-ingredient bands.
+- Purchases are recorded only through audited RPCs (owner/purchaser, prices never reach managers); a
+  confirmed purchase refreshes the ingredient's 14-day weighted-average cost (METRICS.md "Costing").
+- AI purchase drafts (chit photo, voice-as-text, pasted text) sit in `purchase_drafts` and cannot touch stock
+  until a person confirms them.
+- Guided weekly count (blind — no expected quantity shown), waste log (mobile + KDS button, reasons,
+  leaderboard), transfers with send/receive confirmation (a short receipt = "disputed").
+- Discipline score per branch per day (METRICS.md) + nudges on the dashboard.
+- Seed: a 12-week inventory ledger for both demo orgs (purchases, counts, waste, transfers) and the planted
+  S6 (unrecorded chicken Dhanmondi → Mirpur), plus S7/S8/S9 data for Phase 6 — generated from separate
+  random streams so the order data stays byte-identical.
+
+Checklist:
+- [x] 5.1 Migration: settings columns, RPCs (purchase, draft confirm, count, waste, transfer), weighted-average cost refresh, stock/variance/cover/discipline/leaderboard metrics
+- [x] 5.2 DB tests (drafts never touch stock, stock & variance exact on fixtures, transfers, waste explode, discipline, money gating)
+- [x] 5.3 Seed inventory ledger + manifest facts (S6 + P5 cover/discipline) + validators (SEED_PHASE=5)
+- [x] 5.4 AI purchase extraction (photo / text / voice-as-text) behind the gateway, unit-tested with the mock
+- [x] 5.5 UI: purchases & suppliers, AI drafts review, stock status + count, waste log + leaderboard, transfers, KDS waste button, discipline nudges
+- [x] 5.6 i18n, checks, ADR 0018, ROADMAP, commit
+
+### Phase 5 log
+- Migration `20261001000001_inventory_purchasing.sql`: stock maths (moves, stock, variance, discipline, waste
+  board), purchase/draft/count/waste/transfer RPCs (all audited, tables RPC-only), unit cost from purchases,
+  waste reasons for every org. ADR 0018 — **please confirm §5 (managers who do the bazar get the purchaser
+  role too), §6 (browser dictation for voice — Chrome sends the audio to Google) and §9 (a day with no bazar
+  loses 25 discipline points).**
+- Seed: a 12-week stock ledger for both demo orgs with S6–S9 planted plus realistic noise; the manifest gained
+  an `inventory` section and S6–S9 facts (order data unchanged). CI now validates at SEED_PHASE=5.
+- The seed's stock facts equal the SQL stock maths exactly — checked locally on the last four seeded weeks
+  (`tests/db/seed-inventory.test.ts`, 85 s on the embedded Postgres).
+- UI: `/stock` (levels + days of cover, counts & gaps, waste log + leaderboard, transfers), count sheet,
+  `/purchases` (form, AI draft from photo / typed / dictated text, history + void, suppliers), KDS waste button,
+  dashboard "Today's habits", morning brief nudges.
+- `docs/DATA-MODEL.md` regenerated locally from the embedded database (it had been stale since Phase 1, which
+  would have failed CI); the unchanged rows came out identical to CI's last version, so the generator agrees.
+- Checks: typecheck, lint, format, 150 unit, 800 DB tests (embedded) — all green.
+- **Run by hand:** with the API key set, try Purchases → "From photo or voice" with a real bazar chit.

@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (93)
+## Tables (97)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -31,14 +31,14 @@
 | `calendar_events` | Ramadan, Eid, holidays, salary week, manual flags (rain, hartal, cricket). | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | forecasting · P7 |
 | `campaign_sends` | Per-customer send record incl. holdout flag. | org | read: owner, manager; write: service role only (written by messaging jobs) | PK id · → campaigns, customers | messaging · P8 |
 | `campaigns` | Retention campaigns with holdout share. | org | read: owner, manager; write: owner, manager | PK id | customers · P8 |
-| `cash_counts` | Opening/closing/spot cash counts per shift. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, shifts, staff | pos · P1 |
+| `cash_counts` | Opening/closing/spot cash counts per shift. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, shifts, staff | pos · P1 |
 | `channel_commissions` | Money-gated commission and fee terms per channel. | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK id · → channels | pos · P2 |
 | `channels` | Sales channels: dine-in, takeaway, own delivery, foodpanda, Pathao Food, custom. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | pos · P1 |
 | `consents` | Consent history per channel and purpose. | org | read: owner, manager, cashier; write: owner, manager, cashier (append a row per change) | PK id · → customers, staff | customers · P8 |
 | `customers` | Customer by phone (+880), PII. | org | read: owner, manager, cashier; write: owner, manager, cashier (PII: accountants excluded) | PK id | customers · P8 |
 | `devices` | Registered POS/KDS/QR devices bound to a branch. | org + branch | read: owner, manager, cashier, kitchen; write: owner, manager (pairing via register_device()/claim_device()) | PK id · → branches | tenancy · P0 |
 | `dining_tables` | Tables per branch, optional QR token. | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner, manager | PK id · → branches | pos · P1 |
-| `discounts` | Order/line discounts with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, order_items, orders, reason_codes, staff | pos · P1 |
+| `discounts` | Order/line discounts with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, order_items, orders, reason_codes, staff | pos · P1 |
 | `feature_flags` | Platform feature flags. | platform (no tenant data) | read: signed-in users; write: none | PK key | billing · P10 |
 | `feedback` | Post-meal rating 0-10 and comment via link. | org + branch | read: owner, manager; write: service role only (submitted through a public link by the service role) | PK id · → branches, customers, orders | customers · P8 |
 | `finding_evidence` | Evidence rows behind each finding. Money-gated. | org | read: owner, accountant; write: service role only (written by detectors) | PK id · → findings | leaks · P2 |
@@ -48,6 +48,7 @@
 | `forecasts` | Item x daypart x branch forecast per model version. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: service role only (written by forecasting jobs) | PK id · → branches, menu_items | forecasting · P7 |
 | `holdouts` | Customers withheld to measure real lift. | org | read: owner, manager; write: service role only (written by messaging jobs) | PK id · → campaigns, customers | messaging · P8 |
 | `ingredient_costs` | Manual ingredient cost until purchases exist. Money-gated. | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK ingredient_id · → ingredients | recipes · P3 |
+| `ingredient_price_history` | What an ingredient cost from a business day on (manual; purchases from P5). Money-gated. | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK id · → ingredients | recipes · P3 |
 | `ingredients` | Ingredient catalogue in base units; stock and cover settings. | org | read: owner, manager, kitchen, purchaser, accountant; write: owner | PK id · → units | recipes · P3 |
 | `insight_feed` | Ranked proactive insights; max 3 per owner per day. | org | read: owner, accountant; write: owner | PK id · → findings | assistant · P4 |
 | `invitations` | Pending/accepted invites with hashed tokens. | org | custom — select: owner; writes only via RPCs | PK id | tenancy · P0 |
@@ -60,75 +61,132 @@
 | `memberships` | User role in an org; branch scope all or list. One role per row. | org | custom — select: own rows, or owner for the org; writes only via RPCs (audited) | PK id | tenancy · P0 |
 | `menu_categories` | Menu grouping. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | menu · P1 |
 | `menu_item_modifier_groups` | Which modifier groups apply to which item. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK menu_item_id, modifier_group_id · → menu_items, modifier_groups | menu · P1 |
-| `menu_items` | Sellable item with the printed base price. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id · → menu_categories | menu · P1 |
+| `menu_items` | Sellable item with the printed base price. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id · → menu_categories, stations | menu · P1 |
 | `message_outbox` | Outbound WhatsApp/SMS queue with retries. | org | read: owner, manager; write: service role only (written by the messaging gateway (service role)) | PK id | messaging · P4 |
 | `message_templates` | Approved message templates. Platform reference data. | platform (no tenant data) | read: signed-in users; write: none | PK id | messaging · P4 |
 | `modifier_groups` | Groups of add-ons with min/max selection. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | menu · P1 |
 | `modifiers` | Add-on options with a price. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id · → modifier_groups | menu · P1 |
-| `order_events` | Append-only order status timeline. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier, kitchen (append-only) | PK id · → branches, devices, orders, staff | kds · P1 |
-| `order_item_costs` | Recipe-cost snapshot per line. Money-gated. | org | read: owner, accountant; write: service role only (money-gated; written by the service role from Phase 3) | PK order_item_id · → order_items | recipes · P3 |
-| `order_item_modifiers` | Modifiers chosen on an order line. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, modifiers, order_items | pos · P1 |
-| `order_items` | Order lines with price snapshot and VAT decomposition. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, item_variants, menu_items, orders, stations | pos · P1 |
-| `orders` | A sale. Order status is separate from payment status; VAT decomposition stored. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier (Phase 1 tightens kitchen/status transitions behind RPCs) | PK id · → branches, channels, customers, devices, dining_tables, shifts, staff | pos · P1 |
+| `order_events` | Append-only order status timeline. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, devices, orders, staff | kds · P1 |
+| `order_item_costs` | Recipe-cost snapshot per line. Money-gated. | org + branch | read: owner, accountant; write: service role only (money-gated; written by the service role from Phase 3) | PK order_item_id · → branches, order_items | recipes · P3 |
+| `order_item_modifiers` | Modifiers chosen on an order line. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, modifiers, order_items | pos · P1 |
+| `order_items` | Order lines with price snapshot and VAT decomposition. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, item_variants, menu_items, orders, stations | pos · P1 |
+| `orders` | A sale. Order status is separate from payment status; VAT decomposition stored. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, channels, customers, devices, dining_tables, shifts, staff | pos · P1 |
 | `org_context` | Owner-stated goals, rules and constraints the assistant must respect. | org | read: owner, manager, accountant; write: owner | PK id | assistant · P4 |
 | `org_cost_settings` | Money-gated cost assumptions (assumed food cost %). | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK org_id | tenancy · P0 |
 | `org_feature_flags` | Per-org feature flag overrides. | org | custom — read: members; written by the service role | PK org_id, key · → feature_flags | billing · P10 |
 | `org_profile` | Business profile: cuisine, format, price band, area, owner WhatsApp. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
+| `org_receipt_settings` | Receipt header/footer and Mushak-6.3-ready fields (TODO verify). | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | pos · P1 |
 | `org_settings` | VAT/service-charge config, price basis, cutoff, dayparts, week start, locale. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
 | `organizations` | A restaurant business (tenant). | org (the tenant) | custom — select: members; update: owner; create only via create_organization() | PK id | tenancy · P0 |
-| `payments` | Split payments by method. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, orders, shifts, staff | payments · P1 |
+| `payments` | Split payments by method. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, orders, shifts, staff | payments · P1 |
 | `plans` | Billing plans (provisional prices, ADR 0008). Platform. | platform (no tenant data) | read: signed-in users; write: none | PK id | billing · P10 |
 | `price_history` | Append-only log of price changes. | org + branch | read: owner, manager, accountant; write: service role only (append-only log; populated by triggers from Phase 1) | PK id · → menu_items | menu · P1 |
 | `profiles` | One row per auth user: display name, phone, locale. | user | custom — select: self or org co-members; update: self; row created by auth trigger | PK user_id | tenancy · P0 |
 | `prompt_versions` | Versioned prompts. Platform, service-only. | platform · service only | no client access | PK id | llm-gateway · P3 |
 | `purchase_drafts` | AI-extracted chit/voice drafts awaiting human confirmation. | org + branch | read: owner, purchaser, accountant; write: owner, purchaser | PK id · → branches, purchases | purchasing · P5 |
-| `purchase_lines` | Purchase lines: qty in base units and line total. | org + branch | read: owner, purchaser, accountant; write: owner, purchaser | PK id · → branches, ingredients, purchases | purchasing · P5 |
-| `purchases` | A bazar purchase; money-bearing so managers cannot read it. | org + branch | read: owner, purchaser, accountant; write: owner, purchaser (prices → managers excluded (ADR 0007)) | PK id · → branches, suppliers | purchasing · P5 |
+| `purchase_lines` | Purchase lines: qty in base units and line total. | org + branch | read: owner, purchaser, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, purchases | purchasing · P5 |
+| `purchases` | A bazar purchase; money-bearing so managers cannot read it. | org + branch | read: owner, purchaser, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, suppliers | purchasing · P5 |
 | `reason_codes` | Reason codes for discounts, voids, refunds, waste, adjustments. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | pos · P1 |
+| `recipe_drafts` | AI or pasted recipe drafts awaiting a person's approval. | org | read: owner, manager, kitchen; write: owner, kitchen (drafts only; approval is an audited owner RPC) | PK id · → menu_items, recipes | recipes · P3 |
 | `recipe_lines` | Recipe lines: ingredient or sub-recipe, qty in base units, yield %. | org | read: owner, manager, kitchen, accountant; write: owner | PK id · → ingredients, recipes | recipes · P3 |
 | `recipes` | Recipe per menu item/variant; drafts need approval to become active. | org | read: owner, manager, kitchen, accountant; write: owner (recipe edits are audited by trigger) | PK id · → item_variants, menu_items | recipes · P3 |
 | `reference_prices` | External reference prices (CSV import). | org | read: owner, purchaser, accountant; write: owner | PK id · → ingredients | purchasing · P6 |
-| `refunds` | Refunds with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, orders, payments, reason_codes, staff | pos · P1 |
+| `refunds` | Refunds with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, orders, payments, reason_codes, shifts, staff | pos · P1 |
 | `review_replies` | AI reply drafts; posting needs approval. | org | read: owner, manager; write: owner, manager | PK id · → reviews | reviews · P8 |
 | `reviews` | Imported and pasted reviews with themes. | org + branch | read: owner, manager; write: owner, manager | PK id · → branches | reviews · P8 |
 | `salary_entries` | Monthly salary and allowances per staff. Money-gated. | org + branch | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK id · → branches, staff | staff · P2 |
-| `shifts` | Cash shifts: opening float, expected vs counted, over/short. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, devices, staff | pos · P1 |
+| `shifts` | Cash shifts: opening float, expected vs counted, over/short. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, devices, staff | pos · P1 |
 | `staff` | Shared-device staff identities (PIN users), per branch. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager | PK id · → branches | staff · P0 |
+| `staff_approvals` | Single-use manager PIN approvals for sensitive POS actions (2-minute expiry). Service-only. | org · service only | no client access | PK id · → branches, devices, staff | pos · P1 |
 | `staff_pins` | Bcrypt PIN hashes and lockout counters. Service-only. | org · service only | no client access | PK staff_id · → staff | tenancy · P0 |
 | `staff_sessions` | Who is acting on a device: created by start_staff_session(). | org + branch | read: owner, manager; write: service role only (created only by start_staff_session()) | PK id · → branches, devices, staff | tenancy · P0 |
 | `stations` | KDS stations per branch. | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner, manager | PK id · → branches | kds · P1 |
-| `stock_count_lines` | Counted quantity per ingredient. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: owner, manager, kitchen, purchaser | PK id · → branches, ingredients, stock_counts | inventory · P5 |
-| `stock_counts` | Guided weekly / full / spot counts. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: owner, manager, kitchen, purchaser | PK id · → branches | inventory · P5 |
+| `stock_count_lines` | Counted quantity per ingredient. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, stock_counts | inventory · P5 |
+| `stock_counts` | Guided weekly / full / spot counts. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches | inventory · P5 |
 | `subscriptions` | Org subscription and pilot discount. | org | read: owner; write: service role only (written by billing (service role)) | PK id · → plans | billing · P10 |
 | `suppliers` | Suppliers. | org | read: owner, manager, kitchen, purchaser, accountant; write: owner | PK id | purchasing · P5 |
-| `transfer_lines` | Transfer quantities sent and received. | org | custom — follows the parent transfer (RLS on transfers applies inside the subquery) | PK id · → ingredients, transfers | inventory · P5 |
-| `transfers` | Branch-to-branch transfers with send/receive confirmation. | org | custom — visible/editable from either branch; send/receive confirmation is Phase 5 | PK id · → branches | inventory · P5 |
+| `transfer_lines` | Transfer quantities sent and received. | org | custom — follows the parent transfer; written only by send_transfer / receive_transfer (ADR 0018) | PK id · → ingredients, transfers | inventory · P5 |
+| `transfers` | Branch-to-branch transfers with send/receive confirmation. | org | custom — visible from either branch; written only by send_transfer / receive_transfer (ADR 0018) | PK id · → branches | inventory · P5 |
 | `unit_conversions` | Ingredient-specific unit conversions. | org | read: owner, manager, kitchen, purchaser, accountant; write: owner | PK id · → ingredients, units | recipes · P3 |
 | `units` | Units with a factor to the base unit (g, ml, pcs). | org | read: owner, manager, kitchen, purchaser, accountant; write: owner | PK id | inventory · P3 |
 | `usage_counters` | Plan usage counters. | org | read: owner; write: service role only (written by jobs (service role)) | PK id | billing · P10 |
-| `voids` | Voided lines; after_kot/after_payment feed leak detectors. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: owner, manager, cashier | PK id · → branches, order_items, orders, reason_codes, staff | pos · P1 |
-| `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: owner, manager, kitchen | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
+| `voids` | Voided lines; after_kot/after_payment feed leak detectors. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, order_items, orders, reason_codes, staff | pos · P1 |
+| `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (16)
+## RPC functions (70)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
 | Function | Arguments |
 |---|---|
 | `accept_invitation` | `p_token text` |
+| `add_order_items` | `p_org uuid, p_branch uuid, p_order uuid, p_batch_key text, p_device uuid, p_staff uuid, p_lines jsonb` |
+| `advance_order_status` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
+| `apply_order_discount` | `p_org uuid, p_branch uuid, p_order uuid, p_percent_bps integer, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
+| `approve_action` | `p_device uuid, p_approver_staff uuid, p_pin text, p_action approval_action` |
+| `approve_recipe_draft` | `p_draft uuid, p_payload jsonb DEFAULT NULL::jsonb` |
+| `attach_customer` | `p_org uuid, p_branch uuid, p_order uuid, p_phone text, p_name text, p_marketing_consent boolean, p_device uuid, p_staff uuid` |
+| `can_record_purchase` | `p_org uuid, p_branch uuid` |
+| `cancel_order` | `p_org uuid, p_branch uuid, p_order uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `claim_device` | `p_device uuid, p_code text` |
+| `close_shift` | `p_org uuid, p_branch uuid, p_shift uuid, p_counted_cash bigint, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
+| `confirm_purchase_draft` | `p_draft uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb` |
 | `create_invitation` | `p_org uuid, p_email text, p_role app_role, p_branch_ids uuid[] DEFAULT '{}'::uuid[]` |
 | `create_organization` | `p_name text, p_slug text, p_branches jsonb DEFAULT '[]'::jsonb, p_locale locale_code DEFAULT 'bn'::locale_code` |
+| `discard_purchase_draft` | `p_draft uuid, p_reason text DEFAULT NULL::text` |
 | `end_staff_session` | `p_session uuid` |
+| `ensure_org_defaults` | `p_org uuid` |
+| `finding_events` | `p_finding uuid` |
+| `insight_action` | `p_insight uuid, p_action text, p_reason text DEFAULT NULL::text, p_until date DEFAULT NULL::date` |
+| `job_backfill_item_costs` | `p_org uuid, p_from date, p_to date` |
+| `job_close_business_day` | `p_org uuid, p_date date` |
 | `job_health` | `` |
+| `job_refresh_insights` | `p_org uuid, p_date date` |
 | `job_run_begin` | `p_job text, p_org uuid, p_period text` |
+| `job_run_detectors` | `p_org uuid, p_from date, p_to date, p_kinds text[]` |
 | `job_run_finish` | `p_run uuid, p_status job_status, p_error text DEFAULT NULL::text` |
 | `log_audit` | `p_org uuid, p_branch uuid, p_action text, p_entity text, p_entity_id text, p_before jsonb DEFAULT NULL::jsonb, p_after jsonb DEFAULT NULL::jsonb, p_reason text DEFAULT NULL::text, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
+| `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
+| `metric_commission` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_discipline` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_flash_pnl` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_food_cost` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_item_qty` | `p_org uuid, p_branch uuid, p_window text, p_now timestamp with time zone, p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_item uuid DEFAULT NULL::uuid, p_channel uuid DEFAULT NULL::uuid, p_daypart text DEFAULT NULL::text` |
+| `metric_menu_matrix` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_pace` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_recipe_costs` | `p_org uuid, p_now timestamp with time zone` |
+| `metric_sales` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_sales_split` | `p_org uuid, p_branch uuid, p_from date, p_to date, p_dimension text` |
+| `metric_simulate_item` | `p_org uuid, p_item uuid, p_price bigint, p_portion_bps integer, p_now timestamp with time zone` |
+| `metric_staff_exceptions` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_stock_status` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_stock_variance` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_waste_board` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_window` | `p_org uuid, p_window text, p_now timestamp with time zone` |
+| `open_shift` | `p_org uuid, p_branch uuid, p_device uuid, p_staff uuid, p_opening_float bigint` |
+| `receive_transfer` | `p_transfer uuid, p_lines jsonb DEFAULT '[]'::jsonb, p_note text DEFAULT NULL::text` |
+| `record_ai_usage` | `p_org uuid, p_date date, p_model text, p_feature text, p_input bigint, p_output bigint, p_cache_read bigint, p_cache_write bigint, p_cost_usd_micros bigint` |
+| `record_payment` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reference text, p_idempotency_key text, p_device uuid, p_staff uuid` |
+| `record_purchase` | `p_org uuid, p_branch uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb, p_notes text DEFAULT NULL::text` |
+| `refund_order` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reason_code uuid, p_reason_note text, p_idempotency_key text, p_device uuid, p_staff uuid, p_approval uuid` |
 | `register_device` | `p_org uuid, p_branch uuid, p_name text, p_kind device_kind DEFAULT 'pos'::device_kind` |
 | `remove_membership` | `p_membership uuid` |
 | `revoke_device` | `p_device uuid` |
 | `revoke_invitation` | `p_invitation uuid` |
+| `save_count_line` | `p_count uuid, p_ingredient uuid, p_qty numeric, p_note text DEFAULT NULL::text` |
+| `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text` |
+| `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
+| `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
+| `send_transfer` | `p_org uuid, p_from uuid, p_to uuid, p_lines jsonb, p_notes text DEFAULT NULL::text` |
+| `set_finding_status` | `p_finding uuid, p_status finding_status, p_reason text DEFAULT NULL::text, p_snooze_until date DEFAULT NULL::date` |
 | `set_staff_pin` | `p_staff uuid, p_pin text` |
 | `start_staff_session` | `p_device uuid, p_staff uuid, p_pin text` |
+| `start_stock_count` | `p_org uuid, p_branch uuid, p_kind stock_count_kind, p_date date DEFAULT NULL::date` |
+| `stock_count_sheet` | `p_count uuid` |
+| `submit_order` | `p_org uuid, p_branch uuid, p_order_id uuid, p_idempotency_key text, p_device uuid, p_staff uuid, p_channel uuid, p_table uuid DEFAULT NULL::uuid, p_guests integer DEFAULT NULL::integer, p_placed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_lines jsonb DEFAULT '[]'::jsonb, p_provisional_receipt_no text DEFAULT NULL::text` |
+| `submit_stock_count` | `p_count uuid` |
+| `transfer_destinations` | `p_org uuid` |
 | `update_membership` | `p_membership uuid, p_role app_role DEFAULT NULL::app_role, p_branch_ids uuid[] DEFAULT NULL::uuid[]` |
+| `void_order_item` | `p_org uuid, p_branch uuid, p_order_item uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
+| `void_purchase` | `p_purchase uuid, p_reason text` |

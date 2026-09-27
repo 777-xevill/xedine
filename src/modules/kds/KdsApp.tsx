@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock3, LogOut } from 'lucide-react';
+import { Clock3, LogOut, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from '@/components/ui/form';
@@ -26,6 +26,7 @@ import {
   type KdsLine,
   type KdsOrder,
 } from './client';
+import { WasteDialog } from './WasteDialog';
 
 const NEXT_LABEL: Record<string, 'start' | 'ready' | 'served'> = {
   sent_to_kitchen: 'start',
@@ -111,6 +112,7 @@ function Board({
   const [stationFilter, setStationFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [busyOrder, setBusyOrder] = useState<string | null>(null);
+  const [wasteOpen, setWasteOpen] = useState(false);
   const [, setTick] = useState(0);
 
   const refresh = useCallback(() => {
@@ -194,11 +196,20 @@ function Board({
             </button>
           ))}
         </nav>
-        <Button variant="ghost" size="sm" onClick={onSwitchStaff}>
-          <LogOut aria-hidden className="size-4" />
-          {tp('switchStaff')}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button variant="secondary" size="sm" onClick={() => setWasteOpen(true)}>
+            <Trash2 aria-hidden className="size-4" />
+            {t('wasteButton')}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onSwitchStaff}>
+            <LogOut aria-hidden className="size-4" />
+            {tp('switchStaff')}
+          </Button>
+        </div>
       </header>
+      {wasteOpen ? (
+        <WasteDialog sb={sb} device={device} staff={staff} onClose={() => setWasteOpen(false)} />
+      ) : null}
       {error ? <Alert tone="warning">{error}</Alert> : null}
 
       {tickets.length === 0 ? (

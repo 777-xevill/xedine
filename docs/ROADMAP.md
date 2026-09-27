@@ -152,21 +152,21 @@ Status: ◐ **built; local checks green; LLM and WhatsApp parts wait on the key 
 **→ Pilot gate B:** pilots use the assistant + briefs. Measure input discipline before building P5–P6.
 
 ## Phase 5 — Purchasing, inventory & waste
-Status: ☐ · Size: 3 weeks
+Status: ◐ **built; local checks green; seed checks written for CI** (2026-10-01) · Size: 3 weeks
 **Goal:** the minimum inputs that unlock real food-cost truth.
+**Evidence so far (local):** `tests/db/inventory.test.ts` (18 tests: purchases and cost refresh, drafts never move stock, stock/cover/variance exact on hand-worked fixtures, transfers, waste explode and valuation, discipline, guided count), `tests/db/seed-inventory.test.ts` (the seed's stock ledger equals the SQL stock maths exactly for the last four weeks of both demo orgs), `src/modules/purchasing/lines.test.ts`, seed plant tests. Decisions in [ADR 0018](decisions/0018-phase-5-purchasing-inventory-waste.md). **Needs CI:** the full-year checks at `SEED_PHASE=5`.
 **Build**
-- [ ] Suppliers, purchases (form), price history
-- [ ] Photo of chit/receipt → AI draft lines → confirm; voice note → draft → confirm; low-confidence fields highlighted
-- [ ] Guided weekly count of top 10–15 costly items (mobile-first); optional full count
-- [ ] Waste log (KDS button + mobile), reasons, leaderboard
-- [ ] Transfers (branch↔branch, central kitchen → branch) with send/receive confirmation
-- [ ] Theoretical stock, days of cover 🟢🟡🔴, stock status page
-- [ ] Branch discipline score (daily) + nudges
+- [x] Suppliers, purchases (form), price history — `/[org]/purchases`; `record_purchase` refreshes the 14-day weighted-average unit cost (ADR 0018 §4)
+- [x] Photo of chit/receipt → AI draft lines → confirm; voice note → draft → confirm; low-confidence fields highlighted — voice is browser dictation (ADR 0018 §6); **AI parts wait for the API key**
+- [x] Guided weekly count of top 10–15 costly items (mobile-first); optional full count — `/[org]/stock/count/[id]`, blind
+- [x] Waste log (KDS button + mobile), reasons, leaderboard — KDS "Waste" button, Stock → Waste
+- [x] Transfers (branch↔branch, central kitchen → branch) with send/receive confirmation — a short receipt is "disputed"
+- [x] Theoretical stock, days of cover 🟢🟡🔴, stock status page — `/[org]/stock`
+- [x] Branch discipline score (daily) + nudges — dashboard "Today's habits", morning WhatsApp brief
 **Done when**
-- [ ] AI purchase drafts can't affect stock until confirmed (test)
-- [ ] S6 visible as phantom variance / unconfirmed transfer
-- [ ] Days of cover and discipline scores match manifest
-
+- [x] AI purchase drafts can't affect stock until confirmed (test) — `inventory.test.ts` "AI purchase drafts never move stock until a person confirms them"
+- [ ] S6 visible as phantom variance / unconfirmed transfer — Dhanmondi chicken +35.8 kg, Mirpur −29.2 kg over four weeks; proven on the last four seeded weeks locally (`seed-inventory.test.ts`), **full seed in CI** (`manifest:validate`, `metrics:validate` at SEED_PHASE=5)
+- [ ] Days of cover and discipline scores match manifest — same two checks; **CI**
 ## Phase 6 — Leak Detector v2 (full "Where am I losing money?")
 Status: ☐ · Size: 2 weeks
 **Goal:** explain the food-cost gap in BDT, by cause, branch and item.

@@ -61,6 +61,52 @@ export const ScenarioSchema = z.object({
 });
 export type Scenario = z.infer<typeof ScenarioSchema>;
 
+const StockFactSchema = z.object({
+  last_count_date: z.string(),
+  stock_qty: int,
+  in_transit_qty: int,
+  usage_14d_qty: int,
+  /** stock.days_of_cover × 100, rounded half away from zero (SQL's round(…, 2)). */
+  days_of_cover_x100: int.nullable(),
+  band: z.enum(['green', 'yellow', 'red', 'none']),
+});
+const VarianceFactSchema = z.object({
+  opening_qty: int,
+  closing_qty: int,
+  purchases_qty: int,
+  purchases_poisha: int,
+  transfers_in_qty: int,
+  transfers_out_qty: int,
+  usage_theoretical_qty: int,
+  waste_qty: int,
+  usage_actual_qty: int,
+  variance_qty: int,
+});
+
+/** Phase 5–6 stock ground truth (scripts/seed/inventory.ts): stock at the anchor, variance over period. */
+export const InventoryFactsSchema = z.object({
+  from: z.string(),
+  count_weekday: int,
+  period: z.object({ from: z.string(), to: z.string() }),
+  orgs: z.record(
+    z.string(),
+    z.object({
+      branches: z.record(
+        z.string(),
+        z.object({
+          stock: z.record(z.string(), StockFactSchema),
+          variance: z.record(z.string(), VarianceFactSchema),
+          /** Discipline score per closed business day, 14 days to the day before the anchor. */
+          discipline: z.record(z.string(), int),
+        }),
+      ),
+    }),
+  ),
+});
+
+export type InventoryFacts = z.infer<typeof InventoryFactsSchema>;
+export type BranchInventory = InventoryFacts['orgs'][string]['branches'][string];
+
 export const ManifestSchema = z.object({
   version: z.literal(1),
   seed: z.string(),
@@ -76,6 +122,7 @@ export const ManifestSchema = z.object({
     max_false_positives_per_branch_week_on_clean_org: z.number(),
   }),
   scenarios: z.array(ScenarioSchema),
+  inventory: InventoryFactsSchema,
 });
 export type Manifest = z.infer<typeof ManifestSchema>;
 
@@ -99,34 +146,6 @@ export function excessOverBaseline(
 }
 
 export const PENDING_SCENARIOS: Scenario[] = [
-  {
-    id: 'S6',
-    title: 'Unrecorded chicken transfers Dhanmondi → Mirpur twice a week',
-    status: 'pending',
-    available_from_phase: 5,
-    detected_in_phase: 6,
-  },
-  {
-    id: 'S7',
-    title: 'Mirpur over-portions kacchi mutton by ~12%',
-    status: 'pending',
-    available_from_phase: 5,
-    detected_in_phase: 6,
-  },
-  {
-    id: 'S8',
-    title: 'Dhanmondi purchaser pays 9–12% above median for beef on some days',
-    status: 'pending',
-    available_from_phase: 5,
-    detected_in_phase: 6,
-  },
-  {
-    id: 'S9',
-    title: 'Uttara unlogged rice waste ≈ 4 kg/day',
-    status: 'pending',
-    available_from_phase: 5,
-    detected_in_phase: 6,
-  },
   {
     id: 'S10',
     title: 'Ramadan iftar surge, Eid closure + rebound, salary-week lift, rainy-day dine-in dip',

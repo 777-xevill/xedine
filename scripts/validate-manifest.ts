@@ -9,6 +9,7 @@ import { computeLine, mulBps } from '../src/lib/money';
 import { MANIFEST_PATH } from './seed/build';
 import { ANCHOR_DATE, CUTOFF_MINUTES, ORGS, type OrgCfg } from './seed/config';
 import { ids } from './seed/generate';
+import { COUNT_WEEKDAY, INVENTORY, invIds } from './seed/inventory';
 import { QTY_ITEM } from './seed/ledger';
 import { excessOverBaseline, ManifestSchema, rateRatioX100, type Manifest } from './seed/manifest';
 
@@ -155,6 +156,175 @@ async function itemCosts(
       group by line.menu_item_id, line.branch_id`,
     [ids.org(org), from, to, itemFilter, opts.channel ?? null],
   );
+}
+
+/**
+ * Phase 5: what was recorded for one branch per ingredient over (from, to] — purchases, recorded
+ * transfers, waste (menu-item waste through its recipe) and theoretical usage of sold lines — straight
+ * from the tables, independent of private.m_stock_moves.
+ */
+async function stockObservables(org: OrgCfg, branchKey: string, from: string, to: string) {
+  const b = org.branches.find((x) => x.key === branchKey)!;
+  const rows = await q<{ ingredient_id: string; kind: string; qty: string; value: string }>(
+    `select pl.ingredient_id, 'purchase' as kind, sum(pl.qty_base) as qty, sum(pl.line_total_poisha) as value
+       from public.purchase_lines pl join public.purchases p on p.id = pl.purchase_id
+      where p.org_id = $1 and p.branch_id = $2 and p.status = 'confirmed' and p.purchased_on > $3::date and p.purchased_on <= $4::date
+      group by 1
+     union all
+     select tl.ingredient_id, 'out', sum(tl.qty_base_sent), 0
+       from public.transfer_lines tl join public.transfers t on t.id = tl.transfer_id
+      where t.org_id = $1 and t.from_branch_id = $2 and t.status <> 'draft' and t.sent_on > $3::date and t.sent_on <= $4::date
+      group by 1
+     union all
+     select tl.ingredient_id, 'in', sum(tl.qty_base_received), 0
+       from public.transfer_lines tl join public.transfers t on t.id = tl.transfer_id
+      where t.org_id = $1 and t.to_branch_id = $2 and t.status in ('received', 'disputed')
+        and t.received_on > $3::date and t.received_on <= $4::date
+      group by 1
+     union all
+     select w.ingredient_id, 'waste', sum(w.qty_base), 0 from public.waste_logs w
+      where w.org_id = $1 and w.branch_id = $2 and w.ingredient_id is not null and w.business_date > $3::date and w.business_date <= $4::date
+      group by 1
+     union all
+     select rl.ingredient_id, 'waste', sum(w.qty_portions * rl.qty_base * 100 / rl.yield_pct), 0
+       from public.waste_logs w
+       join public.recipes r on r.org_id = w.org_id and r.menu_item_id = w.menu_item_id and r.status = 'active'
+       join public.recipe_lines rl on rl.recipe_id = r.id
+      where w.org_id = $1 and w.branch_id = $2 and w.ingredient_id is null and w.business_date > $3::date and w.business_date <= $4::date
+      group by 1
+     union all
+     select rl.ingredient_id, 'usage', sum(oi.quantity * rl.qty_base * 100 / rl.yield_pct), 0
+       from public.order_items oi
+       join public.orders o on o.id = oi.order_id
+       join public.recipes r on r.org_id = oi.org_id and r.menu_item_id = oi.menu_item_id and r.status = 'active'
+       join public.recipe_lines rl on rl.recipe_id = r.id
+      where oi.org_id = $1 and oi.branch_id = $2 and oi.status = 'active' and o.order_status = 'completed'
+        and o.business_date > $3::date and o.business_date <= $4::date
+      group by 1`,
+    [ids.org(org), ids.branch(org, b), from, to],
+  );
+  const out = new Map<string, Record<string, number>>();
+  for (const key of Object.keys(INVENTORY[org.key]!.supply)) {
+    const id = invIds.ingredient(org, key);
+    const sum = (kind: string, col: 'qty' | 'value' = 'qty') =>
+      rows
+        .filter((r) => r.ingredient_id === id && r.kind === kind)
+        .reduce((s, r) => s + n(r[col]), 0);
+    out.set(key, {
+      purchases_qty: sum('purchase'),
+      purchases_poisha: sum('purchase', 'value'),
+      transfers_in_qty: sum('in'),
+      transfers_out_qty: sum('out'),
+      usage_theoretical_qty: sum('usage'),
+      waste_qty: sum('waste'),
+    });
+  }
+  return out;
+}
+
+async function countOn(org: OrgCfg, branchKey: string, date: string) {
+  const b = org.branches.find((x) => x.key === branchKey)!;
+  const rows = await q<{ ingredient_id: string; qty: string }>(
+    `select l.ingredient_id, l.counted_qty_base as qty from public.stock_count_lines l
+       join public.stock_counts c on c.id = l.stock_count_id
+      where c.org_id = $1 and c.branch_id = $2 and c.counted_on = $3::date and c.status = 'submitted'`,
+    [ids.org(org), ids.branch(org, b), date],
+  );
+  return new Map(rows.map((r) => [r.ingredient_id, n(r.qty)]));
+}
+
+/** Phase 5 ground truth: variance over the period, stock and cover at the anchor, discipline by day. */
+async function inventoryFacts() {
+  const inv = manifest.inventory;
+  for (const org of ORGS) {
+    const expected = inv.orgs[org.key];
+    if (!expected) continue;
+    for (const b of org.branches) {
+      const e = expected.branches[b.key]!;
+      const path = `inventory.${org.key}.${b.key}`;
+      const open = await countOn(org, b.key, inv.period.from);
+      const close = await countOn(org, b.key, inv.period.to);
+      const moves = await stockObservables(org, b.key, inv.period.from, inv.period.to);
+      for (const [ing, ev] of Object.entries(e.variance)) {
+        const id = invIds.ingredient(org, ing);
+        const m = moves.get(ing)!;
+        const actual =
+          open.get(id)! +
+          m.purchases_qty! +
+          m.transfers_in_qty! -
+          m.transfers_out_qty! -
+          close.get(id)!;
+        checkAll(`${path}.variance.${ing}`, ev, {
+          opening_qty: open.get(id),
+          closing_qty: close.get(id),
+          ...m,
+          usage_actual_qty: actual,
+          variance_qty: actual - m.usage_theoretical_qty! - m.waste_qty!,
+        });
+      }
+      const use14 = await stockObservables(
+        org,
+        b.key,
+        addDaysIso(manifest.anchor_date, -14),
+        manifest.anchor_date,
+      );
+      for (const [ing, es] of Object.entries(e.stock)) {
+        const id = invIds.ingredient(org, ing);
+        const last = await countOn(org, b.key, es.last_count_date);
+        const since = (
+          await stockObservables(org, b.key, es.last_count_date, manifest.anchor_date)
+        ).get(ing)!;
+        check(
+          `${path}.stock.${ing}.stock_qty`,
+          es.stock_qty,
+          last.get(id)! +
+            since.purchases_qty! +
+            since.transfers_in_qty! -
+            since.transfers_out_qty! -
+            since.usage_theoretical_qty! -
+            since.waste_qty!,
+        );
+        check(
+          `${path}.stock.${ing}.usage_14d_qty`,
+          es.usage_14d_qty,
+          use14.get(ing)!.usage_theoretical_qty,
+        );
+      }
+      const [transit] = await q(
+        `select coalesce(sum(tl.qty_base_sent), 0) as q from public.transfer_lines tl join public.transfers t on t.id = tl.transfer_id
+          where t.org_id = $1 and t.to_branch_id = $2 and t.status = 'sent'`,
+        [ids.org(org), ids.branch(org, b)],
+      );
+      check(
+        `${path}.in_transit`,
+        Object.values(e.stock).reduce((s, x) => s + x.in_transit_qty, 0),
+        n(transit!.q),
+      );
+      for (const [date, score] of Object.entries(e.discipline)) {
+        const [d] = await q(
+          `select exists (select 1 from public.purchases where org_id = $1 and branch_id = $2 and purchased_on = $3::date and status = 'confirmed') as bazar,
+                  exists (select 1 from public.waste_logs where org_id = $1 and branch_id = $2 and business_date = $3::date) as waste,
+                  (select count(*) > 0 and bool_and(status = 'closed') from public.shifts where org_id = $1 and branch_id = $2 and business_date = $3::date) as cash,
+                  exists (select 1 from public.stock_counts where org_id = $1 and branch_id = $2 and counted_on = $3::date and status = 'submitted') as counted`,
+          [ids.org(org), ids.branch(org, b), date],
+        );
+        const due = new Date(`${date}T00:00:00Z`).getUTCDay() === COUNT_WEEKDAY;
+        check(
+          `${path}.discipline.${date}`,
+          score,
+          (d!.bazar ? 25 : 0) +
+            (d!.waste ? 15 : 0) +
+            (d!.cash ? 20 : 0) +
+            (!due || d!.counted ? 25 : 0) +
+            15,
+        );
+      }
+    }
+  }
+}
+
+function addDaysIso(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 async function staffCounts(org: OrgCfg, branchKey: string, staffKeys: string[]) {
@@ -471,6 +641,44 @@ try {
       check('S5.items_sold', f.items_sold, sold.length);
       check('S5.units_sold', f.units_sold, units);
       check('S5.matrix', f.matrix, matrix);
+    } else if (s.id === 'S6' || s.id === 'S7' || s.id === 'S9') {
+      // The planted truth (what moved, the extra grams) is not in the database by design; what the
+      // database must show is the variance it causes, checked with the rest of the stock facts below.
+      const v = manifest.inventory.orgs[kacchi.key]!.branches;
+      const branch = String(s.id === 'S6' ? f.from_branch : s.branch);
+      const ing = String(f.ingredient_key);
+      check(
+        `${s.id}.variance_qty`,
+        s.id === 'S6' ? f.from_variance_qty : f.variance_qty,
+        v[branch]!.variance[ing]!.variance_qty,
+      );
+      if (s.id === 'S6')
+        check(
+          'S6.to_variance_qty',
+          f.to_variance_qty,
+          v[String(f.to_branch)]!.variance[ing]!.variance_qty,
+        );
+    } else if (s.id === 'S8') {
+      const days = f.days as { date: string; qty: number; paid: number }[];
+      const b = kacchi.branches.find((x) => x.key === s.branch)!;
+      for (const d of days) {
+        const [row] = await q(
+          `select coalesce(sum(pl.qty_base), 0) as qty, coalesce(sum(pl.line_total_poisha), 0) as paid
+             from public.purchase_lines pl join public.purchases p on p.id = pl.purchase_id
+            where p.org_id = $1 and p.branch_id = $2 and p.purchased_on = $3::date and pl.ingredient_id = $4 and p.status = 'confirmed'`,
+          [
+            ids.org(kacchi),
+            ids.branch(kacchi, b),
+            d.date,
+            invIds.ingredient(kacchi, String(f.ingredient_key)),
+          ],
+        );
+        check(
+          `S8.${d.date}`,
+          { qty: d.qty, paid: d.paid },
+          { qty: n(row!.qty), paid: n(row!.paid) },
+        );
+      }
     } else if (s.id === 'S13') {
       const staff = await staffCounts(cafe, 'gulshan', ['tania', 'imran', 'meherun']);
       checkAll('S13', f, {
@@ -483,6 +691,8 @@ try {
       });
     }
   }
+
+  if (phase >= 5) await inventoryFacts();
 
   const validated = manifest.scenarios.filter((s) => !pending.includes(s.id)).map((s) => s.id);
   console.log(

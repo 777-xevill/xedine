@@ -46,7 +46,33 @@ export interface DayRows {
   payments: Row[];
   discounts: Row[];
   voids: Row[];
+  // Phase 5 stock ledger (scripts/seed/inventory.ts); generateDay leaves these empty.
+  purchases: Row[];
+  purchase_lines: Row[];
+  stock_counts: Row[];
+  stock_count_lines: Row[];
+  waste_logs: Row[];
+  transfers: Row[];
+  transfer_lines: Row[];
 }
+
+export const emptyDayRows = (): DayRows => ({
+  shifts: [],
+  cash_counts: [],
+  orders: [],
+  order_items: [],
+  order_events: [],
+  payments: [],
+  discounts: [],
+  voids: [],
+  purchases: [],
+  purchase_lines: [],
+  stock_counts: [],
+  stock_count_lines: [],
+  waste_logs: [],
+  transfers: [],
+  transfer_lines: [],
+});
 
 export const REASON_CODES = [
   {
@@ -66,6 +92,25 @@ export const REASON_CODES = [
     label_bn: 'গ্রাহক মত বদলেছেন',
   },
   { kind: 'void', code: 'kitchen_delay', label: 'Kitchen delay', label_bn: 'রান্নাঘরে দেরি' },
+  { kind: 'waste', code: 'spoiled', label: 'Spoiled / expired', label_bn: 'নষ্ট / মেয়াদোত্তীর্ণ' },
+  {
+    kind: 'waste',
+    code: 'overcooked',
+    label: 'Overcooked or burnt',
+    label_bn: 'বেশি রান্না বা পুড়ে গেছে',
+  },
+  {
+    kind: 'waste',
+    code: 'dropped',
+    label: 'Dropped or spilled',
+    label_bn: 'পড়ে গেছে বা ছড়িয়ে গেছে',
+  },
+  {
+    kind: 'waste',
+    code: 'leftover',
+    label: 'Cooked but not sold',
+    label_bn: 'রান্না হয়েছে কিন্তু বিক্রি হয়নি',
+  },
 ] as const;
 
 export const ids = {
@@ -159,16 +204,7 @@ interface BuiltLine {
 }
 
 export function generateDay(org: OrgCfg, b: BranchCfg, date: string): DayRows {
-  const rows: DayRows = {
-    shifts: [],
-    cash_counts: [],
-    orders: [],
-    order_items: [],
-    order_events: [],
-    payments: [],
-    discounts: [],
-    voids: [],
-  };
+  const rows = emptyDayRows();
   const rng = makeRng('day', org.key, b.key, date);
   const n = orderCount(org, b, date, rng);
   if (n === 0) return rows;

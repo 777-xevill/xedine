@@ -9,8 +9,9 @@ import {
   SALARY_TAKA,
   type OrgCfg,
 } from './config';
-import { ids, REASON_CODES, type DayRows, type Row } from './generate';
+import { emptyDayRows, ids, REASON_CODES, type DayRows, type Row } from './generate';
 import { COSTING } from './costing';
+import { DAILY_COVER, INVENTORY, invIds } from './inventory';
 import { detId } from './rng';
 
 type ColSpec = [name: string, type: string][];
@@ -148,20 +149,99 @@ const SPEC = {
     ['voided_by_staff_id', 'uuid'],
     ['voided_at', 'timestamptz'],
   ] as ColSpec,
+  purchases: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['supplier_id', 'uuid'],
+    ['purchased_on', 'date'],
+    ['source', 'public.purchase_source'],
+    ['status', 'public.purchase_status'],
+    money('total_poisha'),
+    ['confirmed_at', 'timestamptz'],
+  ] as ColSpec,
+  purchase_lines: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['purchase_id', 'uuid'],
+    ['ingredient_id', 'uuid'],
+    ['qty_base', 'numeric'],
+    money('line_total_poisha'),
+  ] as ColSpec,
+  stock_counts: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['counted_on', 'date'],
+    ['kind', 'public.stock_count_kind'],
+    ['status', 'public.stock_count_status'],
+    ['submitted_at', 'timestamptz'],
+  ] as ColSpec,
+  stock_count_lines: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['stock_count_id', 'uuid'],
+    ['ingredient_id', 'uuid'],
+    ['counted_qty_base', 'numeric'],
+  ] as ColSpec,
+  waste_logs: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['ingredient_id', 'uuid'],
+    ['menu_item_id', 'uuid'],
+    ['qty_base', 'numeric'],
+    ['qty_portions', 'numeric'],
+    ['reason_code_id', 'uuid'],
+    ['source', 'public.waste_source'],
+    ['logged_by_staff_id', 'uuid'],
+    ['logged_at', 'timestamptz'],
+    ['business_date', 'date'],
+  ] as ColSpec,
+  transfers: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['from_branch_id', 'uuid'],
+    ['to_branch_id', 'uuid'],
+    ['status', 'public.transfer_status'],
+    ['sent_at', 'timestamptz'],
+    ['sent_on', 'date'],
+    ['received_at', 'timestamptz'],
+    ['received_on', 'date'],
+  ] as ColSpec,
+  transfer_lines: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['transfer_id', 'uuid'],
+    ['ingredient_id', 'uuid'],
+    ['qty_base_sent', 'numeric'],
+    ['qty_base_received', 'numeric'],
+  ] as ColSpec,
 };
+
+const TABLES = [
+  'shifts',
+  'cash_counts',
+  'orders',
+  'order_items',
+  'order_events',
+  'payments',
+  'discounts',
+  'voids',
+  'purchases',
+  'purchase_lines',
+  'stock_counts',
+  'stock_count_lines',
+  'waste_logs',
+  'transfers',
+  'transfer_lines',
+] as const satisfies readonly (keyof DayRows)[];
 
 /** Rows for several days, flushed together in foreign-key order. */
 export class DayBuffer {
-  private rows: DayRows = {
-    shifts: [],
-    cash_counts: [],
-    orders: [],
-    order_items: [],
-    order_events: [],
-    payments: [],
-    discounts: [],
-    voids: [],
-  };
+  private rows: DayRows = emptyDayRows();
   private count = 0;
 
   push(day: DayRows): void {
@@ -174,16 +254,7 @@ export class DayBuffer {
   }
 
   async flush(client: pg.PoolClient): Promise<void> {
-    for (const table of [
-      'shifts',
-      'cash_counts',
-      'orders',
-      'order_items',
-      'order_events',
-      'payments',
-      'discounts',
-      'voids',
-    ] as const) {
+    for (const table of TABLES) {
       await insertRows(client, table, SPEC[table], this.rows[table]);
       this.rows[table] = [];
     }
@@ -322,6 +393,13 @@ export async function loadStatic(client: pg.PoolClient, org: OrgCfg): Promise<vo
     );
   }
   await loadCosting(client, org);
+  for (const name of INVENTORY[org.key]?.suppliers ?? []) {
+    await client.query(`insert into public.suppliers (id, org_id, name) values ($1, $2, $3)`, [
+      invIds.supplier(org, name),
+      orgId,
+      name,
+    ]);
+  }
   for (const c of CALENDAR) {
     await client.query(
       `insert into public.calendar_events (org_id, name, kind, starts_on, ends_on, source) values ($1, $2, $3, $4, $5, 'seed estimate — TODO(verify)')`,
@@ -340,10 +418,20 @@ async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
   const orgId = ids.org(org);
   const owner = org.users.find((u) => u.role === 'owner')!;
   const ingId = (key: string) => detId('ingredient', org.key, key);
+  const supply = INVENTORY[org.key]?.supply ?? {};
   for (const i of costing.ingredients) {
+    // Fresh goods bought every morning: a day's stock is healthy (Phase 5 days-of-cover bands).
+    const daily = supply[i.key]?.daily ?? false;
     await client.query(
-      `insert into public.ingredients (id, org_id, name, base) values ($1, $2, $3, $4)`,
-      [ingId(i.key), orgId, i.name, i.base],
+      `insert into public.ingredients (id, org_id, name, base, cover_green_days, cover_red_days) values ($1, $2, $3, $4, $5, $6)`,
+      [
+        ingId(i.key),
+        orgId,
+        i.name,
+        i.base,
+        daily ? DAILY_COVER.green : null,
+        daily ? DAILY_COVER.red : null,
+      ],
     );
     const history = [
       { from: FIRST_DATE, price: i.poishaPerBase },

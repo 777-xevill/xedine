@@ -11,7 +11,7 @@ Founder: solo developer (Xevill). You are the senior engineer.
 - Phases, acceptance criteria, test oracle: docs/ROADMAP.md
 - Tables: docs/DATA-MODEL.md · Decisions: docs/decisions/ · Visual rules: docs/BRAND.md
 
-**Decisions already made (read before planning):** ADR 0001 stack & versions · 0002 repo/environments · 0003 auth · 0004 jobs · 0005 VAT & price basis · 0006 test-oracle clock & P0 scope · 0007 money visibility by role · 0008 provisional pricing · 0009 brand tokens · 0010 external approvals · 0011 verification without Docker · 0012 Phase 0 design decisions · 0013 POS device auth · 0014 single-use manager approvals · 0015 Phase 2 metrics & detectors · 0016 Phase 3 costing & LLM gateway · 0017 Phase 4 assistant & WhatsApp.
+**Decisions already made (read before planning):** ADR 0001 stack & versions · 0002 repo/environments · 0003 auth · 0004 jobs · 0005 VAT & price basis · 0006 test-oracle clock & P0 scope · 0007 money visibility by role · 0008 provisional pricing · 0009 brand tokens · 0010 external approvals · 0011 verification without Docker · 0012 Phase 0 design decisions · 0013 POS device auth · 0014 single-use manager approvals · 0015 Phase 2 metrics & detectors · 0016 Phase 3 costing & LLM gateway · 0017 Phase 4 assistant & WhatsApp · 0018 Phase 5 purchasing, inventory & waste.
 
 ## Non-negotiables
 1. **Numbers are deterministic.** Every figure shown to a user comes from a metric function defined in docs/METRICS.md (SQL/TS). LLMs never calculate, estimate, or invent numbers; they explain, route, and draft. Any LLM text containing numbers must pass the numeric-consistency validator (every number appears in the tool results) or it is rejected.
@@ -47,7 +47,7 @@ Domain logic lives in `src/modules/*` (server-only files import `server-only`). 
 - dev: `pnpm dev` · typecheck: `pnpm typecheck` · lint: `pnpm lint` · format: `pnpm format` / `pnpm format:check` · unit: `pnpm unit`
 - db start/stop: `pnpm db:start` / `pnpm db:stop` (needs Docker — see ADR 0011) · db reset + seed: `pnpm db:reset:seed`
 - db tests (structure, RLS isolation for every table, tenancy, money visibility, PINs, audit, time, jobs): `pnpm db:test` (real Supabase; needs Docker) · **no Docker:** `pnpm db:test:embedded` (same suite on an in-process Postgres, ~25s — an emulation, CI is the authority)
-- Phase 2 golden checks against the seeded year (CI): `pnpm metrics:validate`
+- Golden checks against the seeded year (CI): `pnpm metrics:validate` (`SEED_PHASE=5` adds the stock ledger)
 - seed only: `pnpm db:seed` · regenerate the manifest without a DB: `pnpm manifest:build` · validate it against the DB: `pnpm manifest:validate` (`SEED_PHASE=n`)
 - regenerate docs/DATA-MODEL.md from the live schema: `pnpm db:docs` (CI fails if it is stale) · TS types from the schema: `pnpm db:types`
 - e2e: `pnpm build && pnpm e2e` (needs a running Supabase and `.env.local`) · ai evals: `pnpm ai:evals` (Phase 3–4)

@@ -4,6 +4,7 @@ import { ANCHOR_DATE, CUTOFF_MINUTES, DEMO_CAFE, FROZEN_NOW, KACCHI_HOUSE, ORGS 
 import { allDates, generateDay, type DayRows } from './generate';
 import { Inventory, S6, S7, S8, S9 } from './inventory';
 import { Ledger } from './ledger';
+import { Retention } from './retention';
 import { Seasonal } from './seasonal';
 import { ManifestSchema, type Manifest } from './manifest';
 
@@ -121,6 +122,7 @@ describe('generator: the planted scenarios and the clean control', () => {
     const ledger = new Ledger();
     const inventory = new Inventory();
     const seasonal = new Seasonal();
+    const retention = new Retention();
     for (const org of ORGS) {
       for (const date of allDates()) {
         for (const b of org.branches) {
@@ -128,10 +130,11 @@ describe('generator: the planted scenarios and the clean control', () => {
           ledger.add(org, b.key, rows);
           inventory.day(org, b, date, rows);
           seasonal.add(org, date, rows);
+          retention.add(org, b, date, rows);
         }
       }
     }
-    manifest = ledger.manifest(inventory, seasonal);
+    manifest = ledger.manifest(inventory, seasonal, retention);
   }, 120_000);
 
   it('Phase 3 plants hold: combo loses on foodpanda, the spike pushes Tehari over target, a Dog and a Puzzle', () => {
@@ -199,6 +202,20 @@ describe('generator: the planted scenarios and the clean control', () => {
     expect(d('mirpur')['2026-09-17']).toBe(100);
     expect(d('uttara')['2026-09-13']).toBe(75);
     expect(Object.values(d('dhanmondi')).every((s) => s === 100)).toBe(true);
+  });
+
+  it('Phase 8 plants: Friday nights at Dhanmondi are twice as slow; Uttara loses its regulars', () => {
+    const s11 = manifest.scenarios.find((s) => s.id === 'S11')!.facts as Record<string, number>;
+    expect(s11.orders).toBeGreaterThan(60);
+    expect(s11.median_seconds! / s11.branch_median_seconds!).toBeGreaterThan(1.7);
+    expect(s11.feedback_slow).toBeGreaterThan(0);
+    const s12 = manifest.scenarios.find((s) => s.id === 'S12')!.facts as {
+      branches: Record<string, { regulars: number; lapsed: number }>;
+    };
+    const rate = (b: string) => s12.branches[b]!.lapsed / s12.branches[b]!.regulars;
+    expect(s12.branches.uttara!.regulars).toBeGreaterThan(20);
+    expect(rate('uttara')).toBeGreaterThan(0.5);
+    for (const b of ['dhanmondi', 'mirpur']) expect(rate(b)).toBeLessThan(0.2);
   });
 
   it('the manifest satisfies its own schema', () => {

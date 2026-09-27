@@ -226,6 +226,24 @@ export function explainFinding(f: FindingData, t: Translate, locale: Locale): st
         days: Number(e.lines_flagged ?? 0),
         overpay: pct(e.overpay_bps),
       });
+    case 'service.slow_slot':
+      return t('explain.slowSlot', {
+        ...common,
+        day: t(`weekdays.${Number(f.subject.weekday ?? 0)}`),
+        fromHour: Number(f.subject.from_hour ?? 0),
+        toHour: Number(f.subject.to_hour ?? 0),
+        orders: Number(e.orders ?? 0),
+        minutes: Math.round(Number(e.median_seconds ?? 0) / 60),
+        usual: Math.round(Number(e.branch_median_seconds ?? 0) / 60),
+      });
+    case 'customers.lapse':
+      return t('explain.lapse', {
+        ...common,
+        lapsed: Number(e.lapsed ?? 0),
+        regulars: Number(e.regulars ?? 0),
+        rate: pct(e.rate_bps),
+        peer: pct(e.peer_rate_bps),
+      });
     case 'transfer.unconfirmed':
       return t('explain.unconfirmed', {
         ...common,

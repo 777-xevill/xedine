@@ -25,6 +25,7 @@ import {
 import { SEED } from './rng';
 import { BEEF_SPIKE_FROM, BEEF_SPIKE_TO, COSTING, unitCostOn } from './costing';
 import type { Inventory } from './inventory';
+import type { Retention } from './retention';
 import type { Seasonal } from './seasonal';
 
 interface CostAcc {
@@ -216,7 +217,7 @@ export class Ledger {
     }
   }
 
-  manifest(inventory: Inventory, seasonal: Seasonal): Manifest {
+  manifest(inventory: Inventory, seasonal: Seasonal, retention: Retention): Manifest {
     const orgs: Manifest['orgs'] = {};
     for (const org of ORGS) {
       const total = emptyTotals();
@@ -260,6 +261,7 @@ export class Ledger {
         ...this.plantedScenarios(),
         ...inventory.scenarios(ORGS),
         seasonal.scenario(ORGS),
+        ...retention.scenarios(),
         ...PENDING_SCENARIOS,
       ],
       inventory: inventory.facts(ORGS),

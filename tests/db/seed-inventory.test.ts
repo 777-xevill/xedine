@@ -182,6 +182,34 @@ describe('seed stock ledger matches the database’s stock maths', () => {
         const others = found.filter((f) => ![s6, s7, s8, s9].includes(f));
         expect(others.map((f) => f.type)).toEqual(['transfer.unconfirmed']);
         expect(await detect(cafe)).toEqual([]);
+
+        // Phase 8 (S11): Friday nights at Dhanmondi are a slow slot; nothing else is, and the café is quiet.
+        const s11 = manifest.scenarios.find((x) => x.id === 'S11')!.facts as Record<
+          string,
+          number | string
+        >;
+        const service = async (o: typeof kacchi) =>
+          (
+            await client.query(
+              `select branch_id, subject, impact_poisha, evidence from private.detect_all($1, $2::date, $3::date, array['service'])`,
+              [ids.org(o), s11.period_from, s11.period_to],
+            )
+          ).rows as {
+            branch_id: string;
+            subject: Record<string, number>;
+            impact_poisha: string;
+            evidence: Record<string, number>;
+          }[];
+        const slow = await service(kacchi);
+        expect(slow.map((x) => [x.branch_id, x.subject.weekday, x.subject.from_hour])).toEqual([
+          [branchId('dhanmondi'), 5, 20],
+        ]);
+        within('S11', Number(s11.net_poisha), n(slow[0]!.impact_poisha));
+        expect(slow[0]!.evidence).toMatchObject({
+          orders: s11.orders,
+          median_seconds: s11.median_seconds,
+        });
+        expect(await service(cafe)).toEqual([]);
       } finally {
         await client.query('rollback');
         client.release();

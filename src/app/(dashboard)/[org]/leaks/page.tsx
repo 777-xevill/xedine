@@ -41,9 +41,10 @@ export default async function LeaksPage({
   const canSeeMoney = ctx.roles.includes('owner') || ctx.roles.includes('accountant');
   if (!canSeeMoney) notFound();
 
-  const [t, tu, locale] = await Promise.all([
+  const [t, tu, tw, locale] = await Promise.all([
     getTranslations('leaks'),
     getTranslations('units'),
+    getTranslations('weekdays'),
     getLocale(),
   ]);
   const loc = locale as Locale;
@@ -190,6 +191,50 @@ export default async function LeaksPage({
             paid: money(Number(e.paid_poisha ?? 0)),
           }),
         ];
+      case 'service.slow_slot':
+        return [
+          t('evidence.slowSlot', {
+            day: tw(String(Number(f.subject.weekday ?? 0))),
+            from: count(f.subject.from_hour),
+            to: count(f.subject.to_hour),
+            orders: count(e.orders),
+            minutes: count(Math.round(Number(e.median_seconds ?? 0) / 60)),
+            usual: count(Math.round(Number(e.branch_median_seconds ?? 0) / 60)),
+          }),
+          ...(Number(e.feedback_slow ?? 0) + Number(e.reviews_slow ?? 0) > 0
+            ? [
+                t('evidence.slowComplaints', {
+                  count: Number(e.feedback_slow ?? 0) + Number(e.reviews_slow ?? 0),
+                }),
+              ]
+            : []),
+        ];
+      case 'customers.lapse': {
+        const changes =
+          (e.price_changes as
+            { item: string; old_poisha: number; new_poisha: number; date: string }[] | undefined) ??
+          [];
+        return [
+          t('evidence.lapse', {
+            lapsed: count(e.lapsed),
+            regulars: count(e.regulars),
+            rate: formatBps(Number(e.rate_bps ?? 0), loc),
+            peer: formatBps(Number(e.peer_rate_bps ?? 0), loc),
+          }),
+          ...(changes.length > 0
+            ? [
+                t('evidence.priceChanges', {
+                  changes: changes
+                    .map(
+                      (c) =>
+                        `${c.item} ${money(c.old_poisha)} → ${money(c.new_poisha)} (${c.date})`,
+                    )
+                    .join(', '),
+                }),
+              ]
+            : []),
+        ];
+      }
       case 'transfer.unconfirmed':
       case 'transfer.disputed':
         return [

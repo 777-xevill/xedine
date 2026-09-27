@@ -145,19 +145,5 @@ export function excessOverBaseline(
   return Math.round(value - (peerValue / peerOrders) * orders);
 }
 
-export const PENDING_SCENARIOS: Scenario[] = [
-  {
-    id: 'S11',
-    title: 'Dhanmondi Friday 20:00–22:00 ticket times double; "slow" complaints',
-    status: 'pending',
-    available_from_phase: 8,
-    detected_in_phase: 8,
-  },
-  {
-    id: 'S12',
-    title: 'Uttara regulars lapse after a price increase',
-    status: 'pending',
-    available_from_phase: 8,
-    detected_in_phase: 8,
-  },
-];
+/** Every scenario is planted since Phase 8; kept for scenarios later phases may add. */
+export const PENDING_SCENARIOS: Scenario[] = [];

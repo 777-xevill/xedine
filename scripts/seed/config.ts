@@ -412,3 +412,33 @@ export const RATES = {
   discountMissingReason: 0.1,
   s2DiscountMissingReason: 0.4,
 } as const;
+
+/**
+ * S12 (Phase 8): Uttara raises its kacchi prices on 1 July; from then its regulars stop coming
+ * (customers.ts). Orders at Uttara charge the new price from that day.
+ */
+export const BRANCH_PRICE_CHANGES = [
+  {
+    org: 'demo_kacchi_house',
+    branch: 'uttara',
+    item: 'kacchi_mutton',
+    from: '2026-07-01',
+    pricePoisha: tk(470),
+  },
+  {
+    org: 'demo_kacchi_house',
+    branch: 'uttara',
+    item: 'kacchi_half',
+    from: '2026-07-01',
+    pricePoisha: tk(290),
+  },
+] as const;
+
+/** The printed price of an item at a branch on a business day. */
+export function priceOf(org: OrgCfg, b: BranchCfg, item: MenuItemCfg, date: string): number {
+  let price = item.pricePoisha;
+  for (const c of BRANCH_PRICE_CHANGES)
+    if (c.org === org.key && c.branch === b.key && c.item === item.key && c.from <= date)
+      price = c.pricePoisha;
+  return price;
+}

@@ -59,7 +59,9 @@
     "wasteInvalid": "Pick what was wasted, how much, and why.",
     "transferInvalid": "Pick another branch and at least one ingredient to send.",
     "referenceCsvInvalid": "No usable rows. Use: ingredient, taka, per (kg / litre / piece / dozen), date (YYYY-MM-DD), source.",
-    "calendarInvalid": "Give the day a name, a kind, and an end date on or after the start."
+    "calendarInvalid": "Give the day a name, a kind, and an end date on or after the start.",
+    "campaignInvalid": "Give the campaign a name and a message in Bangla or English.",
+    "reviewInvalid": "Pick the source, stars and date, and paste the review text."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -117,7 +119,10 @@
     "assistant": "Assistant",
     "stock": "Stock",
     "purchases": "Purchases",
-    "plan": "Plan"
+    "plan": "Plan",
+    "customers": "Customers",
+    "campaigns": "Campaigns",
+    "reviews": "Reviews"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -562,7 +567,9 @@
       "transfer_suspected": "Goods moved without a transfer",
       "price_drift": "Paid above the market",
       "transfer_unconfirmed": "Transfer not confirmed",
-      "transfer_disputed": "Transfer arrived short"
+      "transfer_disputed": "Transfer arrived short",
+      "service_slow_slot": "Slow service at a busy time",
+      "customers_lapse": "Regular customers stopped coming"
     },
     "insightsTitle": "Today's insights",
     "habitsTitle": "Today's habits",
@@ -647,7 +654,9 @@
       "transfer_suspected": "Goods moved without a transfer",
       "price_drift": "Paid above the market",
       "transfer_unconfirmed": "Transfer not confirmed",
-      "transfer_disputed": "Transfer arrived short"
+      "transfer_disputed": "Transfer arrived short",
+      "service_slow_slot": "Slow service at a busy time",
+      "customers_lapse": "Regular customers stopped coming"
     },
     "period": "{from} – {to}",
     "impactLabel": {
@@ -663,7 +672,9 @@
       "transfer_suspected": "Goods moved (estimate)",
       "price_drift": "Paid above the market",
       "transfer_unconfirmed": "Value on the way",
-      "transfer_disputed": "Value missing"
+      "transfer_disputed": "Value missing",
+      "service_slow_slot": "Sales in the slow slot",
+      "customers_lapse": "Usual spend of lapsed regulars"
     },
     "confidence": {
       "low": "Low confidence",
@@ -694,7 +705,11 @@
       "transferSuspected": "This branch used {over} more than it should, while {toBranch} used {under} less ({match}% match) — goods probably moved without a transfer.",
       "priceDrift": "Paid above both the usual price and the market on {days} day(s): {overpay} over, {paid} spent.",
       "transferUnconfirmed": "Sent by {from} on {date}; nobody here has confirmed receiving it.",
-      "transferDisputed": "Sent by {from} on {date}; less arrived than was sent."
+      "transferDisputed": "Sent by {from} on {date}; less arrived than was sent.",
+      "slowSlot": "{day}, {from}:00–{to}:00: {orders} orders took a median of {minutes} min to serve; the usual is {usual} min.",
+      "slowComplaints": "{count, plural, one {# customer comment} other {# customer comments}} in this slot mention slow service.",
+      "lapse": "{lapsed} of {regulars} regulars have not come back ({rate}; other branches {peer}).",
+      "priceChanges": "Price rises before this: {changes}."
     },
     "seeEvidence": "See every row behind this",
     "metricRefs": "Metrics: {refs}",
@@ -730,7 +745,13 @@
       "set_price_limits": "Agree price limits with the purchaser",
       "confirm_receipt": "Confirm what arrived on the Stock page",
       "call_sending_branch": "Call the sending branch",
-      "check_transport": "Check how goods are carried between branches"
+      "check_transport": "Check how goods are carried between branches",
+      "add_kitchen_staff_at_peak": "Put one more cook or runner on this slot.",
+      "prep_before_rush": "Prep the top dishes before the rush starts.",
+      "check_station_bottleneck": "Watch the kitchen screen in this slot to see which station holds tickets up.",
+      "win_back_campaign": "Send a win-back message to these regulars (with their consent).",
+      "review_price_change": "Look again at the recent price rise at this branch.",
+      "call_regulars": "Ask the manager to call a few of these regulars and ask why."
     },
     "ownerNote": "Your note: {note}",
     "acknowledge": "I'm looking into it",
@@ -1001,7 +1022,9 @@
       "transfer": "{ingredient}, {from} to {to}: {branch} used {over} more than its recipes explain, while {toBranch} used {under} less. About {qty} seems to have moved from {branch} to {toBranch} without a transfer, worth {impact}. Record transfers whenever goods move.",
       "price": "{branch} paid more than the market for {ingredient} on {days} day(s) between {from} and {to} — {overpay} over, {impact} in total. Compare suppliers and ask for written receipts.",
       "unconfirmed": "{fromBranch} sent goods to {branch} on {date} and nobody has confirmed receiving them (worth {impact}). Confirm it on the Stock page.",
-      "generic": "{type} at {branch}, {from} to {to}: {impact}. Open Leaks to see the evidence."
+      "generic": "{type} at {branch}, {from} to {to}: {impact}. Open Leaks to see the evidence.",
+      "slowSlot": "{branch}: on {day}s between {fromHour}:00 and {toHour}:00, {orders} orders took a median of {minutes} minutes, against {usual} minutes at other times ({from} to {to}). About {impact} of sales happened in that slot. Add a cook at the peak, prep before the rush, or find which station is the bottleneck.",
+      "lapse": "{branch}: {lapsed} of {regulars} regular customers did not come back between {from} and {to} ({rate}, against {peer} at the other branches). They usually spend about {impact} in a period like this. Check any recent price change, then consider a win-back campaign."
     },
     "findingTypes": {
       "void_after_kot": "Voids after the kitchen ticket",
@@ -1016,13 +1039,24 @@
       "transfer_suspected": "Goods moved without a transfer",
       "price_drift": "Paid above the market",
       "transfer_unconfirmed": "Transfer not confirmed",
-      "transfer_disputed": "Transfer arrived short"
+      "transfer_disputed": "Transfer arrived short",
+      "service_slow_slot": "Slow service at a busy time",
+      "customers_lapse": "Regular customers stopped coming"
     },
     "forecastNone": "No forecast for {date} yet — there is not enough sales history.",
     "forecastTitle": "Expected for {date}:",
     "forecastLine": "• {item}: about {qty}",
     "forecastModel": "(Forecast from the last four weeks, adjusted for the calendar.)",
-    "forecastNaive": "(Same weekday last week — the model is not yet more accurate than that.)"
+    "forecastNaive": "(Same weekday last week — the model is not yet more accurate than that.)",
+    "weekdays": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday"
+    }
   },
   "assistantPage": {
     "title": "Assistant",
@@ -1380,5 +1414,160 @@
     "add": "Add",
     "upcoming": "Coming up",
     "recent": "Recent"
+  },
+  "customers": {
+    "title": "Customers",
+    "subtitle": "Who comes back, who is slipping away, and how fast they are served.",
+    "sections": "Customer sections",
+    "tabs": {
+      "people": "People",
+      "service": "Service speed"
+    },
+    "identified": "Orders with a phone number",
+    "return30": "First-timers back in 30 days",
+    "return60": "First-timers back in 60 days",
+    "atRisk": "Regulars at risk",
+    "summaryHint": "Based on {firstTimers} first-time customers. Only orders with a phone number count.",
+    "listTitle": "Customer list",
+    "segment": "Segment",
+    "all": "All",
+    "segments": {
+      "regular": "Regulars",
+      "at_risk": "At risk",
+      "new": "New",
+      "returning": "Returning",
+      "lost": "Lost"
+    },
+    "none": "No customers yet",
+    "noneBody": "Customers appear when the cashier adds a phone number to an order.",
+    "phone": "Phone",
+    "visits": "Visits",
+    "lastVisit": "Last visit",
+    "spend90": "Spent (90 days)",
+    "rfm": "RFM",
+    "noConsent": "no messages",
+    "daysAgo": "{days, plural, one {# day ago} other {# days ago}}",
+    "segmentsHint": "Lost: no visit for 90 days. At risk: a repeat customer who has been away more than twice their usual gap (at least 30 days). Regular: 4 or more visits in 90 days. New: one visit so far. RFM scores recency, frequency and spend from 1 to 5.",
+    "branches": "Branches",
+    "serviceTitle": "Median minutes from order to served",
+    "serviceBody": "The usual time at this branch is {minutes} minutes. Slots in red are much slower with enough orders to be sure.",
+    "day": "Day",
+    "serviceHint": "Last 28 days. Times come from the kitchen screen (order placed to ticket done)."
+  },
+  "campaigns": {
+    "title": "Campaigns",
+    "subtitle": "Messages to customers who said yes — approved by you, capped, and measured against a holdout group.",
+    "newTitle": "New campaign",
+    "name": "Name",
+    "kind": "Kind",
+    "kinds": {
+      "win_back": "Win back",
+      "second_visit": "Second-visit nudge",
+      "thank_you": "Thank you",
+      "custom": "Custom"
+    },
+    "holdout": "Holdout %",
+    "audience": "Who",
+    "segments": {
+      "all": "Everyone",
+      "regular": "Regulars",
+      "at_risk": "At risk",
+      "new": "New",
+      "returning": "Returning",
+      "lost": "Lost"
+    },
+    "branch": "Branch",
+    "allBranches": "All branches",
+    "kindHint": "The holdout group gets nothing, so the result shows what the message really changed. Customers without consent, or messaged in the last 7 days, are skipped.",
+    "bodyBn": "Message (Bangla)",
+    "bodyEn": "Message (English)",
+    "bodyHint": "Customers get the message in their language. Reply STOP always opts out.",
+    "create": "Save draft",
+    "none": "No campaigns yet",
+    "noneBody": "Start with a win-back message for regulars who stopped coming.",
+    "holdoutShort": "{pct}% holdout",
+    "status": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "running": "Running",
+      "paused": "Paused",
+      "done": "Done"
+    },
+    "approve": "Approve",
+    "run": "Send now",
+    "autoOn": "Run automatically",
+    "autoOff": "Stop automatic runs",
+    "autoHint": "Runs every morning for new customers who match — still only those who consented.",
+    "resultsTitle": "Result",
+    "resultLine": "Messaged {treated} customers, {treatedRate} came back. Holdout {holdout}, {holdoutRate} came back.",
+    "lift": "Lift: {lift}",
+    "notEnough": "Not enough customers yet to say whether it worked (need 30 in each group).",
+    "created": "Draft saved. Approve it to send.",
+    "approved": "Approved.",
+    "ran": "Queued. Customers without consent or over the limit were skipped."
+  },
+  "reviews": {
+    "title": "Reviews",
+    "subtitle": "Every review and after-meal comment in one place, with what was happening that day.",
+    "ratingOf": "{source} ({n})",
+    "sources": {
+      "google": "Google",
+      "facebook": "Facebook",
+      "foodpanda": "foodpanda",
+      "feedback": "After-meal feedback",
+      "other": "Other"
+    },
+    "addTitle": "Add a review",
+    "source": "Source",
+    "stars": "Stars",
+    "branch": "Branch",
+    "allBranches": "Whole restaurant",
+    "date": "Date",
+    "author": "Name (optional)",
+    "text": "Review text",
+    "add": "Add review",
+    "googleNote": "Google reviews will come in by themselves once the Business Profile connection is approved; until then, paste them here.",
+    "feedbackTitle": "After-meal comments",
+    "noFeedback": "No comments yet",
+    "score": "{score}/10",
+    "themes": {
+      "slow_service": "Slow service",
+      "cold_food": "Cold food",
+      "taste": "Taste",
+      "salty": "Too salty",
+      "portion": "Portion size",
+      "price": "Price",
+      "staff": "Staff",
+      "cleanliness": "Cleanliness",
+      "wrong_order": "Wrong order",
+      "praise": "Praise"
+    },
+    "aiNotConfigured": "AI drafts are off until the Anthropic key is added. You can still write replies yourself.",
+    "none": "No reviews yet",
+    "starsOf": "{stars} stars",
+    "anonymous": "Anonymous",
+    "context": "That day ({date}): median serve time {ticket} min (usual {usual} min). On duty: {staff}. Dishes mentioned: {items}.",
+    "replyApproved": "Reply approved — post it on the platform",
+    "replyApprovedOk": "Approved. Copy it to the platform to post.",
+    "aiDraft": "AI Generated draft",
+    "reply": "Reply",
+    "approveReply": "Approve reply",
+    "drafted": "Draft saved.",
+    "draftWithAi": "Draft a reply with AI",
+    "writeOwn": "Or write your own",
+    "saveDraft": "Save draft"
+  },
+  "feedbackPage": {
+    "title": "How was your meal?",
+    "question": "How likely are you to recommend us to a friend? 0 is not at all, 10 is definitely.",
+    "low": "Not likely",
+    "high": "Very likely",
+    "comment": "Anything we should know? (optional)",
+    "send": "Send",
+    "privacy": "Your answer goes only to the restaurant. Reply STOP on WhatsApp to stop messages.",
+    "thanksTitle": "Thank you!",
+    "thanksBody": "The restaurant has your feedback.",
+    "expiredTitle": "This link has expired",
+    "expiredBody": "It was already used, or it is more than 14 days old."
   }
 }

@@ -242,3 +242,22 @@ Checklist:
   (64.5% vs 72.7% WAPE); in early Ramadan it does not, so the screen falls back to "same day last week".
 - Checks: typecheck, lint, 153 unit, 824 DB tests (embedded) — all green.
 - **Run by hand:** in Meta, create the `bazar_list` templates (names in the migration).
+
+---
+
+## Phase 8 — Customers, retention & reviews
+
+Checklist:
+- [x] 8.1 Migration: segments + RFM, consent, caps, opt-out, campaigns with holdout and lift, feedback tokens, themes, review replies, review context, slow-slot and lapse detectors
+- [x] 8.2 DB tests (hand-worked) + S11 on the seed + opt-in S12 check
+- [x] 8.3 Seed: customer pools with consent, identified orders, feedback, Uttara price rise; S11/S12 planted with facts; validators at SEED_PHASE=8
+- [x] 8.4 UI: /customers (people, service speed), /campaigns, /reviews, public /f/[token]; opt-out in the WhatsApp webhook; feedback + auto-campaign jobs; leak and assistant labels for the new findings
+- [x] 8.5 i18n, ADR 0021, ROADMAP, DATA-MODEL.md, commit, push
+
+### Phase 8 log
+- Migration `20261004000001_customers_reviews.sql`. ADR 0021 — **please confirm §3 (caps: 1 message per 7 days,
+  3 per 30), §4 (an approved campaign may run by itself each morning, off by default) and §6 (feedback links go only
+  to customers who agreed to WhatsApp messages).**
+- On the seed: S11 found at Dhanmondi, Friday 20:00–22:00 (124 orders, median 27 min vs 13 min usual); S12 found at
+  Uttara (50 of 74 regulars lapsed) with the exact impact in the manifest and the kacchi price rise as evidence.
+- **Run by hand:** in Meta, create the `campaign` and `feedback_request` templates (names in the migration).

@@ -714,6 +714,44 @@ try {
         );
         check(`S10.rain_days.${o.key}`, (f.rain_days as Record<string, number>)[o.key], n(r!.c));
       }
+    } else if (s.id === 'S11') {
+      const b = kacchi.branches.find((x) => x.key === s.branch)!;
+      const [r] = await q(
+        `select count(*) as n, coalesce(sum(net_poisha), 0) as net from public.orders
+          where org_id = $1 and branch_id = $2 and order_status = 'completed'
+            and business_date between $3::date and $4::date
+            and extract(dow from placed_at at time zone 'Asia/Dhaka') = $5
+            and extract(hour from placed_at at time zone 'Asia/Dhaka') between $6 and $6 + 1`,
+        [
+          ids.org(kacchi),
+          ids.branch(kacchi, b),
+          f.period_from,
+          f.period_to,
+          f.weekday,
+          f.from_hour,
+        ],
+      );
+      check('S11.orders', f.orders, n(r!.n));
+      check('S11.net_poisha', f.net_poisha, n(r!.net));
+    } else if (s.id === 'S12') {
+      const rows = await q<{ branch_id: string; regulars: string; lapsed: string }>(
+        `with before as (
+           select customer_id, min(branch_id::text) as branch_id, count(*) as visits from public.orders
+            where org_id = $1 and customer_id is not null and order_status = 'completed'
+              and business_date between $2::date - 90 and $2::date - 1
+            group by customer_id)
+         select b.branch_id, count(*) filter (where b.visits >= 4) as regulars,
+                count(*) filter (where b.visits >= 4 and not exists (
+                  select 1 from public.orders o where o.org_id = $1 and o.customer_id = b.customer_id
+                     and o.order_status = 'completed' and o.business_date between $2::date and $3::date)) as lapsed
+           from before b group by b.branch_id`,
+        [ids.org(kacchi), f.period_from, f.period_to],
+      );
+      const expected = f.branches as Record<string, { regulars: number; lapsed: number }>;
+      for (const b of kacchi.branches) {
+        const r = rows.find((x) => x.branch_id === ids.branch(kacchi, b));
+        check(`S12.${b.key}`, expected[b.key], { regulars: n(r?.regulars), lapsed: n(r?.lapsed) });
+      }
     } else if (s.id === 'S13') {
       const staff = await staffCounts(cafe, 'gulshan', ['tania', 'imran', 'meherun']);
       checkAll('S13', f, {

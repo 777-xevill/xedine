@@ -1,6 +1,7 @@
 /** Loads the generated dataset into Postgres. Superuser connection: this is seed data, not an app path. */
 import type pg from 'pg';
 import {
+  BRANCH_PRICE_CHANGES,
   CALENDAR,
   DEMO_PASSWORD,
   FIRST_DATE,
@@ -11,6 +12,7 @@ import {
 } from './config';
 import { emptyDayRows, ids, REASON_CODES, type DayRows, type Row } from './generate';
 import { BATCHES, COSTING } from './costing';
+import { customerRows } from './customers';
 import { rainDays } from './seasonal';
 import { DAILY_COVER, INVENTORY, invIds } from './inventory';
 import { detId } from './rng';
@@ -81,6 +83,7 @@ const SPEC = {
     ['channel_id', 'uuid'],
     ['shift_id', 'uuid'],
     ['staff_id', 'uuid'],
+    ['customer_id', 'uuid'],
     ['order_number', 'integer'],
     ['order_status', 'public.order_status'],
     ['payment_status', 'public.payment_status'],
@@ -149,6 +152,29 @@ const SPEC = {
     ['reason_code_id', 'uuid'],
     ['voided_by_staff_id', 'uuid'],
     ['voided_at', 'timestamptz'],
+  ] as ColSpec,
+  feedback: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['order_id', 'uuid'],
+    ['customer_id', 'uuid'],
+    ['token_hash', 'text'],
+    ['rating', 'smallint'],
+    ['comment', 'text'],
+    ['sent_at', 'timestamptz'],
+    ['submitted_at', 'timestamptz'],
+  ] as ColSpec,
+  reviews: [
+    ['id', 'uuid'],
+    ['org_id', 'uuid'],
+    ['branch_id', 'uuid'],
+    ['source', 'public.review_source'],
+    ['external_id', 'text'],
+    ['rating', 'numeric'],
+    ['body', 'text'],
+    ['author', 'text'],
+    ['reviewed_at', 'timestamptz'],
   ] as ColSpec,
   purchases: [
     ['id', 'uuid'],
@@ -231,6 +257,8 @@ const TABLES = [
   'payments',
   'discounts',
   'voids',
+  'feedback',
+  'reviews',
   'purchases',
   'purchase_lines',
   'stock_counts',
@@ -390,6 +418,55 @@ export async function loadStatic(client: pg.PoolClient, org: OrgCfg): Promise<vo
         m.nameBn ?? null,
         m.pricePoisha,
         m.isCombo ?? false,
+      ],
+    );
+  }
+  // Phase 8: every branch's customer pool and consent history, before any order refers to them.
+  const pool = customerRows(org);
+  await insertRows(
+    client,
+    'customers',
+    [
+      ['id', 'uuid'],
+      ['org_id', 'uuid'],
+      ['phone', 'text'],
+      ['first_seen_at', 'timestamptz'],
+    ],
+    pool.customers,
+  );
+  await insertRows(
+    client,
+    'consents',
+    [
+      ['id', 'uuid'],
+      ['org_id', 'uuid'],
+      ['customer_id', 'uuid'],
+      ['channel', 'public.consent_channel'],
+      ['purpose', 'public.consent_purpose'],
+      ['granted', 'boolean'],
+      ['source', 'text'],
+      ['recorded_at', 'timestamptz'],
+    ],
+    pool.consents,
+  );
+  // S12: the branch price rises (the current override, and the history the lapse detector cites).
+  for (const c of BRANCH_PRICE_CHANGES.filter((x) => x.org === org.key)) {
+    const b = org.branches.find((x) => x.key === c.branch)!;
+    const m = org.menu.find((x) => x.key === c.item)!;
+    await client.query(
+      `insert into public.branch_item_prices (org_id, branch_id, menu_item_id, price_poisha, has_price_override) values ($1, $2, $3, $4, true)`,
+      [orgId, ids.branch(org, b), ids.item(org, m), c.pricePoisha],
+    );
+    await client.query(
+      `insert into public.price_history (org_id, branch_id, menu_item_id, old_price_poisha, new_price_poisha, changed_at)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [
+        orgId,
+        ids.branch(org, b),
+        ids.item(org, m),
+        m.pricePoisha,
+        c.pricePoisha,
+        `${c.from}T10:00:00+06:00`,
       ],
     );
   }

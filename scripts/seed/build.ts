@@ -2,6 +2,7 @@ import { ORGS } from './config';
 import { allDates, generateDay, type DayRows } from './generate';
 import { Inventory } from './inventory';
 import { Ledger } from './ledger';
+import { Retention } from './retention';
 import { Seasonal } from './seasonal';
 import type { Manifest } from './manifest';
 
@@ -12,6 +13,7 @@ export async function runSeed(
   const ledger = new Ledger();
   const inventory = new Inventory();
   const seasonal = new Seasonal();
+  const retention = new Retention();
   for (const date of allDates()) {
     for (const org of ORGS) {
       for (const b of org.branches) {
@@ -19,11 +21,12 @@ export async function runSeed(
         ledger.add(org, b.key, rows);
         inventory.day(org, b, date, rows);
         seasonal.add(org, date, rows);
+        retention.add(org, b, date, rows);
         if (onDay) await onDay(org.key, b.key, date, rows);
       }
     }
   }
-  return ledger.manifest(inventory, seasonal);
+  return ledger.manifest(inventory, seasonal, retention);
 }
 
 export const MANIFEST_PATH = 'supabase/seed/manifest.json';

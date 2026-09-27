@@ -9,6 +9,7 @@ import {
   type MessagingTransport,
   type OutboundMessage,
   type OutboxStore,
+  isOptOut,
 } from './core';
 import { normalizeBdPhone } from './phone';
 
@@ -125,5 +126,14 @@ describe('Bangladeshi phone numbers', () => {
     ['01212345678', null],
   ])('%s → %s', (input, out) => {
     expect(normalizeBdPhone(input)).toBe(out);
+  });
+});
+
+describe('opt-out keywords', () => {
+  it('recognises STOP and its Bangla forms alone, not inside a sentence', () => {
+    for (const s of ['STOP', 'stop.', ' Unsubscribe ', 'opt out', 'বন্ধ', 'বাতিল।', 'Bondho'])
+      expect(isOptOut(s)).toBe(true);
+    for (const s of ['please stop the music', 'how many kacchi today?', ''])
+      expect(isOptOut(s)).toBe(false);
   });
 });

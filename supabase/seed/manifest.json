@@ -99,33 +99,33 @@
         "uttara": {
           "orders_completed": 22946,
           "orders_cancelled": 68,
-          "gross_poisha": 1179587196,
-          "discount_net_poisha": 3661687,
-          "net_poisha": 1175925509,
-          "vat_poisha": 58792741,
+          "gross_poisha": 1193394893,
+          "discount_net_poisha": 3708979,
+          "net_poisha": 1189685914,
+          "vat_poisha": 59480686,
           "service_charge_poisha": 0,
-          "total_poisha": 1234718250,
-          "payments_poisha": 1234718250,
+          "total_poisha": 1249166600,
+          "payments_poisha": 1249166600,
           "by_channel": {
             "dine_in": {
               "orders": 12512,
-              "net_poisha": 597480421
+              "net_poisha": 605265988
             },
             "foodpanda": {
               "orders": 3540,
-              "net_poisha": 250946448
+              "net_poisha": 252831933
             },
             "own_delivery": {
               "orders": 2357,
-              "net_poisha": 110079840
+              "net_poisha": 111526037
             },
             "pathao_food": {
               "orders": 1185,
-              "net_poisha": 55841490
+              "net_poisha": 56540827
             },
             "takeaway": {
               "orders": 3352,
-              "net_poisha": 161577310
+              "net_poisha": 163521129
             }
           },
           "item_qty": {
@@ -141,13 +141,13 @@
       "totals": {
         "orders_completed": 84225,
         "orders_cancelled": 330,
-        "gross_poisha": 4318422829,
-        "discount_net_poisha": 12838706,
-        "net_poisha": 4305584123,
-        "vat_poisha": 215266327,
+        "gross_poisha": 4332230526,
+        "discount_net_poisha": 12885998,
+        "net_poisha": 4319344528,
+        "vat_poisha": 215954272,
         "service_charge_poisha": 0,
-        "total_poisha": 4520850450,
-        "payments_poisha": 4520850450
+        "total_poisha": 4535298800,
+        "payments_poisha": 4535298800
       }
     },
     "demo_cafe": {
@@ -243,14 +243,14 @@
         "weekday": "thursday",
         "staff_orders": 891,
         "staff_discount_count": 76,
-        "staff_discount_poisha": 456350,
+        "staff_discount_poisha": 459700,
         "staff_discounts_without_reason": 36,
         "peer_orders": 22123,
         "peer_discount_count": 647,
-        "peer_discount_poisha": 3388400,
+        "peer_discount_poisha": 3434700,
         "peer_discounts_without_reason": 67,
         "discount_rate_ratio_x100": 292,
-        "excess_discount_poisha": 319883
+        "excess_discount_poisha": 321368
       }
     },
     {
@@ -283,8 +283,8 @@
           },
           "uttara": {
             "foodpanda_orders": 3540,
-            "foodpanda_net_poisha": 250946448,
-            "foodpanda_commission_poisha": 75283934,
+            "foodpanda_net_poisha": 252831933,
+            "foodpanda_commission_poisha": 75849580,
             "combo_units_via_foodpanda": 920,
             "combo_units_total": 1382
           }
@@ -628,16 +628,66 @@
     {
       "id": "S11",
       "title": "Dhanmondi Friday 20:00–22:00 ticket times double; \"slow\" complaints",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 8,
-      "detected_in_phase": 8
+      "detected_in_phase": 8,
+      "org": "demo_kacchi_house",
+      "branch": "dhanmondi",
+      "facts": {
+        "period_from": "2026-08-25",
+        "period_to": "2026-09-21",
+        "weekday": 5,
+        "from_hour": 20,
+        "orders": 124,
+        "net_poisha": 6103293,
+        "median_seconds": 1595,
+        "branch_median_seconds": 795,
+        "feedback_slow": 3,
+        "feedback_low": 6
+      },
+      "note": "Detected by service.slow_slot over the four weeks to the anchor; impact = the slot’s net sales."
     },
     {
       "id": "S12",
       "title": "Uttara regulars lapse after a price increase",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 8,
-      "detected_in_phase": 8
+      "detected_in_phase": 8,
+      "org": "demo_kacchi_house",
+      "branch": "uttara",
+      "facts": {
+        "period_from": "2026-07-28",
+        "period_to": "2026-09-21",
+        "lapse_from": "2026-07-01",
+        "price_changes": [
+          {
+            "item": "kacchi_mutton",
+            "from": "2026-07-01",
+            "price_poisha": 47000
+          },
+          {
+            "item": "kacchi_half",
+            "from": "2026-07-01",
+            "price_poisha": 29000
+          }
+        ],
+        "branches": {
+          "dhanmondi": {
+            "regulars": 81,
+            "lapsed": 9
+          },
+          "mirpur": {
+            "regulars": 70,
+            "lapsed": 6
+          },
+          "uttara": {
+            "regulars": 74,
+            "lapsed": 50
+          }
+        },
+        "impact_poisha": 13157844
+      },
+      "note": "Detected by customers.lapse over the eight weeks to the anchor, with the 1 July price change as evidence."
     }
   ],
   "inventory": {

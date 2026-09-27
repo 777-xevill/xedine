@@ -13,6 +13,8 @@ const PUBLIC_PREFIXES = [
   '/api/health',
   '/api/jobs',
   '/api/webhooks',
+  // The post-meal feedback page: a customer with a link, no account.
+  '/f/',
   '/t/',
 ];
 

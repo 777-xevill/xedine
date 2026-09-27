@@ -24,6 +24,7 @@ import {
   FIRST_DATE,
   FROZEN_NOW,
   PAYMENT_MIX,
+  priceOf,
   RATES,
   WEEKDAY_FACTOR,
   type BranchCfg,
@@ -33,6 +34,7 @@ import {
   type PaymentMethod,
   type StaffCfg,
 } from './config';
+import { customerFor, feedbackFor, inSlowSlot } from './customers';
 import { detId, makeRng, type Rng } from './rng';
 
 export type Row = Record<string, string | number | boolean | null>;
@@ -46,6 +48,9 @@ export interface DayRows {
   payments: Row[];
   discounts: Row[];
   voids: Row[];
+  // Phase 8: post-meal feedback and the reviews some of it becomes (scripts/seed/customers.ts).
+  feedback: Row[];
+  reviews: Row[];
   // Phase 5 stock ledger (scripts/seed/inventory.ts); generateDay leaves these empty.
   purchases: Row[];
   purchase_lines: Row[];
@@ -65,6 +70,8 @@ export const emptyDayRows = (): DayRows => ({
   payments: [],
   discounts: [],
   voids: [],
+  feedback: [],
+  reviews: [],
   purchases: [],
   purchase_lines: [],
   stock_counts: [],
@@ -297,27 +304,27 @@ export function generateDay(org: OrgCfg, b: BranchCfg, date: string): DayRows {
 
     const lines: BuiltLine[] = [...picked.values()].map((p, idx) => {
       const voided = idx === voidIndex;
-      const gross = p.item.pricePoisha * p.quantity;
+      const price = priceOf(org, b, p.item, date);
+      const gross = price * p.quantity;
       const discountPoisha = !voided && discountPct > 0 ? mulBps(gross, discountPct) : 0;
       return {
         item: p.item,
         quantity: p.quantity,
         voided,
-        amounts: computeLine(
-          { unitPricePoisha: p.item.pricePoisha, quantity: p.quantity, discountPoisha },
-          cfg,
-        ),
+        amounts: computeLine({ unitPricePoisha: price, quantity: p.quantity, discountPoisha }, cfg),
       };
     });
     const active = lines.filter((l) => !l.voided);
     const totals = sumLines(active.map((l) => l.amounts));
     const cancelled = active.length === 0;
     const kotMs = placedMs + 90_000;
-    const ticketMs = rng.int(8 * 60, 18 * 60) * 1000;
+    // S11: Dhanmondi's kitchen is twice as slow on Friday nights (drawn first, so the stream is unchanged).
+    const ticketMs = rng.int(8 * 60, 18 * 60) * 1000 * (inSlowSlot(org, b, placedMs) ? 2 : 1);
     const readyMs = kotMs + ticketMs;
     const paidMs = dineIn ? readyMs + rng.int(5, 15) * 60_000 : placedMs + 60_000;
     const guests = dineIn && rng.chance(0.5) ? rng.int(1, 6) : null;
     const shiftId = ids.shift(org, b, date, part);
+    const customerId = customerFor(org, b, date, orderNumber, channel);
 
     rows.orders.push({
       id: orderId,
@@ -326,6 +333,7 @@ export function generateDay(org: OrgCfg, b: BranchCfg, date: string): DayRows {
       channel_id: ids.channel(org, channel),
       shift_id: shiftId,
       staff_id: staffId,
+      customer_id: customerId,
       order_number: orderNumber,
       order_status: cancelled ? 'cancelled' : 'completed',
       payment_status: cancelled ? 'unpaid' : 'paid',
@@ -356,7 +364,7 @@ export function generateDay(org: OrgCfg, b: BranchCfg, date: string): DayRows {
         menu_item_id: ids.item(org, l.item),
         name_snapshot: l.item.name,
         quantity: l.quantity,
-        unit_price_poisha: l.item.pricePoisha,
+        unit_price_poisha: l.amounts.grossPoisha / l.quantity,
         gross_poisha: l.amounts.grossPoisha,
         discount_poisha: l.amounts.discountPoisha,
         net_before_discount_poisha: l.amounts.netBeforeDiscountPoisha,
@@ -444,6 +452,23 @@ export function generateDay(org: OrgCfg, b: BranchCfg, date: string): DayRows {
         });
         if (leg.method === 'cash') cashInShift[part] += leg.amount;
       });
+
+      // Phase 8: some identified dine-in guests answer the feedback link; a few also post a review.
+      if (dineIn && customerId) {
+        const fb = feedbackFor({
+          org,
+          b,
+          date,
+          orderNumber,
+          orderId,
+          customerId,
+          paidMs,
+          placedMs,
+          netPoisha: totals.netPoisha,
+        });
+        if (fb.feedback) rows.feedback.push(fb.feedback);
+        if (fb.review) rows.reviews.push(fb.review);
+      }
     }
   }
 

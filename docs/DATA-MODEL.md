@@ -115,7 +115,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (80)
+## RPC functions (92)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -127,7 +127,9 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `apply_order_discount` | `p_org uuid, p_branch uuid, p_order uuid, p_percent_bps integer, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `approve_action` | `p_device uuid, p_approver_staff uuid, p_pin text, p_action approval_action` |
 | `approve_bazar_list` | `p_list uuid, p_lines jsonb DEFAULT '[]'::jsonb` |
+| `approve_campaign` | `p_campaign uuid` |
 | `approve_recipe_draft` | `p_draft uuid, p_payload jsonb DEFAULT NULL::jsonb` |
+| `approve_review_reply` | `p_reply uuid, p_body text DEFAULT NULL::text` |
 | `attach_customer` | `p_org uuid, p_branch uuid, p_order uuid, p_phone text, p_name text, p_marketing_consent boolean, p_device uuid, p_staff uuid` |
 | `can_record_purchase` | `p_org uuid, p_branch uuid` |
 | `cancel_order` | `p_org uuid, p_branch uuid, p_order uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
@@ -146,6 +148,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `insight_action` | `p_insight uuid, p_action text, p_reason text DEFAULT NULL::text, p_until date DEFAULT NULL::date` |
 | `job_backfill_item_costs` | `p_org uuid, p_from date, p_to date` |
 | `job_close_business_day` | `p_org uuid, p_date date` |
+| `job_feedback_requests` | `p_org uuid, p_now timestamp with time zone` |
 | `job_health` | `` |
 | `job_refresh_insights` | `p_org uuid, p_date date` |
 | `job_run_begin` | `p_job text, p_org uuid, p_period text` |
@@ -153,7 +156,10 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `job_run_finish` | `p_run uuid, p_status job_status, p_error text DEFAULT NULL::text` |
 | `log_audit` | `p_org uuid, p_branch uuid, p_action text, p_entity text, p_entity_id text, p_before jsonb DEFAULT NULL::jsonb, p_after jsonb DEFAULT NULL::jsonb, p_reason text DEFAULT NULL::text, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
+| `metric_campaign_results` | `p_campaign uuid, p_now timestamp with time zone` |
 | `metric_commission` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_customer_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_customers` | `p_org uuid, p_branch uuid, p_now timestamp with time zone, p_segment text DEFAULT NULL::text, p_limit integer DEFAULT 100` |
 | `metric_discipline` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_flash_pnl` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_food_cost` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
@@ -163,9 +169,12 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_menu_matrix` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_pace` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_prep_plan` | `p_org uuid, p_branch uuid, p_date date, p_now timestamp with time zone` |
+| `metric_ratings` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_recipe_costs` | `p_org uuid, p_now timestamp with time zone` |
+| `metric_review_context` | `p_review uuid` |
 | `metric_sales` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_sales_split` | `p_org uuid, p_branch uuid, p_from date, p_to date, p_dimension text` |
+| `metric_service_slots` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_simulate_item` | `p_org uuid, p_item uuid, p_price bigint, p_portion_bps integer, p_now timestamp with time zone` |
 | `metric_staff_exceptions` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_stock_status` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
@@ -177,6 +186,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `receive_transfer` | `p_transfer uuid, p_lines jsonb DEFAULT '[]'::jsonb, p_note text DEFAULT NULL::text` |
 | `reconcile_bazar_list` | `p_list uuid` |
 | `record_ai_usage` | `p_org uuid, p_date date, p_model text, p_feature text, p_input bigint, p_output bigint, p_cache_read bigint, p_cache_write bigint, p_cost_usd_micros bigint` |
+| `record_opt_out` | `p_phone text` |
 | `record_payment` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reference text, p_idempotency_key text, p_device uuid, p_staff uuid` |
 | `record_purchase` | `p_org uuid, p_branch uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb, p_notes text DEFAULT NULL::text` |
 | `refund_order` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reason_code uuid, p_reason_note text, p_idempotency_key text, p_device uuid, p_staff uuid, p_approval uuid` |
@@ -184,6 +194,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `remove_membership` | `p_membership uuid` |
 | `revoke_device` | `p_device uuid` |
 | `revoke_invitation` | `p_invitation uuid` |
+| `run_campaign` | `p_campaign uuid, p_now timestamp with time zone` |
 | `save_count_line` | `p_count uuid, p_ingredient uuid, p_qty numeric, p_note text DEFAULT NULL::text` |
 | `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text` |
 | `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
@@ -195,6 +206,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `start_staff_session` | `p_device uuid, p_staff uuid, p_pin text` |
 | `start_stock_count` | `p_org uuid, p_branch uuid, p_kind stock_count_kind, p_date date DEFAULT NULL::date` |
 | `stock_count_sheet` | `p_count uuid` |
+| `submit_feedback` | `p_token text, p_rating integer, p_comment text, p_now timestamp with time zone` |
 | `submit_order` | `p_org uuid, p_branch uuid, p_order_id uuid, p_idempotency_key text, p_device uuid, p_staff uuid, p_channel uuid, p_table uuid DEFAULT NULL::uuid, p_guests integer DEFAULT NULL::integer, p_placed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_lines jsonb DEFAULT '[]'::jsonb, p_provisional_receipt_no text DEFAULT NULL::text` |
 | `submit_stock_count` | `p_count uuid` |
 | `transfer_destinations` | `p_org uuid` |

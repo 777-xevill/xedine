@@ -4,6 +4,7 @@ import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
 import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/time/business-date';
 import { queueBrief } from '@/modules/briefs/jobs/briefs';
+import { runAutoCampaigns, sendFeedbackRequests } from '@/modules/customers/jobs/retention';
 import { runOutbox } from '@/modules/messaging/jobs/outbox';
 
 /**
@@ -19,6 +20,7 @@ const KNOWN_JOBS = new Set([
   'morning_brief',
   'evening_close',
   'send_outbox',
+  'feedback_requests',
 ]);
 
 function authorized(request: NextRequest): boolean {
@@ -104,6 +106,8 @@ async function briefEveryOrg(supabase: Supabase, at: Date, kind: 'morning' | 'ev
         await queueBrief(supabase, org.id as string, 'morning', at);
         if (weekday(today) === (settings?.week_start ?? 6))
           await queueBrief(supabase, org.id as string, 'weekly', at);
+        // Campaigns the owner approved to run by themselves (Phase 8; off unless switched on).
+        await runAutoCampaigns(supabase, org.id as string, at);
       } else {
         await queueBrief(supabase, org.id as string, 'evening', at);
       }
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const period =
     job === 'refresh_today'
       ? at.toISOString().slice(0, 15)
-      : job === 'send_outbox'
+      : job === 'send_outbox' || job === 'feedback_requests'
         ? at.toISOString().slice(0, 16)
         : businessDate(at);
   const { data: runId, error } = await supabase.rpc('job_run_begin', {
@@ -144,6 +148,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!runId) return NextResponse.json({ status: 'already_ran', period });
 
   try {
+    if (job === 'feedback_requests') {
+      // Per org, idempotent in SQL (one link per order, one per customer per week): no per-org claim needed.
+      const { data: orgs, error: orgError } = await supabase.from('organizations').select('id');
+      if (orgError) throw orgError;
+      let queued = 0;
+      for (const org of orgs ?? [])
+        queued += await sendFeedbackRequests(supabase, org.id as string, at);
+      await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
+      return NextResponse.json({ period, queued });
+    }
     if (job === 'send_outbox') {
       const drained = await runOutbox();
       await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });

@@ -523,6 +523,63 @@ async function phase7() {
   );
 }
 
+/** Phase 8: S11 (a slow slot) and S12 (lapsed regulars) surface as findings within tolerance; the café stays quiet. */
+async function phase8() {
+  const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
+  const cafe = ORGS.find((o) => o.key === 'demo_cafe')!;
+  const pct = manifest.tolerances.finding_impact_pct;
+  const s = (id: string) =>
+    manifest.scenarios.find((x) => x.id === id)!.facts as Record<string, unknown>;
+  type F = {
+    type: string;
+    branch_id: string;
+    subject: Record<string, number>;
+    impact_poisha: string;
+    evidence: Record<string, unknown>;
+  };
+  const run = (o: OrgCfg, from: unknown, to: unknown, kind: string) =>
+    q<F>(
+      `select type, branch_id, subject, impact_poisha, evidence from private.detect_all($1, $2::date, $3::date, array[$4])`,
+      [orgId(o), from, to, kind],
+    );
+  const branch = (key: string) =>
+    ids.branch(
+      kacchi,
+      kacchi.branches.find((b) => b.key === key)!,
+    );
+  const s11 = s('S11');
+  const service = await run(kacchi, s11.period_from, s11.period_to, 'service');
+  const slot = service.find(
+    (f) =>
+      f.branch_id === branch('dhanmondi') &&
+      f.subject.weekday === s11.weekday &&
+      f.subject.from_hour === s11.from_hour,
+  );
+  if (!slot) failures.push('S11: no service.slow_slot finding for Dhanmondi Friday 20–22');
+  else expectWithin('S11.impact', n(s11.net_poisha), n(slot.impact_poisha), pct);
+  if (service.length > 1)
+    failures.push(`S11: ${service.length - 1} other slow-slot finding(s) on Kacchi House`);
+  const s12 = s('S12');
+  const lapse = await run(kacchi, s12.period_from, s12.period_to, 'customers');
+  const ut = lapse.find((f) => f.branch_id === branch('uttara'));
+  if (!ut) failures.push('S12: no customers.lapse finding for Uttara');
+  else {
+    expectWithin('S12.impact', n(s12.impact_poisha), n(ut.impact_poisha), pct);
+    if (((ut.evidence.price_changes as unknown[]) ?? []).length === 0)
+      failures.push('S12: the price change is missing from the evidence');
+  }
+  if (lapse.length > 1)
+    failures.push(`S12: lapse findings on other branches too (${lapse.length})`);
+  for (const [kind, from, to] of [
+    ['service', s11.period_from, s11.period_to],
+    ['customers', s12.period_from, s12.period_to],
+  ] as const) {
+    const quiet = await run(cafe, from, to, kind);
+    if (quiet.length > 0)
+      failures.push(`S13: ${quiet.length} ${kind} finding(s) on the clean café`);
+  }
+}
+
 function addDaysIso(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 }
@@ -565,6 +622,7 @@ try {
   if (Number(process.env.SEED_PHASE ?? 0) >= 5) await phase5();
   if (Number(process.env.SEED_PHASE ?? 0) >= 6) await phase6();
   if (Number(process.env.SEED_PHASE ?? 0) >= 7) await phase7();
+  if (Number(process.env.SEED_PHASE ?? 0) >= 8) await phase8();
   await dashboardLatency();
   for (const note of notes) console.log(`  · ${note}`);
   if (failures.length > 0) {

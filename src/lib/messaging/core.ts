@@ -139,3 +139,8 @@ export function whatsappTransport(cfg: {
     },
   };
 }
+
+/** An opt-out keyword alone in a message (STOP, UNSUBSCRIBE, OPT OUT, বন্ধ, বাতিল, bondho), any case. */
+export function isOptOut(text: string): boolean {
+  return /^\s*(stop|unsubscribe|opt[\s-]?out|বন্ধ|বাতিল|bondho)\s*[.!।]?\s*$/i.test(text);
+}

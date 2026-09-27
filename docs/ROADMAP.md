@@ -197,19 +197,20 @@ Status: ◐ **built; local checks green; full-seed checks written for CI** (2026
 - [x] Bazar list approve → send → purchase-entry reconciliation works end to end — `forecast.test.ts`
 
 ## Phase 8 — Customers, retention & reviews
-Status: ☐ · Size: 3 weeks
+Status: ◐ **built; local checks green; full-seed checks written for CI** (2026-10-04) · Size: 3 weeks
 **Goal:** win the second visit and turn complaints into fixes.
+**Evidence so far (local):** `tests/db/customers.test.ts` (12 hand-worked tests: segments and RFM, consent and opt-out, caps, holdout, lift sample rule, feedback token once-only, themes, reply approval, slow-slot and lapse detectors); `tests/db/seed-inventory.test.ts` finds S11 on the seed; `tests/db/seed-lapse.test.ts` (opt-in, XEDINE_SLOW=1) matches S12 exactly. Decisions in [ADR 0021](decisions/0021-phase-8-customers-retention-reviews.md). **Needs CI:** `metrics:validate` at SEED_PHASE=8.
 **Build**
-- [ ] Customer profiles, consent, visit history, RFM segments, at-risk list
-- [ ] Post-meal feedback link (0–10 + comment) via WhatsApp/SMS, linked to order and items
-- [ ] Automations: first-visit thank-you + second-visit nudge (48 h), win-back, frequency caps, opt-out keywords, holdout groups
-- [ ] Campaign builder (bn/en templates); results with lift vs holdout
-- [ ] Reviews: Google Business Profile import (once access is approved), paste-in for Facebook/foodpanda, themes, AI reply drafts (approve)
-- [ ] Reviews ↔ operations links (ticket times, staffing, items)
+- [x] Customer profiles, consent, visit history, RFM segments, at-risk list — `/[org]/customers`, `metric_customers`, `metric_customer_summary`
+- [x] Post-meal feedback link (0–10 + comment) via WhatsApp, linked to order and items — `job_feedback_requests`, `/f/[token]`, `submit_feedback`; **real sends wait for Meta template approval**
+- [x] Automations: first-visit thank-you + second-visit nudge (48 h), win-back, frequency caps, opt-out keywords, holdout groups — `run_campaign`, `auto_run`, `record_opt_out`
+- [x] Campaign builder (bn/en messages); results with lift vs holdout — `/[org]/campaigns`, `metric_campaign_results`
+- [~] Reviews: paste-in for Facebook/foodpanda/Google, themes, AI reply drafts (approve) — `/[org]/reviews`; **Google Business Profile import waits for API access (ADR 0010)**
+- [x] Reviews ↔ operations links (ticket times, staffing, items) — `metric_review_context`; service-speed grid on `/[org]/customers`
 **Done when**
-- [ ] Sends respect consent, caps and opt-outs (tests)
-- [ ] S11 and S12 surface as insights with evidence
-- [ ] Lift reported only with adequate sample sizes
+- [x] Sends respect consent, caps and opt-outs (tests) — `customers.test.ts`
+- [ ] S11 and S12 surface as insights with evidence — both found locally on the seed (S11 exact slot, S12 exact impact); **full seed in CI**
+- [x] Lift reported only with adequate sample sizes — ≥ 30 per group, enforced in SQL
 
 ## Phase 9 — Branch Intelligence & Industry Benchmarking
 Status: ☐ · Size: 2 weeks

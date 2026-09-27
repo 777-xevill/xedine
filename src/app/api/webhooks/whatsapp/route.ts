@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createTranslator } from 'next-intl';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServiceRoleClient } from '@/lib/db/service-role';
+import { isOptOut } from '@/lib/messaging/core';
 import { normalizeBdPhone } from '@/lib/messaging/phone';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
@@ -99,6 +100,11 @@ export async function POST(request: NextRequest) {
         )
         .select('id');
       if ((fresh ?? []).length === 0 || !phone || !question) continue;
+      // Opt-out keywords (Phase 8): refuse all further marketing and feedback messages to this number.
+      if (isOptOut(question)) {
+        await sb.rpc('record_opt_out', { p_phone: phone });
+        continue;
+      }
       const { data: profile } = await sb
         .from('org_profile')
         .select('org_id, brief_language, owner_whatsapp_opt_in_at')

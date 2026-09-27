@@ -164,7 +164,11 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
           </span>
         </p>
         <p className="text-xs text-muted">
-          {th('assumedCogs', { pct: formatBps(p.assumed_food_cost_bps, loc) })}
+          {p.cogs_basis === 'recipes'
+            ? th('recipeCogs')
+            : p.cogs_basis === 'mixed'
+              ? th('mixedCogs', { pct: formatBps(p.assumed_food_cost_bps, loc) })
+              : th('assumedCogs', { pct: formatBps(p.assumed_food_cost_bps, loc) })}
         </p>
       </div>
     ) : null;

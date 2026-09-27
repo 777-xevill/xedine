@@ -17,7 +17,9 @@ export type Intent =
   | { kind: 'item_qty'; item: MenuRef; window: Window }
   | { kind: 'ambiguous_item'; candidates: MenuRef[]; window: Window }
   | { kind: 'sales'; window: Window }
-  | { kind: 'top_items'; window: Window };
+  | { kind: 'top_items'; window: Window }
+  | { kind: 'finding'; findingId: string | null; rank: number; window: Window }
+  | { kind: 'stock_low'; window: Window };
 
 // Most specific first: "this week" before "week", "last 7 days" before "today".
 const WINDOWS: [Window, RegExp][] = [
@@ -41,6 +43,11 @@ const QUANTITY =
 const TOP =
   /\btop\b|best[\s-]?sell|most\s+sold|sold\s+most|beshi\s+bikri|sera|সবচেয়ে\s*বেশি|সেরা/i;
 const SALES = /\bsales?\b|revenue|turnover|\bbikri\b|বিক্রি|\btaka\b|টাকা/i;
+const FINDING_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
+const EXPLAIN_LEAK =
+  /(explain|why|biggest|top)\s.*\b(leak|finding|loss)|leak\s*#?\s*\d|(sobcheye|shobche)\s*boro\s*(leak|khoti)|সবচেয়ে\s*বড়\s*(লিক|ক্ষতি)|ক্ষতি(টা)?\s*কেন/i;
+const STOCK_LOW =
+  /running\s+low|low\s+stock|out\s+of\s+stock|stock\s+(status|level)|furi(ye|e)\s*(ashche|jacche)|stock\s+koto|ফুরিয়ে|স্টক\s*(কত|কম)/i;
 
 const tokens = (s: string) =>
   s
@@ -83,6 +90,14 @@ export function matchItem(question: string, menu: MenuRef[]): MenuRef | MenuRef[
 
 export function routeQuestion(question: string, menu: MenuRef[]): Intent | null {
   const window = detectWindow(question) ?? 'today';
+  const id = FINDING_ID.exec(question)?.[0] ?? null;
+  if (id || EXPLAIN_LEAK.test(question)) {
+    const rank = Number(
+      /#\s*(\d{1,2})|leak\s+(\d{1,2})/i.exec(question)?.slice(1).find(Boolean) ?? 1,
+    );
+    return { kind: 'finding', findingId: id, rank, window };
+  }
+  if (STOCK_LOW.test(question)) return { kind: 'stock_low', window };
   if (TOP.test(question)) return { kind: 'top_items', window };
   const item = matchItem(question, menu);
   if (item && (QUANTITY.test(question) || SALES.test(question) || detectWindow(question))) {

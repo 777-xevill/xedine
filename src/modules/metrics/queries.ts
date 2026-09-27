@@ -208,7 +208,8 @@ export interface FlashPnlRow {
   branch_id: string | null;
   net_poisha: number;
   cogs_poisha: number;
-  cogs_basis: 'assumed';
+  /** 'recipes' when every line sold has a recipe cost, 'mixed' when some do, else 'assumed'. */
+  cogs_basis: 'recipes' | 'mixed' | 'assumed';
   assumed_food_cost_bps: number;
   commission_poisha: number;
   labour_daily_poisha: number;
@@ -237,7 +238,7 @@ export async function flashPnl(
       branch_id: (r.branch_id as string | null) ?? null,
       net_poisha: num(r.net_poisha),
       cogs_poisha: num(r.cogs_poisha),
-      cogs_basis: 'assumed',
+      cogs_basis: (r.cogs_basis as FlashPnlRow['cogs_basis']) ?? 'assumed',
       assumed_food_cost_bps: num(r.assumed_food_cost_bps),
       commission_poisha: num(r.commission_poisha),
       labour_daily_poisha: num(r.labour_daily_poisha),
@@ -261,6 +262,7 @@ export interface FindingRow {
   status: 'new' | 'acknowledged' | 'snoozed' | 'resolved' | 'dismissed';
   reason: string | null;
   snoozed_until: string | null;
+  subject_key: string;
   subject: Record<string, unknown>;
   suggested_actions: string[];
   metric_refs: string[];
@@ -276,18 +278,19 @@ const CONFIDENCE_WEIGHT = { low: 0.4, medium: 0.7, high: 1 } as const;
  */
 export async function findings(
   orgId: string,
-  opts: { status?: 'open' | 'all'; limit?: number } = {},
+  opts: { status?: 'open' | 'resolved' | 'all'; limit?: number } = {},
 ): Promise<Metric<FindingRow>> {
   const supabase = await createClient();
   let query = supabase
     .from('findings')
     .select(
-      'id, branch_id, type, period_start, period_end, impact_poisha, confidence, status, reason, snoozed_until, subject, suggested_actions, metric_refs, novelty, finding_evidence(summary)',
+      'id, branch_id, type, period_start, period_end, impact_poisha, confidence, status, reason, snoozed_until, subject_key, subject, suggested_actions, metric_refs, novelty, finding_evidence(summary)',
     )
     .eq('org_id', orgId)
     .order('impact_poisha', { ascending: false })
     .limit(opts.limit ?? 100);
   if ((opts.status ?? 'open') === 'open') query = query.in('status', ['new', 'acknowledged']);
+  if (opts.status === 'resolved') query = query.eq('status', 'resolved');
   const { data, error } = await query;
   if (error) throw error;
   const rows: FindingRow[] = (data ?? []).map((r) => {
@@ -306,6 +309,7 @@ export async function findings(
       status: r.status as FindingRow['status'],
       reason: (r.reason as string | null) ?? null,
       snoozed_until: (r.snoozed_until as string | null) ?? null,
+      subject_key: (r.subject_key as string) ?? '',
       subject: (r.subject as Record<string, unknown>) ?? {},
       suggested_actions: (r.suggested_actions as string[]) ?? [],
       metric_refs: (r.metric_refs as string[]) ?? [],

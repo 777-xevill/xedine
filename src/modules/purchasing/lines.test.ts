@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   matchIngredient,
   parseQuantity,
+  parseReferenceCsv,
   parseUnit,
   reviewLines,
   splitQuantity,
@@ -122,5 +123,30 @@ describe('typed quantities', () => {
     expect(splitQuantity(750, 'ml')).toEqual({ value: 750, unit: 'ml' });
     expect(splitQuantity(-1200, 'g')).toEqual({ value: -1.2, unit: 'kg' });
     expect(splitQuantity(36, 'pcs')).toEqual({ value: 36, unit: 'pcs' });
+  });
+});
+
+describe('reference prices pasted as CSV', () => {
+  it('reads rows, skips the header, reports bad lines', () => {
+    const { rows, bad } = parseReferenceCsv(
+      'ingredient,taka,per,date,source\nBeef, 720, kg, 2026-09-20, TCB\nEgg\t156\tdozen\t2026-09-20\tKaptan\nMilk,90,litre,20-09-2026,x\n\n',
+    );
+    expect(rows).toEqual([
+      {
+        ingredient: 'Beef',
+        price_poisha: 72000,
+        per_base_qty: 1000,
+        observed_on: '2026-09-20',
+        source: 'TCB',
+      },
+      {
+        ingredient: 'Egg',
+        price_poisha: 15600,
+        per_base_qty: 12,
+        observed_on: '2026-09-20',
+        source: 'Kaptan',
+      },
+    ]);
+    expect(bad).toEqual([4]);
   });
 });

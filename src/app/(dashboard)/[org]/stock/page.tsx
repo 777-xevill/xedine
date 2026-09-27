@@ -31,6 +31,7 @@ import {
   stockStatus,
   stockVariance,
   varianceBand,
+  varianceBridge,
   wasteBoard,
   type CoverBand,
 } from '@/modules/inventory/queries';
@@ -288,6 +289,11 @@ export default async function StockPage({
                 : (dates.find((d) => d < to) ?? dates[1]!);
             const rows = await stockVariance(ctx.org.id, branch.id, from, to);
             const total = rows.reduce((s, r) => s + (r.variance_poisha ?? 0), 0);
+            const bridge = canSeeMoney
+              ? ((await varianceBridge(ctx.org.id, branch.id, from, to).catch(() => [])).find(
+                  (b) => b.branch_id === branch.id,
+                ) ?? null)
+              : null;
             return (
               <div className="space-y-6">
                 <Card className="p-4">
@@ -398,6 +404,53 @@ export default async function StockPage({
                   </div>
                   <Hint className="mt-3">{t('varianceHint')}</Hint>
                 </Card>
+                {bridge ? (
+                  <Card className="p-4 sm:p-6">
+                    <CardTitle>{t('bridgeTitle')}</CardTitle>
+                    <p className="-mt-2 mb-4 max-w-3xl text-sm text-secondary">{t('bridgeBody')}</p>
+                    <dl className="space-y-2 text-sm">
+                      {(
+                        [
+                          ['tfc', bridge.tfc_standard_poisha, false],
+                          ['waste', bridge.waste_poisha, true],
+                          ['price', bridge.price_effect_poisha, true],
+                          ['unexplained', bridge.unexplained_poisha, true],
+                        ] as const
+                      ).map(([k, v, signed]) => (
+                        <div
+                          key={k}
+                          className="glass-tile flex justify-between gap-2 rounded-input px-4 py-2.5"
+                        >
+                          <dt>{t(`bridge.${k}`)}</dt>
+                          <dd
+                            className={`font-semibold tabular-nums ${signed && v > 0 ? 'text-danger' : ''}`}
+                          >
+                            {signed && v > 0 ? '+' : ''}
+                            {formatBDT(v, loc)}
+                          </dd>
+                        </div>
+                      ))}
+                      <div className="flex justify-between gap-2 rounded-input border-t border-line px-4 pt-3">
+                        <dt className="font-bold">{t('bridge.actual')}</dt>
+                        <dd className="text-lg font-extrabold tabular-nums">
+                          {formatBDT(bridge.cogs_actual_poisha, loc)}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="mt-3 text-sm text-secondary">
+                      {t('bridgeFoot', {
+                        band: formatBDT(bridge.uncertainty_poisha, loc),
+                        pct:
+                          bridge.cogs_pct_of_sales_bps === null
+                            ? '—'
+                            : formatBps(bridge.cogs_pct_of_sales_bps, loc),
+                      })}
+                    </p>
+                    {bridge.uncosted_ingredients > 0 ? (
+                      <Hint>{t('bridgeUncosted', { count: bridge.uncosted_ingredients })}</Hint>
+                    ) : null}
+                  </Card>
+                ) : null}
               </div>
             );
           })()

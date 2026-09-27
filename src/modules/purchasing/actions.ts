@@ -9,6 +9,7 @@ import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { extractPurchase, PURCHASE_EXTRACT_PROMPT } from './extraction';
 import {
   parseQuantity,
+  parseReferenceCsv,
   reviewLines,
   toBase,
   type BaseUnit,
@@ -254,4 +255,29 @@ export async function addSupplierAction(_prev: FormState, formData: FormData): P
   if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
   refresh(parsed.data.orgSlug);
   return { ok: true };
+}
+
+/** Market reference prices pasted as CSV → Price Watch's market line for lone branches (owner). */
+export async function importReferencePricesAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ csv: z.string().max(100_000) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { rows, bad } = parseReferenceCsv(parsed.data.csv);
+  if (rows.length === 0) return { error: 'referenceCsvInvalid' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('import_reference_prices', {
+    p_org: parsed.data.orgId,
+    p_rows: rows,
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  const r = (data ?? {}) as { imported?: number; skipped?: number };
+  return {
+    ok: true,
+    data: { imported: String(r.imported ?? 0), skipped: String((r.skipped ?? 0) + bad.length) },
+  };
 }

@@ -5,9 +5,10 @@
  * (the whole year does not fit the embedded Postgres; CI's golden script checks the full seed too).
  */
 import { afterAll, describe, expect, it } from 'vitest';
+import { addDays } from '../../src/lib/time/business-date';
 import { runSeed } from '../../scripts/seed/build';
 import { ORGS } from '../../scripts/seed/config';
-import { ids } from '../../scripts/seed/generate';
+import { emptyDayRows, ids } from '../../scripts/seed/generate';
 import { invIds, PERIOD_FROM } from '../../scripts/seed/inventory';
 import { DayBuffer, loadStatic } from '../../scripts/seed/load';
 import type { Manifest } from '../../scripts/seed/manifest';
@@ -31,7 +32,16 @@ describe('seed stock ledger matches the database’s stock maths', () => {
         for (const org of ORGS) await loadStatic(client, org);
         const buffer = new DayBuffer();
         const manifest: Manifest = await runSeed(async (_org, _branch, date, rows) => {
-          if (date < PERIOD_FROM) return;
+          // Price Watch compares against the 28 days before the period: load those purchases too.
+          if (date < addDays(PERIOD_FROM, -28)) return;
+          if (date < PERIOD_FROM) {
+            buffer.push({
+              ...emptyDayRows(),
+              purchases: rows.purchases,
+              purchase_lines: rows.purchase_lines,
+            });
+            return;
+          }
           buffer.push(rows);
           if (buffer.size >= 3000) await buffer.flush(client);
         });
@@ -115,6 +125,63 @@ describe('seed stock ledger matches the database’s stock maths', () => {
           }
         }
         expect(checked).toBeGreaterThan(100);
+
+        // Phase 6: the leak detectors recover S6–S9 within the manifest's tolerance, and nothing else;
+        // the clean café stays quiet.
+        const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
+        const cafe = ORGS.find((o) => o.key === 'demo_cafe')!;
+        const period = [manifest.inventory.period.from, manifest.inventory.period.to];
+        const detect = async (orgKey: typeof kacchi) =>
+          (
+            await client.query(
+              `select type, branch_id, subject, impact_poisha from private.detect_all($1, $2::date, $3::date, array['stock', 'price', 'transfer'])`,
+              [ids.org(orgKey), ...period],
+            )
+          ).rows as {
+            type: string;
+            branch_id: string;
+            subject: Record<string, string>;
+            impact_poisha: string;
+          }[];
+        const found = await detect(kacchi);
+        const facts = (sid: string) =>
+          manifest.scenarios.find((s) => s.id === sid)!.facts as Record<string, number | string>;
+        const branchId = (key: string) =>
+          ids.branch(
+            kacchi,
+            kacchi.branches.find((b) => b.key === key)!,
+          );
+        const pct = manifest.tolerances.finding_impact_pct;
+        const within = (label: string, expected: number, actual: number) =>
+          expect(
+            Math.abs(actual - expected) * 100,
+            `${label}: ${actual} vs ${expected}`,
+          ).toBeLessThanOrEqual(expected * pct);
+        const pick = (type: string, branch: string, ing: string) =>
+          found.find(
+            (f) =>
+              f.type === type &&
+              f.branch_id === branchId(branch) &&
+              f.subject.ingredient_id === invIds.ingredient(kacchi, ing),
+          );
+        const s6 = pick('transfer.suspected', 'dhanmondi', 'chicken');
+        expect(s6?.subject.to_branch_id, 'S6 detected').toBe(branchId('mirpur'));
+        within('S6', Number(facts('S6').moved_value_poisha), n(s6!.impact_poisha));
+        const s7 = pick('usage.unexplained', 'mirpur', 'mutton');
+        within('S7', Number(facts('S7').extra_value_poisha), n(s7?.impact_poisha));
+        const s8 = pick('price.drift', 'dhanmondi', 'beef');
+        within('S8', Number(facts('S8').overpaid_poisha), n(s8?.impact_poisha));
+        const s9 = pick('usage.unexplained', 'uttara', 'rice');
+        within('S9', Number(facts('S9').wasted_value_poisha), n(s9?.impact_poisha));
+        console.info(
+          `Phase 6 recovered (detector vs planted, poisha): S6 ${n(s6?.impact_poisha)}/${facts('S6').moved_value_poisha}, ` +
+            `S7 ${n(s7?.impact_poisha)}/${facts('S7').extra_value_poisha}, S8 ${n(s8?.impact_poisha)}/${facts('S8').overpaid_poisha}, ` +
+            `S9 ${n(s9?.impact_poisha)}/${facts('S9').wasted_value_poisha}`,
+        );
+        // Besides the four plants, only the transfer Uttara never confirmed.
+        const others = found.filter((f) => ![s6, s7, s8, s9].includes(f));
+        expect(others.map((f) => f.type)).toEqual(['transfer.unconfirmed']);
+        expect(await detect(cafe)).toEqual([]);
       } finally {
         await client.query('rollback');
         client.release();

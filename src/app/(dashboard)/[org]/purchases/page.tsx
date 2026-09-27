@@ -14,6 +14,7 @@ import {
   Label,
   PageTitle,
   Select,
+  Textarea,
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { VoiceTextarea } from '@/components/voice-textarea';
@@ -28,6 +29,7 @@ import {
   confirmPurchaseDraftAction,
   discardPurchaseDraftAction,
   draftPurchaseAction,
+  importReferencePricesAction,
   recordPurchaseAction,
   voidPurchaseAction,
 } from '@/modules/purchasing/actions';
@@ -529,6 +531,31 @@ export default async function PurchasesPage({
                   <Input id="s-phone" name="phone" inputMode="tel" maxLength={20} />
                 </div>
                 <Button type="submit">{t('addSupplier')}</Button>
+              </ActionForm>
+            </Card>
+          ) : null}
+          {ctx.isOwner ? (
+            <Card className="lg:col-span-2">
+              <CardTitle>{t('marketTitle')}</CardTitle>
+              <p className="-mt-2 mb-4 max-w-3xl text-sm text-secondary">{t('marketBody')}</p>
+              <ActionForm
+                action={importReferencePricesAction}
+                successKey="purchases.marketImported"
+                className="space-y-3"
+              >
+                {hidden}
+                <Textarea
+                  name="csv"
+                  rows={5}
+                  required
+                  maxLength={100000}
+                  aria-label={t('marketCsv')}
+                  placeholder={t('marketPlaceholder')}
+                  className="font-mono text-sm"
+                />
+                <Button type="submit" variant="secondary">
+                  {t('marketImport')}
+                </Button>
               </ActionForm>
             </Card>
           ) : null}

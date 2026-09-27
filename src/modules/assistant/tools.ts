@@ -102,7 +102,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_flash_pnl',
     description:
-      "Today's estimated profit, costs and break-even (owner and accountant only). COGS is an assumption until recipes exist; say so when you use it.",
+      "Today's estimated profit, costs and break-even (owner and accountant only). Food cost comes from recipes where they exist (food_cost_basis 'recipes'), else an assumed % ('assumed' or 'mixed'); say so when it is assumed.",
     input_schema: {
       type: 'object',
       properties: { branch: branchProp },
@@ -116,6 +116,39 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object',
       properties: { limit: { type: 'integer', minimum: 1, maximum: 10 } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'explain_finding',
+    description:
+      'Everything behind one money leak (by its id, or its rank in the open list, 1 = biggest): what was found, where, when, the ৳ impact, the evidence (quantities, prices, suspect dishes) and suggested actions. Owner and accountant only. Quantities are base units (g, ml, pcs); *_x1000 fields are poisha per 1,000 base units.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        finding_id: { type: 'string', description: 'The finding id (a UUID), when known.' },
+        rank: { type: 'integer', minimum: 1, maximum: 20 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_stock_status',
+    description:
+      'Stock that should be on the shelf per ingredient, and how many days it lasts (green/yellow/red), from the last count, purchases, transfers, sales and waste. Quantities are base units (g, ml, pcs).',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp, only_low: { type: 'boolean' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_food_cost_gap',
+    description:
+      'Between the last two stock counts: what recipes say food should have cost, and why the actual cost differs — logged waste, prices paid above standard, and unexplained usage (owner and accountant only).',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp },
       additionalProperties: false,
     },
   },
@@ -278,13 +311,14 @@ export async function runTool(
         if (error) return fail(error);
         return {
           metric_id: 'pnl.flash.estimated_profit',
-          filters: { branch: input.branch ?? null, cogs_basis: 'assumed' },
+          filters: { branch: input.branch ?? null },
           as_of,
           data: ((data ?? []) as Record<string, unknown>[]).map((r) => ({
             branch: r.branch_id
               ? (ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null)
               : 'all',
             net_sales_poisha: num(r.net_poisha),
+            food_cost_basis: r.cogs_basis,
             assumed_food_cost_bps: num(r.assumed_food_cost_bps),
             food_cost_poisha: num(r.cogs_poisha),
             commission_poisha: num(r.commission_poisha),
@@ -299,7 +333,7 @@ export async function runTool(
         const { data, error } = await ctx.sb
           .from('findings')
           .select(
-            'type, branch_id, period_start, period_end, impact_poisha, confidence, subject, status',
+            'id, type, branch_id, period_start, period_end, impact_poisha, confidence, subject, status',
           )
           .eq('org_id', ctx.orgId)
           .in('status', ['new', 'acknowledged'])
@@ -312,6 +346,7 @@ export async function runTool(
           filters: { status: 'open' },
           as_of,
           data: (data ?? []).map((f) => ({
+            id: f.id,
             type: f.type,
             branch: ctx.branches.find((b) => b.id === f.branch_id)?.name ?? null,
             from: f.period_start,
@@ -322,7 +357,113 @@ export async function runTool(
               (f.subject as Record<string, unknown>)?.staff_name ??
               (f.subject as Record<string, unknown>)?.item_name ??
               (f.subject as Record<string, unknown>)?.channel_name ??
+              (f.subject as Record<string, unknown>)?.ingredient_name ??
               null,
+          })),
+        };
+      }
+      case 'explain_finding': {
+        let q = ctx.sb
+          .from('findings')
+          .select(
+            'id, type, branch_id, period_start, period_end, impact_poisha, confidence, status, subject, suggested_actions, finding_evidence(summary)',
+          )
+          .eq('org_id', ctx.orgId);
+        const fid = typeof input.finding_id === 'string' ? input.finding_id.trim() : '';
+        if (/^[0-9a-f-]{36}$/i.test(fid)) q = q.eq('id', fid);
+        else
+          q = q
+            .in('status', ['new', 'acknowledged'])
+            .order('impact_poisha', { ascending: false })
+            .range(Math.max(0, num(input.rank) - 1), Math.max(0, num(input.rank) - 1));
+        const { data, error } = await q.limit(1);
+        if (error) return fail(error);
+        const f = (data ?? [])[0];
+        // Findings are money rows: no row means no finding, or no permission to see it.
+        if (!f)
+          return {
+            error: 'not_found',
+            detail: { finding_id: fid || null, rank: input.rank ?? null },
+          };
+        const evidence =
+          (f.finding_evidence as { summary: Record<string, unknown> }[] | null)?.[0]?.summary ?? {};
+        return {
+          metric_id: 'findings',
+          filters: { finding_id: f.id },
+          as_of,
+          data: {
+            id: f.id,
+            type: f.type,
+            branch: ctx.branches.find((b) => b.id === f.branch_id)?.name ?? null,
+            from: f.period_start,
+            to: f.period_end,
+            impact_poisha: num(f.impact_poisha),
+            confidence: f.confidence,
+            status: f.status,
+            subject: f.subject,
+            evidence,
+            suggested_actions: f.suggested_actions,
+          },
+        };
+      }
+      case 'get_stock_status': {
+        const { data, error } = await ctx.sb.rpc('metric_stock_status', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_now: ctx.nowIso,
+        });
+        if (error) return fail(error);
+        const rows = ((data ?? []) as Record<string, unknown>[])
+          .filter((r) => !input.only_low || r.band === 'red' || r.band === 'yellow')
+          .map((r) => ({
+            branch: ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null,
+            ingredient: r.name,
+            base: r.base,
+            stock_qty: r.stock_qty === null ? null : num(r.stock_qty),
+            days_of_cover: r.days_of_cover === null ? null : num(r.days_of_cover),
+            band: r.band,
+            last_count_date: r.last_count_date,
+          }));
+        return {
+          metric_id: 'stock.days_of_cover',
+          filters: { branch: input.branch ?? null, only_low: input.only_low ?? false },
+          as_of,
+          data: rows.slice(0, 40),
+        };
+      }
+      case 'get_food_cost_gap': {
+        const counts = await ctx.sb
+          .from('stock_counts')
+          .select('counted_on')
+          .eq('org_id', ctx.orgId)
+          .eq('status', 'submitted')
+          .order('counted_on', { ascending: false })
+          .limit(30);
+        const dates = [...new Set((counts.data ?? []).map((c) => c.counted_on as string))];
+        if (dates.length < 2)
+          return { error: 'not_found', detail: { reason: 'two_counts_needed' } };
+        const { data, error } = await ctx.sb.rpc('metric_variance_bridge', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_from: dates[1],
+          p_to: dates[0],
+        });
+        if (error) return fail(error);
+        return {
+          metric_id: 'variance.bridge',
+          filters: { branch: input.branch ?? null, from: dates[1], to: dates[0] },
+          as_of,
+          data: ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+            branch: r.branch_id
+              ? (ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null)
+              : 'all',
+            food_cost_by_recipes_poisha: num(r.tfc_standard_poisha),
+            logged_waste_poisha: num(r.waste_poisha),
+            price_effect_poisha: num(r.price_effect_poisha),
+            unexplained_usage_poisha: num(r.unexplained_poisha),
+            actual_food_cost_poisha: num(r.cogs_actual_poisha),
+            count_uncertainty_poisha: num(r.uncertainty_poisha),
+            net_sales_poisha: num(r.net_sales_poisha),
           })),
         };
       }

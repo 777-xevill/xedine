@@ -372,6 +372,87 @@ async function phase5() {
   );
 }
 
+/**
+ * Phase 6: the leak detectors on the stock ledger recover S6 (suspected unrecorded transfer), S7
+ * (over-portioning), S8 (overpaying) and S9 (unlogged waste) within tolerance, raise nothing else but the
+ * transfer Uttara never confirmed, and stay quiet on the clean café. The bridge adds up for every branch.
+ */
+async function phase6() {
+  const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
+  const cafe = ORGS.find((o) => o.key === 'demo_cafe')!;
+  const pct = manifest.tolerances.finding_impact_pct;
+  const { from, to } = manifest.inventory.period;
+  const facts = (sid: string) =>
+    manifest.scenarios.find((s) => s.id === sid)!.facts as Record<string, number>;
+  type Row = {
+    type: string;
+    branch_id: string;
+    subject: Record<string, string>;
+    impact_poisha: string;
+  };
+  const run = (o: OrgCfg) =>
+    q<Row>(
+      `select type, branch_id, subject, impact_poisha from private.detect_all($1, $2::date, $3::date, array['stock', 'price', 'transfer'])`,
+      [orgId(o), from, to],
+    );
+  const found = await run(kacchi);
+  const branch = (key: string) =>
+    ids.branch(
+      kacchi,
+      kacchi.branches.find((b) => b.key === key)!,
+    );
+  const pick = (type: string, b: string, ing: string) =>
+    found.find(
+      (f) =>
+        f.type === type &&
+        f.branch_id === branch(b) &&
+        f.subject.ingredient_id === invIds.ingredient(kacchi, ing),
+    );
+  const plants: [string, Row | undefined, number][] = [
+    ['S6', pick('transfer.suspected', 'dhanmondi', 'chicken'), facts('S6').moved_value_poisha!],
+    ['S7', pick('usage.unexplained', 'mirpur', 'mutton'), facts('S7').extra_value_poisha!],
+    ['S8', pick('price.drift', 'dhanmondi', 'beef'), facts('S8').overpaid_poisha!],
+    ['S9', pick('usage.unexplained', 'uttara', 'rice'), facts('S9').wasted_value_poisha!],
+  ];
+  for (const [sid, f, expected] of plants) {
+    if (!f) failures.push(`${sid}: not detected`);
+    else expectWithin(`${sid}.impact`, expected, n(f.impact_poisha), pct);
+  }
+  const s6 = plants[0]![1];
+  if (s6 && s6.subject.to_branch_id !== branch('mirpur'))
+    failures.push('S6: the suspected transfer does not point at Mirpur');
+  const others = found.filter((f) => !plants.some(([, p]) => p === f));
+  if (others.some((f) => f.type !== 'transfer.unconfirmed'))
+    failures.push(
+      `Kacchi House: unexpected stock/price findings: ${others.map((f) => f.type).join(', ')}`,
+    );
+  const ranked = [...plants]
+    .filter(([, f]) => f)
+    .sort((a, b) => n(b[1]!.impact_poisha) - n(a[1]!.impact_poisha));
+  notes.push(
+    `Phase 6 ranking by ৳: ${ranked.map(([sid, f]) => `${sid} ${n(f!.impact_poisha)}`).join(' > ')}`,
+  );
+  const cafeFound = await run(cafe);
+  if (cafeFound.length > 0)
+    failures.push(
+      `S13: ${cafeFound.length} stock/price finding(s) on the clean café: ${cafeFound.map((f) => f.type).join(', ')}`,
+    );
+
+  // The bridge: cogs.actual − TFC = waste + price effect + unexplained, per branch and in total.
+  for (const o of [kacchi, cafe]) {
+    const rows = await q(
+      `select * from private.m_variance_bridge($1, $2::uuid[], $3::date, $4::date)`,
+      [orgId(o), branchIds(o), from, to],
+    );
+    for (const r of rows) {
+      const gap = n(r.cogs_actual_poisha) - n(r.tfc_standard_poisha);
+      const parts = n(r.waste_poisha) + n(r.price_effect_poisha) + n(r.unexplained_poisha);
+      if (gap !== parts)
+        failures.push(`${o.key} bridge ${String(r.branch_id ?? 'all')}: ${gap} ≠ ${parts}`);
+    }
+  }
+}
+
 async function dashboardLatency() {
   const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
   const org = orgId(kacchi);
@@ -408,6 +489,7 @@ try {
   await scenarios();
   await phase3();
   if (Number(process.env.SEED_PHASE ?? 0) >= 5) await phase5();
+  if (Number(process.env.SEED_PHASE ?? 0) >= 6) await phase6();
   await dashboardLatency();
   for (const note of notes) console.log(`  · ${note}`);
   if (failures.length > 0) {

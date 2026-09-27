@@ -188,3 +188,50 @@ export function splitQuantity(
   if (Math.abs(qtyBase) >= 1000) return { value: qtyBase / 1000, unit: big };
   return { value: qtyBase, unit: base };
 }
+
+export interface ReferenceRow {
+  ingredient: string;
+  price_poisha: number;
+  per_base_qty: number;
+  observed_on: string;
+  source: string;
+}
+
+/**
+ * Market prices pasted as CSV (TCB lists, a supplier's rate card): "ingredient, taka, per (kg | litre |
+ * piece | dozen), date (YYYY-MM-DD), source". A header row and blank lines are skipped; a bad row is
+ * returned by number so the person can fix it.
+ */
+export function parseReferenceCsv(text: string): { rows: ReferenceRow[]; bad: number[] } {
+  const rows: ReferenceRow[] = [];
+  const bad: number[] = [];
+  const PER: Record<string, number> = {
+    kg: 1000,
+    litre: 1000,
+    liter: 1000,
+    l: 1000,
+    piece: 1,
+    pcs: 1,
+    dozen: 12,
+  };
+  text.split(/\r?\n/).forEach((line, i) => {
+    const cells = line.split(/[,\t]/).map((c) => c.trim());
+    if (cells.every((c) => c === '') || /^ingredient$/i.test(cells[0] ?? '')) return;
+    const [ingredient = '', takaText = '', perText = 'kg', date = '', source = ''] = cells;
+    const taka = parseQuantity(takaText);
+    const per = PER[perText.toLowerCase()];
+    if (!ingredient || taka === null || per === undefined || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      bad.push(i + 1);
+      return;
+    }
+    // Stored as the price of that many base units (a dozen = 12 pieces), so it stays whole poisha.
+    rows.push({
+      ingredient,
+      price_poisha: Math.round(taka * 100),
+      per_base_qty: per,
+      observed_on: date,
+      source,
+    });
+  });
+  return { rows, bad };
+}

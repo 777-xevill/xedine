@@ -57,7 +57,8 @@
     "quantityInvalid": "That quantity does not fit — use numbers, and a unit that suits the ingredient.",
     "countEmpty": "Count at least one ingredient before submitting.",
     "wasteInvalid": "Pick what was wasted, how much, and why.",
-    "transferInvalid": "Pick another branch and at least one ingredient to send."
+    "transferInvalid": "Pick another branch and at least one ingredient to send.",
+    "referenceCsvInvalid": "No usable rows. Use: ingredient, taka, per (kg / litre / piece / dozen), date (YYYY-MM-DD), source."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -554,7 +555,12 @@
       "cash_over_short": "Cash drawer shortages",
       "commission_drag": "Delivery commission",
       "margin_below_target": "Food cost above target",
-      "channel_negative_margin": "Loses money on a platform"
+      "channel_negative_margin": "Loses money on a platform",
+      "usage_unexplained": "Ingredient used beyond recipes",
+      "transfer_suspected": "Goods moved without a transfer",
+      "price_drift": "Paid above the market",
+      "transfer_unconfirmed": "Transfer not confirmed",
+      "transfer_disputed": "Transfer arrived short"
     },
     "insightsTitle": "Today's insights",
     "habitsTitle": "Today's habits",
@@ -568,7 +574,9 @@
       "waste": "Waste log untouched",
       "count": "Weekly count due",
       "coverage": "Dishes without recipes"
-    }
+    },
+    "recipeCogs": "Food cost from your recipes.",
+    "mixedCogs": "Food cost from recipes where they exist; {pct} assumed for dishes without one."
   },
   "sales": {
     "title": "Sales explorer",
@@ -632,7 +640,12 @@
       "cash_over_short": "Cash drawer shortages",
       "commission_drag": "Delivery commission",
       "margin_below_target": "Food cost above target",
-      "channel_negative_margin": "Loses money on a platform"
+      "channel_negative_margin": "Loses money on a platform",
+      "usage_unexplained": "Ingredient used beyond recipes",
+      "transfer_suspected": "Goods moved without a transfer",
+      "price_drift": "Paid above the market",
+      "transfer_unconfirmed": "Transfer not confirmed",
+      "transfer_disputed": "Transfer arrived short"
     },
     "period": "{from} – {to}",
     "impactLabel": {
@@ -643,7 +656,12 @@
       "cash_over_short": "Net shortage",
       "commission_drag": "Paid to the platform",
       "margin_below_target": "Cost above your target",
-      "channel_negative_margin": "Lost after commission"
+      "channel_negative_margin": "Lost after commission",
+      "usage_unexplained": "Worth, beyond what other branches lose",
+      "transfer_suspected": "Goods moved (estimate)",
+      "price_drift": "Paid above the market",
+      "transfer_unconfirmed": "Value on the way",
+      "transfer_disputed": "Value missing"
     },
     "confidence": {
       "low": "Low confidence",
@@ -666,7 +684,15 @@
       "overShort": "{short} of {shifts} shifts closed short; net {net}.",
       "commission": "{orders} orders, {net} in sales; commission {pct} = {commission}. All platform costs: {share} of its sales.",
       "marginBelowTarget": "{qty} sold for {net}; recipe cost {cost}: food cost {pct} against a {target} target.",
-      "negativeMargin": "{qty} sold for {net}; recipe cost {cost} plus commission {commission} is more than the sales."
+      "negativeMargin": "{qty} sold for {net}; recipe cost {cost} plus commission {commission} is more than the sales.",
+      "usage": "Recipes say {theoretical}; the kitchen actually used {actual}, and {waste} was logged as waste. {unexplained} is unexplained ({rate}) — other branches lose {baseline}.",
+      "suspects": "Dishes that use it most: {dishes}.",
+      "voidedDishes": "{qty} went into dishes cooked and then voided after the kitchen ticket.",
+      "posExceptions": "{count, plural, one {# POS exception} other {# POS exceptions}} found at this branch in the same period — check them together.",
+      "transferSuspected": "This branch used {over} more than it should, while {toBranch} used {under} less ({match}% match) — goods probably moved without a transfer.",
+      "priceDrift": "Paid above both the usual price and the market on {days} day(s): {overpay} over, {paid} spent.",
+      "transferUnconfirmed": "Sent by {from} on {date}; nobody here has confirmed receiving it.",
+      "transferDisputed": "Sent by {from} on {date}; less arrived than was sent."
     },
     "seeEvidence": "See every row behind this",
     "metricRefs": "Metrics: {refs}",
@@ -689,7 +715,20 @@
       "raise_price": "Raise the price, or check the price & portion simulator first.",
       "trim_portion": "Check the portion against the recipe in the kitchen.",
       "renegotiate_supplier": "Ask suppliers for a better price on the main ingredient.",
-      "remove_from_platform": "Take the item off this platform, or sell it there as a smaller version."
+      "remove_from_platform": "Take the item off this platform, or sell it there as a smaller version.",
+      "check_portions": "Watch portions of the dishes named, and weigh a few",
+      "log_all_waste": "Make sure every bit of waste is logged",
+      "lock_the_store": "Keep the store locked; one person holds the key",
+      "recount": "Recount this ingredient to rule out a counting error",
+      "record_transfers": "Record every transfer between branches",
+      "count_both_branches": "Count this ingredient at both branches today",
+      "check_store_keys": "Check who has access to the store at both branches",
+      "compare_suppliers": "Compare with other suppliers and branches",
+      "ask_for_receipts": "Ask for a written receipt for every purchase",
+      "set_price_limits": "Agree price limits with the purchaser",
+      "confirm_receipt": "Confirm what arrived on the Stock page",
+      "call_sending_branch": "Call the sending branch",
+      "check_transport": "Check how goods are carried between branches"
     },
     "ownerNote": "Your note: {note}",
     "acknowledge": "I'm looking into it",
@@ -716,8 +755,40 @@
       "value_channel_day": "Net sales",
       "value_staff_day": "Cash taken",
       "value_item_day": "Recipe cost",
-      "netSales": "Net sales"
-    }
+      "netSales": "Net sales",
+      "qty": "Quantity",
+      "paidPer": "Paid per {unit}",
+      "usualPer": "Usual here",
+      "marketPer": "Market that day",
+      "value_purchase": "Paid"
+    },
+    "resolvedTab": "Resolved",
+    "cameBack": "Came back",
+    "stillHappening": "Still happening",
+    "askPrompt": "Explain finding {id} in simple words, and tell me what to do.",
+    "askAssistant": "Ask the assistant",
+    "actOnIt": "What will you do about it?",
+    "usageBreakdown": "Between the counts of {from} and {to}",
+    "breakdown": {
+      "opening": "Counted before",
+      "bought": "Bought",
+      "closing": "Counted after",
+      "actual": "Actually used",
+      "theoretical": "Recipes say",
+      "waste": "Waste logged",
+      "unexplained": "Unexplained",
+      "voided": "In voided dishes"
+    },
+    "usageRates": "Unexplained: {rate} of what recipes say. Normal here: {baseline}. Beyond normal: {excess}.",
+    "suspectsTitle": "Dishes that use it (share of what recipes say)",
+    "transferBreakdown": "Two branches that mirror each other",
+    "transferEstimate": "About {qty} seems to have moved.",
+    "flaggedLines": "Purchases above the market",
+    "basis": {
+      "cross_branch": "other branches",
+      "external": "reference price"
+    },
+    "purchasesInPeriod": "Purchases of this ingredient in the period"
   },
   "costs": {
     "title": "Costs",
@@ -908,7 +979,43 @@
     "topItems": "Top sellers {window}:",
     "topLine": "{rank}. {item} — {qty}",
     "cannotVerify": "I couldn't give you an answer I can back with your data. Try asking about a specific item or period.",
-    "capNote": "Today's AI allowance is used up, so this is the short answer."
+    "capNote": "Today's AI allowance is used up, so this is the short answer.",
+    "stockFine": "Nothing is running low right now.",
+    "stockLowTitle": "Running low:",
+    "stockLowLine": "• {branch}: {ingredient} — {qty}, lasts {days} days",
+    "units": {
+      "kg": "kg",
+      "g": "g",
+      "l": "litre",
+      "ml": "ml",
+      "pcs": "pcs",
+      "dozen": "dozen"
+    },
+    "explain": {
+      "usage": "{branch}, {from} to {to}: recipes called for {theoretical} of {ingredient}, the kitchen used {actual}, and {waste} was logged as waste. {unexplained} ({rate}) is unexplained, where other branches lose {baseline}. Beyond that, it is worth {impact}.",
+      "suspects": "It goes mostly into: {dishes}.",
+      "posExceptions": "There {count, plural, one {is # POS exception} other {are # POS exceptions}} at this branch in the same period; look at them together.",
+      "usageActions": "Check portions of those dishes, make sure all waste is logged, and keep the store locked.",
+      "transfer": "{ingredient}, {from} to {to}: {branch} used {over} more than its recipes explain, while {toBranch} used {under} less. About {qty} seems to have moved from {branch} to {toBranch} without a transfer, worth {impact}. Record transfers whenever goods move.",
+      "price": "{branch} paid more than the market for {ingredient} on {days} day(s) between {from} and {to} — {overpay} over, {impact} in total. Compare suppliers and ask for written receipts.",
+      "unconfirmed": "{fromBranch} sent goods to {branch} on {date} and nobody has confirmed receiving them (worth {impact}). Confirm it on the Stock page.",
+      "generic": "{type} at {branch}, {from} to {to}: {impact}. Open Leaks to see the evidence."
+    },
+    "findingTypes": {
+      "void_after_kot": "Voids after the kitchen ticket",
+      "discount_rate": "Unusual discounts",
+      "refund_rate": "Unusual refunds",
+      "cash_share": "Unusually high cash share",
+      "cash_over_short": "Cash drawer shortages",
+      "commission_drag": "Delivery commission",
+      "margin_below_target": "Food cost above target",
+      "channel_negative_margin": "Loses money on a platform",
+      "usage_unexplained": "Ingredient used beyond recipes",
+      "transfer_suspected": "Goods moved without a transfer",
+      "price_drift": "Paid above the market",
+      "transfer_unconfirmed": "Transfer not confirmed",
+      "transfer_disputed": "Transfer arrived short"
+    }
   },
   "assistantPage": {
     "title": "Assistant",
@@ -1068,7 +1175,18 @@
     "saveCount": "Save",
     "submitCount": "Submit count",
     "submitHint": "Submitting is final. Save to come back later.",
-    "route": "{from} → {to}"
+    "route": "{from} → {to}",
+    "bridgeTitle": "Why food cost differs from the recipes",
+    "bridgeBody": "What the recipes say the food should have cost, and each reason the real cost was different, in taka. The parts always add up.",
+    "bridge": {
+      "tfc": "Recipes say food should have cost",
+      "waste": "Logged waste",
+      "price": "Prices paid above the period’s standard",
+      "unexplained": "Used beyond recipes and waste",
+      "actual": "What the food actually cost"
+    },
+    "bridgeFoot": "Counts are trusted to about ±{band}. Food cost was {pct} of sales in this period.",
+    "bridgeUncosted": "{count, plural, one {# ingredient has} other {# ingredients have}} no price yet and are left out."
   },
   "purchases": {
     "title": "Purchases",
@@ -1131,6 +1249,12 @@
     "supplierName": "Name",
     "supplierPhone": "Phone (optional)",
     "suppliersTitle": "Suppliers",
-    "noSuppliers": "No suppliers yet."
+    "noSuppliers": "No suppliers yet.",
+    "marketTitle": "Market prices",
+    "marketBody": "Paste reference prices (for example the TCB market list) so Price Watch can compare a branch that buys alone. One line each: ingredient, taka, per (kg / litre / piece / dozen), date, source.",
+    "marketCsv": "Market prices as CSV",
+    "marketPlaceholder": "Beef, 780, kg, 2026-09-20, TCB\nOnion, 60, kg, 2026-09-20, TCB",
+    "marketImport": "Import prices",
+    "marketImported": "Prices imported. Rows that did not match an ingredient were skipped."
   }
 }

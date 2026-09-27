@@ -12,7 +12,9 @@ import {
   formatNumber,
   type Locale,
 } from '@/lib/i18n/format';
+import { formatQuantity } from '@/modules/inventory/format';
 import { findings, type FindingRow } from '@/modules/metrics/queries';
+import type { BaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 const CONFIDENCE_TONE = { high: 'danger', medium: 'warning', low: 'info' } as const;
@@ -39,17 +41,43 @@ export default async function LeaksPage({
   const canSeeMoney = ctx.roles.includes('owner') || ctx.roles.includes('accountant');
   if (!canSeeMoney) notFound();
 
-  const [t, locale] = await Promise.all([getTranslations('leaks'), getLocale()]);
+  const [t, tu, locale] = await Promise.all([
+    getTranslations('leaks'),
+    getTranslations('units'),
+    getLocale(),
+  ]);
   const loc = locale as Locale;
   const money = (p: number) => formatBDT(p, loc, { poisha: 'never' });
   const count = (v: unknown) => formatNumber(Number(v ?? 0), loc);
-  const status = show === 'all' ? 'all' : 'open';
-  const result = await findings(ctx.org.id, { status });
+  const status = show === 'all' ? 'all' : show === 'resolved' ? 'resolved' : 'open';
+  const [result, history] = await Promise.all([
+    findings(ctx.org.id, { status }),
+    findings(ctx.org.id, { status: 'all', limit: 400 }),
+  ]);
+  // Resolution tracking: a leak that comes back after it was resolved, and a resolved one still happening.
+  const sameThing = (a: FindingRow, b: FindingRow) =>
+    a.id !== b.id &&
+    a.type === b.type &&
+    a.branch_id === b.branch_id &&
+    a.subject_key === b.subject_key;
+  const cameBack = (f: FindingRow) =>
+    f.status !== 'resolved' &&
+    history.rows.some(
+      (r) => sameThing(r, f) && r.status === 'resolved' && r.period_end < f.period_start,
+    );
+  const stillHappening = (f: FindingRow) =>
+    f.status === 'resolved' &&
+    history.rows.some(
+      (r) => sameThing(r, f) && r.status !== 'dismissed' && r.period_start > f.period_end,
+    );
+  const qty = (v: unknown, base: unknown) =>
+    formatQuantity(Number(v ?? 0), (base as BaseUnit | undefined) ?? 'g', loc, (u) => tu(u));
+  const pct = (bps: unknown) => formatBps(Number(bps ?? 0), loc);
   const branchName = (id: string | null) =>
     ctx.branches.find((b) => b.id === id)?.name ?? t('allBranches');
   const typeKey = (type: string) => type.replace('.', '_');
   const subjectLabel = (f: FindingRow) =>
-    [f.subject.staff_name, f.subject.item_name, f.subject.channel_name]
+    [f.subject.staff_name, f.subject.item_name, f.subject.channel_name, f.subject.ingredient_name]
       .filter((v) => typeof v === 'string' && v !== '')
       .join(' · ');
 
@@ -121,6 +149,60 @@ export default async function LeaksPage({
             commission: money(Number(e.commission_poisha ?? 0)),
           }),
         ];
+      case 'usage.unexplained': {
+        const lines = [
+          t('evidence.usage', {
+            theoretical: qty(e.used_theoretical_qty, e.base),
+            actual: qty(e.used_actual_qty, e.base),
+            waste: qty(e.waste_qty, e.base),
+            unexplained: qty(e.variance_qty, e.base),
+            rate: pct(e.rate_bps),
+            baseline: pct(e.baseline_bps),
+          }),
+        ];
+        const suspects = (e.suspects as { name: string; share_bps: number }[] | undefined) ?? [];
+        if (suspects.length > 0)
+          lines.push(
+            t('evidence.suspects', {
+              dishes: suspects.map((d) => `${d.name} (${pct(d.share_bps)})`).join(', '),
+            }),
+          );
+        if (Number(e.voided_dish_qty ?? 0) > 0)
+          lines.push(t('evidence.voidedDishes', { qty: qty(e.voided_dish_qty, e.base) }));
+        if (Number(e.pos_exceptions ?? 0) > 0)
+          lines.push(t('evidence.posExceptions', { count: Number(e.pos_exceptions) }));
+        return lines;
+      }
+      case 'transfer.suspected':
+        return [
+          t('evidence.transferSuspected', {
+            over: qty(e.from_variance_qty, e.base),
+            under: qty(-Number(e.to_variance_qty ?? 0), e.base),
+            toBranch: String(f.subject.to_branch_name ?? ''),
+            match: count(e.match_pct),
+          }),
+        ];
+      case 'price.drift':
+        return [
+          t('evidence.priceDrift', {
+            days: count(e.lines_flagged),
+            overpay: pct(e.overpay_bps),
+            paid: money(Number(e.paid_poisha ?? 0)),
+          }),
+        ];
+      case 'transfer.unconfirmed':
+      case 'transfer.disputed':
+        return [
+          t(
+            f.type === 'transfer.unconfirmed'
+              ? 'evidence.transferUnconfirmed'
+              : 'evidence.transferDisputed',
+            {
+              from: String(f.subject.from_branch_name ?? ''),
+              date: String(e.sent_on ?? f.period_start),
+            },
+          ),
+        ];
       default:
         return [];
     }
@@ -138,6 +220,11 @@ export default async function LeaksPage({
         className="mb-6"
         items={[
           { href: `/${ctx.org.slug}/leaks`, label: t('open'), active: status === 'open' },
+          {
+            href: `/${ctx.org.slug}/leaks?show=resolved`,
+            label: t('resolvedTab'),
+            active: status === 'resolved',
+          },
           { href: `/${ctx.org.slug}/leaks?show=all`, label: t('all'), active: status === 'all' },
         ]}
       />
@@ -175,6 +262,12 @@ export default async function LeaksPage({
                       <StatusBadge tone={STATUS_TONE[f.status]}>
                         {t(`status.${f.status}`)}
                       </StatusBadge>
+                      {cameBack(f) ? (
+                        <StatusBadge tone="danger">{t('cameBack')}</StatusBadge>
+                      ) : null}
+                      {stillHappening(f) ? (
+                        <StatusBadge tone="warning">{t('stillHappening')}</StatusBadge>
+                      ) : null}
                     </div>
                   </div>
                 </div>

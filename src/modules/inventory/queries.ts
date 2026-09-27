@@ -207,3 +207,51 @@ export async function wasteBoard(
     value_poisha: numOrNull(r.value_poisha),
   }));
 }
+
+export interface BridgeRow {
+  branch_id: string | null;
+  opening_date: string;
+  closing_date: string;
+  ingredients: number;
+  uncosted_ingredients: number;
+  net_sales_poisha: number;
+  tfc_standard_poisha: number;
+  waste_poisha: number;
+  price_effect_poisha: number;
+  unexplained_poisha: number;
+  cogs_actual_poisha: number;
+  uncertainty_poisha: number;
+  unexplained_pct_of_sales_bps: number | null;
+  cogs_pct_of_sales_bps: number | null;
+}
+
+/** metric: the variance bridge between two counts (money: owner and accountant; SQL refuses others). */
+export async function varianceBridge(
+  orgId: string,
+  branchId: string | null,
+  from: string,
+  to: string,
+): Promise<BridgeRow[]> {
+  const rows = await rpc('metric_variance_bridge', {
+    p_org: orgId,
+    p_branch: branchId,
+    p_from: from,
+    p_to: to,
+  });
+  return rows.map((r) => ({
+    branch_id: (r.branch_id as string | null) ?? null,
+    opening_date: String(r.opening_date),
+    closing_date: String(r.closing_date),
+    ingredients: num(r.ingredients),
+    uncosted_ingredients: num(r.uncosted_ingredients),
+    net_sales_poisha: num(r.net_sales_poisha),
+    tfc_standard_poisha: num(r.tfc_standard_poisha),
+    waste_poisha: num(r.waste_poisha),
+    price_effect_poisha: num(r.price_effect_poisha),
+    unexplained_poisha: num(r.unexplained_poisha),
+    cogs_actual_poisha: num(r.cogs_actual_poisha),
+    uncertainty_poisha: num(r.uncertainty_poisha),
+    unexplained_pct_of_sales_bps: numOrNull(r.unexplained_pct_of_sales_bps),
+    cogs_pct_of_sales_bps: numOrNull(r.cogs_pct_of_sales_bps),
+  }));
+}

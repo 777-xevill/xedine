@@ -49,16 +49,16 @@ jobs:
         run: pnpm db:test
       - name: Seed the synthetic Dhaka dataset
         run: pnpm db:seed
-      - name: Manifest validates against the database (S1–S9, S13 and the stock ledger at SEED_PHASE=5)
+      - name: Manifest validates against the database (S1–S9, S13 and the stock ledger at SEED_PHASE=6)
         run: pnpm manifest:validate
         env:
-          SEED_PHASE: 5
+          SEED_PHASE: 6
       - name: The committed manifest is exactly what the generator produced
         run: git diff --exit-code supabase/seed/manifest.json
-      - name: Golden checks (metrics = manifest, S1–S5 detected, S13 quiet, stock/variance/discipline, dashboard p95)
+      - name: Golden checks (metrics = manifest, S1–S9 detected, S13 quiet, stock/variance/discipline, bridge, dashboard p95)
         run: pnpm metrics:validate
         env:
-          SEED_PHASE: 5
+          SEED_PHASE: 6
       - name: AI evals — golden questions on the seeded year (router without a key, LLM with one)
         run: |
           eval "$(pnpm exec supabase status -o env | sed 's/^/export /')"

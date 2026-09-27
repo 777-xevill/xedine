@@ -29,7 +29,7 @@ export default async function AssistantPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ c?: string }>;
+  searchParams: Promise<{ c?: string; ask?: string }>;
 }) {
   const [{ org }, sp] = await Promise.all([params, searchParams]);
   const ctx = await getOrgContext(org);
@@ -230,6 +230,7 @@ export default async function AssistantPage({
               required
               maxLength={1000}
               placeholder={t('askPlaceholder')}
+              defaultValue={typeof sp.ask === 'string' ? sp.ask.slice(0, 1000) : undefined}
             />
             <div className="flex items-center justify-between gap-2">
               <Hint>{t('examples')}</Hint>

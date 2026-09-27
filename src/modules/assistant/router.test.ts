@@ -44,6 +44,26 @@ describe('question router', () => {
     expect(routeQuestion('Why is Mirpur slower on Fridays?', menu)).toBeNull();
   });
 
+  it('explaining a leak: by id, by rank, or the biggest; and what is running low', () => {
+    const id = '0b7d3c1e-5f5a-4a4e-9c7e-2d1f0a9b8c7d';
+    expect(routeQuestion(`Explain finding ${id}`, menu)).toMatchObject({
+      kind: 'finding',
+      findingId: id,
+    });
+    expect(routeQuestion('Explain leak #2', menu)).toMatchObject({
+      kind: 'finding',
+      findingId: null,
+      rank: 2,
+    });
+    expect(routeQuestion("What's my biggest leak?", menu)).toMatchObject({
+      kind: 'finding',
+      rank: 1,
+    });
+    expect(routeQuestion('সবচেয়ে বড় ক্ষতি কোথায়?', menu)).toMatchObject({ kind: 'finding' });
+    expect(routeQuestion('What is running low?', menu)).toMatchObject({ kind: 'stock_low' });
+    expect(routeQuestion('কী কী ফুরিয়ে আসছে?', menu)).toMatchObject({ kind: 'stock_low' });
+  });
+
   it('reads "last week" as the last 7 days and "this week" as week to date', () => {
     expect(detectWindow('last week')).toBe('last_7d');
     expect(detectWindow('this week')).toBe('week_to_date');

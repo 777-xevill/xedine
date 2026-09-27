@@ -63,7 +63,9 @@
     "campaignInvalid": "Give the campaign a name and a message in Bangla or English.",
     "reviewInvalid": "Pick the source, stars and date, and paste the review text.",
     "licenceInvalid": "Give the licence a name and an expiry date.",
-    "advanceInvalid": "Pick the staff member and enter an amount above zero."
+    "advanceInvalid": "Pick the staff member and enter an amount above zero.",
+    "menuImportInvalid": "Paste between 1 and 500 menu lines: category, name, Bangla name, price.",
+    "menuImportBadLines": "These lines need a name and a price: {lines}. Fix them and import again."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -128,7 +130,8 @@
     "branches": "Branches",
     "benchmarks": "Benchmarks",
     "compliance": "Compliance",
-    "staffRecords": "Staff records"
+    "staffRecords": "Staff records",
+    "setup": "Setup"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -1791,5 +1794,79 @@
     "discounts": "Discounts",
     "refunds": "Refunds",
     "salesHint": "Orders are credited to the staff member who took them at the till."
+  },
+  "setup": {
+    "title": "Setup",
+    "subtitle": "{done} of {total} steps done. Each step ticks itself when the data is in.",
+    "checklist": "Checklist",
+    "doneLabel": "Done:",
+    "todoLabel": "To do:",
+    "progress": "({have} of {need})",
+    "go": "Open",
+    "steps": {
+      "profile": {
+        "title": "Restaurant profile",
+        "body": "Cuisine and city, for reports and benchmarks."
+      },
+      "menu": {
+        "title": "Menu",
+        "body": "At least five items with prices — import them on the right."
+      },
+      "channels": {
+        "title": "Sales channels",
+        "body": "Dine-in, takeaway, foodpanda… with their commission."
+      },
+      "staff_pins": {
+        "title": "Staff PINs",
+        "body": "Cashiers sign in to the till with a PIN."
+      },
+      "pos_device": {
+        "title": "Pair the till",
+        "body": "Approve the tablet or phone that runs the POS."
+      },
+      "recipes": {
+        "title": "Recipes",
+        "body": "Recipes for 90% of the menu, so food cost is real."
+      },
+      "ingredient_prices": {
+        "title": "Ingredient prices",
+        "body": "A price for every ingredient in a recipe."
+      },
+      "fixed_costs": {
+        "title": "Fixed costs",
+        "body": "Rent, utilities and other monthly costs."
+      },
+      "salaries": {
+        "title": "This month’s salaries",
+        "body": "For labour cost and break-even."
+      },
+      "opening_count": {
+        "title": "Opening stock count",
+        "body": "The starting point for stock and variance."
+      },
+      "owner_whatsapp": {
+        "title": "Owner WhatsApp",
+        "body": "For the morning brief and reminders."
+      },
+      "first_order": {
+        "title": "First order",
+        "body": "Ring up a real order on the POS."
+      }
+    },
+    "importTitle": "Import the menu",
+    "csvLabel": "One item per line",
+    "csvPlaceholder": "category,name,name_bn,price\nBiryani,Kacchi (full),কাচ্চি,450",
+    "csvHint": "Columns: category, name, Bangla name (optional), price. Items that already exist are skipped, never changed.",
+    "draftHint": "Read from your photo by AI — check every name and price, fix anything wrong, then import.",
+    "aiDraft": "AI Generated draft",
+    "import": "Import",
+    "imported": "{created} item(s) added, {skipped} already on the menu.",
+    "photoTitle": "Or read a menu photo",
+    "photo": "Menu photo (JPEG, PNG or WebP, up to 5 MB)",
+    "readPhoto": "Read the photo",
+    "photoRead": "Done — check the draft above before importing.",
+    "photoHint": "The AI copies what is printed; a price it cannot read is left empty for you to fill in.",
+    "aiOff": "Photo reading is off until the Anthropic key is added. Paste the menu instead.",
+    "stepTitle": "{n}. {title}"
   }
 }

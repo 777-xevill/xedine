@@ -83,6 +83,7 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
       : []),
     ...(ctx.isOwner
       ? [
+          { href: `${base}/setup`, label: t('setup') },
           { href: `${base}/costs`, label: t('costs') },
           { href: `${base}/team`, label: t('team') },
           { href: `${base}/settings`, label: t('settings') },

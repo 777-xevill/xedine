@@ -31,12 +31,12 @@ export function ActionForm({
     <form action={formAction} aria-busy={pending} data-testid={testId} className={cn(className)}>
       {state.error ? (
         <Alert tone="danger" className="col-span-full">
-          {t(`errors.${state.error}`)}
+          {t(`errors.${state.error}`, state.data)}
         </Alert>
       ) : null}
       {state.ok && success ? (
         <Alert tone="success" className="col-span-full">
-          {t(success)}
+          {t(success, state.data)}
         </Alert>
       ) : null}
       {children}

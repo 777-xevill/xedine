@@ -213,18 +213,19 @@ Status: ◐ **built; local checks green; full-seed checks written for CI** (2026
 - [x] Lift reported only with adequate sample sizes — ≥ 30 per group, enforced in SQL
 
 ## Phase 9 — Branch Intelligence & Industry Benchmarking
-Status: ☐ · Size: 2 weeks
+Status: ◐ **built; local checks green; full-seed check written for CI** (2026-10-05) · Size: 2 weeks
 **Goal:** chains see gaps between branches; everyone sees how they compare to peers.
+**Evidence so far (local):** `tests/db/branches.test.ts` (11 hand-worked tests); the seeded Kacchi House chain's gap to its best branch is computed and its unexplained-usage part recomputed independently from the variance bridge (`seed-inventory.test.ts`: Mirpur ≈ ৳29,900, Uttara ≈ ৳29,400, Dhanmondi ≈ ৳2,200 over the 4-week count period). Decisions in [ADR 0022](decisions/0022-phase-9-branches-and-benchmarks.md). **Needs CI:** `metrics:validate` at SEED_PHASE=9.
 **Build**
-- [ ] Branch league table, like-for-like comparisons, manager scorecards, "gap to best branch" in ৳
-- [ ] Transfer audit view
-- [ ] Benchmarking: opt-in, segments, percentile snapshots (k ≥ 5), labelled "industry reference" seeds, benchmark page + assistant tool
-  - **Reality check before building:** the specified segmentation (cuisine × format × branch band × city/area × AOV band) with k ≥ 5 will leave essentially every cell empty at 10–30 customers, so only the seeded reference ranges would ever show. Either collapse to 2 dimensions (cuisine × branch band) or defer peer benchmarking and ship reference ranges only. Decide with the real customer count in hand
-  - Comparing `food_cost.theoretical_pct` across orgs needs a **recipe-coverage floor** (e.g. ≥ 90%) or the metric isn't comparable
+- [x] Branch league table, like-for-like comparisons, manager scorecards, "gap to best branch" in ৳ — `/[org]/branches`, `metric_branch_league`, `metric_branch_gaps`, `metric_like_for_like`, `metric_branch_scorecard`
+- [x] Transfer audit view — `metric_transfer_audit`
+- [x] Benchmarking: opt-in, segments, percentile snapshots (k ≥ 5), labelled "industry reference" seeds, benchmark page + assistant tool — `/[org]/benchmarks`, `job_benchmark_snapshot`, `metric_benchmarks`, `get_benchmarks`
+  - **Reality check (decided, ADR 0022 §4):** two dimensions (cuisine × branch band) plus "all"; a cell is published only with ≥ 5 restaurants and a complement of 0 or ≥ 5 in every parent cell
+  - Food cost % is pooled only with recipe coverage ≥ 90%
 **Done when**
-- [ ] Tests prove no benchmark output can reveal a single tenant (k ≥ 5 enforced in SQL)
-- [ ] Branch gaps for the seeded chain computed in ৳
-- [ ] Manager scorecards ship in a money-free variant, or are owner-only (ADR 0007)
+- [x] Tests prove no benchmark output can reveal a single tenant (k ≥ 5 enforced in SQL) — `branches.test.ts`
+- [x] Branch gaps for the seeded chain computed in ৳ — locally on the seed; **CI re-checks on the full seed**
+- [x] Manager scorecards ship in a money-free variant, or are owner-only (ADR 0007) — money-free, branch-private
 
 ## Phase 10 — Compliance, staff-lite, growth, billing & launch hardening
 Status: ☐ · Size: 3–4 weeks

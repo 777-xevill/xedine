@@ -210,6 +210,50 @@ describe('seed stock ledger matches the database’s stock maths', () => {
           median_seconds: s11.median_seconds,
         });
         expect(await service(cafe)).toEqual([]);
+
+        // Phase 9: the seeded chain's gap to its best branch, in ৳. The unexplained-usage component must
+        // equal what the variance bridge says, recomputed here: amount − best rate × this branch's sales.
+        const chain = kacchi.branches.map((b) => ids.branch(kacchi, b));
+        const gaps = (
+          await client.query(
+            `select branch_id, component, gap_poisha, best_branch_id from private.m_branch_gaps($1, $2::uuid[], $3::date, $4::date)`,
+            [ids.org(kacchi), chain, ...period],
+          )
+        ).rows as {
+          branch_id: string;
+          component: string;
+          gap_poisha: string;
+          best_branch_id: string;
+        }[];
+        const bridge = (
+          await client.query(
+            `select branch_id, net_sales_poisha, unexplained_poisha from private.m_variance_bridge($1, $2::uuid[], $3::date, $4::date)
+              where branch_id is not null`,
+            [ids.org(kacchi), chain, ...period],
+          )
+        ).rows as { branch_id: string; net_sales_poisha: string; unexplained_poisha: string }[];
+        const rate = (r: (typeof bridge)[number]) =>
+          n(r.unexplained_poisha) / n(r.net_sales_poisha);
+        const best = bridge.reduce((a, b) => (rate(b) < rate(a) ? b : a));
+        const unexplained = gaps.filter((g) => g.component === 'unexplained');
+        expect(unexplained).toHaveLength(3);
+        for (const r of bridge) {
+          const g = unexplained.find((x) => x.branch_id === r.branch_id)!;
+          expect(g.best_branch_id).toBe(best.branch_id);
+          const expected = Math.max(
+            0,
+            n(r.unexplained_poisha) - rate(best) * n(r.net_sales_poisha),
+          );
+          expect(Math.abs(n(g.gap_poisha) - expected)).toBeLessThanOrEqual(1);
+        }
+        const total = (bid: string) =>
+          gaps.filter((g) => g.branch_id === bid).reduce((s, g) => s + n(g.gap_poisha), 0);
+        expect(unexplained.filter((g) => n(g.gap_poisha) > 0)).toHaveLength(2);
+        console.info(
+          `Phase 9 gap to best branch (poisha): ${kacchi.branches
+            .map((b) => `${b.key} ${total(ids.branch(kacchi, b))}`)
+            .join(', ')}`,
+        );
       } finally {
         await client.query('rollback');
         client.release();

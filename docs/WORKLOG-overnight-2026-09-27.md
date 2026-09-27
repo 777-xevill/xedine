@@ -261,3 +261,22 @@ Checklist:
 - On the seed: S11 found at Dhanmondi, Friday 20:00–22:00 (124 orders, median 27 min vs 13 min usual); S12 found at
   Uttara (50 of 74 regulars lapsed) with the exact impact in the manifest and the kacchi price rise as evidence.
 - **Run by hand:** in Meta, create the `campaign` and `feedback_request` templates (names in the migration).
+
+---
+
+## Phase 9 — Branch Intelligence & Industry Benchmarking
+
+Checklist:
+- [x] 9.1 Migration: branch league, exact ৳ gap to best, money-free scorecard, like-for-like, transfer audit, benchmark values, eligibility, monthly snapshot with k ≥ 5 + complement rule, metric_benchmarks
+- [x] 9.2 DB tests (hand-worked) + seeded-chain gap check (local and CI)
+- [x] 9.3 Seed: labelled demo reference ranges (not survey data); CI at SEED_PHASE=9
+- [x] 9.4 UI: /branches (league, gap to best, same items, scorecard, transfers), /benchmarks with owner opt-in; monthly job; assistant tools compare_branches, get_benchmarks, get_customers_summary, get_reviews_summary
+- [x] 9.5 i18n, ADR 0022, ROADMAP, DATA-MODEL.md, commit, push
+
+### Phase 9 log
+- Migration `20261005000001_branches_benchmarks.sql`. ADR 0022 — **please confirm §4 (benchmark groups use only
+  cuisine and branch count for now), §5 (only restaurants that share their figures see peers) and §6 (the demo's
+  reference ranges are illustrative; real ones need a source).**
+- On the seed, Kacchi House's gap to its best branch over the 4-week count period: Mirpur ≈ ৳29,900,
+  Uttara ≈ ৳29,400, Dhanmondi ≈ ৳2,200.
+- **Run by hand:** source real Bangladesh reference ranges before showing benchmarks to customers.

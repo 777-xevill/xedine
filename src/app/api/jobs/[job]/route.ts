@@ -21,6 +21,7 @@ const KNOWN_JOBS = new Set([
   'evening_close',
   'send_outbox',
   'feedback_requests',
+  'benchmarks',
 ]);
 
 function authorized(request: NextRequest): boolean {
@@ -138,7 +139,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       ? at.toISOString().slice(0, 15)
       : job === 'send_outbox' || job === 'feedback_requests'
         ? at.toISOString().slice(0, 16)
-        : businessDate(at);
+        : job === 'benchmarks'
+          ? businessDate(at).slice(0, 7)
+          : businessDate(at);
   const { data: runId, error } = await supabase.rpc('job_run_begin', {
     p_job: job,
     p_org: null,
@@ -157,6 +160,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         queued += await sendFeedbackRequests(supabase, org.id as string, at);
       await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
       return NextResponse.json({ period, queued });
+    }
+    if (job === 'benchmarks') {
+      // Monthly (Phase 9): last month's anonymous percentile snapshot; k >= 5 is enforced in SQL.
+      const month = `${addDays(`${businessDate(at).slice(0, 7)}-01`, -1).slice(0, 7)}-01`;
+      const { data: cells, error: snapError } = await supabase.rpc('job_benchmark_snapshot', {
+        p_period: month,
+      });
+      if (snapError) throw snapError;
+      await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
+      return NextResponse.json({ period, month, cells });
     }
     if (job === 'send_outbox') {
       const drained = await runOutbox();

@@ -115,7 +115,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (92)
+## RPC functions (99)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -147,6 +147,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `import_reference_prices` | `p_org uuid, p_rows jsonb` |
 | `insight_action` | `p_insight uuid, p_action text, p_reason text DEFAULT NULL::text, p_until date DEFAULT NULL::date` |
 | `job_backfill_item_costs` | `p_org uuid, p_from date, p_to date` |
+| `job_benchmark_snapshot` | `p_period date` |
 | `job_close_business_day` | `p_org uuid, p_date date` |
 | `job_feedback_requests` | `p_org uuid, p_now timestamp with time zone` |
 | `job_health` | `` |
@@ -156,6 +157,10 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `job_run_finish` | `p_run uuid, p_status job_status, p_error text DEFAULT NULL::text` |
 | `log_audit` | `p_org uuid, p_branch uuid, p_action text, p_entity text, p_entity_id text, p_before jsonb DEFAULT NULL::jsonb, p_after jsonb DEFAULT NULL::jsonb, p_reason text DEFAULT NULL::text, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
+| `metric_benchmarks` | `p_org uuid, p_now timestamp with time zone` |
+| `metric_branch_gaps` | `p_org uuid, p_from date, p_to date` |
+| `metric_branch_league` | `p_org uuid, p_from date, p_to date` |
+| `metric_branch_scorecard` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_campaign_results` | `p_campaign uuid, p_now timestamp with time zone` |
 | `metric_commission` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_customer_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
@@ -166,6 +171,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_forecast` | `p_org uuid, p_branch uuid, p_date date, p_now timestamp with time zone` |
 | `metric_forecast_accuracy` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_item_qty` | `p_org uuid, p_branch uuid, p_window text, p_now timestamp with time zone, p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_item uuid DEFAULT NULL::uuid, p_channel uuid DEFAULT NULL::uuid, p_daypart text DEFAULT NULL::text` |
+| `metric_like_for_like` | `p_org uuid, p_from date, p_to date, p_limit integer DEFAULT 20` |
 | `metric_menu_matrix` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_pace` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_prep_plan` | `p_org uuid, p_branch uuid, p_date date, p_now timestamp with time zone` |
@@ -179,6 +185,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_staff_exceptions` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_stock_status` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_stock_variance` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_transfer_audit` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_variance_bridge` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_waste_board` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_window` | `p_org uuid, p_window text, p_now timestamp with time zone` |

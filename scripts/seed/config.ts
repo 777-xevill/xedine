@@ -442,3 +442,17 @@ export function priceOf(org: OrgCfg, b: BranchCfg, item: MenuItemCfg, date: stri
       price = c.pricePoisha;
   return price;
 }
+
+/**
+ * Phase 9 "industry reference" ranges for the demo (ADR 0022 §6). Illustrative only — not survey data —
+ * and loaded by the seed, never by a migration, so production shows none until real ranges are sourced.
+ * TODO(verify): replace with ranges from a Bangladesh restaurant survey before showing them to customers.
+ */
+export const BENCHMARK_REFERENCES: { metric_id: string; p25: number; p50: number; p75: number }[] =
+  [
+    { metric_id: 'food_cost.theoretical_pct', p25: 2800, p50: 3300, p75: 3800 },
+    { metric_id: 'labour.pct', p25: 1200, p50: 1600, p75: 2000 },
+    { metric_id: 'channel.delivery_share', p25: 1500, p50: 3000, p75: 4500 },
+    { metric_id: 'visits.first_return_rate', p25: 1800, p50: 2600, p75: 3400 },
+    { metric_id: 'rating.avg', p25: 7.4, p50: 8.2, p75: 8.9 },
+  ];

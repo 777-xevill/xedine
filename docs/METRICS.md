@@ -86,9 +86,14 @@ Star = high popularity, high margin · Plowhorse = high, low · Puzzle = low, hi
 ## Discipline score (per branch per day, 0–100)
 Bazar entries recorded (25) · waste log touched (15) · cash close done (20) · scheduled count done (25) · recipe coverage ≥ 90% (15).
 
+## Branches (ADR 0022)
+- `branch.gap_to_best` (per component) = amount − best branch's rate × this branch's base, floored at 0. Components (lower is better): unexplained usage (÷ variance-bridge sales), logged waste value (÷ sales.net), labour (÷ sales.net), discounts (÷ gross), voids after KOT (÷ gross). Needs ≥ 2 branches with the figure. Food cost % is excluded (menu mix); compare items like-for-like instead.
+- `branch.like_for_like` = for items sold in ≥ 2 branches: units ÷ trading days, and net ÷ units.
+- Manager scorecard: money-free measures with the branch's rank among all branches; other branches' values are never returned.
+
 ## Benchmarks
-Segments: cuisine × format × branch band (1 / 2–5 / 6+) × city/area × AOV band.
-Metrics: food_cost.theoretical_pct, cogs pct (when counts exist), labour.pct, gp.pct, sales.net per branch per day, orders.aov, rating.avg, visits.first_return_rate, waste.pct, delivery share.
+Segments (ADR 0022 §4): all restaurants, cuisine, branch band (1 / 2–5 / 6+), and cuisine × branch band. City/area, format and AOV band wait until there are enough restaurants. A cell is published only with k ≥ 5 **and** a complement of 0 or ≥ 5 restaurants in each parent cell.
+Metrics (built): food_cost.theoretical_pct (only with recipe coverage ≥ 90%), labour.pct, sales.net per branch per day, orders.aov, rating.avg (≥ 20 ratings), visits.first_return_rate (≥ 30 first-timers), delivery share. Deferred: cogs pct (when counts exist), gp.pct, waste.pct (open question 2).
 Output p25 / p50 / p75 only · k ≥ 5 orgs per cell (enforced in SQL) · exclude orgs with < 30 days of data or low data quality · monthly snapshots · seeded "industry reference" ranges labelled as such.
 
 ## Findings (all detectors)

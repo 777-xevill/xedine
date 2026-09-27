@@ -176,6 +176,43 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'compare_branches',
+    description:
+      'Branches side by side for a period: sales per day, orders, average order, delivery share, serving time, rating, return rate, discounts; for owner and accountant also food cost %, labour %, waste %, unexplained usage % and the gap to the best branch in poisha.',
+    input_schema: {
+      type: 'object',
+      properties: { window: { ...windowProp, enum: ['last_7d', 'last_30d', 'month_to_date'] } },
+      required: ['window'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_benchmarks',
+    description:
+      'Last full month against peers (only groups of five or more restaurants) or a labelled industry reference range: own value, p25/p50/p75 and where the restaurant falls (owner and accountant only). Percentages are basis points; money is poisha.',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'get_customers_summary',
+    description:
+      'Identified orders, first-time customers who came back within 30/60 days, and how many customers are regulars, at risk, new, returning or lost. Counts only — no names or phones.',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_reviews_summary',
+    description:
+      'Average rating (0–10) per source for the last 30 days and the most common complaint themes in reviews and after-meal comments.',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp },
+      additionalProperties: false,
+    },
+  },
 ];
 
 const num = (v: unknown) => Number(v ?? 0);
@@ -543,6 +580,127 @@ export async function runTool(
               r.cm_per_unit_poisha === null ? null : num(r.cm_per_unit_poisha),
             food_cost_bps: r.food_cost_bps === null ? null : num(r.food_cost_bps),
           })),
+        };
+      }
+      case 'compare_branches': {
+        const { from, to } = await windowDates(ctx, window);
+        const { data, error } = await ctx.sb.rpc('metric_branch_league', {
+          p_org: ctx.orgId,
+          p_from: from,
+          p_to: to,
+        });
+        if (error) return fail(error);
+        const bname = (id: unknown) => ctx.branches.find((b) => b.id === id)?.name ?? null;
+        const opt = (v: unknown) => (v === null || v === undefined ? null : num(v));
+        return {
+          metric_id: 'branches.league',
+          filters: { window, from, to },
+          as_of,
+          data: ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+            branch: bname(r.branch_id),
+            net_sales_poisha: num(r.net_poisha),
+            net_per_day_poisha: opt(r.net_per_day_poisha),
+            orders: num(r.orders),
+            aov_poisha: opt(r.aov_poisha),
+            delivery_share_bps: opt(r.delivery_share_bps),
+            median_serve_seconds: opt(r.ticket_median_seconds),
+            rating_avg: opt(r.rating_avg),
+            first_return_30d_bps: opt(r.first_return_30d_bps),
+            discount_bps: opt(r.discount_bps),
+            food_cost_bps: opt(r.tfc_pct_bps),
+            labour_bps: opt(r.labour_bps),
+            waste_bps: opt(r.waste_bps),
+            unexplained_usage_bps: opt(r.unexplained_bps),
+            gap_to_best_branch_poisha: opt(r.gap_poisha),
+          })),
+        };
+      }
+      case 'get_benchmarks': {
+        const { data, error } = await ctx.sb.rpc('metric_benchmarks', {
+          p_org: ctx.orgId,
+          p_now: ctx.nowIso,
+        });
+        if (error) return fail(error);
+        return {
+          metric_id: 'benchmarks.monthly',
+          filters: {},
+          as_of,
+          data: ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+            metric: r.metric_id,
+            own_value: r.own_value === null ? null : num(r.own_value),
+            p25: r.p25 === null ? null : num(r.p25),
+            p50: r.p50 === null ? null : num(r.p50),
+            p75: r.p75 === null ? null : num(r.p75),
+            peers: r.k === null ? null : num(r.k),
+            industry_reference: r.is_reference === true,
+            place: r.place,
+            better: r.better,
+          })),
+        };
+      }
+      case 'get_customers_summary': {
+        const { data, error } = await ctx.sb.rpc('metric_customer_summary', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_now: ctx.nowIso,
+        });
+        if (error) return fail(error);
+        const r = ((data ?? []) as Record<string, unknown>[])[0] ?? {};
+        return {
+          metric_id: 'customers.summary',
+          filters: { branch: input.branch ?? null },
+          as_of,
+          data: {
+            orders_30d: num(r.orders_30d),
+            identified_share_bps:
+              r.identified_share_bps == null ? null : num(r.identified_share_bps),
+            first_timers: num(r.first_timers),
+            first_return_30d_bps:
+              r.first_return_30d_bps == null ? null : num(r.first_return_30d_bps),
+            first_return_60d_bps:
+              r.first_return_60d_bps == null ? null : num(r.first_return_60d_bps),
+            segments: r.segments ?? {},
+          },
+        };
+      }
+      case 'get_reviews_summary': {
+        const { to } = await windowDates(ctx, 'today');
+        const from = new Date(Date.parse(`${to}T00:00:00Z`) - 29 * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+        const [ratings, themes] = await Promise.all([
+          ctx.sb.rpc('metric_ratings', {
+            p_org: ctx.orgId,
+            p_branch: branch,
+            p_from: from,
+            p_to: to,
+          }),
+          ctx.sb
+            .from('reviews')
+            .select('themes')
+            .eq('org_id', ctx.orgId)
+            .gte('reviewed_at', `${from}T00:00:00+06:00`)
+            .limit(500),
+        ]);
+        if (ratings.error) return fail(ratings.error);
+        const counts = new Map<string, number>();
+        for (const r of (themes.data ?? []) as { themes: string[] }[])
+          for (const k of r.themes ?? []) counts.set(k, (counts.get(k) ?? 0) + 1);
+        return {
+          metric_id: 'reviews.summary',
+          filters: { branch: input.branch ?? null, from, to },
+          as_of,
+          data: {
+            ratings: ((ratings.data ?? []) as Record<string, unknown>[]).map((r) => ({
+              source: r.source,
+              reviews: num(r.n),
+              avg_rating: num(r.avg_rating),
+              net_bps: num(r.net_bps),
+            })),
+            review_themes: [...counts.entries()]
+              .sort((a, b) => b[1] - a[1])
+              .map(([theme, count]) => ({ theme, count })),
+          },
         };
       }
       default:

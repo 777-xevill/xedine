@@ -1,6 +1,7 @@
 /** Loads the generated dataset into Postgres. Superuser connection: this is seed data, not an app path. */
 import type pg from 'pg';
 import {
+  BENCHMARK_REFERENCES,
   BRANCH_PRICE_CHANGES,
   CALENDAR,
   DEMO_PASSWORD,
@@ -572,4 +573,14 @@ async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
 function nextMonth(ym: string): string {
   const [y, m] = ym.split('-').map(Number) as [number, number];
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
+/** Labelled demo reference ranges for the benchmark page (platform rows; see BENCHMARK_REFERENCES). */
+export async function loadBenchmarkReferences(client: pg.PoolClient): Promise<void> {
+  for (const r of BENCHMARK_REFERENCES)
+    await client.query(
+      `insert into public.benchmark_snapshots (period, segment, metric_id, p25, p50, p75, is_reference, source_note)
+       values ('2026-01-01', '{}', $1, $2, $3, $4, true, 'Illustrative demo range — not survey data')`,
+      [r.metric_id, r.p25, r.p50, r.p75],
+    );
 }

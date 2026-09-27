@@ -580,6 +580,39 @@ async function phase8() {
   }
 }
 
+/** Phase 9: the seeded chain's gap to its best branch, in ৳, agrees with the variance bridge it is built on. */
+async function phase9() {
+  const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
+  const org = orgId(kacchi);
+  const chain = branchIds(kacchi);
+  const { from, to } = manifest.inventory.period;
+  const gaps = await q<{ branch_id: string; component: string; gap_poisha: string }>(
+    `select branch_id, component, gap_poisha from private.m_branch_gaps($1, $2::uuid[], $3::date, $4::date)`,
+    [org, chain, from, to],
+  );
+  const bridge = await q<{
+    branch_id: string;
+    net_sales_poisha: string;
+    unexplained_poisha: string;
+  }>(
+    `select branch_id, net_sales_poisha, unexplained_poisha from private.m_variance_bridge($1, $2::uuid[], $3::date, $4::date)
+      where branch_id is not null`,
+    [org, chain, from, to],
+  );
+  const rate = (r: (typeof bridge)[number]) => n(r.unexplained_poisha) / n(r.net_sales_poisha);
+  const best = bridge.length ? Math.min(...bridge.map(rate)) : 0;
+  for (const r of bridge) {
+    const g = gaps.find((x) => x.branch_id === r.branch_id && x.component === 'unexplained');
+    const expected = Math.max(0, n(r.unexplained_poisha) - best * n(r.net_sales_poisha));
+    if (!g) failures.push(`Phase 9: no unexplained-usage gap for branch ${r.branch_id}`);
+    else if (Math.abs(n(g.gap_poisha) - expected) > 1)
+      failures.push(`Phase 9: gap ${g.gap_poisha} ≠ ${Math.round(expected)} for ${r.branch_id}`);
+  }
+  const total = gaps.reduce((sum, g) => sum + n(g.gap_poisha), 0);
+  if (total <= 0) failures.push('Phase 9: the seeded chain shows no gap to its best branch');
+  notes.push(`Branch gaps (Kacchi House, ${from}–${to}): ৳${Math.round(total / 100)} in total`);
+}
+
 function addDaysIso(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 }
@@ -623,6 +656,7 @@ try {
   if (Number(process.env.SEED_PHASE ?? 0) >= 6) await phase6();
   if (Number(process.env.SEED_PHASE ?? 0) >= 7) await phase7();
   if (Number(process.env.SEED_PHASE ?? 0) >= 8) await phase8();
+  if (Number(process.env.SEED_PHASE ?? 0) >= 9) await phase9();
   await dashboardLatency();
   for (const note of notes) console.log(`  · ${note}`);
   if (failures.length > 0) {

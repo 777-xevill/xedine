@@ -71,26 +71,27 @@ Decisions already settled: ADRs 0001–0012. Read them before planning.
 **Open questions from the kit — settled in [ADR 0012](decisions/0012-phase-0-design-decisions.md):** invoice numbering (server-assigned; offline receipts carry a provisional number) · `business_date` (stored, set at insert). **Still open, deliberately:** PII retention window and deletion flow (needs legal review; Phase 8) · device credential (Phase 1).
 
 ## Phase 1 — POS, KDS, orders & cash
-Status: ☐ · Size: 3–4 weeks
+Status: ◐ **built; local checks green, awaiting the first CI run** (2026-09-27) · Size: 3–4 weeks
 **Goal:** every sale captured cleanly, online or offline.
+**Evidence so far (local, no Docker — ADR 0011):** typecheck, lint, format, 104 unit tests, 725 DB tests on embedded Postgres (incl. `tests/db/pos-integrity.test.ts`, 31 tests). Still to run in CI: the real-Supabase DB suite, seed + manifest, `tests/e2e/pos.spec.ts`, the regenerated DATA-MODEL.md.
 **Build**
-- [ ] Menu: categories, items, variants, modifiers, branch prices, availability (86), price history
-- [ ] POS: dine-in (tables), takeaway, delivery channels (own, foodpanda, Pathao Food, custom) + commission settings
-- [ ] Orders: order status separate from payment status; order_events timeline; price/cost snapshots on order_items
-- [ ] KDS: realtime, oldest-first, two-tap (preparing → ready), timers, station filter, dark mode
-- [ ] Payments: cash, card, bKash, Nagad, Rocket, Upay, bank; split payments
-- [ ] Discounts (reason codes); voids/refunds (reason + manager PIN after KOT); all audited
-- [ ] Shifts: opening float, close with cash count, expected vs counted, over/short
-- [ ] Receipt + KOT templates (58/80 mm); VAT/service-charge config; invoice numbering; Mushak-6.3-ready fields (TODO verify)
-- [ ] Optional customer phone (+880) / name with consent checkbox
-- [ ] Offline: cached menu, IndexedDB outbox, idempotent sync, sync-status UI
-- [ ] Optional QR table ordering (Thala patterns)
+- [x] Menu: categories, items, variants, modifiers, branch prices, availability (86), price history — `/[org]/menu`, `/[org]/branch`; price history by trigger; 86 never freezes a price (`has_price_override`)
+- [x] POS: dine-in (tables), takeaway, delivery channels (own, foodpanda, Pathao Food, custom) + commission settings — `/[org]/settings` (commissions money-gated, ADR 0007)
+- [x] Orders: order status separate from payment status; order_events timeline; price/cost snapshots on order_items — paying never closes a kitchen ticket; serving a paid order completes it
+- [x] KDS: realtime, oldest-first, two-tap (preparing → ready), timers, station filter, dark mode — timers run from the latest round's send time; only sent lines show; voided lines are struck through; 30 s poll backs up Realtime
+- [x] Payments: cash, card, bKash, Nagad, Rocket, Upay, bank; split payments — cash above the balance is change (`tendered_poisha`), never revenue
+- [x] Discounts (reason codes); voids/refunds (reason + manager PIN after KOT); all audited — single-use 2-minute manager approvals ([ADR 0014](decisions/0014-single-use-manager-approvals.md)); order tables writable only through audited RPCs
+- [x] Shifts: opening float, close with cash count, expected vs counted, over/short — non-managers need approval to close; closing waits for queued payments to sync
+- [x] Receipt + KOT templates (58/80 mm); VAT/service-charge config; invoice numbering; Mushak-6.3-ready fields (TODO verify) — receipt header from `org_receipt_settings`; daily order numbers; offline provisional receipt numbers
+- [x] Optional customer phone (+880) / name with consent checkbox — normalised, masked in audit
+- [x] Offline: cached menu, IndexedDB outbox, idempotent sync, sync-status UI — `src/modules/pos/outbox.ts`; till snapshot in local storage; `public/sw.js` keeps `/pos` and `/kds` loadable offline. Voids/refunds/discounts/cancels stay online-only (they need a live approval)
+- [ ] Optional QR table ordering (Thala patterns) — **deferred**: optional, and the placeholder page says it arrives after Pilot gate A
 **Done when**
-- [ ] E2E: order → KDS ready → split payment → receipt print preview
-- [ ] Void after KOT impossible without manager PIN; with PIN it's audited
-- [ ] Offline test: 20 orders created with network off sync exactly once after reconnect
-- [ ] Shift-close math matches payments; discrepancies flagged
-- [ ] All POS/KDS strings exist in bn and en; usable on a 10" Android tablet
+- [ ] E2E: order → KDS ready → split payment → receipt print preview — written as `tests/e2e/pos.spec.ts`; **passes only once CI runs it**
+- [x] Void after KOT impossible without manager PIN; with PIN it's audited — `pos-integrity.test.ts` "manager approvals are single-use PIN proofs"
+- [x] Offline test: 20 orders created with network off sync exactly once after reconnect — `src/modules/pos/outbox.test.ts` (queue, lost responses, retries) + `pos-integrity.test.ts` "offline replay is exactly-once" (the real RPCs, replayed twice)
+- [x] Shift-close math matches payments; discrepancies flagged — `pos-integrity.test.ts` "payments, change and completion"; the close dialog flags any over/short
+- [ ] All POS/KDS strings exist in bn and en; usable on a 10" Android tablet — strings: yes (`messages.test.ts`); **tablet: not yet checked on a real device**
 
 ## Phase 2 — Metrics layer, Health Monitor & zero-input leaks
 Status: ☐ · Size: 2–3 weeks

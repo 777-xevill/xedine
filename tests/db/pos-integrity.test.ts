@@ -1170,3 +1170,98 @@ describe('defaults for a new restaurant', () => {
     expect(counts).toEqual({ channels: 5, reasons: 10, stations: 2 });
   });
 });
+
+// The offline outbox (src/modules/pos/outbox.ts) replays operations whose responses were lost.
+// ROADMAP Phase 1: "20 orders created with network off sync exactly once after reconnect".
+describe('offline replay is exactly-once', () => {
+  let ctx: Ctx;
+  beforeAll(async () => {
+    ctx = await setup();
+  });
+
+  it('replaying 20 queued orders, kitchen sends and payments creates each once', async () => {
+    const { at } = await one<{ at: string }>(
+      `select (now() - interval '40 minutes')::text as at`,
+      [],
+    );
+    const queued = Array.from({ length: 20 }, (_, i) => ({
+      orderId: randomUUID(),
+      orderKey: randomUUID(),
+      payKey: randomUUID(),
+      provisional: `P-OFF-${i + 1}`,
+    }));
+    const lines = JSON.stringify([{ menu_item_id: ctx.kacchi, quantity: 1 }]);
+
+    const replayAll = async () => {
+      for (const q of queued) {
+        await call(ctx, SUBMIT, [
+          ctx.org.id,
+          ctx.branchId,
+          q.orderId,
+          q.orderKey,
+          ctx.deviceId,
+          ctx.cashierStaff,
+          ctx.takeaway,
+          null,
+          at,
+          lines,
+          q.provisional,
+        ]);
+        const sent = await asUser(
+          ctx.manager,
+          (s) =>
+            s.attempt('select public.send_to_kitchen($1,$2,$3,$4,$5)', [
+              ctx.org.id,
+              ctx.branchId,
+              q.orderId,
+              ctx.deviceId,
+              ctx.cashierStaff,
+            ]),
+          { commit: true },
+        );
+        // The outbox treats exactly this refusal as "already sent" (client.ts posTransport).
+        if (!sent.ok) expect(sent.message).toContain('nothing new to send to the kitchen');
+        await pay(ctx, q.orderId, 'cash', 40_000, q.payKey);
+      }
+    };
+    await replayAll();
+    await replayAll();
+
+    const ids = queued.map((q) => q.orderId);
+    const [counts] = await admin<{
+      orders: number;
+      payments: number;
+      paid: number;
+      creates: number;
+      numbers: number;
+      span: number;
+    }>(
+      `select (select count(*)::int from public.orders where id = any($1::uuid[])) as orders,
+              (select count(*)::int from public.payments where order_id = any($1::uuid[])) as payments,
+              (select count(*)::int from public.orders where id = any($1::uuid[]) and payment_status = 'paid') as paid,
+              (select count(*)::int from public.audit_log where action = 'order.create' and entity_id = any($2::text[])) as creates,
+              (select count(distinct order_number)::int from public.orders where id = any($1::uuid[])) as numbers,
+              (select (max(order_number) - min(order_number) + 1)::int from public.orders where id = any($1::uuid[])) as span`,
+      [ids, ids],
+    );
+    expect(counts).toEqual({
+      orders: 20,
+      payments: 20,
+      paid: 20,
+      creates: 20,
+      numbers: 20,
+      span: 20,
+    });
+
+    const rows = await admin<{ provisional_receipt_no: string; placed_at: string; amount: string }>(
+      `select o.provisional_receipt_no, o.placed_at::text, p.amount_poisha::text as amount
+         from public.orders o join public.payments p on p.order_id = o.id
+        where o.id = any($1::uuid[]) order by o.provisional_receipt_no`,
+      [ids],
+    );
+    expect(new Set(rows.map((r) => r.provisional_receipt_no)).size).toBe(20);
+    // The order keeps the time it was rung up offline, and change never counts as revenue.
+    expect(rows.every((r) => r.placed_at === at)).toBe(true);
+    expect(rows.every((r) => r.amount === '31500')).toBe(true);
+  });
+});

@@ -1,5 +1,16 @@
 'use client';
 
+import type { VatConfig } from '@/lib/money';
+import type {
+  Channel,
+  DiningTable,
+  MenuCategory,
+  ReasonCode,
+  ReceiptInfo,
+  ShiftRow,
+  StaffMember,
+} from './client';
+
 /**
  * Device pairing and staff-session state, kept in the browser only. None of this is an RLS
  * credential (ADR 0013) — losing it just logs the till out; it never grants data access on its own.
@@ -51,3 +62,35 @@ export const getStaffSession = (): StaffSessionState | null =>
   safeGet<StaffSessionState>(SESSION_KEY);
 export const setStaffSession = (state: StaffSessionState): void => safeSet(SESSION_KEY, state);
 export const clearStaffSession = (): void => safeRemove(SESSION_KEY);
+
+/**
+ * Everything the till needs to keep selling with no network (ARCHITECTURE.md "Offline POS":
+ * cached menu). Refreshed on every successful load; read only when the network load fails.
+ */
+export interface TillSnapshot {
+  savedAt: string;
+  shift: ShiftRow | null;
+  vat: VatConfig;
+  menu: MenuCategory[];
+  channels: Channel[];
+  tables: DiningTable[];
+  voidReasons: ReasonCode[];
+  discountReasons: ReasonCode[];
+  refundReasons: ReasonCode[];
+  staff: StaffMember[];
+  receipt: ReceiptInfo;
+}
+
+const snapshotKey = (deviceId: string) => `xedine.pos.snapshot.${deviceId}`;
+export const getTillSnapshot = (deviceId: string): TillSnapshot | null =>
+  safeGet<TillSnapshot>(snapshotKey(deviceId));
+export const setTillSnapshot = (deviceId: string, snapshot: TillSnapshot): void =>
+  safeSet(snapshotKey(deviceId), snapshot);
+
+/** Per-device counter behind provisional receipt numbers; never reused, even across reloads. */
+export function nextProvisionalCounter(deviceId: string): number {
+  const key = `xedine.pos.provisional.${deviceId}`;
+  const next = (safeGet<number>(key) ?? 0) + 1;
+  safeSet(key, next);
+  return next;
+}

@@ -2,6 +2,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/db/supabase-browser';
+import type { VatConfig } from '@/lib/money';
+import type { OutboxOp, Transport } from './outbox';
 
 /** Typed wrappers over the Phase 1 RPCs and reads the POS/KDS surfaces need (ADR 0013). */
 
@@ -53,6 +55,9 @@ export interface ItemVariant {
   name: string;
   name_bn: string | null;
   price_delta_poisha: number;
+  /** A branch price set for this exact variant; otherwise the base price plus the delta. */
+  branch_price_poisha: number | null;
+  is_available: boolean;
 }
 export interface MenuItem {
   id: string;
@@ -77,6 +82,7 @@ export interface OrderRow {
   id: string;
   order_status: string;
   payment_status: string;
+  order_number: number | null;
   invoice_no: string | null;
   provisional_receipt_no: string | null;
   net_poisha: number;
@@ -305,6 +311,7 @@ export async function fetchMenu(
           .from('modifier_groups')
           .select('id, name, name_bn, min_select, max_select')
           .in('id', groupIds)
+          .eq('is_active', true)
       : Promise.resolve({
           data: [] as {
             id: string;
@@ -337,8 +344,15 @@ export async function fetchMenu(
   if (me) throw me;
 
   const priceByItem = new Map<string, { price: number | null; available: boolean }>();
+  const priceByVariant = new Map<string, { price: number | null; available: boolean }>();
   for (const p of prices ?? []) {
-    if (p.variant_id) continue; // Variant-level overrides are read from item_variants below.
+    if (p.variant_id) {
+      priceByVariant.set(p.variant_id as string, {
+        price: p.has_price_override ? n(p.price_poisha) : null,
+        available: p.is_available as boolean,
+      });
+      continue;
+    }
     priceByItem.set(p.menu_item_id as string, {
       price: p.has_price_override ? n(p.price_poisha) : null,
       available: p.is_available as boolean,
@@ -347,11 +361,14 @@ export async function fetchMenu(
   const variantsByItem = new Map<string, ItemVariant[]>();
   for (const v of variants ?? []) {
     const arr = variantsByItem.get(v.menu_item_id as string) ?? [];
+    const override = priceByVariant.get(v.id as string);
     arr.push({
       id: v.id as string,
       name: v.name as string,
       name_bn: v.name_bn as string | null,
       price_delta_poisha: n(v.price_delta_poisha),
+      branch_price_poisha: override?.price ?? null,
+      is_available: override ? override.available : true,
     });
     variantsByItem.set(v.menu_item_id as string, arr);
   }
@@ -433,6 +450,8 @@ export async function submitOrder(
     channelId: string;
     tableId: string | null;
     lines: CartLine[];
+    /** When the order was rung up; differs from the server's clock for orders synced after an outage. */
+    placedAt?: string | null;
     /** Set only when this order was created offline, before the server assigned a real invoice number. */
     provisionalReceiptNo?: string | null;
   },
@@ -448,7 +467,7 @@ export async function submitOrder(
       p_channel: args.channelId,
       p_table: args.tableId,
       p_guests: null,
-      p_placed_at: null,
+      p_placed_at: args.placedAt ?? null,
       p_lines: args.lines,
       p_provisional_receipt_no: args.provisionalReceiptNo ?? null,
     })
@@ -804,6 +823,148 @@ export async function closeShift(
     .single();
   if (error) throw error;
   return data as ShiftRow;
+}
+
+const ORDER_COLUMNS =
+  'id, order_status, payment_status, order_number, invoice_no, provisional_receipt_no, net_poisha, vat_poisha, service_charge_poisha, discount_poisha, total_poisha, channel_id, table_id, customer_id, placed_at';
+
+function toOrderRow(r: Record<string, unknown>): OrderRow {
+  return {
+    ...(r as unknown as OrderRow),
+    net_poisha: n(r.net_poisha),
+    vat_poisha: n(r.vat_poisha),
+    service_charge_poisha: n(r.service_charge_poisha),
+    discount_poisha: n(r.discount_poisha),
+    total_poisha: n(r.total_poisha),
+  };
+}
+
+export async function fetchOrder(
+  sb: SupabaseClient,
+  orgId: string,
+  orderId: string,
+): Promise<OrderRow | null> {
+  const { data, error } = await sb
+    .from('orders')
+    .select(ORDER_COLUMNS)
+    .eq('org_id', orgId)
+    .eq('id', orderId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toOrderRow(data) : null;
+}
+
+/** The branch's most recent orders, newest first, for the till's order list. */
+export async function fetchRecentOrders(
+  sb: SupabaseClient,
+  orgId: string,
+  branchId: string,
+  limit = 60,
+): Promise<OrderRow[]> {
+  const { data, error } = await sb
+    .from('orders')
+    .select(ORDER_COLUMNS)
+    .eq('org_id', orgId)
+    .eq('branch_id', branchId)
+    .order('placed_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map(toOrderRow);
+}
+
+/** What has been paid and refunded on an order, for split payments and the refund limit. */
+export async function fetchOrderMoney(
+  sb: SupabaseClient,
+  orgId: string,
+  orderId: string,
+): Promise<{ paidPoisha: number; refundedPoisha: number }> {
+  const [{ data: pays, error: pe }, { data: refunds, error: re }] = await Promise.all([
+    sb.from('payments').select('amount_poisha').eq('org_id', orgId).eq('order_id', orderId),
+    sb.from('refunds').select('amount_poisha').eq('org_id', orgId).eq('order_id', orderId),
+  ]);
+  if (pe) throw pe;
+  if (re) throw re;
+  return {
+    paidPoisha: (pays ?? []).reduce((s, p) => s + n(p.amount_poisha), 0),
+    refundedPoisha: (refunds ?? []).reduce((s, r) => s + n(r.amount_poisha), 0),
+  };
+}
+
+export interface ReceiptInfo {
+  orgName: string;
+  legalName: string | null;
+  bin: string | null;
+  address: string | null;
+  phone: string | null;
+  footer: string | null;
+}
+
+export async function fetchReceiptInfo(sb: SupabaseClient, orgId: string): Promise<ReceiptInfo> {
+  const [{ data: org, error: oe }, { data: rs, error: re }] = await Promise.all([
+    sb.from('organizations').select('name').eq('id', orgId).single(),
+    sb
+      .from('org_receipt_settings')
+      .select('legal_name, bin, address, phone, footer')
+      .eq('org_id', orgId)
+      .maybeSingle(),
+  ]);
+  if (oe) throw oe;
+  if (re) throw re;
+  return {
+    orgName: org.name as string,
+    legalName: (rs?.legal_name as string | null) ?? null,
+    bin: (rs?.bin as string | null) ?? null,
+    address: (rs?.address as string | null) ?? null,
+    phone: (rs?.phone as string | null) ?? null,
+    footer: (rs?.footer as string | null) ?? null,
+  };
+}
+
+export async function fetchVatConfig(sb: SupabaseClient, orgId: string): Promise<VatConfig> {
+  const { data, error } = await sb
+    .from('org_settings')
+    .select('price_includes_vat, vat_rate_bps, service_charge_bps, vat_on_service_charge')
+    .eq('org_id', orgId)
+    .single();
+  if (error) throw error;
+  return {
+    priceIncludesVat: data.price_includes_vat as boolean,
+    vatRateBps: data.vat_rate_bps as number,
+    serviceChargeBps: data.service_charge_bps as number,
+    vatOnServiceCharge: data.vat_on_service_charge as boolean,
+  };
+}
+
+/**
+ * The outbox's transport: each queued operation is one idempotent RPC. A kitchen send that already
+ * went through (its response was lost) is refused with "nothing new to send"; that is success here.
+ */
+export function posTransport(sb: SupabaseClient): Transport {
+  return async (op: OutboxOp) => {
+    switch (op.kind) {
+      case 'submit_order':
+        return submitOrder(sb, op.args);
+      case 'send_to_kitchen':
+        try {
+          await sendToKitchen(
+            sb,
+            op.args.orgId,
+            op.args.branchId,
+            op.args.orderId,
+            op.args.deviceId,
+            op.args.staffId,
+          );
+        } catch (e) {
+          const message = (e as { message?: unknown }).message;
+          if (typeof message === 'string' && message.includes('nothing new to send to the kitchen'))
+            return null;
+          throw e;
+        }
+        return null;
+      case 'record_payment':
+        return recordPayment(sb, op.args);
+    }
+  };
 }
 
 /** Postgres raises insufficient_privilege (42501) for RLS refusals and explicit role checks alike. */

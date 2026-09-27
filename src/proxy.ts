@@ -44,6 +44,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // sw.js must load even after the session expires: a redirected service-worker script fails.
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

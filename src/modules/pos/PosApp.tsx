@@ -1,45 +1,46 @@
 'use client';
 
+import { History, LogOut } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Input, Label, Select } from '@/components/ui/form';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Alert, Input, Label } from '@/components/ui/form';
 import { formatBDT, type Locale } from '@/lib/i18n/format';
 import { computeLine, parseTakaToPoisha, sumLines, type VatConfig } from '@/lib/money';
+import { now } from '@/lib/time/clock';
 import {
+  addOrderItems,
   applyOrderDiscount,
-  approveAction,
   attachCustomer,
   cancelOrder,
   closeShift,
   createClient,
   endStaffSession,
   fetchActiveStaff,
-  fetchBranches,
   fetchChannels,
   fetchMenu,
   fetchOpenShift,
+  fetchOrder,
   fetchOrderItems,
+  fetchOrderMoney,
   fetchReasonCodes,
+  fetchReceiptInfo,
+  fetchRecentOrders,
   fetchTables,
+  fetchVatConfig,
   needsApproval,
   openShift,
-  recordPayment,
+  posTransport,
   refundOrder,
-  registerAndClaimDevice,
-  sendToKitchen,
-  startStaffSession,
-  submitOrder,
   voidOrderItem,
-  type ApprovalAction,
-  type ApprovalResult,
-  type Branch,
   type Channel,
   type DiningTable,
   type MenuCategory,
+  type MenuItem,
   type OrderLine,
   type OrderRow,
   type ReasonCode,
+  type ReceiptInfo,
   type ShiftRow,
   type StaffMember,
 } from './client';
@@ -47,44 +48,53 @@ import {
   clearStaffSession,
   getDevice,
   getStaffSession,
+  getTillSnapshot,
+  nextProvisionalCounter,
   setDevice,
   setStaffSession,
+  setTillSnapshot,
   type DeviceState,
+  type StaffSessionState,
 } from './device-storage';
-import { Receipt } from './Receipt';
-
-interface CartItem {
-  key: string;
-  menuItemId: string;
-  name: string;
-  unitPricePoisha: number;
-  modifierIds: string[];
-  modifiersLabel: string;
-  modifiersPricePoisha: number;
-  quantity: number;
-  note?: string;
-}
+import { DialogShell, ManagerApprovalStep, type PaymentMethod, type PickedItem } from './dialogs';
+import { PairingScreen, StaffGate } from './gate';
+import { applyTender, buildLocalOrder, provisionalReceiptNo } from './local-order';
+import { isNetworkError, Outbox, type FlushResult, type OutboxEntry } from './outbox';
+import { idbOutboxStore } from './outbox-idb';
+import {
+  cartKey,
+  CartScreen,
+  CheckoutScreen,
+  orderLabel,
+  OrderScreen,
+  OrdersScreen,
+  ReceiptScreen,
+  SyncStatus,
+  type CartItem,
+  type CartMode,
+} from './screens';
+import { TillContext, useTill, type TillContextValue } from './till-context';
 
 // crypto.randomUUID() is the standard Web Crypto API, available in every browser this app targets
-// (this module is client-only per ADR 0013 / next/dynamic ssr:false) — no Node builtin needed here.
+// (this module is client-only: page.tsx loads it via next/dynamic, ssr: false).
 const uid = () => crypto.randomUUID();
+const nowIso = () => now().toISOString();
 
 export function PosApp() {
   const locale = useLocale() as Locale;
-  const t = useTranslations('pos');
-  const tc = useTranslations('common');
-  const te = useTranslations('errors');
   const sb = useMemo(() => createClient(), []);
-
-  // This tree only ever mounts client-side (page.tsx loads it via next/dynamic, ssr: false), so
-  // reading localStorage in the initializer is safe: there is no server render to mismatch against.
+  // Client-only mount, so reading localStorage in the initializer cannot mismatch a server render.
   const [device, setDeviceState] = useState<DeviceState | null>(() => getDevice());
-  const [staffSession, setStaffSessionState] = useState<{
-    sessionId: string;
-    staffId: string;
-    staffName: string;
-  } | null>(() => getStaffSession());
-  const [error, setError] = useState<string | null>(null);
+  const [staffSession, setStaffSessionState] = useState<StaffSessionState | null>(() =>
+    getStaffSession(),
+  );
+
+  useEffect(() => {
+    // The service worker keeps /pos loadable with no network (public/sw.js). Best effort only.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);
+    }
+  }, []);
 
   if (!device)
     return (
@@ -119,213 +129,80 @@ export function PosApp() {
         clearStaffSession();
         setStaffSessionState(null);
       }}
-      error={error}
-      setError={setError}
-      t={t}
-      tc={tc}
-      te={te}
     />
   );
 }
 
-// -------------------------------------------------------------------------------------------
-// Pairing: the manager/owner currently signed into this browser (ADR 0013) registers the device.
-// -------------------------------------------------------------------------------------------
-export function PairingScreen({
-  sb,
-  onPaired,
-}: {
-  sb: ReturnType<typeof createClient>;
-  onPaired: (d: DeviceState) => void;
-}) {
-  const t = useTranslations('pos');
-  const tn = useTranslations('nav');
-  const te = useTranslations('errors');
-  const [orgs, setOrgs] = useState<{ id: string; name: string; slug: string }[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [orgId, setOrgId] = useState('');
-  const [branchId, setBranchId] = useState('');
-  const [name, setName] = useState('Counter 1');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+function useBrowserOnline(): boolean {
+  const [online, setOnline] = useState(() => navigator.onLine);
   useEffect(() => {
-    void sb
-      .from('organizations')
-      .select('id, name, slug')
-      .order('name')
-      .then(({ data }) => {
-        setOrgs(data ?? []);
-        if (data?.[0]) setOrgId(data[0].id);
-      });
-  }, [sb]);
-  useEffect(() => {
-    if (!orgId) return;
-    void fetchBranches(sb, orgId).then((b) => {
-      setBranches(b);
-      setBranchId(b[0]?.id ?? '');
-    });
-  }, [sb, orgId]);
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+  }, []);
+  return online;
+}
 
-  const submit = async () => {
-    setError(null);
-    if (!orgId || !branchId || !name.trim()) return;
-    setBusy(true);
-    try {
-      const org = orgs.find((o) => o.id === orgId)!;
-      const branch = branches.find((b) => b.id === branchId)!;
-      const deviceId = await registerAndClaimDevice(sb, orgId, branchId, name.trim());
-      onPaired({ deviceId, orgId, orgSlug: org.slug, branchId, branchName: branch.name });
-    } catch {
-      setError(te('generic'));
-    } finally {
-      setBusy(false);
-    }
+interface TillData {
+  shift: ShiftRow | null;
+  vat: VatConfig;
+  menu: MenuCategory[];
+  channels: Channel[];
+  tables: DiningTable[];
+  voidReasons: ReasonCode[];
+  discountReasons: ReasonCode[];
+  refundReasons: ReasonCode[];
+  staff: StaffMember[];
+  receipt: ReceiptInfo;
+}
+
+async function loadTillData(
+  sb: ReturnType<typeof createClient>,
+  device: DeviceState,
+): Promise<TillData> {
+  const [
+    shift,
+    vat,
+    menu,
+    channels,
+    tables,
+    voidReasons,
+    discountReasons,
+    refundReasons,
+    staff,
+    receipt,
+  ] = await Promise.all([
+    fetchOpenShift(sb, device.orgId, device.branchId, device.deviceId),
+    fetchVatConfig(sb, device.orgId),
+    fetchMenu(sb, device.orgId, device.branchId),
+    fetchChannels(sb, device.orgId),
+    fetchTables(sb, device.orgId, device.branchId),
+    fetchReasonCodes(sb, device.orgId, 'void'),
+    fetchReasonCodes(sb, device.orgId, 'discount'),
+    fetchReasonCodes(sb, device.orgId, 'refund'),
+    fetchActiveStaff(sb, device.orgId, device.branchId),
+    fetchReceiptInfo(sb, device.orgId),
+  ]);
+  return {
+    shift,
+    vat,
+    menu,
+    channels,
+    tables,
+    voidReasons,
+    discountReasons,
+    refundReasons,
+    staff,
+    receipt,
   };
-
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
-      <h1 className="text-2xl font-semibold">{t('pairTitle')}</h1>
-      <p className="text-secondary">{t('pairSubtitle')}</p>
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      <div>
-        <Label htmlFor="org">{tn('organization')}</Label>
-        <Select id="org" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
-          {orgs.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.name}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="branch">{t('selectBranch')}</Label>
-        <Select id="branch" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="deviceName">{t('deviceName')}</Label>
-        <Input id="deviceName" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <Button onClick={() => void submit()} disabled={busy || !orgId || !branchId}>
-        {busy ? t('pairing') : t('pairButton')}
-      </Button>
-    </div>
-  );
 }
 
-// -------------------------------------------------------------------------------------------
-// Staff gate: pick your name, then your PIN (Phase 0 start_staff_session).
-// -------------------------------------------------------------------------------------------
-export function StaffGate({
-  sb,
-  device,
-  onSignedIn,
-}: {
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  onSignedIn: (s: { sessionId: string; staffId: string; staffName: string }) => void;
-}) {
-  const t = useTranslations('pos');
-  const te = useTranslations('errors');
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [picked, setPicked] = useState<StaffMember | null>(null);
-  const [pin, setPin] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    void fetchActiveStaff(sb, device.orgId, device.branchId).then(setStaff);
-  }, [sb, device]);
-
-  const tryPin = useCallback(
-    async (nextPin: string) => {
-      if (!picked || nextPin.length < 4) return;
-      const result = await startStaffSession(sb, device.deviceId, picked.id, nextPin);
-      if (result.ok) {
-        onSignedIn({
-          sessionId: result.session_id,
-          staffId: picked.id,
-          staffName: picked.display_name,
-        });
-        return;
-      }
-      setPin('');
-      if (result.reason === 'locked') setMessage(t('pinLocked'));
-      else if (result.reason === 'wrong_pin')
-        setMessage(t('pinWrong', { attempts: result.attempts_left ?? 0 }));
-      else setMessage(te('generic'));
-    },
-    [sb, device, picked, onSignedIn, t, te],
-  );
-
-  if (!picked) {
-    return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
-        <h1 className="text-2xl font-semibold">{t('chooseStaff')}</h1>
-        <div className="grid grid-cols-2 gap-3">
-          {staff.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => {
-                setPicked(s);
-                setMessage(null);
-              }}
-              className="min-h-16 rounded-card border border-line bg-surface px-4 text-lg font-medium hover:border-cyan"
-            >
-              {s.display_name}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
-      <h1 className="text-center text-xl font-semibold">{picked.display_name}</h1>
-      <p className="text-center text-secondary">{t('enterPin')}</p>
-      {message ? <Alert tone="danger">{message}</Alert> : null}
-      <div className="text-center text-3xl tracking-[0.5em]">
-        {'•'.repeat(pin.length).padEnd(6, '·')}
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((d, i) =>
-          d === '' ? (
-            <span key={i} />
-          ) : (
-            <button
-              key={i}
-              type="button"
-              className="min-h-14 rounded-input border border-line bg-surface text-xl"
-              onClick={() => {
-                if (d === '⌫') return setPin((p) => p.slice(0, -1));
-                const next = pin.length < 6 ? pin + d : pin;
-                setPin(next);
-                if (next.length >= 4) void tryPin(next);
-              }}
-            >
-              {d}
-            </button>
-          ),
-        )}
-      </div>
-      <Button variant="ghost" onClick={() => setPicked(null)}>
-        {t('switchStaff')}
-      </Button>
-    </div>
-  );
-}
-
-// -------------------------------------------------------------------------------------------
-// The till: shift gate, cart, order review, checkout, receipt.
-// -------------------------------------------------------------------------------------------
-type Screen = 'cart' | 'order' | 'checkout' | 'receipt';
+type Screen = 'cart' | 'order' | 'checkout' | 'receipt' | 'orders';
 
 function Till({
   sb,
@@ -333,172 +210,333 @@ function Till({
   staffSession,
   locale,
   onSwitchStaff,
-  error,
-  setError,
-  t,
-  tc,
-  te,
 }: {
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
-  staffSession: { sessionId: string; staffId: string; staffName: string };
+  staffSession: StaffSessionState;
   locale: Locale;
   onSwitchStaff: () => void;
-  error: string | null;
-  setError: (e: string | null) => void;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  tc: ReturnType<typeof useTranslations<'common'>>;
-  te: ReturnType<typeof useTranslations<'errors'>>;
 }) {
-  const [shift, setShift] = useState<ShiftRow | null | undefined>(undefined);
-  const [vatConfig, setVatConfig] = useState<VatConfig | null>(null);
-  const [menu, setMenu] = useState<MenuCategory[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [tables, setTables] = useState<DiningTable[]>([]);
-  const [voidReasons, setVoidReasons] = useState<ReasonCode[]>([]);
-  const [discountReasons, setDiscountReasons] = useState<ReasonCode[]>([]);
-  const [refundReasons, setRefundReasons] = useState<ReasonCode[]>([]);
-  const [managers, setManagers] = useState<StaffMember[]>([]);
+  const t = useTranslations('pos');
+  const tc = useTranslations('common');
+  const browserOnline = useBrowserOnline();
+  // navigator.onLine only knows about the local network; a failed sync is the real signal.
+  const [reachable, setReachable] = useState(true);
+  const online = browserOnline && reachable;
+
+  const [data, setData] = useState<TillData | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  const outbox = useMemo(
+    () => new Outbox(idbOutboxStore(device.deviceId), posTransport(sb), uid, nowIso),
+    [sb, device.deviceId],
+  );
+  const [entries, setEntries] = useState<OutboxEntry[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   const [screen, setScreen] = useState<Screen>('cart');
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [channelId, setChannelId] = useState('');
-  const [tableId, setTableId] = useState<string | ''>('');
+  const [cartMode, setCartMode] = useState<CartMode>({ kind: 'new' });
+  const [chosenChannel, setChannelId] = useState('');
+  const [tableId, setTableId] = useState('');
   const [order, setOrder] = useState<OrderRow | null>(null);
   const [lines, setLines] = useState<OrderLine[]>([]);
+  const [local, setLocal] = useState(false);
+  const [paid, setPaid] = useState(0);
+  const [refunded, setRefunded] = useState(0);
+  const [change, setChange] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [recent, setRecent] = useState<OrderRow[]>([]);
+  const [recentLoading, setRecentLoading] = useState(false);
 
+  // Flushes run from timers and events; refs let them see the order on screen right now.
+  const orderRef = useRef<OrderRow | null>(null);
+  const localRef = useRef(false);
   useEffect(() => {
-    void Promise.all([
-      fetchOpenShift(sb, device.orgId, device.branchId, device.deviceId),
-      sb
-        .from('org_settings')
-        .select('price_includes_vat, vat_rate_bps, service_charge_bps, vat_on_service_charge')
-        .eq('org_id', device.orgId)
-        .single(),
-      fetchMenu(sb, device.orgId, device.branchId),
-      fetchChannels(sb, device.orgId),
-      fetchTables(sb, device.orgId, device.branchId),
-      fetchReasonCodes(sb, device.orgId, 'void'),
-      fetchReasonCodes(sb, device.orgId, 'discount'),
-      fetchReasonCodes(sb, device.orgId, 'refund'),
-      fetchActiveStaff(sb, device.orgId, device.branchId),
-    ]).then(
-      ([
-        openShiftRow,
-        settings,
-        menuData,
-        channelData,
-        tableData,
-        voidR,
-        discR,
-        refundR,
-        staffList,
-      ]) => {
-        setShift(openShiftRow);
-        if (settings.data) {
-          setVatConfig({
-            priceIncludesVat: settings.data.price_includes_vat,
-            vatRateBps: settings.data.vat_rate_bps,
-            serviceChargeBps: settings.data.service_charge_bps,
-            vatOnServiceCharge: settings.data.vat_on_service_charge,
-          });
-        }
-        setMenu(menuData);
-        setChannels(channelData);
-        setChannelId(channelData.find((c) => c.kind === 'dine_in')?.id ?? channelData[0]?.id ?? '');
-        setTables(tableData);
-        setVoidReasons(voidR);
-        setDiscountReasons(discR);
-        setRefundReasons(refundR);
-        setManagers(staffList.filter((s) => s.role === 'manager' || s.role === 'owner'));
-      },
-    );
+    orderRef.current = order;
+    localRef.current = local;
+  }, [order, local]);
+
+  // ---------------------------------------------------------------------------------------
+  // Load: network first, then the cached snapshot (ARCHITECTURE.md "Offline POS").
+  // ---------------------------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+    loadTillData(sb, device)
+      .then((d) => {
+        if (cancelled) return;
+        setData(d);
+        setFromCache(false);
+        setTillSnapshot(device.deviceId, { ...d, savedAt: nowIso() });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const snapshot = getTillSnapshot(device.deviceId);
+        if (snapshot) {
+          setData(snapshot);
+          setFromCache(true);
+          setReachable(false);
+        } else setLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [sb, device]);
 
-  const isDineIn = channels.find((c) => c.id === channelId)?.kind === 'dine_in';
-  const serviceBps = isDineIn ? (vatConfig?.serviceChargeBps ?? 0) : 0;
+  const updateShift = useCallback(
+    (shift: ShiftRow | null) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, shift };
+        setTillSnapshot(device.deviceId, { ...next, savedAt: nowIso() });
+        return next;
+      });
+    },
+    [device.deviceId],
+  );
+
+  // ---------------------------------------------------------------------------------------
+  // Sync
+  // ---------------------------------------------------------------------------------------
+  const refreshEntries = useCallback(async () => setEntries(await outbox.entries()), [outbox]);
+  useEffect(() => {
+    let alive = true;
+    outbox
+      .entries()
+      .then((e) => alive && setEntries(e))
+      .catch(() => undefined);
+    const unsubscribe = outbox.subscribe(() => void refreshEntries());
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, [outbox, refreshEntries]);
+
+  const reloadOrder = useCallback(
+    async (orderId: string) => {
+      const [fresh, freshLines, money] = await Promise.all([
+        fetchOrder(sb, device.orgId, orderId),
+        fetchOrderItems(sb, device.orgId, orderId),
+        fetchOrderMoney(sb, device.orgId, orderId),
+      ]);
+      if (!fresh || orderRef.current?.id !== orderId) return;
+      setOrder(fresh);
+      setLines(freshLines);
+      setPaid(money.paidPoisha);
+      setRefunded(money.refundedPoisha);
+      setLocal(false);
+    },
+    [sb, device.orgId],
+  );
+
+  const flush = useCallback(async (): Promise<FlushResult> => {
+    setSyncing(true);
+    try {
+      const result = await outbox.flush();
+      setReachable(!result.offline);
+      // The order on screen was rung up offline and has now fully reached the server: show the
+      // server's own numbers (invoice number, order number, totals) from here on.
+      const current = orderRef.current;
+      if (current && localRef.current && result.synced > 0) {
+        const left = (await outbox.entries()).some((e) => e.orderId === current.id);
+        if (!left) await reloadOrder(current.id).catch(() => undefined);
+      }
+      return result;
+    } finally {
+      setSyncing(false);
+    }
+  }, [outbox, reloadOrder]);
+
+  useEffect(() => {
+    if (!browserOnline) return;
+    // Sync as soon as the network is back, then keep trying while anything is queued.
+    const first = window.setTimeout(() => void flush(), 0);
+    const timer = window.setInterval(() => void flush(), 20_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
+  }, [browserOnline, flush]);
+
+  /** Queue one operation, try to send it now, and report what happened to it. */
+  const enqueueAndFlush = async (orderId: string, op: Parameters<Outbox['enqueue']>[1]) => {
+    const entry = await outbox.enqueue(orderId, op);
+    const result = await flush();
+    const synced = result.results.get(entry.id);
+    if (synced) return { state: 'synced' as const, result: synced.result };
+    const refused = (await outbox.entries()).find(
+      (e) => e.id === entry.id && e.status === 'failed',
+    );
+    if (refused) {
+      // Refused while the cashier is standing here: undo it and say so, rather than park it.
+      await outbox.discard(entry.id);
+      return { state: 'refused' as const, error: refused.error ?? '' };
+    }
+    return { state: 'queued' as const };
+  };
+
+  // ---------------------------------------------------------------------------------------
+  // Cart
+  // ---------------------------------------------------------------------------------------
+  const channelId =
+    chosenChannel ||
+    (data?.channels.find((c) => c.kind === 'dine_in')?.id ?? data?.channels[0]?.id ?? '');
+  const isDineIn = data?.channels.find((c) => c.id === channelId)?.kind === 'dine_in';
+  const serviceBps = isDineIn ? (data?.vat.serviceChargeBps ?? 0) : 0;
+  const tableName = (id: string | null) => data?.tables.find((tb) => tb.id === id)?.name ?? null;
 
   const preview = useMemo(() => {
-    if (!vatConfig) return null;
-    const cfg = { ...vatConfig, serviceChargeBps: serviceBps };
+    if (!data || cart.length === 0) return null;
+    const cfg = { ...data.vat, serviceChargeBps: serviceBps };
     return sumLines(
       cart.map((c) =>
-        computeLine(
-          {
-            unitPricePoisha: (c.unitPricePoisha + c.modifiersPricePoisha) * c.quantity,
-            quantity: 1,
-          },
-          cfg,
-        ),
+        computeLine({ unitPricePoisha: c.unitPricePoisha, quantity: c.quantity }, cfg),
       ),
     );
-  }, [cart, vatConfig, serviceBps]);
+  }, [cart, data, serviceBps]);
 
-  const addToCart = (
-    item: { id: string; name: string; price: number },
-    modifierIds: string[],
-    modLabel: string,
-    modPrice: number,
-  ) => {
-    const key = `${item.id}:${modifierIds.slice().sort().join(',')}`;
+  const addToCart = (item: MenuItem, picked: PickedItem) => {
+    const key = cartKey(item.id, picked);
+    const base = locale === 'bn' && item.name_bn ? item.name_bn : item.name;
     setCart((prev) => {
-      const existing = prev.find((c) => c.key === key);
-      if (existing)
-        return prev.map((c) => (c.key === key ? { ...c, quantity: c.quantity + 1 } : c));
+      if (prev.some((c) => c.key === key))
+        return prev.map((c) =>
+          c.key === key ? { ...c, quantity: Math.min(999, c.quantity + picked.quantity) } : c,
+        );
       return [
         ...prev,
         {
           key,
           menuItemId: item.id,
-          name: item.name,
-          unitPricePoisha: item.price,
-          modifierIds,
-          modifiersLabel: modLabel,
-          modifiersPricePoisha: modPrice,
-          quantity: 1,
+          name: picked.variantName ? `${base} (${picked.variantName})` : base,
+          variantId: picked.variantId,
+          modifierIds: picked.modifierIds,
+          modifiersLabel: picked.modifiersLabel,
+          unitPricePoisha: picked.unitPricePoisha,
+          quantity: picked.quantity,
+          note: picked.note,
         },
       ];
     });
   };
-  const changeQty = (key: string, delta: number) => {
+  const changeQty = (key: string, delta: number) =>
     setCart((prev) =>
       prev.flatMap((c) =>
-        c.key === key
-          ? c.quantity + delta <= 0
+        c.key !== key
+          ? [c]
+          : c.quantity + delta <= 0
             ? []
-            : [{ ...c, quantity: c.quantity + delta }]
-          : [c],
+            : [{ ...c, quantity: c.quantity + delta }],
       ),
     );
+  const cartLines = () =>
+    cart.map((c) => ({
+      menu_item_id: c.menuItemId,
+      quantity: c.quantity,
+      ...(c.variantId ? { variant_id: c.variantId } : {}),
+      modifier_ids: c.modifierIds,
+      ...(c.note ? { note: c.note } : {}),
+      client_unit_price_poisha: c.unitPricePoisha,
+    }));
+
+  const errorText = (e: unknown) => (isNetworkError(e) ? t('needsInternet') : t('actionRefused'));
+
+  // ---------------------------------------------------------------------------------------
+  // Order flow: place → kitchen → pay go through the outbox, so they work offline.
+  // ---------------------------------------------------------------------------------------
+  const placeOrder = async () => {
+    if (!data?.shift || cart.length === 0 || !channelId) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const orderId = uid();
+      const placedAt = nowIso();
+      const provisional = provisionalReceiptNo(
+        device.deviceId,
+        nextProvisionalCounter(device.deviceId),
+      );
+      const table = isDineIn ? tableId || null : null;
+      const built = buildLocalOrder({
+        orderId,
+        lines: cart.map((c) => ({
+          menuItemId: c.menuItemId,
+          name: c.modifiersLabel ? `${c.name} — ${c.modifiersLabel}` : c.name,
+          unitPricePoisha: c.unitPricePoisha,
+          quantity: c.quantity,
+          note: c.note || undefined,
+        })),
+        vat: data.vat,
+        serviceChargeBps: serviceBps,
+        channelId,
+        tableId: table,
+        placedAt,
+        provisionalReceiptNo: provisional,
+        makeLineId: uid,
+      });
+      const outcome = await enqueueAndFlush(orderId, {
+        kind: 'submit_order',
+        args: {
+          orgId: device.orgId,
+          branchId: device.branchId,
+          orderId,
+          idempotencyKey: uid(),
+          deviceId: device.deviceId,
+          staffId: staffSession.staffId,
+          channelId,
+          tableId: table,
+          placedAt,
+          lines: cartLines(),
+          provisionalReceiptNo: provisional,
+        },
+      });
+      if (outcome.state === 'refused') {
+        setError(t('orderRefused'));
+        return;
+      }
+      if (outcome.state === 'synced') {
+        setOrder(outcome.result as OrderRow);
+        setLines(await fetchOrderItems(sb, device.orgId, orderId).catch(() => built.lines));
+        setLocal(false);
+      } else {
+        setOrder(built.order);
+        setLines(built.lines);
+        setLocal(true);
+      }
+      setPaid(0);
+      setRefunded(0);
+      setChange(0);
+      setCart([]);
+      setScreen('order');
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const placeOrder = async () => {
-    if (!shift || cart.length === 0 || !channelId) return;
+  const addRound = async () => {
+    if (!order || cart.length === 0) return;
     setBusy(true);
     setError(null);
     try {
-      const created = await submitOrder(sb, {
+      const updated = await addOrderItems(sb, {
         orgId: device.orgId,
         branchId: device.branchId,
-        orderId: uid(),
-        idempotencyKey: uid(),
+        orderId: order.id,
+        batchKey: uid(),
         deviceId: device.deviceId,
         staffId: staffSession.staffId,
-        channelId,
-        tableId: isDineIn ? tableId || null : null,
-        lines: cart.map((c) => ({
-          menu_item_id: c.menuItemId,
-          quantity: c.quantity,
-          modifier_ids: c.modifierIds,
-        })),
+        lines: cartLines(),
       });
-      const createdLines = await fetchOrderItems(sb, device.orgId, created.id);
-      setOrder(created);
-      setLines(createdLines);
+      setOrder(updated);
+      setLines(await fetchOrderItems(sb, device.orgId, order.id));
+      setCart([]);
+      setCartMode({ kind: 'new' });
       setScreen('order');
-    } catch {
-      setError(te('generic'));
+    } catch (e) {
+      setError(errorText(e));
     } finally {
       setBusy(false);
     }
@@ -507,28 +545,102 @@ function Till({
   const sendKitchen = async () => {
     if (!order) return;
     setBusy(true);
+    setError(null);
     try {
-      await sendToKitchen(
-        sb,
-        device.orgId,
-        device.branchId,
-        order.id,
-        device.deviceId,
-        staffSession.staffId,
+      const outcome = await enqueueAndFlush(order.id, {
+        kind: 'send_to_kitchen',
+        args: {
+          orgId: device.orgId,
+          branchId: device.branchId,
+          orderId: order.id,
+          deviceId: device.deviceId,
+          staffId: staffSession.staffId,
+        },
+      });
+      if (outcome.state === 'refused') {
+        setError(t('actionRefused'));
+        return;
+      }
+      const stamp = nowIso();
+      setLines((prev) =>
+        prev.map((l) =>
+          l.status === 'active' && !l.kot_sent_at ? { ...l, kot_sent_at: stamp } : l,
+        ),
       );
-      setOrder({ ...order, order_status: 'sent_to_kitchen' });
-    } catch {
-      setError(te('generic'));
+      setOrder((prev) =>
+        prev && ['open', 'ready', 'served'].includes(prev.order_status)
+          ? { ...prev, order_status: 'sent_to_kitchen' }
+          : prev,
+      );
     } finally {
       setBusy(false);
     }
   };
 
-  const doVoid = async (line: OrderLine, reasonId: string, approvalId?: string) => {
-    if (!order) return;
+  const tender = async (method: PaymentMethod, amountPoisha: number): Promise<string | null> => {
+    if (!order) return null;
+    const check = applyTender({
+      totalPoisha: order.total_poisha,
+      paidPoisha: paid,
+      method,
+      amountPoisha,
+    });
+    if (!check.ok)
+      return check.reason === 'over_balance'
+        ? t('tenderOverBalance')
+        : check.reason === 'nothing_due'
+          ? t('nothingDue')
+          : t('tenderInvalid');
+    setBusy(true);
+    try {
+      const outcome = await enqueueAndFlush(order.id, {
+        kind: 'record_payment',
+        args: {
+          orgId: device.orgId,
+          branchId: device.branchId,
+          orderId: order.id,
+          method,
+          amountPoisha,
+          reference: null,
+          idempotencyKey: uid(),
+          deviceId: device.deviceId,
+          staffId: staffSession.staffId,
+        },
+      });
+      if (outcome.state === 'refused') return t('paymentRefused');
+      setPaid(check.paidPoisha);
+      setChange(check.changePoisha);
+      if (outcome.state === 'synced') setOrder(outcome.result as OrderRow);
+      else
+        setOrder((prev) =>
+          prev ? { ...prev, payment_status: check.fullyPaid ? 'paid' : 'partially_paid' } : prev,
+        );
+      if (check.fullyPaid) setScreen('receipt');
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------------------
+  // Online-only actions (ADR 0014): each needs the server, and most a manager approval.
+  // ---------------------------------------------------------------------------------------
+  const online_ = async (fn: () => Promise<void>) => {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
+      await fn();
+    } catch (e) {
+      setError(needsApproval(e) ? t('approvalRejected') : errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doVoid = (line: OrderLine, reasonId: string, approvalId?: string) =>
+    online_(async () => {
+      if (!order) return;
       const updated = await voidOrderItem(sb, {
         orgId: device.orgId,
         branchId: device.branchId,
@@ -539,44 +651,32 @@ function Till({
         staffId: staffSession.staffId,
         approvalId,
       });
-      setLines((prev) => prev.map((l) => (l.id === line.id ? { ...l, status: 'voided' } : l)));
       setOrder(updated);
-    } catch {
-      setError(te('generic'));
-    } finally {
-      setBusy(false);
-    }
-  };
+      setLines(await fetchOrderItems(sb, device.orgId, order.id));
+    });
 
-  const applyDiscount = async (percentBps: number, reasonId: string, approvalId?: string) => {
-    if (!order) return;
-    setBusy(true);
-    try {
-      const updated = await applyOrderDiscount(sb, {
-        orgId: device.orgId,
-        branchId: device.branchId,
-        orderId: order.id,
-        percentBps,
-        reasonCodeId: reasonId,
-        note: null,
-        deviceId: device.deviceId,
-        staffId: staffSession.staffId,
-        approvalId,
-      });
-      setOrder(updated);
-    } catch {
-      setError(te('generic'));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const doDiscount = (percentBps: number, reasonId: string, approvalId?: string) =>
+    online_(async () => {
+      if (!order) return;
+      setOrder(
+        await applyOrderDiscount(sb, {
+          orgId: device.orgId,
+          branchId: device.branchId,
+          orderId: order.id,
+          percentBps,
+          reasonCodeId: reasonId,
+          note: null,
+          deviceId: device.deviceId,
+          staffId: staffSession.staffId,
+          approvalId,
+        }),
+      );
+    });
 
-  const doCancel = async (reasonId: string, approvalId?: string) => {
-    if (!order) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await cancelOrder(sb, {
+  const doCancel = (reasonId: string, approvalId?: string) =>
+    online_(async () => {
+      if (!order) return;
+      await cancelOrder(sb, {
         orgId: device.orgId,
         branchId: device.branchId,
         orderId: order.id,
@@ -586,23 +686,14 @@ function Till({
         staffId: staffSession.staffId,
         approvalId,
       });
-      setOrder(updated);
-      setScreen('cart');
-      setCart([]);
-      setLines([]);
-    } catch {
-      setError(te('generic'));
-    } finally {
-      setBusy(false);
-    }
-  };
+      newOrder();
+      setNotice(t('orderCancelled'));
+    });
 
-  const doAttachCustomer = async (phone: string, name: string, consent: boolean) => {
-    if (!order) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await attachCustomer(sb, {
+  const doAttachCustomer = (phone: string, name: string, consent: boolean) =>
+    online_(async () => {
+      if (!order) return;
+      const customerId = await attachCustomer(sb, {
         orgId: device.orgId,
         branchId: device.branchId,
         orderId: order.id,
@@ -612,23 +703,18 @@ function Till({
         deviceId: device.deviceId,
         staffId: staffSession.staffId,
       });
-    } catch {
-      setError(te('generic'));
-    } finally {
-      setBusy(false);
-    }
-  };
+      setOrder((prev) => (prev ? { ...prev, customer_id: customerId } : prev));
+      setNotice(t('customerAdded'));
+    });
 
-  const doRefund = async (amountPoisha: number, reasonId: string, approvalId: string) => {
-    if (!order) return;
-    setBusy(true);
-    setError(null);
-    try {
+  const doRefund = (amountPoisha: number, method: string, reasonId: string, approvalId: string) =>
+    online_(async () => {
+      if (!order) return;
       const updated = await refundOrder(sb, {
         orgId: device.orgId,
         branchId: device.branchId,
         orderId: order.id,
-        method: 'cash',
+        method,
         amountPoisha,
         reasonCodeId: reasonId,
         note: null,
@@ -638,1249 +724,413 @@ function Till({
         approvalId,
       });
       setOrder(updated);
-    } catch {
-      setError(te('generic'));
+      setRefunded((r) => r + amountPoisha);
+      setChange(0);
+      setNotice(t('refundDone', { amount: formatBDT(amountPoisha, locale) }));
+    });
+
+  // ---------------------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------------------
+  function newOrder() {
+    setCart([]);
+    setCartMode({ kind: 'new' });
+    setOrder(null);
+    setLines([]);
+    setLocal(false);
+    setPaid(0);
+    setRefunded(0);
+    setChange(0);
+    setError(null);
+    setScreen('cart');
+  }
+
+  const loadRecent = async () => {
+    setRecentLoading(true);
+    try {
+      setRecent(await fetchRecentOrders(sb, device.orgId, device.branchId));
+    } catch (e) {
+      setError(errorText(e));
     } finally {
-      setBusy(false);
+      setRecentLoading(false);
     }
   };
 
-  const reset = () => {
-    setCart([]);
-    setOrder(null);
-    setLines([]);
-    setScreen('cart');
+  const openOrder = (o: OrderRow) =>
+    online_(async () => {
+      const [freshLines, money] = await Promise.all([
+        fetchOrderItems(sb, device.orgId, o.id),
+        fetchOrderMoney(sb, device.orgId, o.id),
+      ]);
+      setOrder(o);
+      setLines(freshLines);
+      setPaid(money.paidPoisha);
+      setRefunded(money.refundedPoisha);
+      setLocal(false);
+      setChange(0);
+      setCart([]);
+      setCartMode({ kind: 'new' });
+      const settled =
+        o.order_status === 'cancelled' || !['unpaid', 'partially_paid'].includes(o.payment_status);
+      setScreen(settled ? 'receipt' : 'order');
+    });
+
+  const switchStaff = async () => {
+    // Queued work carries this cashier's id; send it while their session is still open.
+    if (entries.length > 0) await flush().catch(() => undefined);
+    onSwitchStaff();
   };
 
-  if (shift === undefined) return null;
-  if (!shift) {
+  // ---------------------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------------------
+  const managers = useMemo(
+    () => (data?.staff ?? []).filter((s) => s.role === 'manager' || s.role === 'owner'),
+    [data],
+  );
+  const ctx: TillContextValue = useMemo(
+    () => ({ sb, device, staffId: staffSession.staffId, managers, locale, online }),
+    [sb, device, staffSession.staffId, managers, locale, online],
+  );
+
+  if (!data) {
     return (
-      <ShiftOpener
-        sb={sb}
-        device={device}
-        staffSession={staffSession}
-        t={t}
-        te={te}
-        onOpened={setShift}
-        onSwitchStaff={onSwitchStaff}
-      />
+      <div className="flex min-h-dvh items-center justify-center p-4">
+        {loadFailed ? (
+          <Alert tone="danger">{t('firstLoadNeedsInternet')}</Alert>
+        ) : (
+          <p className="text-secondary">{tc('loading')}</p>
+        )}
+      </div>
     );
   }
 
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-5xl flex-col px-3 py-3">
-      <header className="mb-3 flex items-center justify-between">
-        <span className="text-sm text-secondary">
-          {device.branchName} · {staffSession.staffName}
-        </span>
-        <div className="flex gap-2">
-          <ShiftCloser
-            sb={sb}
-            device={device}
-            staffSession={staffSession}
-            managers={managers}
-            shift={shift}
-            t={t}
-            onClosed={() => setShift(null)}
-          />
-          <Button variant="ghost" size="sm" onClick={onSwitchStaff}>
-            {t('switchStaff')}
-          </Button>
-        </div>
-      </header>
-      {error ? <Alert tone="danger">{error}</Alert> : null}
+  if (!data.shift) {
+    return (
+      <TillContext.Provider value={ctx}>
+        <ShiftOpener
+          staffId={staffSession.staffId}
+          onOpened={updateShift}
+          onSwitchStaff={() => void switchStaff()}
+        />
+      </TillContext.Provider>
+    );
+  }
 
-      {screen === 'cart' ? (
-        <CartScreen
-          menu={menu}
-          channels={channels}
-          tables={tables}
-          channelId={channelId}
-          setChannelId={setChannelId}
-          tableId={tableId}
-          setTableId={setTableId}
-          isDineIn={isDineIn}
-          cart={cart}
-          addToCart={addToCart}
-          changeQty={changeQty}
-          preview={preview}
-          locale={locale}
-          t={t}
-          busy={busy}
-          onPlaceOrder={() => void placeOrder()}
-        />
-      ) : null}
-      {screen === 'order' && order ? (
-        <OrderScreen
-          order={order}
-          lines={lines}
-          locale={locale}
-          t={t}
-          busy={busy}
-          onSendKitchen={() => void sendKitchen()}
-          onVoid={doVoid}
-          voidReasons={voidReasons}
-          managers={managers}
-          sb={sb}
-          device={device}
-          tableName={tables.find((tb) => tb.id === order.table_id)?.name ?? null}
-          discountReasons={discountReasons}
-          voidReasonsForCancel={voidReasons}
-          onDiscount={(p, r, a) => void applyDiscount(p, r, a)}
-          onCancel={(r, a) => void doCancel(r, a)}
-          onAttachCustomer={(phone, name, consent) => void doAttachCustomer(phone, name, consent)}
-          onCheckout={() => setScreen('checkout')}
-        />
-      ) : null}
-      {screen === 'checkout' && order ? (
-        <CheckoutScreen
-          sb={sb}
-          device={device}
-          staffSession={staffSession}
-          order={order}
-          locale={locale}
-          t={t}
-          te={te}
-          onPaid={(paid) => {
-            setOrder(paid);
-            setScreen('receipt');
-          }}
-        />
-      ) : null}
-      {screen === 'receipt' && order ? (
-        <ReceiptScreen
-          order={order}
-          lines={lines}
-          orgSlug={device.orgSlug}
-          branchName={device.branchName}
-          tableName={tables.find((tb) => tb.id === order.table_id)?.name ?? null}
-          locale={locale}
-          t={t}
-          tc={tc}
-          onNewOrder={reset}
-          refundReasons={refundReasons}
-          managers={managers}
-          sb={sb}
-          device={device}
-          onRefund={(amount, reasonId, approvalId) => void doRefund(amount, reasonId, approvalId)}
-        />
-      ) : null}
-    </div>
+  const pendingOrders = entries
+    .filter((e) => e.op.kind === 'submit_order')
+    .map((e) => ({
+      orderId: e.orderId,
+      provisionalReceiptNo: e.op.kind === 'submit_order' ? e.op.args.provisionalReceiptNo : null,
+      placedAt: e.op.kind === 'submit_order' ? e.op.args.placedAt : e.createdAt,
+    }));
+
+  return (
+    <TillContext.Provider value={ctx}>
+      <div className="mx-auto flex h-dvh max-w-7xl flex-col gap-3 px-3 py-3">
+        <header className="glass flex flex-wrap items-center justify-between gap-2 rounded-full px-4 py-2">
+          <span className="text-sm">
+            <span className="font-semibold">{device.branchName}</span>
+            <span className="text-secondary"> · {staffSession.staffName}</span>
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <SyncStatus
+              entries={entries}
+              syncing={syncing}
+              onSyncNow={() => void flush()}
+              onDiscard={(id) => void outbox.discard(id)}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setScreen('orders');
+                if (online) void loadRecent();
+              }}
+            >
+              <History aria-hidden className="size-4" />
+              {t('orders')}
+            </Button>
+            <ShiftCloser
+              shift={data.shift}
+              staffId={staffSession.staffId}
+              blocked={entries.length > 0}
+              onClosed={() => updateShift(null)}
+            />
+            <Button variant="ghost" size="sm" onClick={() => void switchStaff()}>
+              <LogOut aria-hidden className="size-4" />
+              {t('switchStaff')}
+            </Button>
+          </div>
+        </header>
+        {!online ? (
+          <Alert tone="warning">{fromCache ? t('offlineCached') : t('offlineBanner')}</Alert>
+        ) : null}
+        {error ? <Alert tone="danger">{error}</Alert> : null}
+        {notice ? <Alert tone="success">{notice}</Alert> : null}
+
+        {screen === 'cart' ? (
+          <CartScreen
+            menu={data.menu}
+            channels={data.channels}
+            tables={data.tables}
+            channelId={channelId}
+            setChannelId={setChannelId}
+            tableId={tableId}
+            setTableId={setTableId}
+            isDineIn={isDineIn}
+            cart={cart}
+            onAdd={addToCart}
+            changeQty={changeQty}
+            preview={preview}
+            busy={busy}
+            mode={cartMode}
+            onSubmit={() => void (cartMode.kind === 'round' ? addRound() : placeOrder())}
+            onCancelRound={() => {
+              setCart([]);
+              setCartMode({ kind: 'new' });
+              setScreen('order');
+            }}
+          />
+        ) : null}
+        {screen === 'order' && order ? (
+          <OrderScreen
+            order={order}
+            lines={lines}
+            local={local}
+            busy={busy}
+            tableName={tableName(order.table_id)}
+            receipt={data.receipt}
+            voidReasons={data.voidReasons}
+            discountReasons={data.discountReasons}
+            onSendKitchen={() => void sendKitchen()}
+            onVoid={(l, r, a) => void doVoid(l, r, a)}
+            onDiscount={(p, r, a) => void doDiscount(p, r, a)}
+            onCancel={(r, a) => void doCancel(r, a)}
+            onAttachCustomer={(p, n, c) => void doAttachCustomer(p, n, c)}
+            onAddRound={() => {
+              setCart([]);
+              setCartMode({ kind: 'round', orderLabel: orderLabel(order, t) });
+              setScreen('cart');
+            }}
+            onCheckout={() => setScreen('checkout')}
+            onNewOrder={newOrder}
+          />
+        ) : null}
+        {screen === 'checkout' && order ? (
+          <CheckoutScreen
+            key={`${order.id}:${paid}`}
+            order={order}
+            paidPoisha={paid}
+            busy={busy}
+            onTender={tender}
+            onBack={() => setScreen('order')}
+          />
+        ) : null}
+        {screen === 'receipt' && order ? (
+          <ReceiptScreen
+            order={order}
+            lines={lines}
+            local={local}
+            changePoisha={change}
+            refundablePoisha={Math.max(0, paid - refunded)}
+            tableName={tableName(order.table_id)}
+            receipt={data.receipt}
+            refundReasons={data.refundReasons}
+            onNewOrder={newOrder}
+            onRefund={(a, m, r, ap) => void doRefund(a, m, r, ap)}
+          />
+        ) : null}
+        {screen === 'orders' ? (
+          <OrdersScreen
+            orders={recent}
+            pending={pendingOrders}
+            loading={recentLoading}
+            tableName={tableName}
+            onOpen={(o) => void openOrder(o)}
+            onRefresh={() => void loadRecent()}
+            onBack={() => setScreen(order ? 'order' : 'cart')}
+          />
+        ) : null}
+      </div>
+    </TillContext.Provider>
   );
 }
 
 function ShiftOpener({
-  sb,
-  device,
-  staffSession,
-  t,
-  te,
+  staffId,
   onOpened,
   onSwitchStaff,
 }: {
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  staffSession: { staffId: string };
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  te: ReturnType<typeof useTranslations<'errors'>>;
+  staffId: string;
   onOpened: (s: ShiftRow) => void;
   onSwitchStaff: () => void;
 }) {
+  const t = useTranslations('pos');
+  const te = useTranslations('errors');
+  const { sb, device, online } = useTill();
   const [float, setFloat] = useState('500');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
-      <p className="text-secondary">{t('shiftClosedBanner')}</p>
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      <div>
-        <Label htmlFor="float">{t('openingFloat')}</Label>
-        <Input
-          id="float"
-          inputMode="decimal"
-          value={float}
-          onChange={(e) => setFloat(e.target.value)}
-        />
+      <div className="glass space-y-4 rounded-sheet p-6">
+        <p className="text-secondary">{t('shiftClosedBanner')}</p>
+        {!online ? <Alert tone="warning">{t('needsInternet')}</Alert> : null}
+        {error ? <Alert tone="danger">{error}</Alert> : null}
+        <div>
+          <Label htmlFor="float">{t('openingFloat')}</Label>
+          <Input
+            id="float"
+            inputMode="decimal"
+            value={float}
+            onChange={(e) => setFloat(e.target.value)}
+          />
+        </div>
+        <Button
+          className="w-full"
+          size="lg"
+          disabled={busy || !online}
+          onClick={() => {
+            const poisha = parseTakaToPoisha(float);
+            if (poisha === null || poisha < 0) return setError(te('invalidInput'));
+            setBusy(true);
+            openShift(sb, device.orgId, device.branchId, device.deviceId, staffId, poisha)
+              .then(onOpened)
+              .catch((e: unknown) =>
+                setError(isNetworkError(e) ? t('needsInternet') : te('generic')),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          {t('openShift')}
+        </Button>
+        <Button variant="ghost" className="w-full" onClick={onSwitchStaff}>
+          {t('switchStaff')}
+        </Button>
       </div>
-      <Button
-        disabled={busy}
-        onClick={() => {
-          const poisha = parseTakaToPoisha(float);
-          if (poisha === null || poisha < 0) return setError(te('invalidInput'));
-          setBusy(true);
-          openShift(
-            sb,
-            device.orgId,
-            device.branchId,
-            device.deviceId,
-            staffSession.staffId,
-            poisha,
-          )
-            .then(onOpened)
-            .catch(() => setError(te('generic')))
-            .finally(() => setBusy(false));
-        }}
-      >
-        {t('openShift')}
-      </Button>
-      <Button variant="ghost" onClick={onSwitchStaff}>
-        {t('switchStaff')}
-      </Button>
     </div>
   );
 }
 
 function ShiftCloser({
-  sb,
-  device,
-  staffSession,
-  managers,
   shift,
-  t,
+  staffId,
+  blocked,
   onClosed,
 }: {
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  staffSession: { staffId: string };
-  managers: StaffMember[];
   shift: ShiftRow;
-  t: ReturnType<typeof useTranslations<'pos'>>;
+  staffId: string;
+  /** Payments still waiting to sync would make the expected cash wrong, so closing waits for them. */
+  blocked: boolean;
   onClosed: () => void;
 }) {
+  const t = useTranslations('pos');
+  const te = useTranslations('errors');
+  const { sb, device, online, locale } = useTill();
   const [open, setOpen] = useState(false);
   const [counted, setCounted] = useState('');
   const [needsMgr, setNeedsMgr] = useState(false);
   const [result, setResult] = useState<ShiftRow | null>(null);
-  const locale = useLocale() as Locale;
+  const [error, setError] = useState<string | null>(null);
 
   const attempt = async (approvalId?: string) => {
     const poisha = parseTakaToPoisha(counted);
-    if (poisha === null) return;
+    if (poisha === null || poisha < 0) return setError(te('invalidInput'));
+    setError(null);
     try {
-      const closed = await closeShift(
-        sb,
-        device.orgId,
-        device.branchId,
-        shift.id,
-        poisha,
-        device.deviceId,
-        staffSession.staffId,
-        approvalId,
+      setResult(
+        await closeShift(
+          sb,
+          device.orgId,
+          device.branchId,
+          shift.id,
+          poisha,
+          device.deviceId,
+          staffId,
+          approvalId,
+        ),
       );
-      setResult(closed);
     } catch (e) {
-      if (needsApproval(e)) setNeedsMgr(true);
+      if (needsApproval(e) && !approvalId) setNeedsMgr(true);
+      else setError(isNetworkError(e) ? t('needsInternet') : te('generic'));
     }
   };
 
-  if (!open) {
-    return (
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+  const close = () => {
+    setOpen(false);
+    setNeedsMgr(false);
+    setError(null);
+    if (result) onClosed();
+  };
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={!online || blocked}
+        title={blocked ? t('syncBeforeClose') : undefined}
+        onClick={() => setOpen(true)}
+      >
         {t('closeShift')}
       </Button>
-    );
-  }
-  return (
-    <DialogShell>
-      {result ? (
-        <>
-          <p>
-            {t('expectedCash')}: {formatBDT(result.expected_cash_poisha ?? 0, locale)}
-          </p>
-          <p>
-            {t('countedCash')}: {formatBDT(result.counted_cash_poisha ?? 0, locale)}
-          </p>
-          <p className={(result.over_short_poisha ?? 0) === 0 ? 'text-success' : 'text-danger'}>
-            {t('overShort')}: {formatBDT(result.over_short_poisha ?? 0, locale)}
-          </p>
-          <Button className="w-full" onClick={onClosed}>
-            OK
-          </Button>
-        </>
-      ) : needsMgr ? (
-        <>
-          <h3 className="font-bold">{t('closeShift')}</h3>
-          <ManagerApprovalStep
-            sb={sb}
-            device={device}
-            action="close_shift"
-            managers={managers}
-            t={t}
-            onApproved={(approvalId) => void attempt(approvalId)}
-          />
-        </>
-      ) : (
-        <>
-          <Label htmlFor="counted">{t('countedCash')}</Label>
-          <Input
-            id="counted"
-            inputMode="decimal"
-            value={counted}
-            onChange={(e) => setCounted(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setOpen(false)}>
-              ✕
-            </Button>
-            <Button className="flex-1" onClick={() => void attempt()}>
-              {t('closeShift')}
-            </Button>
-          </div>
-        </>
-      )}
-    </DialogShell>
-  );
-}
-
-function CartScreen({
-  menu,
-  channels,
-  tables,
-  channelId,
-  setChannelId,
-  tableId,
-  setTableId,
-  isDineIn,
-  cart,
-  addToCart,
-  changeQty,
-  preview,
-  locale,
-  t,
-  busy,
-  onPlaceOrder,
-}: {
-  menu: MenuCategory[];
-  channels: Channel[];
-  tables: DiningTable[];
-  channelId: string;
-  setChannelId: (v: string) => void;
-  tableId: string;
-  setTableId: (v: string) => void;
-  isDineIn: boolean;
-  cart: CartItem[];
-  addToCart: (
-    item: { id: string; name: string; price: number },
-    modifierIds: string[],
-    modLabel: string,
-    modPrice: number,
-  ) => void;
-  changeQty: (key: string, delta: number) => void;
-  preview: ReturnType<typeof sumLines> | null;
-  locale: Locale;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  busy: boolean;
-  onPlaceOrder: () => void;
-}) {
-  const money = (p: number) => formatBDT(p, locale);
-  return (
-    <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[1fr_320px]">
-      <div className="overflow-y-auto rounded-card border border-line bg-surface p-3">
-        <div className="mb-3 flex flex-wrap items-end gap-2">
-          <div>
-            <Label htmlFor="channel">{t('channel')}</Label>
-            <Select id="channel" value={channelId} onChange={(e) => setChannelId(e.target.value)}>
-              {channels.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          {isDineIn ? (
-            <div>
-              <Label htmlFor="table">{t('table')}</Label>
-              <Select id="table" value={tableId} onChange={(e) => setTableId(e.target.value)}>
-                <option value="">{t('noTable')}</option>
-                {tables.map((tb) => (
-                  <option key={tb.id} value={tb.id}>
-                    {tb.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          ) : null}
-        </div>
-        {menu.map((cat) => (
-          <div key={cat.id} className="mb-4">
-            <h2 className="mb-2 text-sm font-semibold text-secondary">
-              {locale === 'bn' && cat.name_bn ? cat.name_bn : cat.name}
-            </h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {cat.items
-                .filter((i) => i.is_available)
-                .map((item) => {
-                  const price = item.branch_price_poisha ?? item.base_price_poisha;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => addToCart({ id: item.id, name: item.name, price }, [], '', 0)}
-                      className="flex min-h-16 flex-col items-start justify-between rounded-input border border-line bg-background-secondary p-2 text-start hover:border-cyan"
-                    >
-                      <span className="text-sm font-medium">
-                        {locale === 'bn' && item.name_bn ? item.name_bn : item.name}
-                      </span>
-                      <span className="text-xs text-secondary">{money(price)}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-col rounded-card border border-line bg-surface p-3">
-        <h2 className="mb-2 font-semibold">{t('cart')}</h2>
-        <div className="flex-1 overflow-y-auto">
-          {cart.length === 0 ? (
-            <p className="text-sm text-secondary">{t('cartEmpty')}</p>
+      {open ? (
+        <DialogShell title={t('closeShift')} onClose={close}>
+          {error ? <Alert tone="danger">{error}</Alert> : null}
+          {result ? (
+            <>
+              <dl className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-secondary">{t('expectedCash')}</dt>
+                  <dd className="tabular-nums">
+                    {formatBDT(result.expected_cash_poisha ?? 0, locale)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-secondary">{t('countedCash')}</dt>
+                  <dd className="tabular-nums">
+                    {formatBDT(result.counted_cash_poisha ?? 0, locale)}
+                  </dd>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <dt>{t('overShort')}</dt>
+                  <dd
+                    className={`tabular-nums ${(result.over_short_poisha ?? 0) === 0 ? 'text-success' : 'text-danger'}`}
+                  >
+                    {formatBDT(result.over_short_poisha ?? 0, locale)}
+                  </dd>
+                </div>
+              </dl>
+              {(result.over_short_poisha ?? 0) !== 0 ? (
+                <Alert tone="warning">{t('discrepancyFlagged')}</Alert>
+              ) : (
+                <Alert tone="success">{t('drawerBalanced')}</Alert>
+              )}
+              <Button className="w-full" onClick={close}>
+                {t('done')}
+              </Button>
+            </>
+          ) : needsMgr ? (
+            <ManagerApprovalStep action="close_shift" onApproved={(id) => void attempt(id)} />
           ) : (
-            cart.map((c) => (
-              <div key={c.key} className="mb-2 flex items-center justify-between gap-2 text-sm">
-                <span className="flex-1">{c.name}</span>
-                <button
-                  type="button"
-                  className="size-7 rounded-input border border-line"
-                  onClick={() => changeQty(c.key, -1)}
-                >
-                  -
-                </button>
-                <span className="w-5 text-center">{c.quantity}</span>
-                <button
-                  type="button"
-                  className="size-7 rounded-input border border-line"
-                  onClick={() => changeQty(c.key, 1)}
-                >
-                  +
-                </button>
-                <span className="w-16 text-end">
-                  {money((c.unitPricePoisha + c.modifiersPricePoisha) * c.quantity)}
-                </span>
+            <>
+              <div>
+                <Label htmlFor="counted">{t('countedCash')}</Label>
+                <Input
+                  id="counted"
+                  inputMode="decimal"
+                  value={counted}
+                  onChange={(e) => setCounted(e.target.value)}
+                />
               </div>
-            ))
+              <Button className="w-full" onClick={() => void attempt()}>
+                {t('closeShift')}
+              </Button>
+            </>
           )}
-        </div>
-        {preview ? (
-          <div className="mt-2 space-y-1 border-t border-line pt-2 text-sm">
-            <div className="flex justify-between">
-              <span>{t('subtotal')}</span>
-              <span>{money(preview.netPoisha)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>{t('vat')}</span>
-              <span>{money(preview.vatPoisha)}</span>
-            </div>
-            {preview.serviceChargePoisha > 0 ? (
-              <div className="flex justify-between">
-                <span>{t('serviceCharge')}</span>
-                <span>{money(preview.serviceChargePoisha)}</span>
-              </div>
-            ) : null}
-            <div className="flex justify-between font-semibold">
-              <span>{t('total')}</span>
-              <span>{money(preview.totalPoisha)}</span>
-            </div>
-          </div>
-        ) : null}
-        <Button className="mt-3" disabled={busy || cart.length === 0} onClick={onPlaceOrder}>
-          {t('checkout')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function OrderScreen({
-  order,
-  lines,
-  locale,
-  t,
-  busy,
-  onSendKitchen,
-  onVoid,
-  voidReasons,
-  managers,
-  sb,
-  device,
-  tableName,
-  discountReasons,
-  voidReasonsForCancel,
-  onDiscount,
-  onCancel,
-  onAttachCustomer,
-  onCheckout,
-}: {
-  order: OrderRow;
-  lines: OrderLine[];
-  locale: Locale;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  busy: boolean;
-  onSendKitchen: () => void;
-  onVoid: (line: OrderLine, reasonId: string, approvalId?: string) => void;
-  voidReasons: ReasonCode[];
-  managers: StaffMember[];
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  tableName: string | null;
-  discountReasons: ReasonCode[];
-  voidReasonsForCancel: ReasonCode[];
-  onDiscount: (percentBps: number, reasonId: string, approvalId?: string) => void;
-  onCancel: (reasonId: string, approvalId?: string) => void;
-  onAttachCustomer: (phone: string, name: string, consent: boolean) => void;
-  onCheckout: () => void;
-}) {
-  const money = (p: number) => formatBDT(p, locale);
-  const [voidTarget, setVoidTarget] = useState<OrderLine | null>(null);
-  const [discountOpen, setDiscountOpen] = useState(false);
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [customerOpen, setCustomerOpen] = useState(false);
-  const cancelNeedsApproval = lines.some((l) => l.status === 'active' && l.kot_sent_at !== null);
-  return (
-    <div className="flex flex-1 flex-col gap-3">
-      {/* Off-screen until window.print() (ARCHITECTURE.md: browser-print KOT). */}
-      <Receipt
-        kind="kot"
-        order={order}
-        lines={lines}
-        orgName={device.orgSlug}
-        branchName={device.branchName}
-        tableName={tableName}
-        locale={locale}
-      />
-      <div className="rounded-card border border-line bg-surface p-3">
-        <ul className="divide-y divide-line">
-          {lines.map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-              <span className={l.status === 'voided' ? 'flex-1 text-muted line-through' : 'flex-1'}>
-                {l.quantity} × {l.name_snapshot}
-              </span>
-              <span className="w-20 text-end">{money(l.total_poisha)}</span>
-              {l.status === 'active' ? (
-                <Button variant="ghost" size="sm" onClick={() => setVoidTarget(l)}>
-                  {t('voidItem')}
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-2 space-y-1 border-t border-line pt-2 text-sm">
-          <div className="flex justify-between">
-            <span>{t('subtotal')}</span>
-            <span>{money(order.net_poisha)}</span>
-          </div>
-          {order.discount_poisha > 0 ? (
-            <div className="flex justify-between">
-              <span>{t('discount')}</span>
-              <span>-{money(order.discount_poisha)}</span>
-            </div>
-          ) : null}
-          <div className="flex justify-between">
-            <span>{t('vat')}</span>
-            <span>{money(order.vat_poisha)}</span>
-          </div>
-          <div className="flex justify-between font-semibold">
-            <span>{t('total')}</span>
-            <span>{money(order.total_poisha)}</span>
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {order.order_status === 'open' ? (
-          <Button disabled={busy} onClick={onSendKitchen}>
-            {t('sendToKitchen')}
-          </Button>
-        ) : (
-          <Button variant="secondary" onClick={() => window.print()}>
-            {t('printKot')}
-          </Button>
-        )}
-        <Button variant="secondary" disabled={busy} onClick={() => setDiscountOpen(true)}>
-          {t('applyDiscount')}
-        </Button>
-        <Button variant="secondary" disabled={busy} onClick={() => setCustomerOpen(true)}>
-          {order.customer_id ? t('customerAdded') : t('addCustomer')}
-        </Button>
-        {order.payment_status === 'unpaid' ? (
-          <Button variant="danger" disabled={busy} onClick={() => setCancelOpen(true)}>
-            {t('cancelOrder')}
-          </Button>
-        ) : null}
-        <Button className="ms-auto" disabled={busy} onClick={onCheckout}>
-          {t('checkout')}
-        </Button>
-      </div>
-
-      {voidTarget ? (
-        <VoidDialog
-          line={voidTarget}
-          reasons={voidReasons}
-          managers={managers}
-          sb={sb}
-          device={device}
-          t={t}
-          onClose={() => setVoidTarget(null)}
-          onConfirm={(reasonId, approvalId) => {
-            onVoid(voidTarget, reasonId, approvalId);
-            setVoidTarget(null);
-          }}
-        />
+        </DialogShell>
       ) : null}
-      {discountOpen ? (
-        <DiscountDialog
-          reasons={discountReasons}
-          managers={managers}
-          sb={sb}
-          device={device}
-          t={t}
-          onClose={() => setDiscountOpen(false)}
-          onConfirm={(p, r, a) => {
-            onDiscount(p, r, a);
-            setDiscountOpen(false);
-          }}
-        />
-      ) : null}
-      {cancelOpen ? (
-        <CancelOrderDialog
-          reasons={voidReasonsForCancel}
-          managers={managers}
-          needsApproval={cancelNeedsApproval}
-          sb={sb}
-          device={device}
-          t={t}
-          onClose={() => setCancelOpen(false)}
-          onConfirm={(r, a) => {
-            onCancel(r, a);
-            setCancelOpen(false);
-          }}
-        />
-      ) : null}
-      {customerOpen ? (
-        <CustomerDialog
-          t={t}
-          onClose={() => setCustomerOpen(false)}
-          onConfirm={(phone, name, consent) => {
-            onAttachCustomer(phone, name, consent);
-            setCustomerOpen(false);
-          }}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-/** Manager PIN → a single-use approval token (ADR 0014). Shared by void/discount/cancel/refund. */
-function ManagerApprovalStep({
-  sb,
-  device,
-  action,
-  managers,
-  t,
-  onApproved,
-}: {
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  action: ApprovalAction;
-  managers: StaffMember[];
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  onApproved: (approvalId: string) => void;
-}) {
-  const [managerId, setManagerId] = useState(managers[0]?.id ?? '');
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const confirm = async () => {
-    setBusy(true);
-    setError(null);
-    const result: ApprovalResult = await approveAction(sb, device.deviceId, managerId, pin, action);
-    setBusy(false);
-    if (!result.ok) {
-      setPin('');
-      if (result.reason === 'locked') setError(t('pinLocked'));
-      else setError(t('pinWrong', { attempts: result.attempts_left ?? 0 }));
-      return;
-    }
-    onApproved(result.approval_id);
-  };
-
-  return (
-    <div className="space-y-3">
-      <Alert tone="warning">{t('managerPinRequired')}</Alert>
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      <div>
-        <Label htmlFor="mgr">{t('managerPin')}</Label>
-        <Select id="mgr" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
-          {managers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.display_name}
-            </option>
-          ))}
-        </Select>
-        <Input
-          className="mt-2"
-          type="password"
-          inputMode="numeric"
-          autoComplete="off"
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-        />
-      </div>
-      <Button className="w-full" disabled={busy || pin.length < 4} onClick={() => void confirm()}>
-        {t('approve')}
-      </Button>
-    </div>
-  );
-}
-
-function DialogShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
-      <div className="glass-strong w-full max-w-xs space-y-3 rounded-sheet p-5">{children}</div>
-    </div>
-  );
-}
-
-function VoidDialog({
-  line,
-  reasons,
-  managers,
-  sb,
-  device,
-  t,
-  onClose,
-  onConfirm,
-}: {
-  line: OrderLine;
-  reasons: ReasonCode[];
-  managers: StaffMember[];
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  onClose: () => void;
-  onConfirm: (reasonId: string, approvalId?: string) => void;
-}) {
-  const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
-  const [approving, setApproving] = useState(false);
-  const needsMgr = line.kot_sent_at !== null;
-
-  if (approving) {
-    return (
-      <DialogShell>
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold">{t('voidItem')}</h3>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
-          </Button>
-        </div>
-        <ManagerApprovalStep
-          sb={sb}
-          device={device}
-          action="void_after_kot"
-          managers={managers}
-          t={t}
-          onApproved={(approvalId) => onConfirm(reasonId, approvalId)}
-        />
-      </DialogShell>
-    );
-  }
-
-  return (
-    <DialogShell>
-      <h3 className="font-bold">{t('voidItem')}</h3>
-      <div>
-        <Label htmlFor="vr">{t('voidReason')}</Label>
-        <Select id="vr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
-          {reasons.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onClose}>
-          ✕
-        </Button>
-        <Button
-          className="flex-1"
-          onClick={() => (needsMgr ? setApproving(true) : onConfirm(reasonId))}
-        >
-          {t('approve')}
-        </Button>
-      </div>
-    </DialogShell>
-  );
-}
-
-function DiscountDialog({
-  reasons,
-  managers,
-  sb,
-  device,
-  t,
-  onClose,
-  onConfirm,
-}: {
-  reasons: ReasonCode[];
-  managers: StaffMember[];
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  onClose: () => void;
-  onConfirm: (percentBps: number, reasonId: string, approvalId?: string) => void;
-}) {
-  const [percent, setPercent] = useState('10');
-  const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
-  const [approving, setApproving] = useState(false);
-  const reason = reasons.find((r) => r.id === reasonId);
-
-  if (approving) {
-    return (
-      <DialogShell>
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold">{t('applyDiscount')}</h3>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
-          </Button>
-        </div>
-        <ManagerApprovalStep
-          sb={sb}
-          device={device}
-          action="discount"
-          managers={managers}
-          t={t}
-          onApproved={(approvalId) =>
-            onConfirm(Math.round(Number(percent) * 100), reasonId, approvalId)
-          }
-        />
-      </DialogShell>
-    );
-  }
-
-  return (
-    <DialogShell>
-      <h3 className="font-bold">{t('applyDiscount')}</h3>
-      <div>
-        <Label htmlFor="pct">{t('discountPercent')}</Label>
-        <Input
-          id="pct"
-          inputMode="decimal"
-          value={percent}
-          onChange={(e) => setPercent(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="dr">{t('reason')}</Label>
-        <Select id="dr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
-          {reasons.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onClose}>
-          ✕
-        </Button>
-        <Button
-          className="flex-1"
-          onClick={() =>
-            reason?.requires_manager_approval
-              ? setApproving(true)
-              : onConfirm(Math.round(Number(percent) * 100), reasonId)
-          }
-        >
-          {t('approve')}
-        </Button>
-      </div>
-    </DialogShell>
-  );
-}
-
-function CancelOrderDialog({
-  reasons,
-  managers,
-  needsApproval: needsMgr,
-  sb,
-  device,
-  t,
-  onClose,
-  onConfirm,
-}: {
-  reasons: ReasonCode[];
-  managers: StaffMember[];
-  needsApproval: boolean;
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  onClose: () => void;
-  onConfirm: (reasonId: string, approvalId?: string) => void;
-}) {
-  const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
-  const [approving, setApproving] = useState(false);
-
-  if (approving) {
-    return (
-      <DialogShell>
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold">{t('cancelOrder')}</h3>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
-          </Button>
-        </div>
-        <ManagerApprovalStep
-          sb={sb}
-          device={device}
-          action="cancel_order"
-          managers={managers}
-          t={t}
-          onApproved={(approvalId) => onConfirm(reasonId, approvalId)}
-        />
-      </DialogShell>
-    );
-  }
-
-  return (
-    <DialogShell>
-      <h3 className="font-bold">{t('cancelOrder')}</h3>
-      <div>
-        <Label htmlFor="cr">{t('voidReason')}</Label>
-        <Select id="cr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
-          {reasons.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onClose}>
-          ✕
-        </Button>
-        <Button
-          variant="danger"
-          className="flex-1"
-          onClick={() => (needsMgr ? setApproving(true) : onConfirm(reasonId))}
-        >
-          {t('cancelOrder')}
-        </Button>
-      </div>
-    </DialogShell>
-  );
-}
-
-function CustomerDialog({
-  t,
-  onClose,
-  onConfirm,
-}: {
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  onClose: () => void;
-  onConfirm: (phone: string, name: string, consent: boolean) => void;
-}) {
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [consent, setConsent] = useState(false);
-  return (
-    <DialogShell>
-      <h3 className="font-bold">{t('addCustomer')}</h3>
-      <div>
-        <Label htmlFor="cphone">{t('customerPhone')}</Label>
-        <Input
-          id="cphone"
-          inputMode="tel"
-          placeholder="01XXXXXXXXX"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="cname">{t('customerName')}</Label>
-        <Input id="cname" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="size-4 accent-blue"
-          checked={consent}
-          onChange={(e) => setConsent(e.target.checked)}
-        />
-        {t('marketingConsent')}
-      </label>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onClose}>
-          ✕
-        </Button>
-        <Button
-          className="flex-1"
-          disabled={phone.trim() === ''}
-          onClick={() => onConfirm(phone, name, consent)}
-        >
-          {t('save')}
-        </Button>
-      </div>
-    </DialogShell>
-  );
-}
-
-function RefundDialog({
-  reasons,
-  managers,
-  maxAmountPoisha,
-  sb,
-  device,
-  locale,
-  t,
-  onClose,
-  onConfirm,
-}: {
-  reasons: ReasonCode[];
-  managers: StaffMember[];
-  maxAmountPoisha: number;
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  locale: Locale;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  onClose: () => void;
-  onConfirm: (amountPoisha: number, reasonId: string, approvalId: string) => void;
-}) {
-  const [amount, setAmount] = useState(() => formatBDT(maxAmountPoisha, 'en', { symbol: false }));
-  const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
-  const [approving, setApproving] = useState(false);
-  const poisha = parseTakaToPoisha(amount);
-  const valid = poisha !== null && poisha > 0 && poisha <= maxAmountPoisha;
-
-  if (approving && poisha !== null) {
-    return (
-      <DialogShell>
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold">{t('refundOrder')}</h3>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
-          </Button>
-        </div>
-        <ManagerApprovalStep
-          sb={sb}
-          device={device}
-          action="refund"
-          managers={managers}
-          t={t}
-          onApproved={(approvalId) => onConfirm(poisha, reasonId, approvalId)}
-        />
-      </DialogShell>
-    );
-  }
-
-  return (
-    <DialogShell>
-      <h3 className="font-bold">{t('refundOrder')}</h3>
-      <p className="text-sm text-secondary">
-        {t('maxRefund', { amount: formatBDT(maxAmountPoisha, locale) })}
-      </p>
-      <div>
-        <Label htmlFor="ramt">{t('amount')}</Label>
-        <Input
-          id="ramt"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="rr">{t('reason')}</Label>
-        <Select id="rr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
-          {reasons.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onClose}>
-          ✕
-        </Button>
-        <Button
-          variant="danger"
-          className="flex-1"
-          disabled={!valid}
-          onClick={() => setApproving(true)}
-        >
-          {t('refundOrder')}
-        </Button>
-      </div>
-    </DialogShell>
-  );
-}
-
-const METHODS = ['cash', 'card', 'bkash', 'nagad', 'rocket', 'upay', 'bank'] as const;
-
-function CheckoutScreen({
-  sb,
-  device,
-  staffSession,
-  order,
-  locale,
-  t,
-  te,
-  onPaid,
-}: {
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  staffSession: { staffId: string };
-  order: OrderRow;
-  locale: Locale;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  te: ReturnType<typeof useTranslations<'errors'>>;
-  onPaid: (order: OrderRow) => void;
-}) {
-  const money = (p: number) => formatBDT(p, locale);
-  const [current, setCurrent] = useState(order);
-  const [method, setMethod] = useState<(typeof METHODS)[number]>('cash');
-  const [amount, setAmount] = useState(() =>
-    formatBDT(order.total_poisha, 'en', { symbol: false }),
-  );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const remaining = current.total_poisha; // record_payment recomputes payment_status server-side; we just re-derive from the returned order.
-
-  const addTender = async () => {
-    const poisha = parseTakaToPoisha(amount);
-    if (poisha === null || poisha <= 0) return setError(te('invalidInput'));
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await recordPayment(sb, {
-        orgId: device.orgId,
-        branchId: device.branchId,
-        orderId: current.id,
-        method,
-        amountPoisha: poisha,
-        reference: null,
-        idempotencyKey: uid(),
-        deviceId: device.deviceId,
-        staffId: staffSession.staffId,
-      });
-      setCurrent(updated);
-      if (updated.payment_status === 'paid') onPaid(updated);
-      else setAmount(formatBDT(updated.total_poisha, 'en', { symbol: false }));
-    } catch {
-      setError(te('generic'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="mx-auto flex max-w-sm flex-1 flex-col gap-3">
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      <p className="text-center text-3xl font-semibold">{money(remaining)}</p>
-      <p className="text-center text-secondary">{t('amountDue')}</p>
-      <div>
-        <Label htmlFor="method">{t('paymentMethod')}</Label>
-        <Select
-          id="method"
-          value={method}
-          onChange={(e) => setMethod(e.target.value as typeof method)}
-        >
-          {METHODS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div>
-        <Label htmlFor="amt">{t('amount')}</Label>
-        <Input
-          id="amt"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </div>
-      <Button disabled={busy} onClick={() => void addTender()}>
-        {t('addPayment')}
-      </Button>
-    </div>
-  );
-}
-
-function ReceiptScreen({
-  order,
-  lines,
-  orgSlug,
-  branchName,
-  tableName,
-  locale,
-  t,
-  tc,
-  onNewOrder,
-  refundReasons,
-  managers,
-  sb,
-  device,
-  onRefund,
-}: {
-  order: OrderRow;
-  lines: OrderLine[];
-  orgSlug: string;
-  branchName: string;
-  tableName: string | null;
-  locale: Locale;
-  t: ReturnType<typeof useTranslations<'pos'>>;
-  tc: ReturnType<typeof useTranslations<'common'>>;
-  onNewOrder: () => void;
-  refundReasons: ReasonCode[];
-  managers: StaffMember[];
-  sb: ReturnType<typeof createClient>;
-  device: DeviceState;
-  onRefund: (amountPoisha: number, reasonId: string, approvalId: string) => void;
-}) {
-  const [refundOpen, setRefundOpen] = useState(false);
-  const canRefund = order.payment_status === 'paid' || order.payment_status === 'partially_paid';
-  return (
-    <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-4 text-center">
-      <h2 className="text-2xl font-semibold text-success">{t('orderComplete')}</h2>
-      <p className="text-secondary">{order.invoice_no}</p>
-      <div className="flex flex-wrap justify-center gap-2">
-        <Button variant="secondary" onClick={() => window.print()}>
-          {t('printReceipt')}
-        </Button>
-        <Button onClick={onNewOrder}>{t('newOrder')}</Button>
-        {canRefund ? (
-          <Button variant="danger" onClick={() => setRefundOpen(true)}>
-            {t('refundOrder')}
-          </Button>
-        ) : null}
-      </div>
-      <Receipt
-        kind="receipt"
-        order={order}
-        lines={lines}
-        orgName={orgSlug}
-        branchName={branchName}
-        tableName={tableName}
-        locale={locale}
-      />
-      <span className="sr-only">{tc('appName')}</span>
-      {refundOpen ? (
-        <RefundDialog
-          reasons={refundReasons}
-          managers={managers}
-          maxAmountPoisha={order.total_poisha}
-          sb={sb}
-          device={device}
-          locale={locale}
-          t={t}
-          onClose={() => setRefundOpen(false)}
-          onConfirm={(amount, reasonId, approvalId) => {
-            onRefund(amount, reasonId, approvalId);
-            setRefundOpen(false);
-          }}
-        />
-      ) : null}
-    </div>
+    </>
   );
 }

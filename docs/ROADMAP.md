@@ -183,17 +183,18 @@ Status: ◐ **built; local checks green; full-seed checks written for CI** (2026
 - [x] Finding → evidence → action in ≤ 3 clicks — dashboard insight → evidence page → action buttons on the same page
 
 ## Phase 7 — Forecasting & Bazar List Assistant
-Status: ☐ · Size: 2–3 weeks
+Status: ◐ **built; local checks green; full-seed checks written for CI** (2026-10-03) · Size: 2–3 weeks
 **Goal:** cook and buy the right amount for tomorrow.
+**Evidence so far (local):** `tests/db/forecast.test.ts` (8 hand-worked tests: weighted weekday forecast, flagged and closed days, WAPE vs naive and the shown flag, prep plan in degs, bazar draft → approve with tuning → send via outbox → reconcile, manager day flags); `tests/db/seed-forecast.test.ts` (opt-in, XEDINE_SLOW=1) on the seeded Ramadan and Eid. Decisions in [ADR 0020](decisions/0020-phase-7-forecast-and-bazar-list.md). **Needs CI:** `metrics:validate` at SEED_PHASE=7.
 **Build**
-- [ ] BD calendar management (Ramadan, Eid, holidays, salary week, weekend; manual flags: rain, hartal, cricket)
-- [ ] Forecast v1 per item × daypart × branch; WAPE vs naive tracking; hide when not better
-- [ ] Prep plan in cooking units (pots/deg, kg marinated)
-- [ ] Bazar list draft = forecast usage − theoretical stock + safety stock, rounded to purchase units, grouped by supplier
-- [ ] Approve → WhatsApp to purchaser/supplier; learn from edits (safety-stock tuning)
+- [x] BD calendar management (Ramadan, Eid, holidays, salary week, weekend; manual flags: rain, hartal, cricket) — `/[org]/calendar` (owner), `flag_day` for managers on `/[org]/plan`; weekends are the weekday pattern itself
+- [x] Forecast v1 per item × daypart × branch; WAPE vs naive tracking; hide when not better — `metric_forecast`, `metric_forecast_accuracy`
+- [x] Prep plan in cooking units (pots/deg, kg marinated) — `metric_prep_plan`
+- [x] Bazar list draft = forecast usage − theoretical stock + safety stock, rounded to purchase units, grouped by supplier — `generate_bazar_list`
+- [x] Approve → WhatsApp to purchaser/supplier; learn from edits (safety-stock tuning) — `approve_bazar_list` + `bazar_tuning`, `send_bazar_list` via the outbox; **real sends wait for Meta template approval**
 **Done when**
-- [ ] S10 patterns reflected; forecast beats naive by ≥ 10% on seeded data or the UI hides it
-- [ ] Bazar list approve → send → purchase-entry reconciliation works end to end
+- [ ] S10 patterns reflected; forecast beats naive by ≥ 10% on seeded data or the UI hides it — Eid closures forecast 0, iftar share and Ramadan WAPE checked locally on Jan–Mar; the hide rule is enforced in SQL; **full seed in CI**
+- [x] Bazar list approve → send → purchase-entry reconciliation works end to end — `forecast.test.ts`
 
 ## Phase 8 — Customers, retention & reviews
 Status: ☐ · Size: 3 weeks

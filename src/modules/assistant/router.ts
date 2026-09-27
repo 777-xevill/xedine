@@ -19,7 +19,8 @@ export type Intent =
   | { kind: 'sales'; window: Window }
   | { kind: 'top_items'; window: Window }
   | { kind: 'finding'; findingId: string | null; rank: number; window: Window }
-  | { kind: 'stock_low'; window: Window };
+  | { kind: 'stock_low'; window: Window }
+  | { kind: 'forecast_item'; item: MenuRef | null; window: Window };
 
 // Most specific first: "this week" before "week", "last 7 days" before "today".
 const WINDOWS: [Window, RegExp][] = [
@@ -43,6 +44,8 @@ const QUANTITY =
 const TOP =
   /\btop\b|best[\s-]?sell|most\s+sold|sold\s+most|beshi\s+bikri|sera|সবচেয়ে\s*বেশি|সেরা/i;
 const SALES = /\bsales?\b|revenue|turnover|\bbikri\b|বিক্রি|\btaka\b|টাকা/i;
+// Only unambiguous words: in Bangla and Banglish "kal" alone means yesterday or tomorrow.
+const TOMORROW = /tomorrow|agamis*kal|আগামীকাল/i;
 const FINDING_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i;
 const EXPLAIN_LEAK =
   /(explain|why|biggest|top)\s.*\b(leak|finding|loss)|leak\s*#?\s*\d|(sobcheye|shobche)\s*boro\s*(leak|khoti)|সবচেয়ে\s*বড়\s*(লিক|ক্ষতি)|ক্ষতি(টা)?\s*কেন/i;
@@ -98,6 +101,13 @@ export function routeQuestion(question: string, menu: MenuRef[]): Intent | null 
     return { kind: 'finding', findingId: id, rank, window };
   }
   if (STOCK_LOW.test(question)) return { kind: 'stock_low', window };
+  if (
+    TOMORROW.test(question) &&
+    (QUANTITY.test(question) || /cook|prep|ranna|রান্না|forecast/i.test(question))
+  ) {
+    const item = matchItem(question, menu);
+    return { kind: 'forecast_item', item: item && !Array.isArray(item) ? item : null, window };
+  }
   if (TOP.test(question)) return { kind: 'top_items', window };
   const item = matchItem(question, menu);
   if (item && (QUANTITY.test(question) || SALES.test(question) || detectWindow(question))) {

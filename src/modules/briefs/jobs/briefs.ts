@@ -142,6 +142,23 @@ export async function composeBrief(args: {
       figures.estimated_profit_poisha = num(total.estimated_profit_poisha);
       lines.push(t('estimatedProfit', { amount: money(num(total.estimated_profit_poisha)) }));
     }
+    // Phase 7: what tomorrow needs cooked, from the prep plan (all branches together).
+    const prep = await rpc(sb, 'metric_prep_plan', {
+      p_org: orgId,
+      p_branch: null,
+      p_date: addDays(today, 1),
+      p_now: nowIso,
+    }).catch(() => []);
+    const portions = new Map<string, number>();
+    for (const p of prep)
+      portions.set(String(p.name), (portions.get(String(p.name)) ?? 0) + num(p.portions));
+    const topPrep = [...portions.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3);
+    if (topPrep.length > 0) {
+      figures.prep_tomorrow = Object.fromEntries(topPrep.map(([k, v]) => [k, Math.ceil(v)]));
+      lines.push(
+        t('prepTomorrow', { items: topPrep.map(([k, v]) => `${k} ${n(Math.ceil(v))}`).join(', ') }),
+      );
+    }
   } else {
     const end = addDays(today, -1);
     const [week, previous] = await Promise.all([

@@ -453,6 +453,80 @@ async function phase6() {
   }
 }
 
+/**
+ * Phase 7 (S10): Eid closures forecast zero; the salary-week and rain effects are learned from history;
+ * the Ramadan forecast carries the iftar shift; the model is shown only while it beats naive by ≥ 10%.
+ */
+async function phase7() {
+  const s10 = manifest.scenarios.find((x) => x.id === 'S10')!.facts as Record<string, unknown>;
+  for (const o of ORGS) {
+    for (const d of s10.eid_closures as string[]) {
+      const [r] = await q(
+        `select coalesce(sum(model_qty), 0) as m from private.m_forecast($1, $2::uuid[], $3::date, $3::date, $3::date)`,
+        [orgId(o), branchIds(o), d],
+      );
+      expectEq(`${o.key}.forecast(${d}, closed)`, 0, n(r!.m));
+    }
+    const factors = await q<{ branch_id: string; factor_key: string; factor: string }>(
+      `select branch_id, factor_key, factor from private.m_calendar_factors($1, $2::uuid[], $3::date)`,
+      [orgId(o), branchIds(o), manifest.anchor_date],
+    );
+    for (const b of o.branches) {
+      const f = (key: string) =>
+        factors.find((x) => x.branch_id === ids.branch(o, b) && x.factor_key === key);
+      const salary = n(f('salary_week')?.factor);
+      if (salary < 1.03 || salary > 1.13)
+        failures.push(`${o.key}.${b.key}: salary-week factor ${salary} is not near 1.08`);
+      const rain = n(f('weather')?.factor ?? 1);
+      if (rain < 0.85 || rain > 1.03)
+        failures.push(`${o.key}.${b.key}: rain factor ${rain} is not a small dip`);
+      notes.push(`${o.key}.${b.key}: salary-week ×${salary.toFixed(3)}, rain ×${rain.toFixed(3)}`);
+    }
+    // Accuracy over the last 28 days, and over the last two weeks of Ramadan.
+    for (const [label, from, to] of [
+      ['last 28 days', addDaysIso(manifest.anchor_date, -28), addDaysIso(manifest.anchor_date, -1)],
+      [
+        'Ramadan',
+        (s10.ramadan_window as { from: string }).from,
+        (s10.ramadan_window as { to: string }).to,
+      ],
+    ] as const) {
+      const acc = await q(
+        `select * from private.m_forecast_accuracy($1, $2::uuid[], $3::date, $4::date)`,
+        [orgId(o), branchIds(o), from, to],
+      );
+      for (const r of acc) {
+        const improvement = n(r.improvement_bps);
+        if (improvement >= 1000 !== (r.is_shown === true))
+          failures.push(
+            `${o.key} ${label}: is_shown disagrees with a ${improvement} bps improvement`,
+          );
+        notes.push(
+          `${o.key} ${label} ${r.branch_id ? String(r.branch_id).slice(0, 8) : 'all'}: WAPE ${n(r.wape_bps) / 100}% vs naive ${n(r.naive_wape_bps) / 100}% → ${r.is_shown ? 'shown' : 'hidden'}`,
+        );
+      }
+    }
+  }
+  // The iftar shift: the forecast for Ramadan's last two weeks puts the snacks daypart near its real share.
+  const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
+  const w = s10.ramadan_window as { from: string; to: string };
+  const [share] = await q(
+    `select round(10000 * sum(model_qty) filter (where daypart = 'snacks') / nullif(sum(model_qty), 0)) as s
+       from private.m_forecast($1, $2::uuid[], $3::date, $4::date)`,
+    [orgId(kacchi), branchIds(kacchi), w.from, w.to],
+  );
+  expectWithin(
+    'S10.forecast snacks share in Ramadan',
+    n(s10.snacks_share_ramadan_bps),
+    n(share!.s),
+    15,
+  );
+}
+
+function addDaysIso(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 async function dashboardLatency() {
   const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
   const org = orgId(kacchi);
@@ -490,6 +564,7 @@ try {
   await phase3();
   if (Number(process.env.SEED_PHASE ?? 0) >= 5) await phase5();
   if (Number(process.env.SEED_PHASE ?? 0) >= 6) await phase6();
+  if (Number(process.env.SEED_PHASE ?? 0) >= 7) await phase7();
   await dashboardLatency();
   for (const note of notes) console.log(`  · ${note}`);
   if (failures.length > 0) {

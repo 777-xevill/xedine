@@ -4,6 +4,7 @@ import { ANCHOR_DATE, CUTOFF_MINUTES, DEMO_CAFE, FROZEN_NOW, KACCHI_HOUSE, ORGS 
 import { allDates, generateDay, type DayRows } from './generate';
 import { Inventory, S6, S7, S8, S9 } from './inventory';
 import { Ledger } from './ledger';
+import { Seasonal } from './seasonal';
 import { ManifestSchema, type Manifest } from './manifest';
 
 const num = (v: unknown) => Number(v);
@@ -119,16 +120,18 @@ describe('generator: the planted scenarios and the clean control', () => {
     // One full pass over the year. Streaming, so memory stays flat.
     const ledger = new Ledger();
     const inventory = new Inventory();
+    const seasonal = new Seasonal();
     for (const org of ORGS) {
       for (const date of allDates()) {
         for (const b of org.branches) {
           const rows = generateDay(org, b, date);
           ledger.add(org, b.key, rows);
           inventory.day(org, b, date, rows);
+          seasonal.add(org, date, rows);
         }
       }
     }
-    manifest = ledger.manifest(inventory);
+    manifest = ledger.manifest(inventory, seasonal);
   }, 120_000);
 
   it('Phase 3 plants hold: combo loses on foodpanda, the spike pushes Tehari over target, a Dog and a Puzzle', () => {

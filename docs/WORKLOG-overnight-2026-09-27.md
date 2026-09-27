@@ -223,3 +223,22 @@ Checklist:
   goes beyond other branches' normal loss) and §4 (the 50% match rule for suspected transfers).**
 - Branch pushed to GitHub (you asked); still no pull request, so CI has not run.
 - Checks: typecheck, lint, 152 unit, 809 DB tests (embedded) — all green.
+
+---
+
+## Phase 7 — Forecasting & Bazar List Assistant
+
+Checklist:
+- [x] 7.1 Migration: calendar (closed days, manager flags), learned calendar factors, forecast v1, WAPE backtest + hide rule, prep plan, bazar draft/approve/send/reconcile, tuning
+- [x] 7.2 DB tests (hand-worked) + opt-in seeded Ramadan/Eid check
+- [x] 7.3 Seed: closures, rain flags, degs, bazar days/packs; S10 planted with facts; validators at SEED_PHASE=7
+- [x] 7.4 UI: /plan (forecast, prep, bazar), /calendar; assistant "how many tomorrow"; evening brief prep line
+- [x] 7.5 i18n, ADR 0020, ROADMAP, DATA-MODEL.md, commit, push
+
+### Phase 7 log
+- Migration `20261003000001_forecast_bazar.sql`. ADR 0020 — **please confirm §2 (managers may flag rain/hartal/
+  cricket) and §6 (suppliers get WhatsApp messages once templates are approved; a person approves each send).**
+- On the seeded Ramadan the forecast puts 21.1% of units at iftar (actual 22.8%) and beats naive in late Ramadan
+  (64.5% vs 72.7% WAPE); in early Ramadan it does not, so the screen falls back to "same day last week".
+- Checks: typecheck, lint, 153 unit, 824 DB tests (embedded) — all green.
+- **Run by hand:** in Meta, create the `bazar_list` templates (names in the migration).

@@ -592,10 +592,38 @@
     {
       "id": "S10",
       "title": "Ramadan iftar surge, Eid closure + rebound, salary-week lift, rainy-day dine-in dip",
-      "status": "pending",
+      "status": "planted",
       "available_from_phase": 0,
       "detected_in_phase": 7,
-      "note": "The seasonal shape is already in the generated orders; forecast ground truth is defined in Phase 7."
+      "org": "demo_kacchi_house",
+      "facts": {
+        "ramadan_from": "2026-02-18",
+        "ramadan_to": "2026-03-19",
+        "eid_closures": [
+          "2026-03-20",
+          "2026-03-21",
+          "2026-05-27",
+          "2026-05-28"
+        ],
+        "orders_on_closures": 0,
+        "salary_week_lift_bps": 800,
+        "rain_dip_bps": 300,
+        "rain_days": {
+          "demo_kacchi_house": 34,
+          "demo_cafe": 30
+        },
+        "ramadan_window": {
+          "from": "2026-03-06",
+          "to": "2026-03-19"
+        },
+        "before_window": {
+          "from": "2026-02-04",
+          "to": "2026-02-17"
+        },
+        "snacks_share_ramadan_bps": 2281,
+        "snacks_share_before_bps": 1041
+      },
+      "note": "Phase 7: closures forecast zero, the salary-week and rain factors are learned, and the Ramadan forecast carries the iftar shift."
     },
     {
       "id": "S11",

@@ -10,7 +10,8 @@ import {
   type OrgCfg,
 } from './config';
 import { emptyDayRows, ids, REASON_CODES, type DayRows, type Row } from './generate';
-import { COSTING } from './costing';
+import { BATCHES, COSTING } from './costing';
+import { rainDays } from './seasonal';
 import { DAILY_COVER, INVENTORY, invIds } from './inventory';
 import { detId } from './rng';
 
@@ -401,9 +402,17 @@ export async function loadStatic(client: pg.PoolClient, org: OrgCfg): Promise<vo
     ]);
   }
   for (const c of CALENDAR) {
+    // The demo restaurants close for Eid (S10): the owner marks those days closed.
     await client.query(
-      `insert into public.calendar_events (org_id, name, kind, starts_on, ends_on, source) values ($1, $2, $3, $4, $5, 'seed estimate — TODO(verify)')`,
-      [orgId, c.name, c.kind, c.starts_on, c.ends_on],
+      `insert into public.calendar_events (org_id, name, kind, starts_on, ends_on, closed, source) values ($1, $2, $3, $4, $5, $6, 'seed estimate — TODO(verify)')`,
+      [orgId, c.name, c.kind, c.starts_on, c.ends_on, c.kind === 'eid'],
+    );
+  }
+  // Rainy days, as a manager would flag them (Phase 7 learns what rain does to sales).
+  for (const d of rainDays(org)) {
+    await client.query(
+      `insert into public.calendar_events (org_id, name, kind, starts_on, ends_on, source) values ($1, 'Rain', 'weather', $2, $2, 'manager flag')`,
+      [orgId, d],
     );
   }
 }
@@ -423,7 +432,8 @@ async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
     // Fresh goods bought every morning: a day's stock is healthy (Phase 5 days-of-cover bands).
     const daily = supply[i.key]?.daily ?? false;
     await client.query(
-      `insert into public.ingredients (id, org_id, name, base, cover_green_days, cover_red_days) values ($1, $2, $3, $4, $5, $6)`,
+      `insert into public.ingredients (id, org_id, name, base, cover_green_days, cover_red_days, bazar_days, pack_qty)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         ingId(i.key),
         orgId,
@@ -431,6 +441,8 @@ async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
         i.base,
         daily ? DAILY_COVER.green : null,
         daily ? DAILY_COVER.red : null,
+        daily ? 1 : 7,
+        supply[i.key]?.pack ?? null,
       ],
     );
     const history = [
@@ -457,9 +469,19 @@ async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
     if (!lines) continue;
     const recipeId = detId('recipe', org.key, m.key);
     await client.query(
-      `insert into public.recipes (id, org_id, menu_item_id, name, yield_portions, status, source, version, approved_by, approved_at)
-       values ($1, $2, $3, $4, 1, 'active', 'manual', 1, $5, $6)`,
-      [recipeId, orgId, ids.item(org, m), m.name, userId(owner.email), `${FIRST_DATE}T00:00:00Z`],
+      `insert into public.recipes (id, org_id, menu_item_id, name, yield_portions, status, source, version, approved_by, approved_at,
+         batch_portions, batch_unit)
+       values ($1, $2, $3, $4, 1, 'active', 'manual', 1, $5, $6, $7, $8)`,
+      [
+        recipeId,
+        orgId,
+        ids.item(org, m),
+        m.name,
+        userId(owner.email),
+        `${FIRST_DATE}T00:00:00Z`,
+        BATCHES[org.key]?.[m.key] ?? null,
+        BATCHES[org.key]?.[m.key] ? 'deg' : null,
+      ],
     );
     for (const l of lines) {
       await client.query(

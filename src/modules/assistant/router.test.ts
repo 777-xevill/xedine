@@ -64,6 +64,22 @@ describe('question router', () => {
     expect(routeQuestion('কী কী ফুরিয়ে আসছে?', menu)).toMatchObject({ kind: 'stock_low' });
   });
 
+  it('tomorrow’s forecast, without mistaking yesterday for tomorrow', () => {
+    expect(
+      routeQuestion('How many Kacchi Biryani (Mutton) should we cook tomorrow?', menu),
+    ).toMatchObject({
+      kind: 'forecast_item',
+      item: { id: 'km' },
+    });
+    expect(routeQuestion('আগামীকাল কয়টা রান্না করব?', menu)).toMatchObject({
+      kind: 'forecast_item',
+      item: null,
+    });
+    expect(routeQuestion('গতকাল কয়টা কাচ্চি বিরিয়ানি (মটন) বিক্রি হয়েছে?', menu)?.kind).not.toBe(
+      'forecast_item',
+    );
+  });
+
   it('reads "last week" as the last 7 days and "this week" as week to date', () => {
     expect(detectWindow('last week')).toBe('last_7d');
     expect(detectWindow('this week')).toBe('week_to_date');

@@ -147,14 +147,6 @@ export function excessOverBaseline(
 
 export const PENDING_SCENARIOS: Scenario[] = [
   {
-    id: 'S10',
-    title: 'Ramadan iftar surge, Eid closure + rebound, salary-week lift, rainy-day dine-in dip',
-    status: 'pending',
-    available_from_phase: 0,
-    detected_in_phase: 7,
-    note: 'The seasonal shape is already in the generated orders; forecast ground truth is defined in Phase 7.',
-  },
-  {
     id: 'S11',
     title: 'Dhanmondi Friday 20:00–22:00 ticket times double; "slow" complaints',
     status: 'pending',

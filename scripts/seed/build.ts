@@ -2,6 +2,7 @@ import { ORGS } from './config';
 import { allDates, generateDay, type DayRows } from './generate';
 import { Inventory } from './inventory';
 import { Ledger } from './ledger';
+import { Seasonal } from './seasonal';
 import type { Manifest } from './manifest';
 
 /** Stream the whole dataset, day by day. onDay sees every generated day (for loading into a database). */
@@ -10,17 +11,19 @@ export async function runSeed(
 ): Promise<Manifest> {
   const ledger = new Ledger();
   const inventory = new Inventory();
+  const seasonal = new Seasonal();
   for (const date of allDates()) {
     for (const org of ORGS) {
       for (const b of org.branches) {
         const rows = generateDay(org, b, date);
         ledger.add(org, b.key, rows);
         inventory.day(org, b, date, rows);
+        seasonal.add(org, date, rows);
         if (onDay) await onDay(org.key, b.key, date, rows);
       }
     }
   }
-  return ledger.manifest(inventory);
+  return ledger.manifest(inventory, seasonal);
 }
 
 export const MANIFEST_PATH = 'supabase/seed/manifest.json';

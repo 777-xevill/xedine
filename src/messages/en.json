@@ -58,7 +58,8 @@
     "countEmpty": "Count at least one ingredient before submitting.",
     "wasteInvalid": "Pick what was wasted, how much, and why.",
     "transferInvalid": "Pick another branch and at least one ingredient to send.",
-    "referenceCsvInvalid": "No usable rows. Use: ingredient, taka, per (kg / litre / piece / dozen), date (YYYY-MM-DD), source."
+    "referenceCsvInvalid": "No usable rows. Use: ingredient, taka, per (kg / litre / piece / dozen), date (YYYY-MM-DD), source.",
+    "calendarInvalid": "Give the day a name, a kind, and an end date on or after the start."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -115,7 +116,8 @@
     "menuProfit": "Menu profit",
     "assistant": "Assistant",
     "stock": "Stock",
-    "purchases": "Purchases"
+    "purchases": "Purchases",
+    "plan": "Plan"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -1015,7 +1017,12 @@
       "price_drift": "Paid above the market",
       "transfer_unconfirmed": "Transfer not confirmed",
       "transfer_disputed": "Transfer arrived short"
-    }
+    },
+    "forecastNone": "No forecast for {date} yet — there is not enough sales history.",
+    "forecastTitle": "Expected for {date}:",
+    "forecastLine": "• {item}: about {qty}",
+    "forecastModel": "(Forecast from the last four weeks, adjusted for the calendar.)",
+    "forecastNaive": "(Same weekday last week — the model is not yet more accurate than that.)"
   },
   "assistantPage": {
     "title": "Assistant",
@@ -1053,7 +1060,8 @@
     "weeklySales": "Last 7 days: net sales {net} from {orders} orders (the 7 days before: {previous}).",
     "leaks": "{count} new leaks to look at; the biggest is {top}. Open Xedine → Leaks.",
     "habits": "{branch}: {score}/100 on yesterday's habits (bazar, waste log, cash close, count).",
-    "lowStock": "{n} {count, plural, one {ingredient is} other {ingredients are}} running low — check Stock."
+    "lowStock": "{n} {count, plural, one {ingredient is} other {ingredients are}} running low — check Stock.",
+    "prepTomorrow": "To cook tomorrow: {items}."
   },
   "units": {
     "kg": "kg",
@@ -1256,5 +1264,121 @@
     "marketPlaceholder": "Beef, 780, kg, 2026-09-20, TCB\nOnion, 60, kg, 2026-09-20, TCB",
     "marketImport": "Import prices",
     "marketImported": "Prices imported. Rows that did not match an ingredient were skipped."
+  },
+  "plan": {
+    "title": "Plan",
+    "subtitle": "What tomorrow will sell, what to cook, and what to buy.",
+    "calendar": "Calendar",
+    "branches": "Branches",
+    "sections": "Plan sections",
+    "tabs": {
+      "forecast": "Forecast",
+      "prep": "Prep plan",
+      "bazar": "Bazar list"
+    },
+    "day": "Day",
+    "tomorrow": "Tomorrow",
+    "noBranch": "You have no branch to plan for yet.",
+    "flagBody": "Rain, a hartal or a big match changes sales. Flag it so the forecast learns:",
+    "flag": {
+      "weather": "Rain",
+      "hartal": "Hartal",
+      "cricket": "Cricket"
+    },
+    "flagged": "Flagged.",
+    "forecastTitle": "Expected sales for {date}",
+    "modelShown": "Calendar-aware forecast",
+    "naiveShown": "Same day last week",
+    "accuracy": "Last {days} days: forecast off by {model} on average, “same day last week” by {naive}. The better one is shown.",
+    "noForecast": "Not enough history yet",
+    "noForecastBody": "The forecast needs a few weeks of sales.",
+    "item": "Dish",
+    "dayparts": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "snacks": "Snacks / iftar",
+      "dinner": "Dinner",
+      "late": "Late",
+      "other": "Other"
+    },
+    "total": "Total",
+    "forecastHint": "Units, not taka. Closed days forecast zero; flagged days and salary week are taken into account.",
+    "batches": "{count} {unit}",
+    "batchUnits": {
+      "deg": "deg",
+      "pot": "pot",
+      "tray": "tray",
+      "batch": "batch"
+    },
+    "portions": "{count} portions",
+    "portionsPerBatch": "{portions} portions, {per} per batch",
+    "forecastPortions": "forecast portions",
+    "generate": "Make a draft",
+    "regenerate": "Make it again",
+    "bazarTitle": "Bazar list for {date}",
+    "status": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "sent": "Sent",
+      "reconciled": "Checked against purchases"
+    },
+    "bazarBody": "Forecast need + safety stock − what should be in stock after today − goods on the way, rounded up to the pack you buy in. The manager approves; changes teach the next suggestion.",
+    "noList": "No list for this day yet",
+    "noListBody": "Make a draft from the forecast and your stock.",
+    "nothingToBuy": "Nothing to buy: stock covers the forecast.",
+    "ingredient": "Ingredient",
+    "need": "Needed",
+    "inStock": "In stock",
+    "suggested": "Buy",
+    "approveQty": "Approve",
+    "supplier": "Supplier",
+    "noSupplier": "No supplier yet",
+    "tuned": "adjusted {pct} from your past edits",
+    "plusSafety": "+ {qty} safety",
+    "notCounted": "not counted",
+    "unit": "Unit",
+    "approveHint": "Leave a box empty to buy as suggested; 0 drops the line.",
+    "approve": "Approve list",
+    "approved": "List approved.",
+    "managerApproves": "The owner or manager approves the list.",
+    "bought": "bought {qty}",
+    "purchaserPhone": "Purchaser’s WhatsApp (optional)",
+    "send": "Send on WhatsApp",
+    "sent": "Queued: suppliers get their lines, the purchaser the whole list.",
+    "sendHint": "Suppliers with a phone number get their own lines. Messages go out once WhatsApp is set up.",
+    "reconcile": "Check against purchases",
+    "reconcileHint": "Compares the list with the purchases entered for the day.",
+    "messageHeader": "Bazar list for {date} — {branch}",
+    "messageLines": "{count} items in total"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "subtitle": "Ramadan, Eid, holidays and the days that change sales. The forecast reads this.",
+    "none": "Nothing here.",
+    "range": "{from} to {to}",
+    "closed": "Closed",
+    "kinds": {
+      "ramadan": "Ramadan",
+      "iftar_window": "Iftar time",
+      "eid": "Eid",
+      "holiday": "Holiday",
+      "salary_week": "Salary week",
+      "weather": "Rain / weather",
+      "hartal": "Hartal",
+      "cricket": "Cricket match",
+      "custom": "Other"
+    },
+    "remove": "Remove",
+    "addTitle": "Add a day or period",
+    "name": "Name",
+    "kind": "Kind",
+    "from": "From",
+    "to": "To",
+    "closedLabel": "We are closed on these days",
+    "note": "Note (optional)",
+    "verifyHint": "Religious and national dates are estimates until confirmed each year — check them.",
+    "add": "Add",
+    "upcoming": "Coming up",
+    "recent": "Recent"
   }
 }

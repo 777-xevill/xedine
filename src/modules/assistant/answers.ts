@@ -37,6 +37,8 @@ export function toolForIntent(
       };
     case 'stock_low':
       return { name: 'get_stock_status', input: { only_low: true } };
+    case 'forecast_item':
+      return { name: 'get_forecast', input: intent.item ? { item: intent.item.name } : {} };
     default:
       return null;
   }
@@ -110,6 +112,21 @@ export function renderAnswer(
     }
     case 'finding':
       return explainFinding(result.data as FindingData, t, locale);
+    case 'forecast_item': {
+      const d = result.data as {
+        date: string;
+        model_shown: boolean;
+        items: { item: string; qty: number }[];
+      };
+      if (d.items.length === 0) return t('forecastNone', { date: d.date });
+      const one = (x: { item: string; qty: number }) =>
+        t('forecastLine', { item: x.item, qty: formatNumber(Math.round(x.qty), locale) });
+      return [
+        t('forecastTitle', { date: d.date }),
+        ...d.items.slice(0, 6).map(one),
+        d.model_shown ? t('forecastModel') : t('forecastNaive'),
+      ].join('\n');
+    }
     case 'stock_low': {
       const rows = result.data as {
         branch: string | null;

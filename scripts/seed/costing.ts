@@ -263,6 +263,11 @@ export const COSTING: Record<string, OrgCosting> = {
   },
 };
 
+/** Phase 7 prep plan: dishes cooked in a deg, and how many portions one deg feeds. */
+export const BATCHES: Record<string, Record<string, number>> = {
+  demo_kacchi_house: { kacchi_mutton: 40, kacchi_half: 60, tehari: 50, morog_polao: 40 },
+};
+
 /** An ingredient's price per base unit on a business day. */
 export function priceOn(orgKey: string, ingKey: string, date: string): number {
   const c = COSTING[orgKey]!;

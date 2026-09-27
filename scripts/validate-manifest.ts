@@ -679,6 +679,41 @@ try {
           { qty: n(row!.qty), paid: n(row!.paid) },
         );
       }
+    } else if (s.id === 'S10') {
+      // Closures have no orders; the iftar shift shows in the 16:00–19:00 share; rain days are flagged.
+      const [closed] = await q(
+        `select count(*) as c from public.orders where org_id = any($1::uuid[]) and business_date = any($2::date[])`,
+        [demoOrgs, f.eid_closures],
+      );
+      check('S10.orders_on_closures', f.orders_on_closures, n(closed!.c));
+      const share = async (w: { from: string; to: string }) => {
+        const [r] = await q(
+          `select coalesce(sum(oi.quantity) filter (where extract(hour from o.placed_at at time zone 'Asia/Dhaka') between 16 and 18), 0) as s,
+                  coalesce(sum(oi.quantity), 0) as a
+             from public.order_items oi join public.orders o on o.id = oi.order_id
+            where o.org_id = $1 and o.order_status = 'completed' and oi.status = 'active'
+              and o.business_date between $2::date and $3::date`,
+          [ids.org(kacchi), w.from, w.to],
+        );
+        return n(r!.a) > 0 ? Math.round((n(r!.s) * 10000) / n(r!.a)) : 0;
+      };
+      check(
+        'S10.snacks_share_ramadan_bps',
+        f.snacks_share_ramadan_bps,
+        await share(f.ramadan_window as { from: string; to: string }),
+      );
+      check(
+        'S10.snacks_share_before_bps',
+        f.snacks_share_before_bps,
+        await share(f.before_window as { from: string; to: string }),
+      );
+      for (const o of ORGS) {
+        const [r] = await q(
+          `select count(*) as c from public.calendar_events where org_id = $1 and kind = 'weather'`,
+          [ids.org(o)],
+        );
+        check(`S10.rain_days.${o.key}`, (f.rain_days as Record<string, number>)[o.key], n(r!.c));
+      }
     } else if (s.id === 'S13') {
       const staff = await staffCounts(cafe, 'gulshan', ['tania', 'imran', 'meherun']);
       checkAll('S13', f, {

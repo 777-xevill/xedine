@@ -153,6 +153,19 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_forecast',
+    description:
+      'Forecast units to sell tomorrow per item (all dayparts), per branch and in total. model_shown says whether the calendar-aware model is used (it beats "same weekday last week" by ≥ 10%) or the naive guess.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Menu item, when the question names one.' },
+        branch: branchProp,
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'get_menu_matrix',
     description:
       'Menu engineering classes (star, plowhorse, puzzle, dog) with margins per item for a period (owner and accountant only).',
@@ -465,6 +478,48 @@ export async function runTool(
             count_uncertainty_poisha: num(r.uncertainty_poisha),
             net_sales_poisha: num(r.net_sales_poisha),
           })),
+        };
+      }
+      case 'get_forecast': {
+        const { data: w, error: we } = await ctx.sb.rpc('metric_window', {
+          p_org: ctx.orgId,
+          p_window: 'today',
+          p_now: ctx.nowIso,
+        });
+        if (we) return fail(we);
+        const today = (w as { to_date: string }[])[0]!.to_date;
+        const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+        const { data, error } = await ctx.sb.rpc('metric_forecast', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_date: tomorrow,
+          p_now: ctx.nowIso,
+        });
+        if (error) return fail(error);
+        const rows = (data ?? []) as Record<string, unknown>[];
+        const item =
+          typeof input.item === 'string' && input.item.trim()
+            ? matchItem(input.item, ctx.menu)
+            : null;
+        const want = item && !Array.isArray(item) ? item.id : null;
+        const byItem = new Map<string, number>();
+        for (const r of rows) {
+          if (want && r.menu_item_id !== want) continue;
+          byItem.set(String(r.name), (byItem.get(String(r.name)) ?? 0) + num(r.qty));
+        }
+        return {
+          metric_id: 'forecast.units',
+          filters: { date: tomorrow, item: input.item ?? null, branch: input.branch ?? null },
+          as_of,
+          data: {
+            date: tomorrow,
+            model_shown: rows.some((r) => r.model_shown === true),
+            items: [...byItem.entries()]
+              .map(([name, q]) => ({ item: name, qty: Math.round(q * 10) / 10 }))
+              .sort((x, y) => y.qty - x.qty),
+          },
         };
       }
       case 'get_menu_matrix': {

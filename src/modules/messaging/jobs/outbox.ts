@@ -117,6 +117,13 @@ export async function queueMessage(
     idempotencyKey: string;
   },
 ): Promise<void> {
+  // WhatsApp is a Growth/Chain feature (ADR 0008/0023): a plan without it queues nothing.
+  const { data: allowed, error: planError } = await sb.rpc('org_whatsapp_allowed', {
+    p_org: m.orgId,
+    p_now: now().toISOString(),
+  });
+  if (planError) throw planError;
+  if (allowed !== true) return;
   const { error } = await sb.from('message_outbox').upsert(
     {
       org_id: m.orgId,

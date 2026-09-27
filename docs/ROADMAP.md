@@ -228,19 +228,20 @@ Status: ◐ **built; local checks green; full-seed check written for CI** (2026-
 - [x] Manager scorecards ship in a money-free variant, or are owner-only (ADR 0007) — money-free, branch-private
 
 ## Phase 10 — Compliance, staff-lite, growth, billing & launch hardening
-Status: ☐ · Size: 3–4 weeks
+Status: ◐ **built; local checks green** (2026-10-08) · Size: 3–4 weeks
 **Goal:** ready for paying customers.
+**Evidence so far (local):** `tests/db/compliance.test.ts` (7), `tests/db/onboarding.test.ts` (3), `tests/db/billing.test.ts` (3), `tests/db/growth.test.ts` (4) — hand-worked; no test-oracle scenario exists for this phase. Decisions in [ADR 0023](decisions/0023-phase-10-compliance-staff-onboarding-billing.md); the security pass is a living checklist in [SECURITY.md](../docs/SECURITY.md).
 **Build**
-- [ ] Licence tracker + reminders (60/30/7 days); VAT deadline reminders; sales-VAT summary export (TODO verify with an accountant)
-- [ ] Staff-lite: advances ledger, basic attendance, sales per staff
-- [ ] Growth module (optional): data-grounded content ideas, hooks, shot list, captions bn/en, posting calendar
-- [ ] Onboarding wizard: menu import from photo/CSV, recipe drafts, fixed costs, channels — target < 2 h
-- [ ] Plans, usage caps, subscription billing (provider TBD), admin console, data export
-- [ ] Security review (RLS audit, secrets, rate limits, headers), backups, monitoring, performance pass
+- [x] Licence tracker + reminders (60/30/7 days); VAT deadline reminders; sales-VAT summary export (TODO verify with an accountant) — `/[org]/compliance`, `metric_compliance`, `job_compliance_reminders`, `/api/export/[vat|orders]`
+- [x] Staff-lite: advances ledger, basic attendance, sales per staff — `/[org]/staff/records`
+- [x] Growth module (optional): data-grounded content ideas, hooks, shot list, captions bn/en, posting calendar — `/[org]/growth`; no auto-posting (PRODUCT.md M17)
+- [x] Onboarding wizard: menu import from photo/CSV, recipe drafts (Phase 3), fixed costs, channels — `/[org]/setup`, `metric_setup_progress` (12 steps, computed from real data); **timed < 2 h test not yet run**
+- [x] Plans, usage caps, subscription billing (provider TBD), admin console, data export — `metric_billing`, `org_ai_allowed`/`org_whatsapp_allowed` enforced in the gateways, `/admin` (platform admins only), `/api/export/[kind]`
+- [~] Security review (RLS audit, secrets, rate limits, headers), backups, monitoring, performance pass — see [SECURITY.md](../docs/SECURITY.md): RLS/isolation/search_path automated and green; headers added; **rate limiting, backups and monitoring are deliberately deferred to launch prep, not faked**
 **Done when**
-- [ ] Security checklist passes; phase-reviewer reports no Critical issues
-- [ ] A new restaurant onboards in < 2 h in a timed test
-- [ ] Plan limits enforced; reminders fire on schedule
+- [~] Security checklist passes; phase-reviewer reports no Critical issues — automated checks green; phase-reviewer run pending; rate-limit/backup/monitoring gaps are named, not closed
+- [ ] A new restaurant onboards in < 2 h in a timed test — the checklist and menu import exist; the timed test itself has not been run
+- [x] Plan limits enforced; reminders fire on schedule — enforced in the LLM gateway and the messaging outbox; reminders computed per threshold and queued once each
 
 ## Later (unscheduled)
 Per-task agent mode (after trust) · lender-partner report · delivery-platform integrations · EFD/SDC integration · local print bridge · native apps · ML forecasting service.

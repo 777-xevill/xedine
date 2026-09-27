@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { AiError } from '@/lib/llm-gateway';
+import { aiErrorKey } from '@/lib/llm-gateway';
 import { parseMenuCsv } from '@/modules/menu/import';
 import { MENU_PHOTO_PROMPT, readMenuPhoto } from '@/modules/menu/photo';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
@@ -76,16 +76,7 @@ export async function readMenuPhotoAction(
       },
     });
   } catch (e) {
-    if (e instanceof AiError)
-      return {
-        error:
-          e.code === 'not_configured'
-            ? 'aiNotConfigured'
-            : e.code === 'cap_exceeded'
-              ? 'aiCapExceeded'
-              : 'aiFailed',
-      };
-    return { error: 'aiFailed' };
+    return { error: aiErrorKey(e) };
   }
   const { error } = await supabase.from('menu_import_drafts').insert({
     org_id: parsed.data.orgId,

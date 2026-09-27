@@ -85,6 +85,8 @@ export interface ToolCallRecord {
 
 export interface UsageStore {
   spentTodayUsdMicros(orgId: string, date: string): Promise<number>;
+  /** Whether the org's plan includes AI (Phase 10 billing). Omitted = allowed (tests, evals). */
+  planAllowsAi?(orgId: string): Promise<boolean>;
   record(row: {
     orgId: string;
     date: string;
@@ -106,7 +108,13 @@ export interface GatewayConfig {
 
 export class AiError extends Error {
   constructor(
-    readonly code: 'cap_exceeded' | 'refused' | 'truncated' | 'invalid_output' | 'not_configured',
+    readonly code:
+      | 'cap_exceeded'
+      | 'refused'
+      | 'truncated'
+      | 'invalid_output'
+      | 'not_configured'
+      | 'not_in_plan',
     message: string,
   ) {
     super(message);
@@ -147,6 +155,9 @@ export function createGateway(deps: {
 }) {
   const { transport, store, config } = deps;
   const guard = async (orgId: string, today: string) => {
+    if (store.planAllowsAi && !(await store.planAllowsAi(orgId))) {
+      throw new AiError('not_in_plan', "this restaurant's plan does not include AI");
+    }
     const spent = await store.spentTodayUsdMicros(orgId, today);
     if (spent >= config.dailyCapUsdMicros) {
       throw new AiError('cap_exceeded', 'the daily AI allowance for this restaurant is used up');

@@ -65,7 +65,10 @@
     "licenceInvalid": "Give the licence a name and an expiry date.",
     "advanceInvalid": "Pick the staff member and enter an amount above zero.",
     "menuImportInvalid": "Paste between 1 and 500 menu lines: category, name, Bangla name, price.",
-    "menuImportBadLines": "These lines need a name and a price: {lines}. Fix them and import again."
+    "menuImportBadLines": "These lines need a name and a price: {lines}. Fix them and import again.",
+    "aiNotInPlan": "Your plan does not include AI. The owner can change the plan on the Billing page.",
+    "growthNoData": "Not enough sales yet to ground an idea.",
+    "growthInvalid": "Give the idea a title and a caption in Bangla or English."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -131,7 +134,9 @@
     "benchmarks": "Benchmarks",
     "compliance": "Compliance",
     "staffRecords": "Staff records",
-    "setup": "Setup"
+    "setup": "Setup",
+    "billing": "Billing",
+    "growth": "Growth"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -1868,5 +1873,100 @@
     "photoHint": "The AI copies what is printed; a price it cannot read is left empty for you to fill in.",
     "aiOff": "Photo reading is off until the Anthropic key is added. Paste the menu instead.",
     "stepTitle": "{n}. {title}"
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Your plan, what it includes, and what next month costs.",
+    "plan": "Plan",
+    "plans": {
+      "starter": "Starter",
+      "growth": "Growth",
+      "chain": "Chain"
+    },
+    "status": {
+      "trialing": "Free trial",
+      "active": "Active",
+      "past_due": "Payment due",
+      "canceled": "Cancelled",
+      "trial_expired": "Trial ended"
+    },
+    "trialEnds": "Free trial until {date}.",
+    "trialEnded": "The free trial ended on {date}. AI and WhatsApp are paused until a plan is active.",
+    "branches": "Branches",
+    "pricePerBranch": "Per branch per month",
+    "discount": "Pilot discount",
+    "monthly": "Next month",
+    "includesTitle": "Included",
+    "aiYes": "AI assistant, drafts and briefs",
+    "aiNo": "No AI on this plan",
+    "waYes": "WhatsApp briefs, reminders and campaigns",
+    "waNo": "No WhatsApp on this plan",
+    "planBody": {
+      "starter": "POS, kitchen screen, orders, cash, the health monitor and the zero-input leak checks.",
+      "growth": "Everything: recipes and menu profit, AI assistant and WhatsApp, purchasing, stock and waste, forecasts, customers and reviews.",
+      "chain": "Growth for 6 or more branches, with branch comparisons and benchmarks."
+    },
+    "usageTitle": "This month",
+    "aiRequests": "AI requests",
+    "messages": "WhatsApp messages queued",
+    "paymentNote": "Prices are provisional. Payment is by invoice (bank or bKash) until online payment is set up."
+  },
+  "admin": {
+    "title": "Admin",
+    "subtitle": "Restaurants, their plans and status. No sales, cost or customer data is shown here.",
+    "meta": "{slug} · {branches} branch(es) · traded on {days} of the last 30 days",
+    "planStatus": "{plan} · {status}",
+    "plan": "Plan",
+    "plans": {
+      "starter": "Starter",
+      "growth": "Growth",
+      "chain": "Chain"
+    },
+    "status": "Status",
+    "statuses": {
+      "trialing": "Free trial",
+      "active": "Active",
+      "past_due": "Payment due",
+      "canceled": "Cancelled",
+      "trial_expired": "Trial ended"
+    },
+    "discount": "Discount %",
+    "periodEnd": "Paid until",
+    "save": "Save"
+  },
+  "growth": {
+    "title": "Growth",
+    "subtitle": "Content ideas grounded in your own sales data — you write or approve everything before it goes anywhere.",
+    "aiNotConfigured": "AI drafts are off until the Anthropic key is added. You can still write ideas yourself.",
+    "pushItemTitle": "Push a strong seller",
+    "pushItemFact": "{item} sold {qty} times in the last 28 days.",
+    "fixDaypartTitle": "Fix a quiet time",
+    "fixDaypartFact": "{weak} is only {weakShare} of sales, against {strongShare} at {strong}, over the last 28 days.",
+    "noSalesYet": "Not enough sales yet",
+    "draftIdea": "Draft with AI",
+    "aiDraft": "AI Generated draft",
+    "calendarTitle": "Scheduled",
+    "markPosted": "Mark posted",
+    "writeOwnTitle": "Write your own idea",
+    "ideaTitle": "Title",
+    "hook": "Hook (one line)",
+    "shotList": "Shot list",
+    "captionBn": "Caption (Bangla)",
+    "captionEn": "Caption (English)",
+    "save": "Save",
+    "none": "No ideas yet",
+    "noneBody": "Draft one from a strong seller or a quiet time above, or write your own.",
+    "status": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "posted": "Posted",
+      "discarded": "Discarded"
+    },
+    "targetDate": "Post on",
+    "approve": "Approve",
+    "discard": "Discard",
+    "drafted": "Idea drafted below — check it before approving.",
+    "approved": "Approved.",
+    "noAutoPost": "Xedine never posts anything by itself. Copy an approved caption to the platform yourself, then mark it posted."
   }
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { AiError } from '@/lib/llm-gateway';
+import { aiErrorKey } from '@/lib/llm-gateway';
 import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { draftRecipes, RECIPE_DRAFT_PROMPT } from './drafting';
@@ -170,16 +170,7 @@ export async function draftRecipesAction(_prev: FormState, formData: FormData): 
       image,
     });
   } catch (e) {
-    if (e instanceof AiError)
-      return {
-        error:
-          e.code === 'not_configured'
-            ? 'aiNotConfigured'
-            : e.code === 'cap_exceeded'
-              ? 'aiCapExceeded'
-              : 'aiFailed',
-      };
-    return { error: 'aiFailed' };
+    return { error: aiErrorKey(e) };
   }
   const byName = new Map((menu ?? []).map((m) => [m.name.trim().toLowerCase(), m.id as string]));
   const rows = drafted.recipes.map((r) => ({

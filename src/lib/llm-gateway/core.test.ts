@@ -16,7 +16,11 @@ const Schema = z.object({ answer: z.string() });
 const prompt = { key: 'test', version: 3, body: 'You are a test.' };
 
 function harness(
-  opts: { spent?: number; response?: Partial<Awaited<ReturnType<Transport>>> } = {},
+  opts: {
+    spent?: number;
+    planAllowsAi?: boolean;
+    response?: Partial<Awaited<ReturnType<Transport>>>;
+  } = {},
 ) {
   const sent: TransportRequest<unknown>[] = [];
   const recorded: Parameters<UsageStore['record']>[0][] = [];
@@ -31,6 +35,7 @@ function harness(
   };
   const store: UsageStore = {
     spentTodayUsdMicros: async () => opts.spent ?? 0,
+    ...(opts.planAllowsAi === undefined ? {} : { planAllowsAi: async () => opts.planAllowsAi! }),
     record: async (row) => {
       recorded.push(row);
     },
@@ -86,6 +91,14 @@ describe('LLM gateway', () => {
     const h = harness({ spent: 1_000_000 });
     await expect(h.run()).rejects.toMatchObject({ code: 'cap_exceeded' });
     expect(h.sent).toHaveLength(0);
+  });
+
+  it('refuses to call the model when the plan does not include AI', async () => {
+    const h = harness({ planAllowsAi: false });
+    await expect(h.run()).rejects.toMatchObject({ code: 'not_in_plan' });
+    expect(h.sent).toHaveLength(0);
+    const ok = harness({ planAllowsAi: true });
+    await expect(ok.run()).resolves.toBeTruthy();
   });
 
   it('masks phone numbers and e-mails before anything leaves', async () => {

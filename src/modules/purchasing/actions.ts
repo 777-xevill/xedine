@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { AiError } from '@/lib/llm-gateway';
+import { aiErrorKey } from '@/lib/llm-gateway';
 import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { extractPurchase, PURCHASE_EXTRACT_PROMPT } from './extraction';
@@ -150,16 +150,7 @@ export async function draftPurchaseAction(
   try {
     drafted = await extractPurchase({ orgId: parsed.data.orgId, text, image });
   } catch (e) {
-    if (e instanceof AiError)
-      return {
-        error:
-          e.code === 'not_configured'
-            ? 'aiNotConfigured'
-            : e.code === 'cap_exceeded'
-              ? 'aiCapExceeded'
-              : 'aiFailed',
-      };
-    return { error: 'aiFailed' };
+    return { error: aiErrorKey(e) };
   }
   const review = reviewLines(drafted.extracted.lines, (ingredients ?? []) as IngredientRef[]);
   const { error } = await supabase.from('purchase_drafts').insert({

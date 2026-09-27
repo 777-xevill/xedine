@@ -61,6 +61,7 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
       ? [
           { href: `${base}/campaigns`, label: t('campaigns') },
           { href: `${base}/reviews`, label: t('reviews') },
+          { href: `${base}/growth`, label: t('growth') },
         ]
       : []),
     ...(ctx.isOwner || isManager || has('accountant')
@@ -69,6 +70,7 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
     ...(ctx.isOwner || has('accountant')
       ? [{ href: `${base}/benchmarks`, label: t('benchmarks') }]
       : []),
+    ...(ctx.isOwner || has('accountant') ? [{ href: `${base}/billing`, label: t('billing') }] : []),
     ...(ctx.isOwner || isManager || has('accountant')
       ? [
           { href: `${base}/compliance`, label: t('compliance') },

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { AiError } from '@/lib/llm-gateway';
+import { aiErrorKey } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { draftReviewReply, REVIEW_REPLY_PROMPT } from '@/modules/reviews/replies';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
@@ -163,16 +163,7 @@ export async function draftReplyAction(_prev: FormState, formData: FormData): Pr
       rating: review.rating === null ? null : Number(review.rating),
     });
   } catch (e) {
-    if (e instanceof AiError)
-      return {
-        error:
-          e.code === 'not_configured'
-            ? 'aiNotConfigured'
-            : e.code === 'cap_exceeded'
-              ? 'aiCapExceeded'
-              : 'aiFailed',
-      };
-    return { error: 'aiFailed' };
+    return { error: aiErrorKey(e) };
   }
   const { error } = await supabase.from('review_replies').insert({
     org_id: parsed.data.orgId,

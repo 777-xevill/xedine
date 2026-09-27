@@ -83,6 +83,19 @@ Star = high popularity, high margin · Plowhorse = high, low · Puzzle = low, hi
 - `forecast.wape` = Σ|actual − forecast| ÷ Σ actual (per item group / branch, last 28 days)
 - `forecast.naive` = same weekday last week. Show the model forecast only if WAPE improves ≥ 10% vs naive.
 
+## Compliance (ADR 0023)
+- `compliance.status` per licence and the next VAT return: `expired` (days left < 0) · `urgent` (≤ 7) · `due` (≤ 30) · `upcoming` (≤ 60) · `ok`. The VAT due day is per-org config (`org_settings.vat_return_due_day`, default 15), never a hardcoded legal date — `TODO(verify)` with an accountant.
+- `vat.summary` = orders grouped by `(branch, vat_rate_bps, price_includes_vat)`, summing the stored `net/vat/service_charge/total` (ADR 0005) — a working summary from POS data, not a filed Mushak return.
+
+## Staff-lite (ADR 0023)
+- `advances.balance` = Σ `advances.amount_poisha` per staff (positive = given, negative = repaid). Money-gated.
+- `attendance` counts per staff over a period: present / half_day / leave / absent / unmarked (days with no row, counted separately, never as absent).
+- `sales.per_staff` = `m_staff_exceptions` per staff: completed net sales, orders, and the same void/discount/refund counts the leak detector uses — never a second definition.
+
+## Growth (ADR 0023, optional)
+- `growth.top_item` = a menu-matrix `star` if one exists (needs recipe costs), else the top seller by units, over the last 28 days.
+- `growth.daypart_share` = each configured daypart's share of the last 28 days' net sales; the weakest and strongest are surfaced. Revenue only — no cost or margin, so no money gate.
+
 ## Discipline score (per branch per day, 0–100)
 Bazar entries recorded (25) · waste log touched (15) · cash close done (20) · scheduled count done (25) · recipe coverage ≥ 90% (15).
 

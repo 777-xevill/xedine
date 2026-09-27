@@ -36,6 +36,15 @@ const RATES: Record<string, { input: number; output: number }> = {
 /** Per org per day; default $1. Plans set their own caps in Phase 10. */
 const DAILY_CAP_USD_MICROS = Number(process.env.AI_DAILY_CAP_USD_MICROS ?? 1_000_000);
 
+/** The errors.* key for a failed AI call, shared by every action that drafts with AI. */
+export function aiErrorKey(e: unknown): string {
+  if (!(e instanceof AiError)) return 'aiFailed';
+  if (e.code === 'not_configured') return 'aiNotConfigured';
+  if (e.code === 'cap_exceeded') return 'aiCapExceeded';
+  if (e.code === 'not_in_plan') return 'aiNotInPlan';
+  return 'aiFailed';
+}
+
 export function aiConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
@@ -89,6 +98,14 @@ const anthropicChatTransport: ChatTransport = async (req) => {
 
 // ai_usage is written only by the gateway (service role), always for an explicit org (CLAUDE.md #2).
 const supabaseUsageStore: UsageStore = {
+  async planAllowsAi(orgId) {
+    const { data, error } = await createServiceRoleClient().rpc('org_ai_allowed', {
+      p_org: orgId,
+      p_now: now().toISOString(),
+    });
+    if (error) throw error;
+    return data === true;
+  },
   async spentTodayUsdMicros(orgId, date) {
     const { data, error } = await createServiceRoleClient()
       .from('ai_usage')

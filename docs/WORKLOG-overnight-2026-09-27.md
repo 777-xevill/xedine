@@ -280,3 +280,29 @@ Checklist:
 - On the seed, Kacchi House's gap to its best branch over the 4-week count period: Mirpur ≈ ৳29,900,
   Uttara ≈ ৳29,400, Dhanmondi ≈ ৳2,200.
 - **Run by hand:** source real Bangladesh reference ranges before showing benchmarks to customers.
+
+---
+
+## Phase 10 — Compliance, staff-lite, onboarding, billing, growth, launch hardening
+
+Checklist:
+- [x] 10.1 Migration: licences + VAT due day + reminders, sales-VAT summary, staff-lite (advances, attendance, sales per staff) — `20261006000001_compliance_staff.sql`
+- [x] 10.2 Migration: onboarding checklist + one-shot menu import + AI menu-photo drafts — `20261007000001_onboarding.sql`
+- [x] 10.3 Migration: plans/trial/subscription, gateways enforce AI/WhatsApp by plan, billing view, admin console — `20261008000001_billing_admin.sql`
+- [x] 10.4 Migration: optional growth module (content ideas grounded in revenue-only data, never posted automatically) — `20261009000001_growth.sql`
+- [x] 10.5 Security pass: RLS/isolation/search_path already automated and green; added HSTS, Permissions-Policy, a narrow CSP; wrote `docs/SECURITY.md` naming what's deferred (rate limiting, backups, monitoring, load testing)
+- [x] 10.6 UI: /compliance, /staff/records, /setup, /billing, /admin, /growth; CSV export route; nav entries
+- [x] 10.7 DB tests: compliance (7), onboarding (3), billing (3), growth (4) — all hand-worked, no test-oracle scenario for this phase
+- [x] 10.8 i18n, ADR 0023, ROADMAP, METRICS.md, DATA-MODEL.md, CLAUDE.md, commit, push
+
+### Phase 10 log
+- Four migrations, in commit order: compliance/staff-lite, onboarding, billing/admin, growth. ADR 0023 —
+  **please confirm §1 (VAT due day defaults to the 15th; a working summary, not a filed Mushak return),
+  §5 (a new org gets a 30-day Growth trial, not Starter), §6 (subscriptions are set by hand until a payment
+  provider is chosen) and §7 (the admin console never shows tenant sales/cost/customer data).**
+- The Starter plan now genuinely has no AI or WhatsApp: `org_ai_allowed`/`org_whatsapp_allowed` are checked
+  inside the LLM gateway and the messaging outbox themselves, not just the UI.
+- **Run by hand:** insert your own `auth.users.id` into `public.platform_admins` to use `/admin`; get real
+  Bangladesh licence and VAT-due-day defaults from an accountant; pick a payment provider; pick a
+  rate-limiting backing store before onboarding paying customers (see `docs/SECURITY.md`); run the timed
+  < 2 h onboarding test with a real menu.

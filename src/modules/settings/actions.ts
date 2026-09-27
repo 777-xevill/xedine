@@ -6,6 +6,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { parseTakaToPoisha } from '@/lib/money';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
+import { normalizeBdPhone } from '@/lib/messaging/phone';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /** Owner-only restaurant setup: receipt header, channels + commissions (money-gated), reason codes. */
@@ -184,4 +185,34 @@ export async function ensureDefaultsAction(formData: FormData): Promise<void> {
   if (error) console.error('defaults', error.code);
   refresh(parsed.data.orgSlug);
   revalidatePath(`/${parsed.data.orgSlug}/branch`);
+}
+
+/**
+ * The owner's WhatsApp for briefs and questions (ADR 0017). Opting in is explicit and revocable;
+ * without it nothing is sent (CLAUDE.md #8).
+ */
+export async function setOwnerWhatsappAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      phone: z.string().trim().max(40),
+      language: z.enum(['bn', 'en']),
+      consent: z.literal('on').optional(),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const phone = parsed.data.phone ? normalizeBdPhone(parsed.data.phone) : null;
+  if (parsed.data.phone && !phone) return { error: 'phoneInvalid' };
+  const supabase = await createClient();
+  const { error } = await supabase.from('org_profile').upsert({
+    org_id: parsed.data.orgId,
+    owner_whatsapp: phone,
+    brief_language: parsed.data.language,
+    owner_whatsapp_opt_in_at: phone && parsed.data.consent ? now().toISOString() : null,
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
 }

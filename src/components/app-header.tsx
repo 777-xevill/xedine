@@ -35,6 +35,9 @@ export async function AppHeader({ ctx }: { ctx: OrgContext }) {
       ? [{ href: `${base}/sales`, label: t('sales') }]
       : []),
     ...(ctx.isOwner || has('accountant') ? [{ href: `${base}/leaks`, label: t('leaks') }] : []),
+    ...(ctx.isOwner || isManager || has('accountant')
+      ? [{ href: `${base}/assistant`, label: t('assistant') }]
+      : []),
     ...(ctx.isOwner || has('accountant')
       ? [{ href: `${base}/menu-profit`, label: t('menuProfit') }]
       : []),

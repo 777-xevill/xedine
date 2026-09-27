@@ -131,22 +131,23 @@ Status: ◐ **built; local checks green; AI parts wait for an API key** (2026-09
 - [ ] ai_usage shows tokens and cost per org per day; caps enforced — enforced and logged in code and tested (`core.test.ts`, `costing.test.ts`); **no real call made yet (no key)**
 
 ## Phase 4 — AI Owner Assistant + WhatsApp rhythm
-Status: ☐ · Size: 2–3 weeks
+Status: ◐ **built; local checks green; LLM and WhatsApp parts wait on the key and Meta** (2026-09-30) · Size: 2–3 weeks
 **Goal:** the owner asks in Bangla/Banglish/English and gets exact, cited answers; briefs arrive on WhatsApp.
+**Evidence so far (local):** assistant unit tests (router, validator, language, gateway tool loop), messaging tests (outbox, backoff, transport, phones), `tests/db/assistant.test.ts`. Decisions in [ADR 0017](decisions/0017-phase-4-assistant-and-whatsapp.md).
 **Build**
-- [ ] Metric tool catalog for the assistant (ARCHITECTURE.md)
-- [ ] Web chat UI; conversation storage; language detection
-- [ ] Numeric-consistency validator + deterministic fallback templates
-- [ ] Insight feed: rank, max 3/day, snooze/dismiss with reason — challenges the owner with evidence
-- [ ] Morning brief, evening close, weekly review (deterministic numbers + LLM narrative; batch where possible)
-- [ ] org_context: owner-stated goals/rules the assistant respects
-- [ ] WhatsApp Cloud API: opt-in, templates, outbox, webhooks, inbound Q&A, approvals by reply. **Build behind an interface with a mock transport** so briefs, outbox, retries and delivery status are all testable and demoable before Meta approves anything — only the final hop waits on verification (ADR 0010)
-- [ ] AI eval suite: ≥ 40 golden questions incl. "how many kebabs sold in the last 2 hours / today / last week / this month"
+- [x] Metric tool catalog for the assistant (ARCHITECTURE.md) — `src/modules/assistant/tools.ts`, runs with the caller's permissions
+- [x] Web chat UI; conversation storage; language detection — `/[org]/assistant`
+- [x] Numeric-consistency validator + deterministic fallback templates — `validator.ts`, `answers.ts`, `router.ts`
+- [x] Insight feed: rank, max 3/day, snooze/dismiss with reason — dashboard card, `refresh_insights`, `insight_action`
+- [x] Morning brief, evening close, weekly review (deterministic numbers + LLM narrative; batch where possible) — `src/modules/briefs/jobs/briefs.ts`; narrative kept only if it passes the validator (no batching yet)
+- [x] org_context: owner-stated goals/rules the assistant respects — assistant page sidebar
+- [x] WhatsApp Cloud API behind an interface with a mock transport: opt-in, templates, outbox, webhooks, inbound Q&A — **approvals by reply wait for Phase 7 (nothing to approve yet)**
+- [x] AI eval suite: ≥ 40 golden questions — `tests/ai-evals`, generated from the manifest, runs in CI
 **Done when**
-- [ ] Evals: ≥ 95% exact numeric answers; 0 answers with numbers absent from tool results
-- [ ] Brief delivered to a test WhatsApp number in bn and en
-- [ ] Assistant says so clearly when data is missing
-- [ ] Per-org AI cost/day visible and under plan cap
+- [ ] Evals: ≥ 95% exact numeric answers; 0 answers with numbers absent from tool results — **runs in CI** (router path until the key exists)
+- [ ] Brief delivered to a test WhatsApp number in bn and en — **needs Meta verification + templates**
+- [x] Assistant says so clearly when data is missing — `notPermitted` / `notFound` / `noData` answers; prompt rule
+- [ ] Per-org AI cost/day visible and under plan cap — cap enforced and logged; **an owner-facing usage view is not built yet**
 
 **→ Pilot gate B:** pilots use the assistant + briefs. Measure input discipline before building P5–P6.
 

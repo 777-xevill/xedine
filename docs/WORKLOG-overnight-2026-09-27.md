@@ -131,3 +131,31 @@ Checklist:
   (and optionally `AI_MODEL_ASSISTANT`, `AI_MODEL_FAST`, `AI_DAILY_CAP_USD_MICROS`) in Vercel and
   `.env.local`; then try Recipes → AI drafts with a menu photo and check `ai_usage` shows the cost.
   Start Meta/WhatsApp business verification now (Phase 4 needs it).
+
+---
+
+## Phase 4 — AI Owner Assistant + WhatsApp rhythm
+
+Blockers per ROADMAP/ADR 0010: Anthropic key (Phase 3) and Meta business verification for WhatsApp.
+Built behind interfaces with mock transports; a deterministic question router answers the common
+questions (item counts by window, sales, top items) even with no AI key, and is the eval baseline.
+
+Checklist:
+- [x] 4.1 Migration: jobs/webhooks may call metric wrappers as the service role (explicit org); owner WhatsApp opt-in; insight feed (rank, novelty, max 3/day, snooze/dismiss with reason); brief templates; schedules
+- [x] 4.2 Assistant core: language detection, numeric-consistency validator, tool catalog (inherits the caller's permissions), deterministic router + templates, LLM tool loop with retry-once-then-template
+- [x] 4.3 Chat UI + conversation storage; org_context (owner goals/rules) screen
+- [x] 4.4 Golden eval set (≥ 40 questions from the manifest) + runner (router or LLM) + CI step
+- [x] 4.5 Briefs (morning / evening / weekly): deterministic numbers + optional validated narrative → outbox
+- [x] 4.6 Messaging gateway: WhatsApp Cloud API transport + mock, outbox sender job with retries, webhook (verify + signature + delivery status + inbound Q&A)
+- [x] 4.7 Tests, i18n, ADR 0017, ROADMAP, commit
+
+### Phase 4 log
+- Migration `20260930000001_assistant_messaging.sql`: service-role metric access, insight feed, WhatsApp
+  opt-in, brief templates (Meta drafts), schedules, `metric_window`.
+- Assistant: router + validator + tools + LLM loop; `/assistant` chat with owner rules; evals in CI.
+- Briefs + outbox + WhatsApp transport + webhook (`/api/webhooks/whatsapp`, now public in the proxy).
+- Settings → WhatsApp briefs (explicit opt-in). Dashboard → Today's insights.
+- Session was cut mid-phase once; resumed, all checks green: 140 unit, 781 DB tests.
+- **Run by hand:** Meta business verification; create the 6 brief templates in Meta (names in the
+  migration) and set the WHATSAPP_* env vars (see .env.example); add the `ANTHROPIC_API_KEY` repo secret so
+  CI's evals exercise the LLM path. Please confirm ADR 0017 §2 and §5.

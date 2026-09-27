@@ -4,9 +4,21 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
-import { AiError, createGateway, type Transport, type UsageStore } from './core';
+import {
+  AiError,
+  createGateway,
+  type ChatTransport,
+  type Transport,
+  type UsageStore,
+} from './core';
 
-export { AiError, maskPii, type GatewayResult, type PromptVersion } from './core';
+export {
+  AiError,
+  maskPii,
+  type GatewayResult,
+  type PromptVersion,
+  type ToolCallRecord,
+} from './core';
 
 /**
  * Production wiring. Models come from the environment, never code (ARCHITECTURE.md "AI layer"):
@@ -50,6 +62,31 @@ const anthropicTransport: Transport = async (req) => {
   };
 };
 
+const anthropicChatTransport: ChatTransport = async (req) => {
+  const client = new Anthropic();
+  const message = await client.messages.create({
+    model: req.model,
+    max_tokens: req.maxTokens,
+    // Tools and the versioned prompt form the cached prefix; the day's context comes after the breakpoint.
+    system: [
+      { type: 'text', text: req.system, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: req.context },
+    ],
+    tools: req.tools,
+    messages: req.messages,
+  });
+  return {
+    content: message.content,
+    stopReason: message.stop_reason,
+    usage: {
+      input: message.usage.input_tokens,
+      output: message.usage.output_tokens,
+      cacheRead: message.usage.cache_read_input_tokens ?? 0,
+      cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
+    },
+  };
+};
+
 // ai_usage is written only by the gateway (service role), always for an explicit org (CLAUDE.md #2).
 const supabaseUsageStore: UsageStore = {
   async spentTodayUsdMicros(orgId, date) {
@@ -81,6 +118,7 @@ export function gateway() {
   if (!aiConfigured()) throw new AiError('not_configured', 'ANTHROPIC_API_KEY is not set');
   return createGateway({
     transport: anthropicTransport,
+    chatTransport: anthropicChatTransport,
     store: supabaseUsageStore,
     config: {
       models: MODELS,

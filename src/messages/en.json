@@ -50,7 +50,8 @@
     "aiNotConfigured": "AI drafting is not switched on yet.",
     "aiCapExceeded": "Today's AI allowance for this restaurant is used up. Try again tomorrow.",
     "aiFailed": "The AI draft did not work this time. Try again, or write the recipe by hand.",
-    "draftNeedsItem": "Choose which menu item this recipe is for, and save, before approving."
+    "draftNeedsItem": "Choose which menu item this recipe is for, and save, before approving.",
+    "phoneInvalid": "Enter a Bangladeshi mobile number, e.g. 01712345678."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -104,7 +105,8 @@
     "leaks": "Leaks",
     "costs": "Costs",
     "recipes": "Recipes",
-    "menuProfit": "Menu profit"
+    "menuProfit": "Menu profit",
+    "assistant": "Assistant"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -269,7 +271,12 @@
     "reasonLabel": "Label",
     "requiresApproval": "Needs manager approval",
     "addReason": "Add reason",
-    "noReasons": "No reason codes yet."
+    "noReasons": "No reason codes yet.",
+    "whatsappTitle": "WhatsApp briefs",
+    "whatsappBody": "A morning brief at 9:00, an evening close at 23:00 and a weekly review, and you can ask questions by message. Nothing is sent until you tick the box.",
+    "whatsappNumber": "Your WhatsApp number",
+    "briefLanguage": "Language",
+    "whatsappConsent": "Yes, send my briefs and answers to this number on WhatsApp."
   },
   "weekdays": {
     "0": "Sunday",
@@ -528,7 +535,8 @@
       "commission_drag": "Delivery commission",
       "margin_below_target": "Food cost above target",
       "channel_negative_margin": "Loses money on a platform"
-    }
+    },
+    "insightsTitle": "Today's insights"
   },
   "sales": {
     "title": "Sales explorer",
@@ -844,5 +852,66 @@
     "simImpact": "At the last 28 days' {qty} sold, that is {change} of margin.",
     "simAssumption": "A projection: it assumes the same number sold, which a price change may not keep.",
     "seeMarginLeaks": "See items losing money"
+  },
+  "assistant": {
+    "windows": {
+      "last_2h": "in the last 2 hours",
+      "today": "today",
+      "yesterday": "yesterday",
+      "last_7d": "in the last 7 days",
+      "week_to_date": "this week",
+      "month_to_date": "this month",
+      "last_30d": "in the last 30 days"
+    },
+    "help": "I can answer questions like \"How many mutton kacchi did we sell today?\", \"Sales this week?\" or \"Top items this month?\". Ask me in Bangla, Banglish or English.",
+    "whichItem": "Which one do you mean: {items}?",
+    "notPermitted": "You don't have access to that figure. Cost and profit numbers are for the owner and accountant.",
+    "notFound": "I couldn't find that item or branch. Check the name and ask again.",
+    "noData": "I don't have that data yet.",
+    "itemNone": "No {item} sold {window}.",
+    "itemQty": "{qty} {item} sold {window} (net sales {net}).",
+    "salesNone": "No completed sales {window}.",
+    "salesTotal": "Net sales {window}: {net} from {orders} orders (average {aov}).",
+    "salesBranch": "{branch}: {net} from {orders} orders",
+    "topItems": "Top sellers {window}:",
+    "topLine": "{rank}. {item} — {qty}",
+    "cannotVerify": "I couldn't give you an answer I can back with your data. Try asking about a specific item or period.",
+    "capNote": "Today's AI allowance is used up, so this is the short answer."
+  },
+  "assistantPage": {
+    "title": "Assistant",
+    "subtitle": "Ask about your sales and leaks in Bangla, Banglish or English. Every number comes from your data.",
+    "newChat": "New conversation",
+    "history": "Earlier conversations",
+    "rulesTitle": "What I should know",
+    "rulesBody": "Your goals and rules. The assistant follows them in every answer.",
+    "kinds": {
+      "goal": "Goal",
+      "rule": "Rule",
+      "constraint": "Constraint"
+    },
+    "remove": "Remove",
+    "kind": "Type",
+    "ruleText": "Goal or rule",
+    "rulePlaceholder": "e.g. Keep food cost under 35%",
+    "addRule": "Add",
+    "routerMode": "AI is not switched on yet: I answer common questions (item counts, sales, top items) directly from your data.",
+    "emptyTitle": "Ask me anything about your restaurant",
+    "emptyBody": "For example: how many mutton kacchi did we sell in the last 2 hours?",
+    "aiWritten": "AI written",
+    "verified": "Numbers checked",
+    "askLabel": "Your question",
+    "askPlaceholder": "Ask about sales, items, leaks…",
+    "examples": "Try: ajke koto ta kacchi bikri hoyeche?",
+    "ask": "Ask"
+  },
+  "briefs": {
+    "morningSales": "Yesterday: net sales {net} from {orders} orders (same day last week: {lastWeek}).",
+    "topItem": "Top seller: {item} ({qty}).",
+    "breakeven": "To cover today's costs you need {amount} in sales.",
+    "eveningSales": "Today: net sales {net} from {orders} orders.",
+    "estimatedProfit": "Estimated profit (food cost assumed): {amount}.",
+    "weeklySales": "Last 7 days: net sales {net} from {orders} orders (the 7 days before: {previous}).",
+    "leaks": "{count} new leaks to look at; the biggest is {top}. Open Xedine → Leaks."
   }
 }

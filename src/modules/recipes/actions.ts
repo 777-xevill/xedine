@@ -151,6 +151,13 @@ export async function draftRecipesAction(_prev: FormState, formData: FormData): 
   if (!image && !parsed.data.menuText?.trim()) return { error: 'menuRequired' };
 
   const supabase = await createClient();
+  // RLS shows an organization only to its members: check before spending that org's AI allowance.
+  const { data: member } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('id', parsed.data.orgId)
+    .maybeSingle();
+  if (!member) return { error: 'notAllowed' };
   const { data: menu } = await supabase
     .from('menu_items')
     .select('id, name')

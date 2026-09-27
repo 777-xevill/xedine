@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { ActionForm } from '@/components/action-form';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/form';
-import { scanFindingsAction, setFindingStatusAction } from '@/modules/leaks/actions';
+import { insightAction, scanFindingsAction, setFindingStatusAction } from '@/modules/leaks/actions';
 
 export function ScanForm({ orgId, orgSlug }: { orgId: string; orgSlug: string }) {
   const t = useTranslations('leaks');
@@ -83,5 +83,53 @@ export function FindingActions({
         </div>
       </details>
     </div>
+  );
+}
+
+/** Dismiss one of today's insights (with a reason) or snooze it (until a date). */
+export function InsightActions({ insightId, orgSlug }: { insightId: string; orgSlug: string }) {
+  const t = useTranslations('leaks');
+  const hidden = (
+    <>
+      <input type="hidden" name="insightId" value={insightId} />
+      <input type="hidden" name="orgSlug" value={orgSlug} />
+    </>
+  );
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-xs text-secondary hover:text-foreground">
+        {t('moreOptions')}
+      </summary>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <ActionForm action={insightAction} className="flex items-end gap-2">
+          {hidden}
+          <input type="hidden" name="action" value="snooze" />
+          <Input
+            name="until"
+            type="date"
+            required
+            aria-label={t('snoozeUntil')}
+            className="min-h-9"
+          />
+          <Button type="submit" size="sm" variant="secondary">
+            {t('snooze')}
+          </Button>
+        </ActionForm>
+        <ActionForm action={insightAction} className="flex items-end gap-2">
+          {hidden}
+          <input type="hidden" name="action" value="dismiss" />
+          <Input
+            name="reason"
+            required
+            aria-label={t('dismissReason')}
+            placeholder={t('dismissReason')}
+            className="min-h-9"
+          />
+          <Button type="submit" size="sm" variant="danger">
+            {t('dismiss')}
+          </Button>
+        </ActionForm>
+      </div>
+    </details>
   );
 }

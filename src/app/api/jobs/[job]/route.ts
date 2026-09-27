@@ -2,7 +2,9 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
-import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES } from '@/lib/time/business-date';
+import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/time/business-date';
+import { queueBrief } from '@/modules/briefs/jobs/briefs';
+import { runOutbox } from '@/modules/messaging/jobs/outbox';
 
 /**
  * Scheduled-job entry point (ADR 0004). pg_cron calls this with a shared secret; the job is claimed in
@@ -11,7 +13,13 @@ import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES } from '@/lib/time/busine
  * close_business_day fans out per organization (ADR 0015 §6): each org's just-closed business day (its own
  * cutoff) gets its own claim, so one org failing never blocks the rest and a retry only redoes what failed.
  */
-const KNOWN_JOBS = new Set(['refresh_today', 'close_business_day']);
+const KNOWN_JOBS = new Set([
+  'refresh_today',
+  'close_business_day',
+  'morning_brief',
+  'evening_close',
+  'send_outbox',
+]);
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.JOB_SECRET;
@@ -63,6 +71,56 @@ async function closeEveryOrg(supabase: Supabase, at: Date) {
   return outcomes;
 }
 
+/**
+ * Morning (09:00 Dhaka): refresh each org's insights for today, then queue its brief — with the weekly
+ * review on the org's first day of the week. Evening (23:00): the day's close. Per-org claims, as above.
+ */
+async function briefEveryOrg(supabase: Supabase, at: Date, kind: 'morning' | 'evening') {
+  const { data: orgs, error } = await supabase
+    .from('organizations')
+    .select('id, org_settings(default_cutoff_minutes, week_start)');
+  if (error) throw error;
+  const outcomes: { org: string; status: string }[] = [];
+  for (const org of orgs ?? []) {
+    const embedded = org.org_settings as unknown;
+    const settings = (Array.isArray(embedded) ? embedded[0] : embedded) as {
+      default_cutoff_minutes: number;
+      week_start: number;
+    } | null;
+    const today = businessDate(at, settings?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES);
+    const job = kind === 'morning' ? 'morning_brief' : 'evening_close';
+    const { data: runId } = await supabase.rpc('job_run_begin', {
+      p_job: job,
+      p_org: org.id,
+      p_period: today,
+    });
+    if (!runId) {
+      outcomes.push({ org: org.id as string, status: 'already_ran' });
+      continue;
+    }
+    try {
+      if (kind === 'morning') {
+        await supabase.rpc('job_refresh_insights', { p_org: org.id, p_date: today });
+        await queueBrief(supabase, org.id as string, 'morning', at);
+        if (weekday(today) === (settings?.week_start ?? 6))
+          await queueBrief(supabase, org.id as string, 'weekly', at);
+      } else {
+        await queueBrief(supabase, org.id as string, 'evening', at);
+      }
+      await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
+      outcomes.push({ org: org.id as string, status: 'ok' });
+    } catch (e) {
+      await supabase.rpc('job_run_finish', {
+        p_run: runId,
+        p_status: 'failed',
+        p_error: e instanceof Error ? e.message.slice(0, 500) : 'failed',
+      });
+      outcomes.push({ org: org.id as string, status: 'failed' });
+    }
+  }
+  return outcomes;
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ job: string }> }) {
   if (!authorized(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const { job } = await params;
@@ -71,7 +129,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const supabase = createServiceRoleClient();
   const at = now();
   // The dispatcher's own claim: one per 10-minute slot (refresh) or per business day (close).
-  const period = job === 'refresh_today' ? at.toISOString().slice(0, 15) : businessDate(at);
+  const period =
+    job === 'refresh_today'
+      ? at.toISOString().slice(0, 15)
+      : job === 'send_outbox'
+        ? at.toISOString().slice(0, 16)
+        : businessDate(at);
   const { data: runId, error } = await supabase.rpc('job_run_begin', {
     p_job: job,
     p_org: null,
@@ -81,8 +144,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!runId) return NextResponse.json({ status: 'already_ran', period });
 
   try {
+    if (job === 'send_outbox') {
+      const drained = await runOutbox();
+      await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
+      return NextResponse.json({ period, ...drained });
+    }
     // refresh_today has nothing to precompute yet: metrics read live tables (ADR 0015 §7).
-    const orgs = job === 'close_business_day' ? await closeEveryOrg(supabase, at) : [];
+    const orgs =
+      job === 'close_business_day'
+        ? await closeEveryOrg(supabase, at)
+        : job === 'morning_brief'
+          ? await briefEveryOrg(supabase, at, 'morning')
+          : job === 'evening_close'
+            ? await briefEveryOrg(supabase, at, 'evening')
+            : [];
     const failed = orgs.filter((o) => o.status === 'failed').length;
     await supabase.rpc('job_run_finish', {
       p_run: runId,

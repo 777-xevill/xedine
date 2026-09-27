@@ -70,3 +70,34 @@ export async function scanFindingsAction(_prev: FormState, formData: FormData): 
   revalidatePath(`/${parsed.data.orgSlug}`);
   return { ok: true, data: { count: String(data ?? 0) } };
 }
+
+const insightSchema = z.object({
+  insightId: z.uuid(),
+  orgSlug: z.string().regex(SLUG),
+  action: z.enum(['dismiss', 'snooze']),
+  reason: z.string().trim().max(500).optional(),
+  until: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .or(z.literal('')),
+});
+
+/** Dismiss (with a reason) or snooze (until a date) one of today's insights; the finding follows. */
+export async function insightAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = insightSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { action, reason, until } = parsed.data;
+  if (action === 'dismiss' && !reason) return { error: 'reasonRequired' };
+  if (action === 'snooze' && !until) return { error: 'dateRequired' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('insight_action', {
+    p_insight: parsed.data.insightId,
+    p_action: action,
+    p_reason: reason || null,
+    p_until: until || null,
+  });
+  if (error) return { error: mapDbError(error) };
+  revalidatePath(`/${parsed.data.orgSlug}`);
+  return { ok: true };
+}

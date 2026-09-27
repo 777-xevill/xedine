@@ -1,6 +1,7 @@
 import { ChefHat, ClipboardList, MonitorSmartphone, Store, Users } from 'lucide-react';
 import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { InsightActions } from '@/components/leak-forms';
 import { BarList } from '@/components/metrics/bar-list';
 import { StatusBadge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
   type FlashPnlRow,
   type PaceRow,
 } from '@/modules/metrics/queries';
+import { createClient } from '@/lib/db/supabase-server';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 const RAG_TONE = { green: 'success', amber: 'warning', red: 'danger', none: 'neutral' } as const;
@@ -59,6 +61,27 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
       ])
     : [null, null, null, null, null, null];
 
+  // Today's proactive insights (max three, ranked in SQL); money rows, so owner/accountant only.
+  const insights =
+    today && canSeeMoney
+      ? (((
+          await (
+            await createClient()
+          )
+            .from('insight_feed')
+            .select('id, finding_id, payload')
+            .eq('org_id', ctx.org.id)
+            .eq('shown_on', today.date)
+            .eq('status', 'shown')
+            .order('rank', { ascending: false })
+        ).data ?? []) as { id: string; finding_id: string; payload: Record<string, unknown> }[])
+      : [];
+  const subjectOf = (s: unknown) => {
+    const o = (s ?? {}) as Record<string, unknown>;
+    return [o.staff_name, o.item_name, o.channel_name]
+      .filter((v) => typeof v === 'string' && v)
+      .join(' · ');
+  };
   const branchRows = (salesToday?.rows ?? []).filter((r) => r.branch_id !== null);
   const totalRow = salesToday?.rows.find((r) => r.branch_id === null) ?? null;
   const paceBy = new Map((paceToday?.rows ?? []).map((p) => [p.branch_id, p]));
@@ -256,6 +279,36 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
               )}
             </Card>
           </div>
+
+          {insights.length > 0 ? (
+            <Card className="mt-4 p-5">
+              <CardTitle>{th('insightsTitle')}</CardTitle>
+              <ul className="space-y-3">
+                {insights.map((i) => (
+                  <li key={i.id} className="glass-tile rounded-input p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Link
+                        href={`${base}/leaks/${i.finding_id}`}
+                        className="text-sm font-semibold hover:underline"
+                      >
+                        {th(`findingType.${String(i.payload.type).replace('.', '_')}`)}
+                        {subjectOf(i.payload.subject) ? ` · ${subjectOf(i.payload.subject)}` : ''}
+                        {i.payload.branch_id
+                          ? ` · ${branchName(i.payload.branch_id as string)}`
+                          : ''}
+                      </Link>
+                      <span className="font-bold tabular-nums">
+                        {money(Number(i.payload.impact_poisha ?? 0))}
+                      </span>
+                    </div>
+                    {ctx.isOwner ? (
+                      <InsightActions insightId={i.id} orgSlug={ctx.org.slug} />
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
 
           {openFindings && openFindings.rows.length > 0 ? (
             <Card className="mt-4 p-5">

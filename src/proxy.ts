@@ -5,8 +5,16 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Next 16 "proxy" (formerly middleware). Refreshes the Supabase session cookie on every request and
  * sends signed-out visitors to /sign-in. Authorization itself lives in RLS, never here.
  */
-// /t/ is the customer-facing QR table page (no account); /api/jobs authenticates with a shared secret.
-const PUBLIC_PREFIXES = ['/sign-in', '/sign-up', '/api/health', '/api/jobs', '/t/'];
+// /t/ is the customer-facing QR table page (no account); /api/jobs authenticates with a shared secret;
+// /api/webhooks verifies the provider's signature.
+const PUBLIC_PREFIXES = [
+  '/sign-in',
+  '/sign-up',
+  '/api/health',
+  '/api/jobs',
+  '/api/webhooks',
+  '/t/',
+];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

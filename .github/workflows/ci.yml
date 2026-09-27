@@ -57,6 +57,12 @@ jobs:
         run: git diff --exit-code supabase/seed/manifest.json
       - name: Phase 2 golden checks (metrics = manifest, S1/S2/S3 detected, S13 quiet, dashboard p95)
         run: pnpm metrics:validate
+      - name: AI evals — golden questions on the seeded year (router without a key, LLM with one)
+        run: |
+          eval "$(pnpm exec supabase status -o env | sed 's/^/export /')"
+          NEXT_PUBLIC_SUPABASE_URL=$API_URL NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY             SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY pnpm ai:evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - name: Regenerate docs/DATA-MODEL.md from the live schema
         run: pnpm db:docs
       - uses: actions/upload-artifact@v4

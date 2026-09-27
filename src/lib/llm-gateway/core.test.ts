@@ -5,6 +5,8 @@ import {
   costUsdMicros,
   createGateway,
   maskPii,
+  type ChatTransport,
+  type ChatTransportRequest,
   type Transport,
   type TransportRequest,
   type UsageStore,
@@ -116,5 +118,113 @@ describe('LLM gateway', () => {
       costUsdMicros(rates, 'other', { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }),
     ).toThrow(AiError);
     expect(maskPii('no personal data')).toBe('no personal data');
+  });
+});
+
+describe('LLM gateway tool loop', () => {
+  const usage = { input: 100, output: 50, cacheRead: 0, cacheWrite: 0 };
+  function chatHarness(script: Awaited<ReturnType<ChatTransport>>[], spent = 0) {
+    const calls: ChatTransportRequest[] = [];
+    const recorded: unknown[] = [];
+    const gw = createGateway({
+      transport: (async () => {
+        throw new Error('unused');
+      }) as Transport,
+      chatTransport: async (req) => {
+        calls.push(structuredClone(req));
+        return script.shift()!;
+      },
+      store: { spentTodayUsdMicros: async () => spent, record: async (r) => void recorded.push(r) },
+      config: {
+        models: { assistant: 'claude-sonnet-5', fast: 'claude-haiku-4-5' },
+        rates: { 'claude-sonnet-5': { input: 2, output: 10 } },
+        dailyCapUsdMicros: 1_000_000,
+        today: () => '2026-09-21',
+      },
+    });
+    return { gw, calls, recorded };
+  }
+
+  it('runs tools the model asks for, returns all results in one turn, and costs every call', async () => {
+    const h = chatHarness([
+      {
+        content: [
+          {
+            type: 'tool_use',
+            id: 't1',
+            name: 'get_item_sales',
+            input: { item: 'kacchi', window: 'today' },
+          },
+          { type: 'tool_use', id: 't2', name: 'get_sales', input: { window: 'today' } },
+        ] as never,
+        stopReason: 'tool_use',
+        usage,
+      },
+      {
+        content: [{ type: 'text', text: '19 sold today.' }] as never,
+        stopReason: 'end_turn',
+        usage,
+      },
+    ]);
+    const executed: string[] = [];
+    const r = await h.gw.chat({
+      orgId: 'org',
+      feature: 'assistant',
+      prompt: { key: 'assistant', version: 1, body: 'rules' },
+      tier: 'assistant',
+      context: 'Today is 2026-09-21. Call +8801712345678.',
+      messages: [{ role: 'user', content: 'Kacchi today? my number is 01712345678' }],
+      tools: [],
+      executeTool: async (name) => {
+        executed.push(name);
+        return { qty: 19 };
+      },
+    });
+    expect(r.text).toBe('19 sold today.');
+    expect(executed).toEqual(['get_item_sales', 'get_sales']);
+    expect(r.toolCalls.map((c) => c.name)).toEqual(['get_item_sales', 'get_sales']);
+    expect(h.recorded).toHaveLength(2);
+    expect(r.costUsdMicros).toBe(2 * (100 * 2 + 50 * 10));
+    // The second call carries both tool results in one user message; the user's phone is masked.
+    const second = h.calls[1]!.messages;
+    expect(second[0]).toEqual({ role: 'user', content: 'Kacchi today? my number is [phone]' });
+    const results = second[2]!.content as { type: string }[];
+    expect(results.map((b) => b.type)).toEqual(['tool_result', 'tool_result']);
+  });
+
+  it('stops at the cap and after too many steps', async () => {
+    const capped = chatHarness([], 1_000_000);
+    await expect(
+      capped.gw.chat({
+        orgId: 'org',
+        feature: 'assistant',
+        prompt: { key: 'a', version: 1, body: '' },
+        tier: 'assistant',
+        context: '',
+        messages: [{ role: 'user', content: 'x' }],
+        tools: [],
+        executeTool: async () => ({}),
+      }),
+    ).rejects.toMatchObject({ code: 'cap_exceeded' });
+    const looping = chatHarness(
+      Array.from({ length: 3 }, (_, i) => ({
+        content: [{ type: 'tool_use', id: `t${i}`, name: 'get_sales', input: {} }] as never,
+        stopReason: 'tool_use',
+        usage,
+      })),
+    );
+    await expect(
+      looping.gw.chat({
+        orgId: 'org',
+        feature: 'assistant',
+        prompt: { key: 'a', version: 1, body: '' },
+        tier: 'assistant',
+        context: '',
+        messages: [{ role: 'user', content: 'x' }],
+        tools: [],
+        executeTool: async () => ({}),
+        maxSteps: 3,
+      }),
+    ).rejects.toMatchObject({ code: 'truncated' });
   });
 });

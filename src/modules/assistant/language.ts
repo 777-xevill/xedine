@@ -1,0 +1,64 @@
+/**
+ * Which language to answer in (ARCHITECTURE.md: "reply in the user's language (bn / Banglish / en)").
+ * Bangla script → bn. Latin script with common Banglish words → banglish (answered in Bangla script,
+ * which every Banglish writer reads). Otherwise en.
+ */
+export type QuestionLanguage = 'bn' | 'banglish' | 'en';
+
+const BANGLISH = new Set([
+  'ajke',
+  'aj',
+  'aaj',
+  'gotokal',
+  'gatokal',
+  'kal',
+  'koto',
+  'koita',
+  'koyta',
+  'kotogulo',
+  'bikri',
+  'bikree',
+  'hoyeche',
+  'hoise',
+  'hoyse',
+  'hoiche',
+  'ache',
+  'ase',
+  'ki',
+  'kemon',
+  'taka',
+  'tk',
+  'mash',
+  'maash',
+  'soptaho',
+  'shoptaho',
+  'saptah',
+  'ghonta',
+  'ghanta',
+  'din',
+  'ei',
+  'gata',
+  'goto',
+  'sera',
+  'beshi',
+  'kom',
+  'labh',
+  'loss',
+  'khoroch',
+  'amar',
+  'amader',
+  'dekhao',
+  'bolo',
+  'janao',
+  'kon',
+]);
+
+export function detectLanguage(text: string): QuestionLanguage {
+  if (/[ঀ-৿]/.test(text)) return 'bn';
+  const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
+  const hits = words.filter((w) => BANGLISH.has(w)).length;
+  return hits >= 2 || (hits === 1 && words.length <= 3) ? 'banglish' : 'en';
+}
+
+/** The locale an answer is written in. */
+export const answerLocale = (lang: QuestionLanguage): 'bn' | 'en' => (lang === 'en' ? 'en' : 'bn');

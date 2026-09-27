@@ -11,7 +11,7 @@ Founder: solo developer (Xevill). You are the senior engineer.
 - Phases, acceptance criteria, test oracle: docs/ROADMAP.md
 - Tables: docs/DATA-MODEL.md · Decisions: docs/decisions/ · Visual rules: docs/BRAND.md
 
-**Decisions already made (read before planning):** ADR 0001 stack & versions · 0002 repo/environments · 0003 auth · 0004 jobs · 0005 VAT & price basis · 0006 test-oracle clock & P0 scope · 0007 money visibility by role · 0008 provisional pricing · 0009 brand tokens · 0010 external approvals · 0011 verification without Docker · 0012 Phase 0 design decisions · 0013 POS device auth · 0014 single-use manager approvals · 0015 Phase 2 metrics & detectors · 0016 Phase 3 costing & LLM gateway.
+**Decisions already made (read before planning):** ADR 0001 stack & versions · 0002 repo/environments · 0003 auth · 0004 jobs · 0005 VAT & price basis · 0006 test-oracle clock & P0 scope · 0007 money visibility by role · 0008 provisional pricing · 0009 brand tokens · 0010 external approvals · 0011 verification without Docker · 0012 Phase 0 design decisions · 0013 POS device auth · 0014 single-use manager approvals · 0015 Phase 2 metrics & detectors · 0016 Phase 3 costing & LLM gateway · 0017 Phase 4 assistant & WhatsApp.
 
 ## Non-negotiables
 1. **Numbers are deterministic.** Every figure shown to a user comes from a metric function defined in docs/METRICS.md (SQL/TS). LLMs never calculate, estimate, or invent numbers; they explain, route, and draft. Any LLM text containing numbers must pass the numeric-consistency validator (every number appears in the tool results) or it is rejected.

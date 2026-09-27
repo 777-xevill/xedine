@@ -58,6 +58,31 @@ export interface TransportResponse<T> {
 }
 export type Transport = <T>(req: TransportRequest<T>) => Promise<TransportResponse<T>>;
 
+/** A tool-use turn: the transport sends the conversation and returns the model's content blocks. */
+export interface ChatTransportRequest {
+  model: string;
+  maxTokens: number;
+  /** Versioned, cached prefix. */
+  system: string;
+  /** Volatile per-request context (today's date, owner rules) — after the cache breakpoint. */
+  context: string;
+  messages: Anthropic.MessageParam[];
+  tools: Anthropic.Tool[];
+}
+export interface ChatTransportResponse {
+  content: Anthropic.ContentBlock[];
+  stopReason: string | null;
+  usage: TokenUsage;
+}
+export type ChatTransport = (req: ChatTransportRequest) => Promise<ChatTransportResponse>;
+
+export interface ToolCallRecord {
+  name: string;
+  input: Record<string, unknown>;
+  result: unknown;
+  durationMs: number;
+}
+
 export interface UsageStore {
   spentTodayUsdMicros(orgId: string, date: string): Promise<number>;
   record(row: {
@@ -116,17 +141,111 @@ export function costUsdMicros(
 
 export function createGateway(deps: {
   transport: Transport;
+  chatTransport?: ChatTransport;
   store: UsageStore;
   config: GatewayConfig;
 }) {
   const { transport, store, config } = deps;
+  const guard = async (orgId: string, today: string) => {
+    const spent = await store.spentTodayUsdMicros(orgId, today);
+    if (spent >= config.dailyCapUsdMicros) {
+      throw new AiError('cap_exceeded', 'the daily AI allowance for this restaurant is used up');
+    }
+  };
   return {
+    /**
+     * A manual tool-use loop: the model asks for tools, the caller's executeTool runs them (with the
+     * caller's permissions), results go back, until the model answers or maxSteps runs out.
+     * Every model call is cap-checked and costed.
+     */
+    async chat(req: {
+      orgId: string;
+      feature: string;
+      prompt: PromptVersion;
+      tier: ModelTier;
+      context: string;
+      messages: Anthropic.MessageParam[];
+      tools: Anthropic.Tool[];
+      executeTool: (name: string, input: Record<string, unknown>) => Promise<unknown>;
+      maxSteps?: number;
+      maxTokens?: number;
+    }): Promise<{
+      text: string;
+      toolCalls: ToolCallRecord[];
+      messages: Anthropic.MessageParam[];
+      costUsdMicros: number;
+    }> {
+      if (!deps.chatTransport) throw new AiError('not_configured', 'no chat transport');
+      const today = config.today();
+      const model = config.models[req.tier];
+      const messages: Anthropic.MessageParam[] = req.messages.map((m) =>
+        m.role === 'user' && typeof m.content === 'string'
+          ? { ...m, content: maskPii(m.content) }
+          : m,
+      );
+      const toolCalls: ToolCallRecord[] = [];
+      let cost = 0;
+      for (let step = 0; step < (req.maxSteps ?? 6); step++) {
+        await guard(req.orgId, today);
+        const response = await deps.chatTransport({
+          model,
+          maxTokens: req.maxTokens ?? 4000,
+          system: req.prompt.body,
+          context: req.context,
+          messages,
+          tools: req.tools,
+        });
+        const callCost = costUsdMicros(config.rates, model, response.usage);
+        cost += callCost;
+        await store.record({
+          orgId: req.orgId,
+          date: today,
+          model,
+          feature: req.feature,
+          usage: response.usage,
+          costUsdMicros: callCost,
+        });
+        if (response.stopReason === 'refusal') throw new AiError('refused', 'the model declined');
+        if (response.stopReason === 'max_tokens')
+          throw new AiError('truncated', 'the answer was cut off');
+        messages.push({ role: 'assistant', content: response.content });
+        const uses = response.content.filter(
+          (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+        );
+        if (response.stopReason !== 'tool_use' || uses.length === 0) {
+          const text = response.content
+            .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+            .map((b) => b.text)
+            .join(' ')
+            .trim();
+          return { text, toolCalls, messages, costUsdMicros: cost };
+        }
+        // All results for one assistant turn go back in a single user message.
+        const results: Anthropic.ToolResultBlockParam[] = [];
+        for (const use of uses) {
+          const started = performance.now();
+          const input = (use.input ?? {}) as Record<string, unknown>;
+          const result = await req.executeTool(use.name, input);
+          toolCalls.push({
+            name: use.name,
+            input,
+            result,
+            durationMs: Math.round(performance.now() - started),
+          });
+          results.push({
+            type: 'tool_result',
+            tool_use_id: use.id,
+            content: JSON.stringify(result),
+          });
+        }
+        messages.push({ role: 'user', content: results });
+      }
+      throw new AiError('truncated', 'too many tool calls');
+    },
+
     async run<T>(req: GatewayRequest<T>): Promise<GatewayResult<T>> {
       const today = config.today();
-      const spent = await store.spentTodayUsdMicros(req.orgId, today);
-      if (spent >= config.dailyCapUsdMicros) {
-        throw new AiError('cap_exceeded', 'the daily AI allowance for this restaurant is used up');
-      }
+      await guard(req.orgId, today);
       const model = config.models[req.tier];
       const content = req.content.map((block) =>
         block.type === 'text' ? { ...block, text: maskPii(block.text) } : block,

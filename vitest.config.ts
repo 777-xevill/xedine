@@ -20,6 +20,17 @@ export default defineConfig({
         },
       },
       {
+        // The assistant's golden questions against the seeded year (CI). Skips its live part when no
+        // Supabase URL is configured; the golden set's own checks always run.
+        extends: true,
+        test: {
+          name: 'ai-evals',
+          environment: 'node',
+          include: ['tests/ai-evals/**/*.test.ts'],
+          testTimeout: 600_000,
+        },
+      },
+      {
         // Needs a real Supabase Postgres: DATABASE_URL (local `pnpm db:start`, or CI).
         extends: true,
         test: {

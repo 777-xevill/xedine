@@ -8,12 +8,14 @@ import {
 } from '@/components/settings-forms';
 import { SettingsForm } from '@/components/team-forms';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
+import { ActionForm } from '@/components/action-form';
+import { Card, CardTitle, EmptyState, Input, Label, PageTitle, Select } from '@/components/ui/form';
 import { StatusBadge } from '@/components/ui/badge';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatBps, type Locale } from '@/lib/i18n/format';
 import {
   ensureDefaultsAction,
+  setOwnerWhatsappAction,
   toggleChannelActiveAction,
   toggleReasonActiveAction,
 } from '@/modules/settings/actions';
@@ -24,7 +26,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
   const ctx = await getOrgContext(org);
   if (!ctx.isOwner) notFound();
 
-  const [t, locale] = await Promise.all([getTranslations('settings'), getLocale()]);
+  const [t, tc, locale] = await Promise.all([
+    getTranslations('settings'),
+    getTranslations('common'),
+    getLocale(),
+  ]);
   const supabase = await createClient();
   const [
     { data: s },
@@ -32,6 +38,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
     { data: channels },
     { data: commissions },
     { data: reasons },
+    { data: profile },
   ] = await Promise.all([
     supabase
       .from('org_settings')
@@ -61,6 +68,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
       .eq('org_id', ctx.org.id)
       .order('kind')
       .order('label'),
+    supabase
+      .from('org_profile')
+      .select('owner_whatsapp, brief_language, owner_whatsapp_opt_in_at')
+      .eq('org_id', ctx.org.id)
+      .maybeSingle(),
   ]);
   if (!s) notFound();
 
@@ -209,6 +221,48 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
             ))}
           </ul>
         )}
+      </Card>
+
+      <Card className="mt-6">
+        <CardTitle>{t('whatsappTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('whatsappBody')}</p>
+        <ActionForm
+          action={setOwnerWhatsappAction}
+          successKey="common.saved"
+          className="grid gap-3 sm:grid-cols-2"
+        >
+          <input type="hidden" name="orgId" value={ctx.org.id} />
+          <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+          <div>
+            <Label htmlFor="wa-phone">{t('whatsappNumber')}</Label>
+            <Input
+              id="wa-phone"
+              name="phone"
+              inputMode="tel"
+              autoComplete="tel"
+              defaultValue={profile?.owner_whatsapp ?? ''}
+            />
+          </div>
+          <div>
+            <Label htmlFor="wa-lang">{t('briefLanguage')}</Label>
+            <Select id="wa-lang" name="language" defaultValue={profile?.brief_language ?? 'bn'}>
+              <option value="bn">{tc('bangla')}</option>
+              <option value="en">{tc('english')}</option>
+            </Select>
+          </div>
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              name="consent"
+              defaultChecked={Boolean(profile?.owner_whatsapp_opt_in_at)}
+              className="size-4 accent-blue"
+            />
+            {t('whatsappConsent')}
+          </label>
+          <div className="sm:col-span-2">
+            <Button type="submit">{t('save')}</Button>
+          </div>
+        </ActionForm>
       </Card>
 
       <Card className="mt-6">

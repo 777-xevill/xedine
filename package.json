@@ -30,7 +30,7 @@
     "manifest:build": "tsx scripts/build-manifest.ts",
     "manifest:validate": "tsx scripts/validate-manifest.ts",
     "metrics:validate": "tsx scripts/validate-metrics.ts",
-    "ai:evals": "echo \"ai evals arrive in Phase 3-4\" && exit 0"
+    "ai:evals": "vitest run --project ai-evals"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

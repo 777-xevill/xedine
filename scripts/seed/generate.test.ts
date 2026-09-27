@@ -125,15 +125,35 @@ describe('generator: the planted scenarios and the clean control', () => {
     manifest = ledger.manifest();
   }, 120_000);
 
+  it('Phase 3 plants hold: combo loses on foodpanda, the spike pushes Tehari over target, a Dog and a Puzzle', () => {
+    const facts = (id: string) =>
+      manifest.scenarios.find((s) => s.id === id)!.facts as Record<string, unknown>;
+    const fm = (
+      facts('S3').full_margin as unknown as { branches: Record<string, { loss_poisha: number }> }
+    ).branches;
+    for (const b of KACCHI_HOUSE.branches) expect(fm[b.key]!.loss_poisha).toBeGreaterThan(0);
+    const s4 = facts('S4') as unknown as {
+      target_food_cost_bps: number;
+      branches: Record<string, Record<'before' | 'spike', { food_cost_bps: number }>>;
+    };
+    for (const b of KACCHI_HOUSE.branches) {
+      expect(s4.branches[b.key]!.before.food_cost_bps).toBeLessThan(s4.target_food_cost_bps);
+      expect(s4.branches[b.key]!.spike.food_cost_bps).toBeGreaterThan(s4.target_food_cost_bps);
+    }
+    const matrix = facts('S5').matrix as unknown as Record<string, string>;
+    expect(matrix.shahi_tukra).toBe('dog');
+    expect(matrix.kala_bhuna).toBe('puzzle');
+  });
+
   it('the manifest satisfies its own schema', () => {
     expect(() => ManifestSchema.parse(manifest)).not.toThrow();
     expect(manifest.scenarios.map((s) => s.id)).toEqual([
       'S1',
       'S2',
       'S3',
-      'S13',
       'S4',
       'S5',
+      'S13',
       'S6',
       'S7',
       'S8',

@@ -100,21 +100,6 @@ export function excessOverBaseline(
 
 export const PENDING_SCENARIOS: Scenario[] = [
   {
-    id: 'S4',
-    title: 'Beef price spike (week 20) pushes Beef Tehari below target margin',
-    status: 'pending',
-    available_from_phase: 3,
-    detected_in_phase: 3,
-  },
-  {
-    id: 'S5',
-    title: 'One Dog and one Puzzle item on the menu (Shahi Tukra, Kala Bhuna)',
-    status: 'pending',
-    available_from_phase: 3,
-    detected_in_phase: 3,
-    note: 'Menu items already seeded with low popularity; margins need recipe costs.',
-  },
-  {
     id: 'S6',
     title: 'Unrecorded chicken transfers Dhanmondi → Mirpur twice a week',
     status: 'pending',

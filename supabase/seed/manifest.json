@@ -288,9 +288,137 @@
             "combo_units_via_foodpanda": 920,
             "combo_units_total": 1382
           }
+        },
+        "full_margin": {
+          "combo_unit_cost_poisha": 85930,
+          "branches": {
+            "dhanmondi": {
+              "units": 1308,
+              "net_poisha": 155393134,
+              "cost_poisha": 112396440,
+              "commission_poisha": 46617940,
+              "loss_poisha": 3621246
+            },
+            "mirpur": {
+              "units": 1151,
+              "net_poisha": 136512132,
+              "cost_poisha": 98905430,
+              "commission_poisha": 40953640,
+              "loss_poisha": 3346938
+            },
+            "uttara": {
+              "units": 920,
+              "net_poisha": 109137087,
+              "cost_poisha": 79055600,
+              "commission_poisha": 32741126,
+              "loss_poisha": 2659639
+            }
+          }
         }
       },
-      "note": "Commission drag is detectable in Phase 2. Proving the combo is negative-margin needs its recipe cost (Phase 3)."
+      "note": "Commission drag is detectable in Phase 2; with recipe costs (Phase 3) the combo is negative-margin on foodpanda."
+    },
+    {
+      "id": "S4",
+      "title": "Beef price spike (week 20) pushes Beef Tehari below target margin",
+      "status": "planted",
+      "available_from_phase": 3,
+      "detected_in_phase": 3,
+      "org": "demo_kacchi_house",
+      "facts": {
+        "item_key": "tehari",
+        "ingredient_key": "beef",
+        "spike_from": "2026-02-02",
+        "spike_to": "2026-03-01",
+        "target_food_cost_bps": 4000,
+        "unit_cost_before_poisha": 7590,
+        "unit_cost_during_poisha": 9830,
+        "branches": {
+          "dhanmondi": {
+            "before": {
+              "units": 690,
+              "net_poisha": 15083759,
+              "cost_poisha": 5237100,
+              "food_cost_bps": 3472,
+              "excess_over_target_poisha": -796404
+            },
+            "spike": {
+              "units": 730,
+              "net_poisha": 15941336,
+              "cost_poisha": 7175900,
+              "food_cost_bps": 4501,
+              "excess_over_target_poisha": 799366
+            }
+          },
+          "mirpur": {
+            "before": {
+              "units": 527,
+              "net_poisha": 11513243,
+              "cost_poisha": 3999930,
+              "food_cost_bps": 3474,
+              "excess_over_target_poisha": -605367
+            },
+            "spike": {
+              "units": 590,
+              "net_poisha": 12888869,
+              "cost_poisha": 5799700,
+              "food_cost_bps": 4500,
+              "excess_over_target_poisha": 644152
+            }
+          },
+          "uttara": {
+            "before": {
+              "units": 469,
+              "net_poisha": 10242756,
+              "cost_poisha": 3559710,
+              "food_cost_bps": 3475,
+              "excess_over_target_poisha": -537392
+            },
+            "spike": {
+              "units": 485,
+              "net_poisha": 10568040,
+              "cost_poisha": 4767550,
+              "food_cost_bps": 4511,
+              "excess_over_target_poisha": 540334
+            }
+          }
+        }
+      },
+      "note": "Detected by margin.below_target over the spike window; the 28 days before it stay quiet."
+    },
+    {
+      "id": "S5",
+      "title": "One Dog and one Puzzle item on the menu (Shahi Tukra, Kala Bhuna)",
+      "status": "planted",
+      "available_from_phase": 3,
+      "detected_in_phase": 3,
+      "org": "demo_kacchi_house",
+      "facts": {
+        "dog": "shahi_tukra",
+        "puzzle": "kala_bhuna",
+        "items_sold": 17,
+        "units_sold": 203344,
+        "matrix": {
+          "kacchi_mutton": "star",
+          "kacchi_half": "star",
+          "tehari": "star",
+          "morog_polao": "star",
+          "chicken_roast": "plowhorse",
+          "beef_bhuna": "star",
+          "chicken_kabab": "plowhorse",
+          "jali_kabab": "dog",
+          "plain_rice": "plowhorse",
+          "salad": "dog",
+          "firni": "dog",
+          "borhani": "plowhorse",
+          "soft_drink": "plowhorse",
+          "water": "plowhorse",
+          "family_combo": "puzzle",
+          "shahi_tukra": "dog",
+          "kala_bhuna": "puzzle"
+        }
+      },
+      "note": "Classes over the whole seeded year, all branches. Every demo item has a recipe."
     },
     {
       "id": "S13",
@@ -308,21 +436,6 @@
         "discount_poisha": 4260050
       },
       "note": "Only baseline noise. Detectors must raise at most one finding per branch-week here."
-    },
-    {
-      "id": "S4",
-      "title": "Beef price spike (week 20) pushes Beef Tehari below target margin",
-      "status": "pending",
-      "available_from_phase": 3,
-      "detected_in_phase": 3
-    },
-    {
-      "id": "S5",
-      "title": "One Dog and one Puzzle item on the menu (Shahi Tukra, Kala Bhuna)",
-      "status": "pending",
-      "available_from_phase": 3,
-      "detected_in_phase": 3,
-      "note": "Menu items already seeded with low popularity; margins need recipe costs."
     },
     {
       "id": "S6",

@@ -10,6 +10,7 @@ import {
   type OrgCfg,
 } from './config';
 import { ids, REASON_CODES, type DayRows, type Row } from './generate';
+import { COSTING } from './costing';
 import { detId } from './rng';
 
 type ColSpec = [name: string, type: string][];
@@ -232,8 +233,8 @@ export async function loadStatic(client: pg.PoolClient, org: OrgCfg): Promise<vo
     [orgId, org.cuisine, org.format],
   );
   await client.query(
-    `insert into public.org_cost_settings (org_id, assumed_food_cost_bps) values ($1, $2)`,
-    [orgId, org.assumedFoodCostBps],
+    `insert into public.org_cost_settings (org_id, assumed_food_cost_bps, target_food_cost_bps) values ($1, $2, $3)`,
+    [orgId, org.assumedFoodCostBps, COSTING[org.key]?.targetFoodCostBps ?? null],
   );
 
   for (const b of org.branches) {
@@ -320,11 +321,64 @@ export async function loadStatic(client: pg.PoolClient, org: OrgCfg): Promise<vo
       ],
     );
   }
+  await loadCosting(client, org);
   for (const c of CALENDAR) {
     await client.query(
       `insert into public.calendar_events (org_id, name, kind, starts_on, ends_on, source) values ($1, $2, $3, $4, $5, 'seed estimate — TODO(verify)')`,
       [orgId, c.name, c.kind, c.starts_on, c.ends_on],
     );
+  }
+}
+
+/**
+ * Phase 3 fixtures: ingredients with their price history (incl. S4's beef spike) and an approved recipe for
+ * every menu item. Prices are stored per 1,000 base units so every unit price is exact (see costing.ts).
+ */
+async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
+  const costing = COSTING[org.key];
+  if (!costing) return;
+  const orgId = ids.org(org);
+  const owner = org.users.find((u) => u.role === 'owner')!;
+  const ingId = (key: string) => detId('ingredient', org.key, key);
+  for (const i of costing.ingredients) {
+    await client.query(
+      `insert into public.ingredients (id, org_id, name, base) values ($1, $2, $3, $4)`,
+      [ingId(i.key), orgId, i.name, i.base],
+    );
+    const history = [
+      { from: FIRST_DATE, price: i.poishaPerBase },
+      ...costing.priceChanges
+        .filter((c) => c.ing === i.key)
+        .map((c) => ({ from: c.from, price: c.poishaPerBase })),
+    ];
+    for (const h of history) {
+      await client.query(
+        `insert into public.ingredient_price_history (org_id, ingredient_id, effective_from, cost_poisha, per_base_qty, source)
+         values ($1, $2, $3, $4, 1000, 'seed')`,
+        [orgId, ingId(i.key), h.from, h.price * 1000],
+      );
+    }
+    const current = history[history.length - 1]!.price;
+    await client.query(
+      `insert into public.ingredient_costs (ingredient_id, org_id, manual_cost_poisha, per_base_qty) values ($1, $2, $3, 1000)`,
+      [ingId(i.key), orgId, current * 1000],
+    );
+  }
+  for (const m of org.menu) {
+    const lines = costing.recipes[m.key];
+    if (!lines) continue;
+    const recipeId = detId('recipe', org.key, m.key);
+    await client.query(
+      `insert into public.recipes (id, org_id, menu_item_id, name, yield_portions, status, source, version, approved_by, approved_at)
+       values ($1, $2, $3, $4, 1, 'active', 'manual', 1, $5, $6)`,
+      [recipeId, orgId, ids.item(org, m), m.name, userId(owner.email), `${FIRST_DATE}T00:00:00Z`],
+    );
+    for (const l of lines) {
+      await client.query(
+        `insert into public.recipe_lines (org_id, recipe_id, ingredient_id, qty_base, yield_pct) values ($1, $2, $3, $4, $5)`,
+        [orgId, recipeId, ingId(l.ing), l.qty, l.yieldPct ?? 100],
+      );
+    }
   }
 }
 

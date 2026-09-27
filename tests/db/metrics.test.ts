@@ -736,7 +736,10 @@ describe('leak detectors', () => {
     // "Now" in the week after the fixture week: the scan covers the four complete weeks before it.
     const scanned = await asUser(
       fx.org.owner,
-      (s) => s.q<{ n: number }>(`select public.scan_findings($1, '2026-09-22T12:00:00Z') as n`, [fx.org.id]),
+      (s) =>
+        s.q<{ n: number }>(`select public.scan_findings($1, '2026-09-22T12:00:00Z') as n`, [
+          fx.org.id,
+        ]),
       { commit: true },
     );
     expect(n(scanned[0]!.n)).toBeGreaterThanOrEqual(1);

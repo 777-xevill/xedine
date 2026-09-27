@@ -112,6 +112,51 @@ async function branchFacts(org: OrgCfg, branchKey: string) {
   };
 }
 
+/**
+ * Phase 3: units, net and recipe cost of completed orders' active lines, costed independently of the
+ * product's costing functions — straight from recipe_lines and ingredient_price_history.
+ */
+async function itemCosts(
+  org: OrgCfg,
+  from: string,
+  to: string,
+  opts: { itemKey?: string; channel?: string } = {},
+) {
+  const itemFilter = opts.itemKey
+    ? ids.item(
+        org,
+        org.menu.find((m) => m.key === opts.itemKey)!,
+      )
+    : null;
+  return q<{ menu_item_id: string; branch_id: string; units: string; net: string; cost: string }>(
+    `with line as (
+       select oi.menu_item_id, o.branch_id, o.business_date, oi.quantity, oi.net_poisha
+         from public.order_items oi
+         join public.orders o on o.org_id = oi.org_id and o.id = oi.order_id
+         join public.channels ch on ch.org_id = o.org_id and ch.id = o.channel_id
+        where oi.org_id = $1 and oi.status = 'active' and o.order_status = 'completed'
+          and o.business_date between $2::date and $3::date
+          and ($4::uuid is null or oi.menu_item_id = $4::uuid)
+          and ($5::text is null or ch.kind::text = $5::text)
+     ), unit as (
+       select k.menu_item_id, k.business_date,
+              sum(rl.qty_base * 100 / rl.yield_pct *
+                  (select h.cost_poisha::numeric / h.per_base_qty from public.ingredient_price_history h
+                    where h.org_id = r.org_id and h.ingredient_id = rl.ingredient_id and h.effective_from <= k.business_date
+                    order by h.effective_from desc limit 1)) as unit_cost
+         from (select distinct menu_item_id, business_date from line) k
+         join public.recipes r on r.org_id = $1 and r.menu_item_id = k.menu_item_id and r.status = 'active'
+         join public.recipe_lines rl on rl.org_id = r.org_id and rl.recipe_id = r.id
+        group by k.menu_item_id, k.business_date
+     )
+     select line.menu_item_id, line.branch_id, sum(line.quantity) as units, sum(line.net_poisha) as net,
+            sum(round(unit.unit_cost * line.quantity)) as cost
+       from line join unit on unit.menu_item_id = line.menu_item_id and unit.business_date = line.business_date
+      group by line.menu_item_id, line.branch_id`,
+    [ids.org(org), from, to, itemFilter, opts.channel ?? null],
+  );
+}
+
 async function staffCounts(org: OrgCfg, branchKey: string, staffKeys: string[]) {
   const b = org.branches.find((x) => x.key === branchKey)!;
   const staffIds = staffKeys.map((k) =>
@@ -304,6 +349,27 @@ try {
       );
       check('S3.foodpanda_commission_bps (configured in the database)', bps, n(commission!.bps));
 
+      // Phase 3: with its recipe cost the combo loses money on foodpanda.
+      if (phase >= 3) {
+        const fm = f.full_margin as { branches: Record<string, Record<string, number>> };
+        const rows = await itemCosts(kacchi, manifest.first_date, manifest.anchor_date, {
+          itemKey: 'family_combo',
+          channel: 'foodpanda',
+        });
+        for (const b of kacchi.branches) {
+          const r = rows.find((x) => x.branch_id === ids.branch(kacchi, b));
+          const net = n(r?.net);
+          const cost = n(r?.cost);
+          checkAll(`S3.full_margin.${b.key}`, fm.branches[b.key]!, {
+            units: n(r?.units),
+            net_poisha: net,
+            cost_poisha: cost,
+            commission_poisha: mulBps(net, bps),
+            loss_poisha: cost + mulBps(net, bps) - net,
+          });
+        }
+      }
+
       // The combo's printed price and VAT-exclusive unit value, recomputed from the database's own settings.
       const [combo] = await q(
         `select mi.base_price_poisha as price, s.price_includes_vat as inc, s.vat_rate_bps as vat
@@ -332,6 +398,79 @@ try {
         f.combo_commission_per_unit_poisha,
         mulBps(netUnit, bps),
       );
+    } else if (s.id === 'S4') {
+      const target = n(f.target_food_cost_bps);
+      const branches = f.branches as Record<string, Record<string, Record<string, number>>>;
+      const spikeFrom = String(f.spike_from);
+      const spikeTo = String(f.spike_to);
+      const beforeFrom = new Date(Date.parse(`${spikeFrom}T00:00:00Z`) - 28 * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const beforeTo = new Date(Date.parse(`${spikeFrom}T00:00:00Z`) - 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const windowFacts = (rows: Awaited<ReturnType<typeof itemCosts>>, branchId: string) => {
+        const r = rows.find((x) => x.branch_id === branchId);
+        const net = n(r?.net);
+        const cost = n(r?.cost);
+        return {
+          units: n(r?.units),
+          net_poisha: net,
+          cost_poisha: cost,
+          food_cost_bps: net > 0 ? Math.round((cost * 10000) / net) : 0,
+          excess_over_target_poisha: cost - mulBps(net, target),
+        };
+      };
+      const spike = await itemCosts(kacchi, spikeFrom, spikeTo, { itemKey: 'tehari' });
+      const before = await itemCosts(kacchi, beforeFrom, beforeTo, { itemKey: 'tehari' });
+      for (const b of kacchi.branches) {
+        checkAll(
+          `S4.${b.key}.spike`,
+          branches[b.key]!.spike!,
+          windowFacts(spike, ids.branch(kacchi, b)),
+        );
+        checkAll(
+          `S4.${b.key}.before`,
+          branches[b.key]!.before!,
+          windowFacts(before, ids.branch(kacchi, b)),
+        );
+      }
+      const [t] = await q(
+        `select target_food_cost_bps as t from public.org_cost_settings where org_id = $1`,
+        [ids.org(kacchi)],
+      );
+      check('S4.target_food_cost_bps (configured in the database)', target, n(t!.t));
+    } else if (s.id === 'S5') {
+      const rows = await itemCosts(kacchi, manifest.first_date, manifest.anchor_date);
+      const byItem = new Map<string, { units: number; net: number; cost: number }>();
+      for (const r of rows) {
+        const a = byItem.get(r.menu_item_id) ?? { units: 0, net: 0, cost: 0 };
+        a.units += n(r.units);
+        a.net += n(r.net);
+        a.cost += n(r.cost);
+        byItem.set(r.menu_item_id, a);
+      }
+      const sold = kacchi.menu
+        .map((m) => ({
+          key: m.key,
+          ...(byItem.get(ids.item(kacchi, m)) ?? { units: 0, net: 0, cost: 0 }),
+        }))
+        .filter((i) => i.units > 0);
+      const units = sold.reduce((sum, i) => sum + i.units, 0);
+      const cmAll = sold.reduce((sum, i) => sum + (i.net - i.cost), 0);
+      const matrix = Object.fromEntries(
+        sold.map((i) => {
+          const popular = i.units * sold.length * 10 >= 7 * units;
+          const profitable = (i.net - i.cost) * units >= cmAll * i.units;
+          return [
+            i.key,
+            popular ? (profitable ? 'star' : 'plowhorse') : profitable ? 'puzzle' : 'dog',
+          ];
+        }),
+      );
+      check('S5.items_sold', f.items_sold, sold.length);
+      check('S5.units_sold', f.units_sold, units);
+      check('S5.matrix', f.matrix, matrix);
     } else if (s.id === 'S13') {
       const staff = await staffCounts(cafe, 'gulshan', ['tania', 'imran', 'meherun']);
       checkAll('S13', f, {

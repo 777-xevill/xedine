@@ -7,6 +7,7 @@ import { dirname } from 'node:path';
 import pg from 'pg';
 import { MANIFEST_PATH, runSeed, serializeManifest } from './seed/build';
 import { ORGS } from './seed/config';
+import { ids } from './seed/generate';
 import { DayBuffer, loadStatic } from './seed/load';
 
 const url = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
@@ -36,6 +37,8 @@ try {
   }
 
   await client.query('begin');
+  // Order lines are costed in one statement per org after the load, not one trigger call per line.
+  await client.query(`select set_config('xedine.bulk_load', 'on', true)`);
   for (const org of ORGS) await loadStatic(client, org);
 
   const buffer = new DayBuffer();
@@ -46,6 +49,13 @@ try {
     if (++days % 400 === 0) process.stdout.write('.');
   });
   await buffer.flush(client);
+  for (const org of ORGS) {
+    await client.query('select private.backfill_item_costs($1, $2::date, $3::date)', [
+      ids.org(org),
+      manifest.first_date,
+      manifest.anchor_date,
+    ]);
+  }
   await client.query('commit');
 
   mkdirSync(dirname(MANIFEST_PATH), { recursive: true });

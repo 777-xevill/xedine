@@ -23,6 +23,14 @@ import {
   type Totals,
 } from './manifest';
 import { SEED } from './rng';
+import { BEEF_SPIKE_FROM, BEEF_SPIKE_TO, COSTING, unitCostOn } from './costing';
+
+interface CostAcc {
+  qty: number;
+  net: number;
+  cost: number;
+}
+const emptyCost = (): CostAcc => ({ qty: 0, net: 0, cost: 0 });
 
 const emptyTotals = (): Totals => ({
   orders_completed: 0,
@@ -71,6 +79,16 @@ export class Ledger {
   private branches = new Map<string, BranchAcc>();
   private staff = new Map<string, StaffAcc>();
   private comboUnits = new Map<string, { foodpanda: number; total: number }>();
+  /** Phase 3: sold units, net and recipe cost of completed orders' active lines. */
+  private items = new Map<string, CostAcc>();
+  private tehari = new Map<string, CostAcc>();
+  private comboFoodpanda = new Map<string, CostAcc>();
+
+  private cost(map: Map<string, CostAcc>, key: string): CostAcc {
+    let acc = map.get(key);
+    if (!acc) map.set(key, (acc = emptyCost()));
+    return acc;
+  }
   private readonly nowMs = Date.parse(FROZEN_NOW);
   private readonly monthStart = `${ANCHOR_DATE.slice(0, 8)}01`;
 
@@ -106,7 +124,10 @@ export class Ledger {
     const acc = this.branch(org.key, branchKey);
     const channelKey = new Map(org.channels.map((c) => [ids.channel(org, c.key), c.key]));
     const itemKey = new Map(org.menu.map((m) => [ids.item(org, m), m.key]));
-    const orderInfo = new Map<string, { date: string; placedMs: number; channel: string }>();
+    const orderInfo = new Map<
+      string,
+      { date: string; placedMs: number; channel: string; completed: boolean }
+    >();
     const qtyItem = QTY_ITEM[org.key];
 
     for (const o of day.orders) {
@@ -115,6 +136,7 @@ export class Ledger {
         date: String(o.business_date),
         placedMs: Date.parse(String(o.placed_at)),
         channel,
+        completed: o.order_status === 'completed',
       });
       this.staffAcc(String(o.staff_id)).orders += 1;
       if (o.order_status === 'cancelled') {
@@ -151,6 +173,24 @@ export class Ledger {
         if (info.date === addDays(ANCHOR_DATE, -1)) q.yesterday += qty;
         if (info.date >= addDays(ANCHOR_DATE, -6) && info.date <= ANCHOR_DATE) q.last_7d += qty;
         if (info.date >= this.monthStart && info.date <= ANCHOR_DATE) q.month_to_date += qty;
+      }
+      if (key && info.completed) {
+        const cost = unitCostOn(org.key, key, info.date) * qty;
+        const net = num(l.net_poisha);
+        const add = (acc: CostAcc) => {
+          acc.qty += qty;
+          acc.net += net;
+          acc.cost += cost;
+        };
+        add(this.cost(this.items, `${org.key}/${key}`));
+        if (key === 'tehari') {
+          if (info.date >= BEEF_SPIKE_FROM && info.date <= BEEF_SPIKE_TO)
+            add(this.cost(this.tehari, `${branchKey}/spike`));
+          if (info.date >= addDays(BEEF_SPIKE_FROM, -28) && info.date < BEEF_SPIKE_FROM)
+            add(this.cost(this.tehari, `${branchKey}/before`));
+        }
+        if (key === 'family_combo' && info.channel === 'foodpanda')
+          add(this.cost(this.comboFoodpanda, branchKey));
       }
       if (key === 'family_combo') {
         const c = this.comboUnits.get(`${org.key}/${branchKey}`) ?? { foodpanda: 0, total: 0 };
@@ -362,8 +402,100 @@ export class Ledger {
         foodpanda_commission_bps: fp.commissionBps,
         combo_commission_per_unit_poisha: mulBps(comboNet, fp.commissionBps),
         branches: perBranch,
+        // Phase 3: with its recipe cost, the combo loses money on foodpanda (commission rounded once per period).
+        full_margin: {
+          combo_unit_cost_poisha: unitCostOn(kacchi.key, 'family_combo', FIRST_DATE),
+          branches: Object.fromEntries(
+            kacchi.branches.map((b) => {
+              const a = this.comboFoodpanda.get(b.key) ?? emptyCost();
+              const commission = mulBps(a.net, fp.commissionBps);
+              return [
+                b.key,
+                {
+                  units: a.qty,
+                  net_poisha: a.net,
+                  cost_poisha: a.cost,
+                  commission_poisha: commission,
+                  loss_poisha: a.cost + commission - a.net,
+                },
+              ];
+            }),
+          ),
+        },
       },
-      note: 'Commission drag is detectable in Phase 2. Proving the combo is negative-margin needs its recipe cost (Phase 3).',
+      note: 'Commission drag is detectable in Phase 2; with recipe costs (Phase 3) the combo is negative-margin on foodpanda.',
+    };
+
+    // S4 — the beef spike pushes Beef Tehari above the food-cost target.
+    const target = COSTING[kacchi.key]!.targetFoodCostBps;
+    const window = (a: CostAcc) => ({
+      units: a.qty,
+      net_poisha: a.net,
+      cost_poisha: a.cost,
+      food_cost_bps: a.net > 0 ? Math.round((a.cost * 10000) / a.net) : 0,
+      excess_over_target_poisha: a.cost - mulBps(a.net, target),
+    });
+    const s4: Scenario = {
+      id: 'S4',
+      title: 'Beef price spike (week 20) pushes Beef Tehari below target margin',
+      status: 'planted',
+      available_from_phase: 3,
+      detected_in_phase: 3,
+      org: kacchi.key,
+      facts: {
+        item_key: 'tehari',
+        ingredient_key: 'beef',
+        spike_from: BEEF_SPIKE_FROM,
+        spike_to: BEEF_SPIKE_TO,
+        target_food_cost_bps: target,
+        unit_cost_before_poisha: unitCostOn(kacchi.key, 'tehari', addDays(BEEF_SPIKE_FROM, -1)),
+        unit_cost_during_poisha: unitCostOn(kacchi.key, 'tehari', BEEF_SPIKE_FROM),
+        branches: Object.fromEntries(
+          kacchi.branches.map((b) => [
+            b.key,
+            {
+              before: window(this.tehari.get(`${b.key}/before`) ?? emptyCost()),
+              spike: window(this.tehari.get(`${b.key}/spike`) ?? emptyCost()),
+            },
+          ]),
+        ),
+      },
+      note: 'Detected by margin.below_target over the spike window; the 28 days before it stay quiet.',
+    };
+
+    // S5 — the menu engineering matrix over the whole year, all branches (Kasavana–Smith, METRICS.md).
+    const sold = kacchi.menu
+      .map((m) => ({ key: m.key, ...(this.items.get(`${kacchi.key}/${m.key}`) ?? emptyCost()) }))
+      .filter((i) => i.qty > 0);
+    const n = sold.length;
+    const units = sold.reduce((s, i) => s + i.qty, 0);
+    const cmAll = sold.reduce((s, i) => s + (i.net - i.cost), 0);
+    const matrix = Object.fromEntries(
+      sold.map((i) => {
+        const popular = i.qty * n * 10 >= 7 * units;
+        // cm per unit ≥ weighted average, compared without dividing: (net − cost) × units ≥ cmAll × qty.
+        const profitable = (i.net - i.cost) * units >= cmAll * i.qty;
+        return [
+          i.key,
+          popular ? (profitable ? 'star' : 'plowhorse') : profitable ? 'puzzle' : 'dog',
+        ];
+      }),
+    );
+    const s5: Scenario = {
+      id: 'S5',
+      title: 'One Dog and one Puzzle item on the menu (Shahi Tukra, Kala Bhuna)',
+      status: 'planted',
+      available_from_phase: 3,
+      detected_in_phase: 3,
+      org: kacchi.key,
+      facts: {
+        dog: 'shahi_tukra',
+        puzzle: 'kala_bhuna',
+        items_sold: n,
+        units_sold: units,
+        matrix,
+      },
+      note: 'Classes over the whole seeded year, all branches. Every demo item has a recipe.',
     };
 
     // S13 — the clean control.
@@ -398,6 +530,6 @@ export class Ledger {
       },
       note: 'Only baseline noise. Detectors must raise at most one finding per branch-week here.',
     };
-    return [s1, s2, s3, s13];
+    return [s1, s2, s3, s4, s5, s13];
   }
 }

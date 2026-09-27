@@ -115,19 +115,20 @@ Status: ◐ **built; local checks green, golden checks written for CI** (2026-09
 **→ Pilot gate A:** 1–2 friendly restaurants use P1–P2 for two weeks. Fix what they hit before P3.
 
 ## Phase 3 — Recipes, costing & Menu Profit Intelligence (+ LLM gateway v0)
-Status: ☐ · Size: 2–3 weeks
+Status: ◐ **built; local checks green; AI parts wait for an API key** (2026-09-29) · Size: 2–3 weeks
 **Goal:** know what every plate costs and which items make or lose money.
+**Evidence so far (local):** `tests/db/costing.test.ts` (13 tests), `tests/db/seed-costing.test.ts` (SQL and seed recipe costs agree exactly for every demo recipe), `src/lib/llm-gateway/core.test.ts` (5), seed unit tests for the new plants. Decisions in [ADR 0016](decisions/0016-phase-3-costing-and-llm-gateway.md). **Needs CI:** the seeded-year checks below.
 **Build**
-- [ ] **First: Anthropic API key with a spend limit** (blocks the whole phase), and **start the Meta / WhatsApp business verification now** — one phase of overlap removes most of the Phase 4 stall risk (ADR 0010)
-- [ ] Ingredients, units & conversions, recipes/sub-recipes, yields; manual unit prices until P5
-- [ ] LLM gateway v0: server-only, models via env (confirm IDs against `GET /v1/models`), usage/cost logging per org, daily caps, PII masking, prompt versions, prompt caching — verify caching works via `usage.cache_read_input_tokens`, not by assumption
-- [ ] AI recipe drafting from menu photo/list → draft → chef edits → approve
-- [ ] Recipe-cost snapshots on sale; TFC and TFC%; recipe coverage indicator
-- [ ] Menu engineering matrix; margin alerts on cost change; price & portion simulator
+- [ ] **First: Anthropic API key with a spend limit** (blocks the whole phase), and **start the Meta / WhatsApp business verification now** — **needs the founder**; everything else was built behind the gateway's interface and tested with a mock transport
+- [x] Ingredients, units & conversions, recipes/sub-recipes, yields; manual unit prices until P5 — `/[org]/recipes`; price history by day; sub-recipes and yields in `private.recipe_unit_cost` (unit conversions table exists; prices are entered per kg / litre / piece)
+- [x] LLM gateway v0: server-only, models via env (confirm IDs against `GET /v1/models`), usage/cost logging per org, daily caps, PII masking, prompt versions, prompt caching — `src/lib/llm-gateway`; **model IDs and cache hits (`usage.cache_read_input_tokens`) can only be confirmed once a key exists**
+- [x] AI recipe drafting from menu photo/list → draft → chef edits → approve — drafts tab; approval is an owner RPC
+- [x] Recipe-cost snapshots on sale; TFC and TFC%; recipe coverage indicator — `order_item_costs` (money-gated), `metric_food_cost`
+- [x] Menu engineering matrix; margin alerts on cost change; price & portion simulator — `/[org]/menu-profit`; `margin.below_target` and `channel.negative_margin` findings
 **Done when**
-- [ ] S3, S4, S5 detected; matrix classes match manifest
-- [ ] AI recipe drafts never become active without approval (test)
-- [ ] ai_usage shows tokens and cost per org per day; caps enforced
+- [ ] S3, S4, S5 detected; matrix classes match manifest — `pnpm manifest:validate` (SEED_PHASE=3) + `pnpm metrics:validate`, **run in CI**
+- [x] AI recipe drafts never become active without approval (test) — `costing.test.ts` "AI recipe drafts never become active without the owner's approval"
+- [ ] ai_usage shows tokens and cost per org per day; caps enforced — enforced and logged in code and tested (`core.test.ts`, `costing.test.ts`); **no real call made yet (no key)**
 
 ## Phase 4 — AI Owner Assistant + WhatsApp rhythm
 Status: ☐ · Size: 2–3 weeks

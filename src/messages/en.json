@@ -43,7 +43,14 @@
     "pinInvalid": "PIN must be 4 to 6 digits.",
     "nameTaken": "That name is already used here.",
     "reasonRequired": "Please give a reason.",
-    "dateRequired": "Please choose a date."
+    "dateRequired": "Please choose a date.",
+    "recipeInvalid": "Check the recipe: each line needs an ingredient, a quantity above zero and a yield of 1–100%.",
+    "photoInvalid": "Use a JPEG, PNG or WebP photo under 5 MB.",
+    "menuRequired": "Paste the menu or add a photo of it.",
+    "aiNotConfigured": "AI drafting is not switched on yet.",
+    "aiCapExceeded": "Today's AI allowance for this restaurant is used up. Try again tomorrow.",
+    "aiFailed": "The AI draft did not work this time. Try again, or write the recipe by hand.",
+    "draftNeedsItem": "Choose which menu item this recipe is for, and save, before approving."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -95,7 +102,9 @@
     "openKds": "Kitchen",
     "sales": "Sales",
     "leaks": "Leaks",
-    "costs": "Costs"
+    "costs": "Costs",
+    "recipes": "Recipes",
+    "menuProfit": "Menu profit"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -516,7 +525,9 @@
       "refund_rate": "Unusual refunds",
       "cash_share": "Unusually high cash share",
       "cash_over_short": "Cash drawer shortages",
-      "commission_drag": "Delivery commission"
+      "commission_drag": "Delivery commission",
+      "margin_below_target": "Food cost above target",
+      "channel_negative_margin": "Loses money on a platform"
     }
   },
   "sales": {
@@ -579,7 +590,9 @@
       "refund_rate": "Unusual refunds",
       "cash_share": "Unusually high cash share",
       "cash_over_short": "Cash drawer shortages",
-      "commission_drag": "Delivery commission"
+      "commission_drag": "Delivery commission",
+      "margin_below_target": "Food cost above target",
+      "channel_negative_margin": "Loses money on a platform"
     },
     "period": "{from} – {to}",
     "impactLabel": {
@@ -588,7 +601,9 @@
       "refund_rate": "Above colleagues' refunds",
       "cash_share": "Extra cash taken",
       "cash_over_short": "Net shortage",
-      "commission_drag": "Paid to the platform"
+      "commission_drag": "Paid to the platform",
+      "margin_below_target": "Cost above your target",
+      "channel_negative_margin": "Lost after commission"
     },
     "confidence": {
       "low": "Low confidence",
@@ -609,7 +624,9 @@
       "withoutReason": "{count} had no reason recorded.",
       "cashShare": "{share} of their {orders} orders were cash; {expected} expected for the same times of day.",
       "overShort": "{short} of {shifts} shifts closed short; net {net}.",
-      "commission": "{orders} orders, {net} in sales; commission {pct} = {commission}. All platform costs: {share} of its sales."
+      "commission": "{orders} orders, {net} in sales; commission {pct} = {commission}. All platform costs: {share} of its sales.",
+      "marginBelowTarget": "{qty} sold for {net}; recipe cost {cost}: food cost {pct} against a {target} target.",
+      "negativeMargin": "{qty} sold for {net}; recipe cost {cost} plus commission {commission} is more than the sales."
     },
     "seeEvidence": "See every row behind this",
     "metricRefs": "Metrics: {refs}",
@@ -628,7 +645,11 @@
       "blind_cash_count": "Ask for the cash count before showing the expected amount.",
       "raise_platform_prices": "Price items higher on the platform to cover commission.",
       "push_own_delivery": "Move regulars to your own delivery.",
-      "review_combo_margins": "Check which combos still make money after commission."
+      "review_combo_margins": "Check which combos still make money after commission.",
+      "raise_price": "Raise the price, or check the price & portion simulator first.",
+      "trim_portion": "Check the portion against the recipe in the kitchen.",
+      "renegotiate_supplier": "Ask suppliers for a better price on the main ingredient.",
+      "remove_from_platform": "Take the item off this platform, or sell it there as a smaller version."
     },
     "ownerNote": "Your note: {note}",
     "acknowledge": "I'm looking into it",
@@ -653,7 +674,9 @@
       "value_refund": "Refunded",
       "value_shift": "Over / short",
       "value_channel_day": "Net sales",
-      "value_staff_day": "Cash taken"
+      "value_staff_day": "Cash taken",
+      "value_item_day": "Recipe cost",
+      "netSales": "Net sales"
     }
   },
   "costs": {
@@ -687,5 +710,139 @@
     "noStaff": "Add staff first.",
     "salary": "Salary (৳)",
     "allowances": "Allowances (৳)"
+  },
+  "recipes": {
+    "title": "Recipes",
+    "subtitle": "What goes into each dish, so every plate has a cost.",
+    "sections": "Section",
+    "tabs": {
+      "recipes": "Recipes",
+      "ingredients": "Ingredients",
+      "drafts": "AI drafts ({count})"
+    },
+    "coverage": "{with} of {total} menu items have a recipe.",
+    "noItems": "Add menu items first.",
+    "noRecipe": "No recipe yet",
+    "recipeMeta": "{lines} ingredients · version {version}",
+    "aiDrafted": "AI drafted, approved",
+    "costLine": "{cost} a portion · food cost {pct}",
+    "incomplete": "Some ingredients have no price",
+    "subRecipe": "Sub-recipe",
+    "portions": "portions",
+    "yieldShort": "{pct}% usable",
+    "editRecipe": "Change this recipe (saves a new version)",
+    "writeRecipe": "Write this recipe",
+    "yieldPortions": "Makes (portions)",
+    "ingredient": "Ingredient",
+    "chooseIngredient": "Choose an ingredient",
+    "qty": "Quantity",
+    "yieldPct": "Yield %",
+    "recipeHint": "Quantity as bought, in the ingredient's unit. Yield is the usable share after trimming or cooking (100 if none is lost).",
+    "saveRecipe": "Save recipe",
+    "saved": "Saved.",
+    "drafted": "Drafts ready below for review.",
+    "approved": "Approved. The recipe is now active.",
+    "addIngredient": "Add ingredient",
+    "ingredientName": "Name",
+    "measuredIn": "Measured in",
+    "bases": {
+      "g": "Grams (price per kg)",
+      "ml": "Millilitres (price per litre)",
+      "pcs": "Pieces (price per piece)"
+    },
+    "units": {
+      "g": "g",
+      "ml": "ml",
+      "pcs": "pcs"
+    },
+    "per": {
+      "g": "per kg",
+      "ml": "per litre",
+      "pcs": "per piece"
+    },
+    "pricePer": "Price (৳)",
+    "pricePerUnit": "Price {unit}",
+    "priceHint": "Per kg, litre or piece. Leave empty if you don't know yet.",
+    "ingredientsTitle": "Ingredients",
+    "noIngredients": "No ingredients yet.",
+    "noPrice": "No price",
+    "save": "Save",
+    "draftTitle": "Draft recipes with AI",
+    "draftBody": "Paste your menu or add a photo. You get draft recipes to correct; nothing is used until the owner approves it.",
+    "aiNotConfigured": "AI drafting needs an Anthropic API key on the server. Until then, write recipes by hand in the Recipes tab.",
+    "menuText": "Menu",
+    "menuPlaceholder": "Kacchi Biryani (Mutton) — ৳420\nBeef Tehari — ৳230",
+    "menuPhoto": "Or a photo of the menu",
+    "draftButton": "Draft recipes",
+    "noDrafts": "No drafts waiting for review.",
+    "aiDraftBadge": "AI draft",
+    "menuItem": "Menu item",
+    "chooseItem": "Choose the menu item",
+    "saveDraft": "Save changes",
+    "approve": "Approve recipe",
+    "ownerApproves": "The owner approves drafts.",
+    "discard": "Discard"
+  },
+  "menuProfit": {
+    "title": "Menu profit",
+    "subtitle": "Which dishes make money, which lose it, and what a price or portion change would do.",
+    "window": "Period",
+    "windows": {
+      "last_7d": "Last 7 days",
+      "last_30d": "Last 30 days",
+      "month_to_date": "This month"
+    },
+    "tfc": "Food cost (from recipes)",
+    "tfcPct": "Food cost %",
+    "coverage": "Sales with a recipe",
+    "coverageHint": "Food cost % is only for items with a recipe.",
+    "addRecipes": "Add recipes",
+    "matrixTitle": "Menu engineering",
+    "noSales": "No sales in this period.",
+    "classes": {
+      "star": {
+        "name": "Stars",
+        "advice": "Popular and profitable. Keep quality and visibility high."
+      },
+      "plowhorse": {
+        "name": "Plowhorses",
+        "advice": "Popular but thin. Nudge the price or trim the cost."
+      },
+      "puzzle": {
+        "name": "Puzzles",
+        "advice": "Profitable but rarely ordered. Promote them."
+      },
+      "dog": {
+        "name": "Dogs",
+        "advice": "Rarely ordered and thin. Rework or remove."
+      }
+    },
+    "none": "None",
+    "col": {
+      "item": "Item",
+      "qty": "Sold",
+      "cm": "Margin a unit",
+      "foodCost": "Food cost"
+    },
+    "unknown": "Not classified (no recipe yet): {items}",
+    "simTitle": "Price & portion simulator",
+    "simBody": "Try a new menu price or portion size and see the margin, at the last 28 days' sales.",
+    "chooseItem": "Choose an item",
+    "newPrice": "New price (৳)",
+    "portionPct": "Portion %",
+    "simulate": "Calculate",
+    "simError": "This item needs a costed recipe first.",
+    "now": "Now",
+    "then": "With the change",
+    "sim": {
+      "price": "Menu price",
+      "netPrice": "Price without VAT",
+      "cost": "Recipe cost",
+      "cm": "Margin a unit",
+      "foodCost": "Food cost"
+    },
+    "simImpact": "At the last 28 days' {qty} sold, that is {change} of margin.",
+    "simAssumption": "A projection: it assumes the same number sold, which a price change may not keep.",
+    "seeMarginLeaks": "See items losing money"
   }
 }

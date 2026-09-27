@@ -92,3 +92,42 @@ Checklist:
   manual override exists in the till).
 - **Run by hand:** after CI seeds the demo org, open Demo Kacchi House → Leaks → "Scan the last 4 weeks"
   (or wait for the nightly job) to see findings in the UI; the golden script doesn't write findings.
+
+---
+
+## Phase 3 — Recipes, costing & Menu Profit Intelligence (+ LLM gateway v0)
+
+Blocker per ROADMAP: an Anthropic API key with a spend limit. I build everything behind an interface
+with a mock transport so it is tested without a key; **you add the key** (see "Run by hand").
+
+Plan:
+- Money-gated `ingredient_price_history` (for S4's beef spike) and `order_item_costs` (sale-time recipe
+  cost snapshot — never a column managers can read, ADR 0012 §3).
+- SQL: ingredient unit cost at a date, recipe cost (sub-recipes, yields), TFC / TFC% / coverage, menu
+  engineering (Kasavana–Smith), price & portion simulator, margin detectors (below target; negative
+  margin on a channel after commission = S3 in full).
+- Seed: ingredients, prices (+ week-20 beef spike), recipes for every item; manifest facts for S3 margin,
+  S4, S5 and the matrix classes; golden checks extended.
+- LLM gateway v0 (server-only, env models, usage + cost per org/day, daily cap, PII masking, prompt
+  versions, prompt caching) and AI recipe drafts → chef edits → owner approves.
+
+Checklist:
+- [x] 3.1 Migration: history + snapshot tables, costing functions, food cost, matrix, simulator, detectors, drafts + approve RPC
+- [x] 3.2 DB tests (costing exact, sub-recipes, snapshots gated, drafts never active without approval, matrix classes, detectors)
+- [x] 3.3 Seed + manifest (S3 margin, S4, S5, matrix) + golden checks
+- [x] 3.4 LLM gateway v0 + recipe drafting, unit-tested with a mock transport
+- [x] 3.5 UI: ingredients & costs, recipe editor + approval, AI draft review, menu profit (matrix, TFC%, coverage, simulator)
+- [x] 3.6 i18n, checks, ADR 0016, ROADMAP, commit
+
+### Phase 3 log
+- Migration `20260929000001_recipes_costing.sql`: price history, cost snapshots (money-gated), recipe
+  costing with sub-recipes/yields, food cost & coverage, menu matrix, simulator, margin detectors, draft
+  table + owner approval, AI usage RPC. ADR 0016 — **please confirm §3 (matrix n) and the $1/day AI cap.**
+- Seed: ingredients, prices (beef spike weeks 20–23), a recipe for every demo item; manifest regenerated
+  (order data unchanged — only new S3/S4/S5 facts). CI now validates at SEED_PHASE=3.
+- Added dependency `@anthropic-ai/sdk` (official SDK, needed for the gateway).
+- UI: `/recipes` (recipes, ingredients, AI drafts), `/menu-profit` (TFC, matrix, simulator).
+- **Run by hand:** create an Anthropic API key with a monthly spend limit and set `ANTHROPIC_API_KEY`
+  (and optionally `AI_MODEL_ASSISTANT`, `AI_MODEL_FAST`, `AI_DAILY_CAP_USD_MICROS`) in Vercel and
+  `.env.local`; then try Recipes → AI drafts with a menu photo and check `ai_usage` shows the cost.
+  Start Meta/WhatsApp business verification now (Phase 4 needs it).

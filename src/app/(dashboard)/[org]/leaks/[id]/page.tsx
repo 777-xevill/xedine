@@ -43,7 +43,8 @@ export default async function FindingEvidencePage({
     value_poisha: number;
     detail: string;
   }[];
-  const perDay = rows.some((r) => r.kind === 'channel_day' || r.kind === 'staff_day');
+  const itemDay = rows.some((r) => r.kind === 'item_day');
+  const perDay = itemDay || rows.some((r) => r.kind === 'channel_day' || r.kind === 'staff_day');
 
   return (
     <>
@@ -79,7 +80,11 @@ export default async function FindingEvidencePage({
                 <th scope="col" className="px-4 py-3 text-end">
                   {t(`col.value_${rows[0]!.kind}`)}
                 </th>
-                {perDay ? null : (
+                {itemDay ? (
+                  <th scope="col" className="px-4 py-3 text-end">
+                    {t('col.netSales')}
+                  </th>
+                ) : perDay ? null : (
                   <th scope="col" className="px-4 py-3 text-start">
                     {t('col.reason')}
                   </th>
@@ -107,7 +112,11 @@ export default async function FindingEvidencePage({
                   <td className="px-4 py-2.5 text-end font-semibold tabular-nums">
                     {formatBDT(Number(r.value_poisha), loc)}
                   </td>
-                  {perDay ? null : (
+                  {itemDay ? (
+                    <td className="px-4 py-2.5 text-end tabular-nums">
+                      {formatBDT(Number(r.detail || 0), loc)}
+                    </td>
+                  ) : perDay ? null : (
                     <td className="px-4 py-2.5 text-secondary">{r.detail || '—'}</td>
                   )}
                 </tr>

@@ -186,6 +186,106 @@ async function scenarios() {
   );
 }
 
+/** Phase 3: S3 in full, S4 and S5 from the product's costing, detectors and matrix. */
+async function phase3() {
+  const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
+  const cafe = ORGS.find((o) => o.key === 'demo_cafe')!;
+  const s = (id: string) =>
+    manifest.scenarios.find((x) => x.id === id)!.facts as Record<string, unknown>;
+  const pct = manifest.tolerances.finding_impact_pct;
+  const item = (key: string) =>
+    ids.item(
+      kacchi,
+      kacchi.menu.find((m) => m.key === key)!,
+    );
+
+  // Every sold line of both demo orgs has a cost: coverage is 100%.
+  for (const o of ORGS) {
+    const [fc] = await q(
+      `select * from private.m_food_cost($1, $2::uuid[], $3::date, $4::date) where branch_id is null`,
+      [orgId(o), branchIds(o), manifest.first_date, manifest.anchor_date],
+    );
+    expectEq(`${o.key}.recipes.coverage_pct`, 10000, n(fc!.coverage_bps));
+  }
+
+  // S3 in full: the combo loses money on foodpanda once its recipe cost is known.
+  const year = await detect(kacchi, manifest.first_date, manifest.anchor_date, ['margin']);
+  const fm = (s('S3').full_margin as { branches: Record<string, Record<string, number>> }).branches;
+  for (const b of kacchi.branches) {
+    const f = year.find(
+      (x) =>
+        x.type === 'channel.negative_margin' &&
+        x.branch_id === ids.branch(kacchi, b) &&
+        x.subject_key === `${item('family_combo')}:${ids.channel(kacchi, 'foodpanda')}`,
+    );
+    if (!f)
+      failures.push(`S3.${b.key}: no channel.negative_margin finding for the combo on foodpanda`);
+    else expectWithin(`S3.${b.key}.loss`, fm[b.key]!.loss_poisha!, n(f.impact_poisha), pct);
+  }
+  const pathao = year.filter(
+    (x) =>
+      x.type === 'channel.negative_margin' &&
+      x.subject_key.endsWith(ids.channel(kacchi, 'pathao_food')),
+  );
+  if (pathao.length > 0)
+    failures.push(
+      `S3: ${pathao.length} negative-margin finding(s) on Pathao, which stays profitable`,
+    );
+
+  // S4: the beef spike, and only the spike, pushes Beef Tehari above target.
+  const s4 = s('S4') as {
+    spike_from: string;
+    spike_to: string;
+    branches: Record<string, Record<string, Record<string, number>>>;
+  };
+  const spike = await detect(kacchi, s4.spike_from, s4.spike_to, ['margin']);
+  const beforeTo = new Date(Date.parse(`${s4.spike_from}T00:00:00Z`) - 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const beforeFrom = new Date(Date.parse(`${s4.spike_from}T00:00:00Z`) - 28 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const before = await detect(kacchi, beforeFrom, beforeTo, ['margin']);
+  for (const b of kacchi.branches) {
+    const tehari = (list: Finding[]) =>
+      list.find(
+        (x) =>
+          x.type === 'margin.below_target' &&
+          x.branch_id === ids.branch(kacchi, b) &&
+          x.subject_key === item('tehari'),
+      );
+    const f = tehari(spike);
+    if (!f) failures.push(`S4.${b.key}: Beef Tehari not flagged during the beef spike`);
+    else
+      expectWithin(
+        `S4.${b.key}.excess`,
+        s4.branches[b.key]!.spike!.excess_over_target_poisha!,
+        n(f.impact_poisha),
+        pct,
+      );
+    if (tehari(before)) failures.push(`S4.${b.key}: Beef Tehari flagged before the spike`);
+  }
+
+  // S5 and the whole matrix: the product's classes equal the manifest's.
+  const matrix = (s('S5').matrix ?? {}) as Record<string, string>;
+  const rows = await q<{ menu_item_id: string; class: string }>(
+    `select menu_item_id, class from private.m_menu_matrix($1, $2::uuid[], $3::date, $4::date)`,
+    [orgId(kacchi), branchIds(kacchi), manifest.first_date, manifest.anchor_date],
+  );
+  for (const [key, cls] of Object.entries(matrix)) {
+    const r = rows.find((x) => x.menu_item_id === item(key));
+    if (r?.class !== cls) failures.push(`S5.matrix.${key}: manifest ${cls} ≠ metric ${r?.class}`);
+  }
+  notes.push(
+    `S5: ${Object.keys(matrix).length} items classified; dog = shahi_tukra, puzzle = kala_bhuna`,
+  );
+
+  // The clean café: every item under its target, no margin findings all year.
+  const cafeMargin = await detect(cafe, manifest.first_date, manifest.anchor_date, ['margin']);
+  if (cafeMargin.length > 0)
+    failures.push(`S13: ${cafeMargin.length} margin finding(s) on the clean café`);
+}
+
 async function dashboardLatency() {
   const kacchi = ORGS.find((o) => o.key === 'demo_kacchi_house')!;
   const org = orgId(kacchi);
@@ -220,6 +320,7 @@ async function dashboardLatency() {
 try {
   for (const o of ORGS) await metricsMatchManifest(o);
   await scenarios();
+  await phase3();
   await dashboardLatency();
   for (const note of notes) console.log(`  · ${note}`);
   if (failures.length > 0) {

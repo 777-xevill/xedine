@@ -8,6 +8,9 @@ import { formatBDT, type Locale } from '@/lib/i18n/format';
 import { computeLine, parseTakaToPoisha, sumLines, type VatConfig } from '@/lib/money';
 import {
   applyOrderDiscount,
+  approveAction,
+  attachCustomer,
+  cancelOrder,
   closeShift,
   createClient,
   endStaffSession,
@@ -19,13 +22,17 @@ import {
   fetchOrderItems,
   fetchReasonCodes,
   fetchTables,
+  needsApproval,
   openShift,
   recordPayment,
+  refundOrder,
   registerAndClaimDevice,
   sendToKitchen,
   startStaffSession,
   submitOrder,
   voidOrderItem,
+  type ApprovalAction,
+  type ApprovalResult,
   type Branch,
   type Channel,
   type DiningTable,
@@ -350,6 +357,7 @@ function Till({
   const [tables, setTables] = useState<DiningTable[]>([]);
   const [voidReasons, setVoidReasons] = useState<ReasonCode[]>([]);
   const [discountReasons, setDiscountReasons] = useState<ReasonCode[]>([]);
+  const [refundReasons, setRefundReasons] = useState<ReasonCode[]>([]);
   const [managers, setManagers] = useState<StaffMember[]>([]);
 
   const [screen, setScreen] = useState<Screen>('cart');
@@ -373,9 +381,20 @@ function Till({
       fetchTables(sb, device.orgId, device.branchId),
       fetchReasonCodes(sb, device.orgId, 'void'),
       fetchReasonCodes(sb, device.orgId, 'discount'),
+      fetchReasonCodes(sb, device.orgId, 'refund'),
       fetchActiveStaff(sb, device.orgId, device.branchId),
     ]).then(
-      ([openShiftRow, settings, menuData, channelData, tableData, voidR, discR, staffList]) => {
+      ([
+        openShiftRow,
+        settings,
+        menuData,
+        channelData,
+        tableData,
+        voidR,
+        discR,
+        refundR,
+        staffList,
+      ]) => {
         setShift(openShiftRow);
         if (settings.data) {
           setVatConfig({
@@ -391,6 +410,7 @@ function Till({
         setTables(tableData);
         setVoidReasons(voidR);
         setDiscountReasons(discR);
+        setRefundReasons(refundR);
         setManagers(staffList.filter((s) => s.role === 'manager' || s.role === 'owner'));
       },
     );
@@ -504,12 +524,12 @@ function Till({
     }
   };
 
-  const doVoid = async (line: OrderLine, reasonId: string, approverStaffId?: string) => {
+  const doVoid = async (line: OrderLine, reasonId: string, approvalId?: string) => {
     if (!order) return;
     setBusy(true);
     setError(null);
     try {
-      await voidOrderItem(sb, {
+      const updated = await voidOrderItem(sb, {
         orgId: device.orgId,
         branchId: device.branchId,
         orderItemId: line.id,
@@ -517,13 +537,10 @@ function Till({
         note: null,
         deviceId: device.deviceId,
         staffId: staffSession.staffId,
-        approverStaffId,
+        approvalId,
       });
       setLines((prev) => prev.map((l) => (l.id === line.id ? { ...l, status: 'voided' } : l)));
-      const [{ data: refreshed }] = await Promise.all([
-        sb.from('orders').select('*').eq('id', order.id).single(),
-      ]);
-      if (refreshed) setOrder(refreshed as OrderRow);
+      setOrder(updated);
     } catch {
       setError(te('generic'));
     } finally {
@@ -531,7 +548,7 @@ function Till({
     }
   };
 
-  const applyDiscount = async (percentBps: number, reasonId: string) => {
+  const applyDiscount = async (percentBps: number, reasonId: string, approvalId?: string) => {
     if (!order) return;
     setBusy(true);
     try {
@@ -544,6 +561,81 @@ function Till({
         note: null,
         deviceId: device.deviceId,
         staffId: staffSession.staffId,
+        approvalId,
+      });
+      setOrder(updated);
+    } catch {
+      setError(te('generic'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doCancel = async (reasonId: string, approvalId?: string) => {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await cancelOrder(sb, {
+        orgId: device.orgId,
+        branchId: device.branchId,
+        orderId: order.id,
+        reasonCodeId: reasonId,
+        note: null,
+        deviceId: device.deviceId,
+        staffId: staffSession.staffId,
+        approvalId,
+      });
+      setOrder(updated);
+      setScreen('cart');
+      setCart([]);
+      setLines([]);
+    } catch {
+      setError(te('generic'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doAttachCustomer = async (phone: string, name: string, consent: boolean) => {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await attachCustomer(sb, {
+        orgId: device.orgId,
+        branchId: device.branchId,
+        orderId: order.id,
+        phone,
+        name: name.trim() || null,
+        marketingConsent: consent,
+        deviceId: device.deviceId,
+        staffId: staffSession.staffId,
+      });
+    } catch {
+      setError(te('generic'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doRefund = async (amountPoisha: number, reasonId: string, approvalId: string) => {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await refundOrder(sb, {
+        orgId: device.orgId,
+        branchId: device.branchId,
+        orderId: order.id,
+        method: 'cash',
+        amountPoisha,
+        reasonCodeId: reasonId,
+        note: null,
+        idempotencyKey: uid(),
+        deviceId: device.deviceId,
+        staffId: staffSession.staffId,
+        approvalId,
       });
       setOrder(updated);
     } catch {
@@ -586,6 +678,7 @@ function Till({
             sb={sb}
             device={device}
             staffSession={staffSession}
+            managers={managers}
             shift={shift}
             t={t}
             onClosed={() => setShift(null)}
@@ -630,8 +723,12 @@ function Till({
           managers={managers}
           sb={sb}
           device={device}
+          tableName={tables.find((tb) => tb.id === order.table_id)?.name ?? null}
           discountReasons={discountReasons}
-          onDiscount={(p, r) => void applyDiscount(p, r)}
+          voidReasonsForCancel={voidReasons}
+          onDiscount={(p, r, a) => void applyDiscount(p, r, a)}
+          onCancel={(r, a) => void doCancel(r, a)}
+          onAttachCustomer={(phone, name, consent) => void doAttachCustomer(phone, name, consent)}
           onCheckout={() => setScreen('checkout')}
         />
       ) : null}
@@ -661,6 +758,11 @@ function Till({
           t={t}
           tc={tc}
           onNewOrder={reset}
+          refundReasons={refundReasons}
+          managers={managers}
+          sb={sb}
+          device={device}
+          onRefund={(amount, reasonId, approvalId) => void doRefund(amount, reasonId, approvalId)}
         />
       ) : null}
     </div>
@@ -732,6 +834,7 @@ function ShiftCloser({
   sb,
   device,
   staffSession,
+  managers,
   shift,
   t,
   onClosed,
@@ -739,14 +842,37 @@ function ShiftCloser({
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
   staffSession: { staffId: string };
+  managers: StaffMember[];
   shift: ShiftRow;
   t: ReturnType<typeof useTranslations<'pos'>>;
   onClosed: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [counted, setCounted] = useState('');
+  const [needsMgr, setNeedsMgr] = useState(false);
   const [result, setResult] = useState<ShiftRow | null>(null);
   const locale = useLocale() as Locale;
+
+  const attempt = async (approvalId?: string) => {
+    const poisha = parseTakaToPoisha(counted);
+    if (poisha === null) return;
+    try {
+      const closed = await closeShift(
+        sb,
+        device.orgId,
+        device.branchId,
+        shift.id,
+        poisha,
+        device.deviceId,
+        staffSession.staffId,
+        approvalId,
+      );
+      setResult(closed);
+    } catch (e) {
+      if (needsApproval(e)) setNeedsMgr(true);
+    }
+  };
+
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
@@ -755,58 +881,54 @@ function ShiftCloser({
     );
   }
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-xs rounded-card border border-line bg-surface p-4">
-        {!result ? (
-          <>
-            <Label htmlFor="counted">{t('countedCash')}</Label>
-            <Input
-              id="counted"
-              inputMode="decimal"
-              value={counted}
-              onChange={(e) => setCounted(e.target.value)}
-            />
-            <div className="mt-3 flex gap-2">
-              <Button variant="secondary" onClick={() => setOpen(false)}>
-                {t('shiftClosedBanner')}
-              </Button>
-              <Button
-                onClick={() => {
-                  const poisha = parseTakaToPoisha(counted);
-                  if (poisha === null) return;
-                  void closeShift(
-                    sb,
-                    device.orgId,
-                    device.branchId,
-                    shift.id,
-                    poisha,
-                    device.deviceId,
-                    staffSession.staffId,
-                  ).then(setResult);
-                }}
-              >
-                {t('closeShift')}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p>
-              {t('expectedCash')}: {formatBDT(result.expected_cash_poisha ?? 0, locale)}
-            </p>
-            <p>
-              {t('countedCash')}: {formatBDT(result.counted_cash_poisha ?? 0, locale)}
-            </p>
-            <p className={(result.over_short_poisha ?? 0) === 0 ? 'text-success' : 'text-danger'}>
-              {t('overShort')}: {formatBDT(result.over_short_poisha ?? 0, locale)}
-            </p>
-            <Button className="mt-3 w-full" onClick={onClosed}>
-              OK
+    <DialogShell>
+      {result ? (
+        <>
+          <p>
+            {t('expectedCash')}: {formatBDT(result.expected_cash_poisha ?? 0, locale)}
+          </p>
+          <p>
+            {t('countedCash')}: {formatBDT(result.counted_cash_poisha ?? 0, locale)}
+          </p>
+          <p className={(result.over_short_poisha ?? 0) === 0 ? 'text-success' : 'text-danger'}>
+            {t('overShort')}: {formatBDT(result.over_short_poisha ?? 0, locale)}
+          </p>
+          <Button className="w-full" onClick={onClosed}>
+            OK
+          </Button>
+        </>
+      ) : needsMgr ? (
+        <>
+          <h3 className="font-bold">{t('closeShift')}</h3>
+          <ManagerApprovalStep
+            sb={sb}
+            device={device}
+            action="close_shift"
+            managers={managers}
+            t={t}
+            onApproved={(approvalId) => void attempt(approvalId)}
+          />
+        </>
+      ) : (
+        <>
+          <Label htmlFor="counted">{t('countedCash')}</Label>
+          <Input
+            id="counted"
+            inputMode="decimal"
+            value={counted}
+            onChange={(e) => setCounted(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              ✕
             </Button>
-          </>
-        )}
-      </div>
-    </div>
+            <Button className="flex-1" onClick={() => void attempt()}>
+              {t('closeShift')}
+            </Button>
+          </div>
+        </>
+      )}
+    </DialogShell>
   );
 }
 
@@ -980,8 +1102,12 @@ function OrderScreen({
   managers,
   sb,
   device,
+  tableName,
   discountReasons,
+  voidReasonsForCancel,
   onDiscount,
+  onCancel,
+  onAttachCustomer,
   onCheckout,
 }: {
   order: OrderRow;
@@ -990,20 +1116,37 @@ function OrderScreen({
   t: ReturnType<typeof useTranslations<'pos'>>;
   busy: boolean;
   onSendKitchen: () => void;
-  onVoid: (line: OrderLine, reasonId: string, approverStaffId?: string) => void;
+  onVoid: (line: OrderLine, reasonId: string, approvalId?: string) => void;
   voidReasons: ReasonCode[];
   managers: StaffMember[];
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
+  tableName: string | null;
   discountReasons: ReasonCode[];
-  onDiscount: (percentBps: number, reasonId: string) => void;
+  voidReasonsForCancel: ReasonCode[];
+  onDiscount: (percentBps: number, reasonId: string, approvalId?: string) => void;
+  onCancel: (reasonId: string, approvalId?: string) => void;
+  onAttachCustomer: (phone: string, name: string, consent: boolean) => void;
   onCheckout: () => void;
 }) {
   const money = (p: number) => formatBDT(p, locale);
   const [voidTarget, setVoidTarget] = useState<OrderLine | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const cancelNeedsApproval = lines.some((l) => l.status === 'active' && l.kot_sent_at !== null);
   return (
     <div className="flex flex-1 flex-col gap-3">
+      {/* Off-screen until window.print() (ARCHITECTURE.md: browser-print KOT). */}
+      <Receipt
+        kind="kot"
+        order={order}
+        lines={lines}
+        orgName={device.orgSlug}
+        branchName={device.branchName}
+        tableName={tableName}
+        locale={locale}
+      />
       <div className="rounded-card border border-line bg-surface p-3">
         <ul className="divide-y divide-line">
           {lines.map((l) => (
@@ -1046,10 +1189,22 @@ function OrderScreen({
           <Button disabled={busy} onClick={onSendKitchen}>
             {t('sendToKitchen')}
           </Button>
-        ) : null}
+        ) : (
+          <Button variant="secondary" onClick={() => window.print()}>
+            {t('printKot')}
+          </Button>
+        )}
         <Button variant="secondary" disabled={busy} onClick={() => setDiscountOpen(true)}>
           {t('applyDiscount')}
         </Button>
+        <Button variant="secondary" disabled={busy} onClick={() => setCustomerOpen(true)}>
+          {order.customer_id ? t('customerAdded') : t('addCustomer')}
+        </Button>
+        {order.payment_status === 'unpaid' ? (
+          <Button variant="danger" disabled={busy} onClick={() => setCancelOpen(true)}>
+            {t('cancelOrder')}
+          </Button>
+        ) : null}
         <Button className="ms-auto" disabled={busy} onClick={onCheckout}>
           {t('checkout')}
         </Button>
@@ -1064,8 +1219,8 @@ function OrderScreen({
           device={device}
           t={t}
           onClose={() => setVoidTarget(null)}
-          onConfirm={(reasonId, approverStaffId) => {
-            onVoid(voidTarget, reasonId, approverStaffId);
+          onConfirm={(reasonId, approvalId) => {
+            onVoid(voidTarget, reasonId, approvalId);
             setVoidTarget(null);
           }}
         />
@@ -1073,14 +1228,114 @@ function OrderScreen({
       {discountOpen ? (
         <DiscountDialog
           reasons={discountReasons}
+          managers={managers}
+          sb={sb}
+          device={device}
           t={t}
           onClose={() => setDiscountOpen(false)}
-          onConfirm={(p, r) => {
-            onDiscount(p, r);
+          onConfirm={(p, r, a) => {
+            onDiscount(p, r, a);
             setDiscountOpen(false);
           }}
         />
       ) : null}
+      {cancelOpen ? (
+        <CancelOrderDialog
+          reasons={voidReasonsForCancel}
+          managers={managers}
+          needsApproval={cancelNeedsApproval}
+          sb={sb}
+          device={device}
+          t={t}
+          onClose={() => setCancelOpen(false)}
+          onConfirm={(r, a) => {
+            onCancel(r, a);
+            setCancelOpen(false);
+          }}
+        />
+      ) : null}
+      {customerOpen ? (
+        <CustomerDialog
+          t={t}
+          onClose={() => setCustomerOpen(false)}
+          onConfirm={(phone, name, consent) => {
+            onAttachCustomer(phone, name, consent);
+            setCustomerOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Manager PIN → a single-use approval token (ADR 0014). Shared by void/discount/cancel/refund. */
+function ManagerApprovalStep({
+  sb,
+  device,
+  action,
+  managers,
+  t,
+  onApproved,
+}: {
+  sb: ReturnType<typeof createClient>;
+  device: DeviceState;
+  action: ApprovalAction;
+  managers: StaffMember[];
+  t: ReturnType<typeof useTranslations<'pos'>>;
+  onApproved: (approvalId: string) => void;
+}) {
+  const [managerId, setManagerId] = useState(managers[0]?.id ?? '');
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const confirm = async () => {
+    setBusy(true);
+    setError(null);
+    const result: ApprovalResult = await approveAction(sb, device.deviceId, managerId, pin, action);
+    setBusy(false);
+    if (!result.ok) {
+      setPin('');
+      if (result.reason === 'locked') setError(t('pinLocked'));
+      else setError(t('pinWrong', { attempts: result.attempts_left ?? 0 }));
+      return;
+    }
+    onApproved(result.approval_id);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Alert tone="warning">{t('managerPinRequired')}</Alert>
+      {error ? <Alert tone="danger">{error}</Alert> : null}
+      <div>
+        <Label htmlFor="mgr">{t('managerPin')}</Label>
+        <Select id="mgr" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+          {managers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.display_name}
+            </option>
+          ))}
+        </Select>
+        <Input
+          className="mt-2"
+          type="password"
+          inputMode="numeric"
+          autoComplete="off"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+        />
+      </div>
+      <Button className="w-full" disabled={busy || pin.length < 4} onClick={() => void confirm()}>
+        {t('approve')}
+      </Button>
+    </div>
+  );
+}
+
+function DialogShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm">
+      <div className="glass-strong w-full max-w-xs space-y-3 rounded-sheet p-5">{children}</div>
     </div>
   );
 }
@@ -1102,124 +1357,360 @@ function VoidDialog({
   device: DeviceState;
   t: ReturnType<typeof useTranslations<'pos'>>;
   onClose: () => void;
-  onConfirm: (reasonId: string, approverStaffId?: string) => void;
+  onConfirm: (reasonId: string, approvalId?: string) => void;
 }) {
   const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
-  const needsApproval = line.kot_sent_at !== null;
-  const [managerId, setManagerId] = useState(managers[0]?.id ?? '');
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const needsMgr = line.kot_sent_at !== null;
 
-  const confirm = async () => {
-    if (!needsApproval) return onConfirm(reasonId);
-    setChecking(true);
-    setError(null);
-    const result = await startStaffSession(sb, device.deviceId, managerId, pin);
-    setChecking(false);
-    if (!result.ok) return setError(t('pinWrong', { attempts: result.attempts_left ?? 0 }));
-    onConfirm(reasonId, managerId);
-  };
-
-  return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-xs space-y-3 rounded-card border border-line bg-surface p-4">
-        <h3 className="font-semibold">{t('voidItem')}</h3>
-        {error ? <Alert tone="danger">{error}</Alert> : null}
-        <div>
-          <Label htmlFor="vr">{t('voidReason')}</Label>
-          <Select id="vr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
-            {reasons.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {needsApproval ? (
-          <>
-            <Alert tone="warning">{t('managerPinRequired')}</Alert>
-            <div>
-              <Label htmlFor="mgr">{t('managerPin')}</Label>
-              <Select id="mgr" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
-                {managers.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.display_name}
-                  </option>
-                ))}
-              </Select>
-              <Input
-                className="mt-2"
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-              />
-            </div>
-          </>
-        ) : null}
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
+  if (approving) {
+    return (
+      <DialogShell>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">{t('voidItem')}</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
             ✕
           </Button>
-          <Button className="flex-1" disabled={checking} onClick={() => void confirm()}>
-            {t('approve')}
-          </Button>
         </div>
+        <ManagerApprovalStep
+          sb={sb}
+          device={device}
+          action="void_after_kot"
+          managers={managers}
+          t={t}
+          onApproved={(approvalId) => onConfirm(reasonId, approvalId)}
+        />
+      </DialogShell>
+    );
+  }
+
+  return (
+    <DialogShell>
+      <h3 className="font-bold">{t('voidItem')}</h3>
+      <div>
+        <Label htmlFor="vr">{t('voidReason')}</Label>
+        <Select id="vr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
+          {reasons.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </Select>
       </div>
-    </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          ✕
+        </Button>
+        <Button
+          className="flex-1"
+          onClick={() => (needsMgr ? setApproving(true) : onConfirm(reasonId))}
+        >
+          {t('approve')}
+        </Button>
+      </div>
+    </DialogShell>
   );
 }
 
 function DiscountDialog({
   reasons,
+  managers,
+  sb,
+  device,
   t,
   onClose,
   onConfirm,
 }: {
   reasons: ReasonCode[];
+  managers: StaffMember[];
+  sb: ReturnType<typeof createClient>;
+  device: DeviceState;
   t: ReturnType<typeof useTranslations<'pos'>>;
   onClose: () => void;
-  onConfirm: (percentBps: number, reasonId: string) => void;
+  onConfirm: (percentBps: number, reasonId: string, approvalId?: string) => void;
 }) {
   const [percent, setPercent] = useState('10');
   const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
-  return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-xs space-y-3 rounded-card border border-line bg-surface p-4">
-        <h3 className="font-semibold">{t('applyDiscount')}</h3>
-        <div>
-          <Label htmlFor="pct">{t('discountPercent')}</Label>
-          <Input
-            id="pct"
-            inputMode="decimal"
-            value={percent}
-            onChange={(e) => setPercent(e.target.value)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="dr">{t('reason')}</Label>
-          <Select id="dr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
-            {reasons.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onClose}>
+  const [approving, setApproving] = useState(false);
+  const reason = reasons.find((r) => r.id === reasonId);
+
+  if (approving) {
+    return (
+      <DialogShell>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">{t('applyDiscount')}</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
             ✕
           </Button>
-          <Button
-            className="flex-1"
-            onClick={() => onConfirm(Math.round(Number(percent) * 100), reasonId)}
-          >
-            {t('approve')}
+        </div>
+        <ManagerApprovalStep
+          sb={sb}
+          device={device}
+          action="discount"
+          managers={managers}
+          t={t}
+          onApproved={(approvalId) =>
+            onConfirm(Math.round(Number(percent) * 100), reasonId, approvalId)
+          }
+        />
+      </DialogShell>
+    );
+  }
+
+  return (
+    <DialogShell>
+      <h3 className="font-bold">{t('applyDiscount')}</h3>
+      <div>
+        <Label htmlFor="pct">{t('discountPercent')}</Label>
+        <Input
+          id="pct"
+          inputMode="decimal"
+          value={percent}
+          onChange={(e) => setPercent(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="dr">{t('reason')}</Label>
+        <Select id="dr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
+          {reasons.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          ✕
+        </Button>
+        <Button
+          className="flex-1"
+          onClick={() =>
+            reason?.requires_manager_approval
+              ? setApproving(true)
+              : onConfirm(Math.round(Number(percent) * 100), reasonId)
+          }
+        >
+          {t('approve')}
+        </Button>
+      </div>
+    </DialogShell>
+  );
+}
+
+function CancelOrderDialog({
+  reasons,
+  managers,
+  needsApproval: needsMgr,
+  sb,
+  device,
+  t,
+  onClose,
+  onConfirm,
+}: {
+  reasons: ReasonCode[];
+  managers: StaffMember[];
+  needsApproval: boolean;
+  sb: ReturnType<typeof createClient>;
+  device: DeviceState;
+  t: ReturnType<typeof useTranslations<'pos'>>;
+  onClose: () => void;
+  onConfirm: (reasonId: string, approvalId?: string) => void;
+}) {
+  const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
+  const [approving, setApproving] = useState(false);
+
+  if (approving) {
+    return (
+      <DialogShell>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">{t('cancelOrder')}</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            ✕
           </Button>
         </div>
+        <ManagerApprovalStep
+          sb={sb}
+          device={device}
+          action="cancel_order"
+          managers={managers}
+          t={t}
+          onApproved={(approvalId) => onConfirm(reasonId, approvalId)}
+        />
+      </DialogShell>
+    );
+  }
+
+  return (
+    <DialogShell>
+      <h3 className="font-bold">{t('cancelOrder')}</h3>
+      <div>
+        <Label htmlFor="cr">{t('voidReason')}</Label>
+        <Select id="cr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
+          {reasons.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </Select>
       </div>
-    </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          ✕
+        </Button>
+        <Button
+          variant="danger"
+          className="flex-1"
+          onClick={() => (needsMgr ? setApproving(true) : onConfirm(reasonId))}
+        >
+          {t('cancelOrder')}
+        </Button>
+      </div>
+    </DialogShell>
+  );
+}
+
+function CustomerDialog({
+  t,
+  onClose,
+  onConfirm,
+}: {
+  t: ReturnType<typeof useTranslations<'pos'>>;
+  onClose: () => void;
+  onConfirm: (phone: string, name: string, consent: boolean) => void;
+}) {
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [consent, setConsent] = useState(false);
+  return (
+    <DialogShell>
+      <h3 className="font-bold">{t('addCustomer')}</h3>
+      <div>
+        <Label htmlFor="cphone">{t('customerPhone')}</Label>
+        <Input
+          id="cphone"
+          inputMode="tel"
+          placeholder="01XXXXXXXXX"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="cname">{t('customerName')}</Label>
+        <Input id="cname" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-blue"
+          checked={consent}
+          onChange={(e) => setConsent(e.target.checked)}
+        />
+        {t('marketingConsent')}
+      </label>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          ✕
+        </Button>
+        <Button
+          className="flex-1"
+          disabled={phone.trim() === ''}
+          onClick={() => onConfirm(phone, name, consent)}
+        >
+          {t('save')}
+        </Button>
+      </div>
+    </DialogShell>
+  );
+}
+
+function RefundDialog({
+  reasons,
+  managers,
+  maxAmountPoisha,
+  sb,
+  device,
+  locale,
+  t,
+  onClose,
+  onConfirm,
+}: {
+  reasons: ReasonCode[];
+  managers: StaffMember[];
+  maxAmountPoisha: number;
+  sb: ReturnType<typeof createClient>;
+  device: DeviceState;
+  locale: Locale;
+  t: ReturnType<typeof useTranslations<'pos'>>;
+  onClose: () => void;
+  onConfirm: (amountPoisha: number, reasonId: string, approvalId: string) => void;
+}) {
+  const [amount, setAmount] = useState(() => formatBDT(maxAmountPoisha, 'en', { symbol: false }));
+  const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
+  const [approving, setApproving] = useState(false);
+  const poisha = parseTakaToPoisha(amount);
+  const valid = poisha !== null && poisha > 0 && poisha <= maxAmountPoisha;
+
+  if (approving && poisha !== null) {
+    return (
+      <DialogShell>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">{t('refundOrder')}</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            ✕
+          </Button>
+        </div>
+        <ManagerApprovalStep
+          sb={sb}
+          device={device}
+          action="refund"
+          managers={managers}
+          t={t}
+          onApproved={(approvalId) => onConfirm(poisha, reasonId, approvalId)}
+        />
+      </DialogShell>
+    );
+  }
+
+  return (
+    <DialogShell>
+      <h3 className="font-bold">{t('refundOrder')}</h3>
+      <p className="text-sm text-secondary">
+        {t('maxRefund', { amount: formatBDT(maxAmountPoisha, locale) })}
+      </p>
+      <div>
+        <Label htmlFor="ramt">{t('amount')}</Label>
+        <Input
+          id="ramt"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="rr">{t('reason')}</Label>
+        <Select id="rr" value={reasonId} onChange={(e) => setReasonId(e.target.value)}>
+          {reasons.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={onClose}>
+          ✕
+        </Button>
+        <Button
+          variant="danger"
+          className="flex-1"
+          disabled={!valid}
+          onClick={() => setApproving(true)}
+        >
+          {t('refundOrder')}
+        </Button>
+      </div>
+    </DialogShell>
   );
 }
 
@@ -1326,6 +1817,11 @@ function ReceiptScreen({
   t,
   tc,
   onNewOrder,
+  refundReasons,
+  managers,
+  sb,
+  device,
+  onRefund,
 }: {
   order: OrderRow;
   lines: OrderLine[];
@@ -1336,16 +1832,28 @@ function ReceiptScreen({
   t: ReturnType<typeof useTranslations<'pos'>>;
   tc: ReturnType<typeof useTranslations<'common'>>;
   onNewOrder: () => void;
+  refundReasons: ReasonCode[];
+  managers: StaffMember[];
+  sb: ReturnType<typeof createClient>;
+  device: DeviceState;
+  onRefund: (amountPoisha: number, reasonId: string, approvalId: string) => void;
 }) {
+  const [refundOpen, setRefundOpen] = useState(false);
+  const canRefund = order.payment_status === 'paid' || order.payment_status === 'partially_paid';
   return (
     <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-4 text-center">
       <h2 className="text-2xl font-semibold text-success">{t('orderComplete')}</h2>
       <p className="text-secondary">{order.invoice_no}</p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <Button variant="secondary" onClick={() => window.print()}>
           {t('printReceipt')}
         </Button>
         <Button onClick={onNewOrder}>{t('newOrder')}</Button>
+        {canRefund ? (
+          <Button variant="danger" onClick={() => setRefundOpen(true)}>
+            {t('refundOrder')}
+          </Button>
+        ) : null}
       </div>
       <Receipt
         kind="receipt"
@@ -1357,6 +1865,22 @@ function ReceiptScreen({
         locale={locale}
       />
       <span className="sr-only">{tc('appName')}</span>
+      {refundOpen ? (
+        <RefundDialog
+          reasons={refundReasons}
+          managers={managers}
+          maxAmountPoisha={order.total_poisha}
+          sb={sb}
+          device={device}
+          locale={locale}
+          t={t}
+          onClose={() => setRefundOpen(false)}
+          onConfirm={(amount, reasonId, approvalId) => {
+            onRefund(amount, reasonId, approvalId);
+            setRefundOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

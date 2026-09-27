@@ -6,5 +6,9 @@ import dynamic from 'next/dynamic';
 const KdsApp = dynamic(() => import('@/modules/kds/KdsApp').then((m) => m.KdsApp), { ssr: false });
 
 export default function KdsPage() {
-  return <KdsApp />;
+  return (
+    <div data-surface="till" className="min-h-dvh">
+      <KdsApp />
+    </div>
+  );
 }

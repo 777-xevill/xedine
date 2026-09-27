@@ -69,3 +69,16 @@ export const getOrgContext = cache(async (slug: string): Promise<OrgContext> => 
     allOrgs: (orgs ?? []).map((o) => ({ name: o.name, slug: o.slug })),
   };
 });
+
+/** The branch a branch-level page works on: ?branch=, else the header's selection, else the first. */
+export function pickBranch(
+  ctx: OrgContext,
+  requested?: string,
+): { id: string; name: string } | null {
+  return (
+    ctx.branches.find((b) => b.id === requested) ??
+    ctx.branches.find((b) => b.id === ctx.selectedBranchId) ??
+    ctx.branches[0] ??
+    null
+  );
+}

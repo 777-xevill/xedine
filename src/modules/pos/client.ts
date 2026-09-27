@@ -32,6 +32,7 @@ export interface ReasonCode {
   code: string;
   label: string;
   label_bn: string | null;
+  requires_manager_approval: boolean;
 }
 export interface MenuModifier {
   id: string;
@@ -47,6 +48,12 @@ export interface ModifierGroup {
   max_select: number;
   modifiers: MenuModifier[];
 }
+export interface ItemVariant {
+  id: string;
+  name: string;
+  name_bn: string | null;
+  price_delta_poisha: number;
+}
 export interface MenuItem {
   id: string;
   category_id: string | null;
@@ -56,6 +63,7 @@ export interface MenuItem {
   branch_price_poisha: number | null;
   is_available: boolean;
   is_combo: boolean;
+  variants: ItemVariant[];
   modifier_groups: ModifierGroup[];
 }
 export interface MenuCategory {
@@ -78,6 +86,7 @@ export interface OrderRow {
   total_poisha: number;
   channel_id: string;
   table_id: string | null;
+  customer_id: string | null;
   placed_at: string;
 }
 
@@ -225,11 +234,11 @@ export async function fetchStations(
 export async function fetchReasonCodes(
   sb: SupabaseClient,
   orgId: string,
-  kind: 'void' | 'discount',
+  kind: 'void' | 'discount' | 'refund',
 ): Promise<ReasonCode[]> {
   const { data, error } = await sb
     .from('reason_codes')
-    .select('id, code, label, label_bn')
+    .select('id, code, label, label_bn, requires_manager_approval')
     .eq('org_id', orgId)
     .eq('kind', kind)
     .eq('is_active', true)
@@ -244,28 +253,41 @@ export async function fetchMenu(
   orgId: string,
   branchId: string,
 ): Promise<MenuCategory[]> {
-  const [{ data: categories, error: ce }, { data: items, error: ie }, { data: prices, error: pe }] =
-    await Promise.all([
-      sb
-        .from('menu_categories')
-        .select('id, name, name_bn, sort_order')
-        .eq('org_id', orgId)
-        .eq('is_active', true)
-        .order('sort_order'),
-      sb
-        .from('menu_items')
-        .select('id, category_id, name, name_bn, base_price_poisha, is_combo, is_active')
-        .eq('org_id', orgId)
-        .eq('is_active', true),
-      sb
-        .from('branch_item_prices')
-        .select('menu_item_id, variant_id, price_poisha, is_available')
-        .eq('org_id', orgId)
-        .eq('branch_id', branchId),
-    ]);
+  const [
+    { data: categories, error: ce },
+    { data: items, error: ie },
+    { data: prices, error: pe },
+    { data: variants, error: ve },
+  ] = await Promise.all([
+    sb
+      .from('menu_categories')
+      .select('id, name, name_bn, sort_order')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .order('sort_order'),
+    sb
+      .from('menu_items')
+      .select('id, category_id, name, name_bn, base_price_poisha, is_combo, is_active')
+      .eq('org_id', orgId)
+      .eq('is_active', true),
+    sb
+      .from('branch_item_prices')
+      // Only priced overrides (has_price_override) affect what the item costs; an availability-only
+      // row (86) with no price should never shadow the base price.
+      .select('menu_item_id, variant_id, price_poisha, is_available, has_price_override')
+      .eq('org_id', orgId)
+      .eq('branch_id', branchId),
+    sb
+      .from('item_variants')
+      .select('id, menu_item_id, name, name_bn, price_delta_poisha')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .order('sort_order'),
+  ]);
   if (ce) throw ce;
   if (ie) throw ie;
   if (pe) throw pe;
+  if (ve) throw ve;
 
   const itemIds = (items ?? []).map((i) => i.id as string);
   const { data: groupLinks, error: gle } =
@@ -314,13 +336,24 @@ export async function fetchMenu(
   if (ge) throw ge;
   if (me) throw me;
 
-  const priceByItem = new Map<string, { price: number; available: boolean }>();
+  const priceByItem = new Map<string, { price: number | null; available: boolean }>();
   for (const p of prices ?? []) {
-    if (p.variant_id) continue; // Phase 1 UI: base-item pricing only; variants use the item's own price map later.
+    if (p.variant_id) continue; // Variant-level overrides are read from item_variants below.
     priceByItem.set(p.menu_item_id as string, {
-      price: n(p.price_poisha),
+      price: p.has_price_override ? n(p.price_poisha) : null,
       available: p.is_available as boolean,
     });
+  }
+  const variantsByItem = new Map<string, ItemVariant[]>();
+  for (const v of variants ?? []) {
+    const arr = variantsByItem.get(v.menu_item_id as string) ?? [];
+    arr.push({
+      id: v.id as string,
+      name: v.name as string,
+      name_bn: v.name_bn as string | null,
+      price_delta_poisha: n(v.price_delta_poisha),
+    });
+    variantsByItem.set(v.menu_item_id as string, arr);
   }
   const modsByGroup = new Map<string, MenuModifier[]>();
   for (const m of mods ?? []) {
@@ -358,9 +391,10 @@ export async function fetchMenu(
       name: it.name as string,
       name_bn: it.name_bn as string | null,
       base_price_poisha: n(it.base_price_poisha),
-      branch_price_poisha: branchPrice ? branchPrice.price : null,
+      branch_price_poisha: branchPrice?.price ?? null,
       is_available: branchPrice ? branchPrice.available : true,
       is_combo: it.is_combo as boolean,
+      variants: variantsByItem.get(it.id as string) ?? [],
       modifier_groups: groupsByItem.get(it.id as string) ?? [],
     };
     const key = it.category_id as string | null;
@@ -380,8 +414,11 @@ export async function fetchMenu(
 export interface CartLine {
   menu_item_id: string;
   quantity: number;
+  variant_id?: string;
   modifier_ids?: string[];
   note?: string;
+  /** The price this device believes it is charging; the server logs a mismatch and charges its own price. */
+  client_unit_price_poisha?: number;
 }
 
 export async function submitOrder(
@@ -396,6 +433,8 @@ export async function submitOrder(
     channelId: string;
     tableId: string | null;
     lines: CartLine[];
+    /** Set only when this order was created offline, before the server assigned a real invoice number. */
+    provisionalReceiptNo?: string | null;
   },
 ): Promise<OrderRow> {
   const { data, error } = await sb
@@ -410,6 +449,35 @@ export async function submitOrder(
       p_table: args.tableId,
       p_guests: null,
       p_placed_at: null,
+      p_lines: args.lines,
+      p_provisional_receipt_no: args.provisionalReceiptNo ?? null,
+    })
+    .single();
+  if (error) throw error;
+  return data as OrderRow;
+}
+
+/** A second (or later) round on an order already placed. Idempotent per batch key. */
+export async function addOrderItems(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    batchKey: string;
+    deviceId: string;
+    staffId: string;
+    lines: CartLine[];
+  },
+): Promise<OrderRow> {
+  const { data, error } = await sb
+    .rpc('add_order_items', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_batch_key: args.batchKey,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
       p_lines: args.lines,
     })
     .single();
@@ -466,6 +534,33 @@ export async function recordPayment(
   return data as OrderRow;
 }
 
+export type ApprovalAction =
+  'void_after_kot' | 'refund' | 'discount' | 'close_shift' | 'cancel_order';
+
+export type ApprovalResult =
+  | { ok: true; approval_id: string }
+  | { ok: false; reason: string; attempts_left?: number; locked_until?: string };
+
+/** A manager (or the owner) types their PIN on this device for one action. Single-use, 2-minute expiry. */
+export async function approveAction(
+  sb: SupabaseClient,
+  deviceId: string,
+  approverStaffId: string,
+  pin: string,
+  action: ApprovalAction,
+): Promise<ApprovalResult> {
+  const { data, error } = await sb
+    .rpc('approve_action', {
+      p_device: deviceId,
+      p_approver_staff: approverStaffId,
+      p_pin: pin,
+      p_action: action,
+    })
+    .single();
+  if (error) throw error;
+  return data as ApprovalResult;
+}
+
 export async function applyOrderDiscount(
   sb: SupabaseClient,
   args: {
@@ -477,6 +572,7 @@ export async function applyOrderDiscount(
     note: string | null;
     deviceId: string;
     staffId: string;
+    approvalId?: string | null;
   },
 ): Promise<OrderRow> {
   const { data, error } = await sb
@@ -489,6 +585,7 @@ export async function applyOrderDiscount(
       p_reason_note: args.note,
       p_device: args.deviceId,
       p_staff: args.staffId,
+      p_approval: args.approvalId ?? null,
     })
     .single();
   if (error) throw error;
@@ -505,20 +602,116 @@ export async function voidOrderItem(
     note: string | null;
     deviceId: string;
     staffId: string;
-    approverStaffId?: string;
+    approvalId?: string | null;
   },
-): Promise<void> {
-  const { error } = await sb.rpc('void_order_item', {
-    p_org: args.orgId,
-    p_branch: args.branchId,
-    p_order_item: args.orderItemId,
-    p_reason_code: args.reasonCodeId,
-    p_reason_note: args.note,
-    p_device: args.deviceId,
-    p_staff: args.staffId,
-    p_approver_staff: args.approverStaffId ?? null,
-  });
+): Promise<OrderRow> {
+  const { data, error } = await sb
+    .rpc('void_order_item', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order_item: args.orderItemId,
+      p_reason_code: args.reasonCodeId,
+      p_reason_note: args.note,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+      p_approval: args.approvalId ?? null,
+    })
+    .single();
   if (error) throw error;
+  return data as OrderRow;
+}
+
+export async function cancelOrder(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    reasonCodeId: string;
+    note: string | null;
+    deviceId: string;
+    staffId: string;
+    approvalId?: string | null;
+  },
+): Promise<OrderRow> {
+  const { data, error } = await sb
+    .rpc('cancel_order', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_reason_code: args.reasonCodeId,
+      p_reason_note: args.note,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+      p_approval: args.approvalId ?? null,
+    })
+    .single();
+  if (error) throw error;
+  return data as OrderRow;
+}
+
+export async function refundOrder(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    method: string;
+    amountPoisha: number;
+    reasonCodeId: string;
+    note: string | null;
+    idempotencyKey: string;
+    deviceId: string;
+    staffId: string;
+    approvalId: string;
+  },
+): Promise<OrderRow> {
+  const { data, error } = await sb
+    .rpc('refund_order', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_method: args.method,
+      p_amount: args.amountPoisha,
+      p_reason_code: args.reasonCodeId,
+      p_reason_note: args.note,
+      p_idempotency_key: args.idempotencyKey,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+      p_approval: args.approvalId,
+    })
+    .single();
+  if (error) throw error;
+  return data as OrderRow;
+}
+
+export async function attachCustomer(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    phone: string;
+    name: string | null;
+    marketingConsent: boolean | null;
+    deviceId: string;
+    staffId: string;
+  },
+): Promise<string> {
+  const { data, error } = await sb
+    .rpc('attach_customer', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_phone: args.phone,
+      p_name: args.name,
+      p_marketing_consent: args.marketingConsent,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+    })
+    .single();
+  if (error) throw error;
+  return data as string;
 }
 
 export async function fetchOrderItems(
@@ -596,6 +789,7 @@ export async function closeShift(
   countedCash: number,
   deviceId: string,
   staffId: string,
+  approvalId?: string | null,
 ): Promise<ShiftRow> {
   const { data, error } = await sb
     .rpc('close_shift', {
@@ -605,10 +799,18 @@ export async function closeShift(
       p_counted_cash: countedCash,
       p_device: deviceId,
       p_staff: staffId,
+      p_approval: approvalId ?? null,
     })
     .single();
   if (error) throw error;
   return data as ShiftRow;
+}
+
+/** Postgres raises insufficient_privilege (42501) for RLS refusals and explicit role checks alike. */
+export function needsApproval(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && (error as { code?: string }).code === '42501'
+  );
 }
 
 export { createClient };

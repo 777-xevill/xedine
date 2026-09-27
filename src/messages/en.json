@@ -38,7 +38,10 @@
     "inviteWrongEmail": "This invitation was sent to a different email address. Sign in with the invited email.",
     "inviteAlreadyMember": "You already have this role in the organization.",
     "notFound": "We could not find that page.",
-    "priceBasisLocked": "The price basis cannot change after the first order."
+    "priceBasisLocked": "The price basis cannot change after the first order.",
+    "invalidPrice": "Enter a valid price.",
+    "pinInvalid": "PIN must be 4 to 6 digits.",
+    "nameTaken": "That name is already used here."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -52,6 +55,16 @@
     "inviteHint": "Use the email address this invitation was sent to.",
     "inviteTitle": "You have been invited",
     "inviteBody": "Accept the invitation to join this restaurant's workspace. You must be signed in with the invited email address."
+  },
+  "landing": {
+    "eyebrow": "Profit intelligence for restaurants",
+    "headline": "See where your money is leaking.",
+    "featureOfflineTitle": "Works on bad days",
+    "featureOfflineBody": "The till keeps taking orders through power cuts and dropped internet.",
+    "featureLeaksTitle": "Every leak, in BDT",
+    "featureLeaksBody": "Voids, discounts and commission drag, ranked by BDT impact — with proof.",
+    "featureLanguageTitle": "Bangla or English",
+    "featureLanguageBody": "Every screen works in Bangla and English, switchable any time."
   },
   "onboarding": {
     "title": "Set up your restaurant",
@@ -72,16 +85,32 @@
     "settings": "Settings",
     "organization": "Restaurant",
     "branch": "Branch",
+    "branchSetup": "Branch setup",
+    "staff": "Staff",
     "allBranches": "All branches",
-    "openApp": "Open"
+    "main": "Main",
+    "openPos": "POS",
+    "openKds": "Kitchen"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
+    "subtitle": "Here's what needs your attention.",
     "emptyTitle": "Your workspace is ready",
     "emptyBody": "Sales, profit and leak findings will appear here once orders start flowing in. Next: set up your menu and start taking orders.",
     "yourRole": "Your role",
     "yourBranches": "Your branches",
-    "everyBranch": "All branches"
+    "everyBranch": "All branches",
+    "quickActions": "Quick actions",
+    "actionPos": "Open the till",
+    "actionPosBody": "Take orders, send to kitchen, take payment.",
+    "actionKds": "Open the kitchen screen",
+    "actionKdsBody": "See tickets oldest-first, mark them ready.",
+    "actionMenu": "Manage the menu",
+    "actionMenuBody": "Categories, items, prices, add-ons.",
+    "actionStaff": "Manage staff",
+    "actionStaffBody": "Add staff, set PINs, manage devices.",
+    "actionBranch": "Branch setup",
+    "actionBranchBody": "Tables, kitchen stations, branch prices."
   },
   "team": {
     "title": "Team",
@@ -109,6 +138,67 @@
     "purchaser": "Purchaser",
     "accountant": "Accountant"
   },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "The people who sign in with a PIN at the till and kitchen screen.",
+    "branchPicker": "Branch",
+    "addTitle": "Add staff at {branch}",
+    "name": "Name",
+    "role": "Role",
+    "managerLimit": "Only the owner can add a manager or reset their PIN.",
+    "pin": "PIN (optional now)",
+    "pinHint": "4 to 6 digits. You can set this later from the list below.",
+    "add": "Add staff",
+    "added": "Staff member added.",
+    "listTitle": "This branch's staff",
+    "empty": "No staff yet",
+    "emptyBody": "Add your first cashier or kitchen staff member.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "newPin": "New PIN",
+    "newPinFor": "New PIN for {name}",
+    "setPin": "Set PIN",
+    "pinSaved": "PIN saved.",
+    "devicesTitle": "Devices",
+    "devicesBody": "Tablets and screens paired to this branch.",
+    "noDevices": "No devices paired yet.",
+    "deviceKind": {
+      "pos": "Till",
+      "kds": "Kitchen screen",
+      "qr": "Table ordering"
+    },
+    "deviceStatus": {
+      "pending": "Pending",
+      "active": "Active",
+      "revoked": "Revoked"
+    }
+  },
+  "branch": {
+    "title": "Branch setup",
+    "subtitle": "Tables, kitchen stations, and this branch's own prices.",
+    "branchPicker": "Branch",
+    "menuTitle": "Menu at {branch}",
+    "menuBody": "86 an item here, or give it a price that differs from the printed menu.",
+    "noItems": "No menu items yet.",
+    "onMenu": "On menu",
+    "eightySix": "86 (unavailable)",
+    "bringBack": "Bring back",
+    "overridden": "branch price",
+    "overridePrice": "Set branch price",
+    "useBasePrice": "Use base price",
+    "save": "Save",
+    "tablesTitle": "Tables",
+    "addTable": "Add table",
+    "tableName": "Table name",
+    "seats": "Seats",
+    "noTables": "No tables yet.",
+    "stationsTitle": "Kitchen stations",
+    "addStation": "Add station",
+    "stationName": "Station name",
+    "noStations": "No stations yet."
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "How your prices, taxes and business day work.",
@@ -122,7 +212,50 @@
     "cutoff": "Business day starts at",
     "cutoffHelp": "Late-night orders before this time belong to the previous business day.",
     "weekStart": "Week starts on",
-    "branchesTitle": "Branches"
+    "branchesTitle": "Branches",
+    "save": "Save",
+    "receiptTitle": "Receipt details",
+    "receiptSubtitle": "Printed on receipts and KOTs. Mushak 6.3 fields — TODO(verify) with your accountant.",
+    "legalName": "Legal / trade name",
+    "bin": "BIN",
+    "binHelp": "Business Identification Number — TODO(verify) with your accountant.",
+    "address": "Address",
+    "receiptPhone": "Phone (on receipt)",
+    "receiptFooter": "Receipt footer",
+    "channelsTitle": "Sales channels",
+    "addDefaults": "Add default channels & reasons",
+    "channelName": "Channel name",
+    "channelKind": "Kind",
+    "channelKindOptions": {
+      "dine_in": "Dine-in",
+      "takeaway": "Takeaway",
+      "own_delivery": "Own delivery",
+      "foodpanda": "foodpanda",
+      "pathao_food": "Pathao Food",
+      "custom": "Custom"
+    },
+    "addChannel": "Add channel",
+    "noChannels": "No channels yet.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "editCommission": "Edit commission",
+    "setCommission": "Set commission",
+    "commissionPct": "Commission (%)",
+    "fixedFee": "Fixed fee (৳)",
+    "packaging": "Packaging (৳)",
+    "reasonsTitle": "Reason codes",
+    "reasonKind": "Used for",
+    "reasonKindOptions": {
+      "void": "Voids",
+      "discount": "Discounts",
+      "refund": "Refunds"
+    },
+    "reasonLabel": "Label",
+    "requiresApproval": "Needs manager approval",
+    "addReason": "Add reason",
+    "noReasons": "No reason codes yet."
   },
   "weekdays": {
     "0": "Sunday",
@@ -134,11 +267,9 @@
     "6": "Saturday"
   },
   "surfaces": {
-    "posTitle": "Point of sale",
-    "kdsTitle": "Kitchen display",
     "qrTitle": "Table ordering",
+    "qrBody": "Optional QR table ordering arrives after Pilot gate A.",
     "adminTitle": "Platform admin",
-    "comingIn": "Coming in Phase {phase}.",
     "adminBody": "Platform administrators have no access to restaurant data by default."
   },
   "pos": {
@@ -197,7 +328,18 @@
     "addOns": "Add-ons",
     "unavailable": "Unavailable",
     "dineIn": "Dine-in",
-    "staffPicker": "Tap your name"
+    "staffPicker": "Tap your name",
+    "printKot": "Print KOT",
+    "kotLabel": "Kitchen order",
+    "cancelOrder": "Cancel order",
+    "addCustomer": "Add customer",
+    "customerAdded": "Customer added",
+    "customerName": "Name",
+    "customerPhone": "Phone",
+    "marketingConsent": "OK to send marketing messages",
+    "refundOrder": "Refund",
+    "maxRefund": "Up to {amount} can be refunded.",
+    "save": "Save"
   },
   "kds": {
     "allStations": "All stations",
@@ -220,6 +362,23 @@
     "categoryLabel": "Category",
     "uncategorised": "Uncategorised",
     "activate": "Activate",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "noItems": "No items yet.",
+    "variantsTitle": "Sizes / variants",
+    "addVariant": "Add variant",
+    "variantName": "Name",
+    "priceDelta": "Price change (৳)",
+    "addOnGroupsTitle": "Add-on groups",
+    "addOnGroupsBody": "Groups of add-ons (like Spice level or Extras) that items can offer at the till.",
+    "noGroupsYet": "No add-on groups yet.",
+    "groupName": "Group name",
+    "minSelect": "Min",
+    "maxSelect": "Max",
+    "addGroup": "Add group",
+    "modifierName": "Add-on name",
+    "modifierPrice": "Price (৳)",
+    "addModifier": "Add",
+    "saveGroups": "Save",
+    "selectRange": "pick {min}–{max}"
   }
 }

@@ -34,10 +34,69 @@
   --danger: #ff667a;
   --info: #4a9aff;
 
-  --radius-input: 0.5rem;
-  --radius-card: 0.75rem;
+  /*
+   * Glass surfaces (ADR 0015, the founder's UI_UX_design/ references). Glass is built from the brand
+   * tokens above at partial opacity — a frosted fill, a light rim, a soft sheen — never a new hue.
+   */
+  --glass-fill: color-mix(in srgb, var(--surface) 58%, transparent);
+  --glass-fill-strong: color-mix(in srgb, var(--surface-elevated) 84%, transparent);
+  --glass-fill-soft: color-mix(in srgb, var(--surface) 42%, transparent);
+  --glass-edge: color-mix(in srgb, var(--text) 9%, transparent);
+  --glass-edge-strong: color-mix(in srgb, var(--text) 17%, transparent);
+  --glass-sheen: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--text) 7%, transparent) 0%,
+    transparent 40%
+  );
+  --glass-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--text) 9%, transparent),
+    0 24px 60px -30px color-mix(in srgb, var(--bg) 90%, transparent);
+  --glass-blur: 20px;
+  --glow-action: 0 12px 32px -12px color-mix(in srgb, var(--accent-cyan) 55%, transparent);
+  --glow-danger: 0 0 0 1px color-mix(in srgb, var(--danger) 55%, transparent);
+
+  /* Inferred from the UI_UX_design/ references: soft, pill-heavy geometry. */
+  --radius-input: 0.875rem;
+  --radius-card: 1.5rem;
+  --radius-sheet: 1.75rem;
 
   color-scheme: dark;
+}
+
+/*
+ * The POS and KDS run on cheap tablets in bright dining rooms (BRAND.md "surface personalities"):
+ * denser fills, less blur, stronger rims — legibility beats translucency there.
+ */
+[data-surface='till'] {
+  --glass-fill: color-mix(in srgb, var(--surface) 88%, transparent);
+  --glass-fill-strong: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
+  --glass-fill-soft: color-mix(in srgb, var(--surface-elevated) 72%, transparent);
+  --glass-edge: color-mix(in srgb, var(--text) 13%, transparent);
+  --glass-blur: 10px;
+}
+
+/* People who ask for less transparency (or browsers without backdrop-filter) get solid surfaces. */
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  [data-surface='till'] {
+    --glass-fill: var(--surface);
+    --glass-fill-strong: var(--surface-elevated);
+    --glass-fill-soft: var(--surface);
+    --glass-blur: 0px;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  [data-surface='till'] {
+    --glass-fill: var(--surface);
+    --glass-fill-strong: var(--surface-elevated);
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --glass-edge: var(--border-strong);
+    --glass-edge-strong: var(--text-secondary);
+  }
 }
 
 @theme inline {
@@ -51,6 +110,8 @@
   --color-disabled: var(--text-disabled);
   --color-line: var(--border);
   --color-line-strong: var(--border-strong);
+  --color-edge: var(--glass-edge);
+  --color-edge-strong: var(--glass-edge-strong);
   --color-pink: var(--accent-pink);
   --color-purple: var(--accent-purple);
   --color-blue: var(--accent-blue);
@@ -62,6 +123,7 @@
   --color-on-action: var(--on-action);
   --radius-input: var(--radius-input);
   --radius-card: var(--radius-card);
+  --radius-sheet: var(--radius-sheet);
   --font-sans:
     system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Hind Siliguri', 'Nirmala UI',
     Roboto, sans-serif;
@@ -77,6 +139,7 @@ body {
 body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  scrollbar-color: var(--border-strong) transparent;
 }
 
 :focus-visible {
@@ -84,27 +147,141 @@ body {
   outline-offset: 2px;
 }
 
-.bg-action {
+::selection {
+  background: color-mix(in srgb, var(--accent-purple) 45%, transparent);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------------------------------- */
+/* Glass utilities                                                                              */
+/* ------------------------------------------------------------------------------------------- */
+@utility glass {
+  background-color: var(--glass-fill);
+  background-image: var(--glass-sheen);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+}
+
+@utility glass-strong {
+  background-color: var(--glass-fill-strong);
+  background-image: var(--glass-sheen);
+  border: 1px solid var(--glass-edge-strong);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+}
+
+/* Many-per-screen surfaces (menu tiles, list rows): translucent, no blur, so cheap GPUs keep up. */
+@utility glass-tile {
+  background-color: var(--glass-fill-soft);
+  border: 1px solid var(--glass-edge);
+}
+
+@utility text-brand {
+  background-image: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-action {
   background-image: var(--action-gradient);
 }
-.bg-brand {
+
+@utility bg-brand {
   background-image: var(--brand-gradient);
+}
+
+@utility glow-action {
+  box-shadow: var(--glow-action);
+}
+
+/* A hairline in the brand gradient: the wave accent from the guideline, used sparingly. */
+@utility rule-brand {
+  height: 1px;
+  background-image: var(--brand-gradient);
+  opacity: 0.55;
+}
+
+/*
+ * The field behind the glass: blurred brand-colour light, fixed to the viewport. Colour comes only
+ * from the four accent tokens; the POS/KDS variant is dimmer so figures stay the brightest thing.
+ */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42rem 30rem at 8% -6%,
+      color-mix(in srgb, var(--accent-purple) 30%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      36rem 28rem at 96% 4%,
+      color-mix(in srgb, var(--accent-blue) 24%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      40rem 30rem at 82% 108%,
+      color-mix(in srgb, var(--accent-pink) 18%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      30rem 24rem at -4% 92%,
+      color-mix(in srgb, var(--accent-cyan) 14%, transparent),
+      transparent 70%
+    ),
+    var(--bg);
+}
+[data-surface='till'] .aurora,
+.aurora[data-dim] {
+  opacity: 0.55;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-dot {
+    animation: none;
+  }
 }
 
 /*
  * Receipt / KOT print templates (ARCHITECTURE.md: "browser print with 58/80 mm CSS templates").
  * The brand does not apply here (BRAND.md) — pure black on white, no gradient, no colour.
+ * Named pages let each sheet pick its paper width.
  */
 .print-sheet {
   display: none;
 }
+@page receipt80 {
+  size: 80mm auto;
+  margin: 2mm;
+}
+@page receipt58 {
+  size: 58mm auto;
+  margin: 1.5mm;
+}
 @media print {
-  @page {
-    size: 80mm auto;
-    margin: 2mm;
-  }
   body * {
     visibility: hidden;
+  }
+  .aurora {
+    display: none;
   }
   .print-sheet,
   .print-sheet * {
@@ -114,15 +291,21 @@ body {
     display: block;
     position: absolute;
     inset: 0;
+    page: receipt80;
     width: 76mm;
-    background: #fff;
-    color: #000;
+    background: white;
+    color: black;
     font-family: 'Courier New', monospace;
     font-size: 11px;
     line-height: 1.35;
   }
+  .print-sheet[data-width='58'] {
+    page: receipt58;
+    width: 55mm;
+    font-size: 10px;
+  }
   .print-sheet .rule {
-    border-top: 1px dashed #000;
+    border-top: 1px dashed black;
     margin: 4px 0;
   }
   .print-sheet .row {
@@ -135,5 +318,11 @@ body {
   }
   .print-sheet .bold {
     font-weight: 700;
+  }
+  .print-sheet .big {
+    font-size: 1.35em;
+  }
+  .print-sheet .muted-note {
+    font-size: 0.9em;
   }
 }

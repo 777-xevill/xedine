@@ -84,13 +84,18 @@ export async function createOrganizationAction(
   if (branches.length === 0) return { error: 'invalidInput' };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc('create_organization', {
+  const { data: orgId, error } = await supabase.rpc('create_organization', {
     p_name: parsed.data.name,
     p_slug: parsed.data.slug,
     p_branches: branches,
     p_locale: await resolveLocale(),
   });
   if (error) return { error: mapDbError(error) };
+  // Day-one channels, reason codes and a kitchen station, so the till works immediately (ADR 0014).
+  const { error: defaultsError } = await supabase.rpc('ensure_org_defaults', {
+    p_org: orgId as string,
+  });
+  if (defaultsError) console.error('ensure_org_defaults', defaultsError.code);
   redirect(`/${parsed.data.slug}`);
 }
 

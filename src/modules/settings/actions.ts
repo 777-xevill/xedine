@@ -1,0 +1,187 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { createClient } from '@/lib/db/supabase-server';
+import { parseTakaToPoisha } from '@/lib/money';
+import { businessDate } from '@/lib/time/business-date';
+import { now } from '@/lib/time/clock';
+import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+
+/** Owner-only restaurant setup: receipt header, channels + commissions (money-gated), reason codes. */
+
+const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
+const base = z.object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG) });
+const text = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === '' ? null : v));
+const refresh = (orgSlug: string) => revalidatePath(`/${orgSlug}/settings`);
+
+export async function updateReceiptSettingsAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      legalName: text(160),
+      bin: text(40),
+      address: text(300),
+      phone: text(40),
+      footer: text(300),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase.from('org_receipt_settings').upsert({
+    org_id: parsed.data.orgId,
+    legal_name: parsed.data.legalName,
+    bin: parsed.data.bin,
+    address: parsed.data.address,
+    phone: parsed.data.phone,
+    footer: parsed.data.footer,
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+const CHANNEL_KINDS = [
+  'dine_in',
+  'takeaway',
+  'own_delivery',
+  'foodpanda',
+  'pathao_food',
+  'custom',
+] as const;
+
+export async function createChannelAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ name: z.string().trim().min(1).max(60), kind: z.enum(CHANNEL_KINDS) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('channels')
+    .insert({ org_id: parsed.data.orgId, name: parsed.data.name, kind: parsed.data.kind });
+  if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+export async function toggleChannelActiveAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgSlug: z.string().regex(SLUG), id: z.uuid(), active: z.enum(['true', 'false']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('channels')
+    .update({ is_active: parsed.data.active !== 'true' })
+    .eq('id', parsed.data.id);
+  if (error) console.error('channel toggle', error.code);
+  refresh(parsed.data.orgSlug);
+}
+
+const percentToBps = (pct: number) => Math.round(pct * 100);
+
+/** Commission terms from today (money-gated table, ADR 0007). A new row per change keeps history. */
+export async function setChannelCommissionAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      channelId: z.uuid(),
+      commissionPct: z.coerce.number().min(0).max(100),
+      fixedFee: z.string().max(20),
+      packaging: z.string().max(20),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const money = (v: string) => (v.trim() === '' ? 0 : parseTakaToPoisha(v));
+  const fixedFee = money(parsed.data.fixedFee);
+  const packaging = money(parsed.data.packaging);
+  if (fixedFee === null || fixedFee < 0 || packaging === null || packaging < 0) {
+    return { error: 'invalidPrice' };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from('channel_commissions').upsert(
+    {
+      org_id: parsed.data.orgId,
+      channel_id: parsed.data.channelId,
+      commission_bps: percentToBps(parsed.data.commissionPct),
+      fixed_fee_poisha: fixedFee,
+      packaging_poisha: packaging,
+      // Asia/Dhaka calendar date (cutoff 0): commission terms change at midnight, not at 04:00.
+      effective_from: businessDate(now(), 0),
+    },
+    { onConflict: 'org_id,channel_id,effective_from' },
+  );
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+const REASON_KINDS = ['void', 'discount', 'refund'] as const;
+
+export async function createReasonCodeAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      kind: z.enum(REASON_KINDS),
+      label: z.string().trim().min(1).max(80),
+      labelBn: text(80),
+      requiresApproval: z.enum(['on']).optional(),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const code = parsed.data.label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 40);
+  const supabase = await createClient();
+  const { error } = await supabase.from('reason_codes').insert({
+    org_id: parsed.data.orgId,
+    kind: parsed.data.kind,
+    code: code || `reason_${crypto.randomUUID().slice(0, 8)}`,
+    label: parsed.data.label,
+    label_bn: parsed.data.labelBn,
+    requires_manager_approval: parsed.data.requiresApproval === 'on',
+  });
+  if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+export async function toggleReasonActiveAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgSlug: z.string().regex(SLUG), id: z.uuid(), active: z.enum(['true', 'false']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('reason_codes')
+    .update({ is_active: parsed.data.active !== 'true' })
+    .eq('id', parsed.data.id);
+  if (error) console.error('reason toggle', error.code);
+  refresh(parsed.data.orgSlug);
+}
+
+export async function ensureDefaultsAction(formData: FormData): Promise<void> {
+  const parsed = base.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('ensure_org_defaults', { p_org: parsed.data.orgId });
+  if (error) console.error('defaults', error.code);
+  refresh(parsed.data.orgSlug);
+  revalidatePath(`/${parsed.data.orgSlug}/branch`);
+}

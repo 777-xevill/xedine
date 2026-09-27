@@ -185,6 +185,18 @@ const submit = (
     { commit: true },
   ).then((r) => r[0]!);
 
+/** A manager types their PIN on the till for one action; returns the single-use approval. */
+const approve = (ctx: Ctx, staffId: string, pin: string, action: string) =>
+  asUser(
+    ctx.manager,
+    (s) =>
+      s.q<{ r: { ok: boolean; approval_id?: string; reason?: string } }>(
+        'select public.approve_action($1, $2, $3, $4) as r',
+        [ctx.deviceId, staffId, pin, action],
+      ),
+    { commit: true },
+  ).then((rows) => rows[0]!.r);
+
 describe('submit_order', () => {
   let ctx: Ctx;
   beforeAll(async () => {
@@ -517,42 +529,39 @@ describe('voids: PIN-gated after KOT (CLAUDE.md #5)', () => {
       'select id from public.order_items where order_id = $1',
       [order.id],
     );
+    const voidWith = (approval: string | null) =>
+      asUser(ctx.manager, (s) =>
+        s.attempt('select public.void_order_item($1,$2,$3,$4,$5,$6,$7,$8)', [
+          ctx.org.id,
+          ctx.branchId,
+          line!.id,
+          ctx.reasonVoid,
+          'kitchen delay',
+          ctx.deviceId,
+          ctx.staffId,
+          approval,
+        ]),
+      );
 
-    const noPin = await asUser(ctx.manager, (s) =>
-      s.attempt('select public.void_order_item($1,$2,$3,$4,$5,$6,$7)', [
-        ctx.org.id,
-        ctx.branchId,
-        line!.id,
-        ctx.reasonVoid,
-        null,
-        ctx.deviceId,
-        ctx.staffId,
-      ]),
-    );
+    const noPin = await voidWith(null);
     expect(noPin.ok).toBe(false);
     if (!noPin.ok) expect(noPin.code).toBe('42501');
+    // The manager's own 12-hour staff session is open on this till (setup) — that alone must not count.
+    const notAnApproval = await voidWith(ctx.managerStaffId);
+    expect(notAnApproval.ok).toBe(false);
     const [stillActive] = await admin<{ status: string }>(
       'select status from public.order_items where id = $1',
       [line!.id],
     );
     expect(stillActive!.status).toBe('active');
 
-    // The cashier themself cannot "approve" their own void.
-    const selfApprove = await asUser(ctx.manager, (s) =>
-      s.attempt('select public.void_order_item($1,$2,$3,$4,$5,$6,$7,$8)', [
-        ctx.org.id,
-        ctx.branchId,
-        line!.id,
-        ctx.reasonVoid,
-        null,
-        ctx.deviceId,
-        ctx.staffId,
-        ctx.staffId,
-      ]),
-    );
-    expect(selfApprove.ok).toBe(false);
+    // The cashier themself cannot approve: approvals come only from manager-level staff.
+    const selfApprove = await approve(ctx, ctx.staffId, '1234', 'void_after_kot');
+    expect(selfApprove).toMatchObject({ ok: false, reason: 'not_a_manager' });
 
-    await asUser(
+    const approval = await approve(ctx, ctx.managerStaffId, '9999', 'void_after_kot');
+    expect(approval.ok).toBe(true);
+    const done = await asUser(
       ctx.manager,
       (s) =>
         s.q('select public.void_order_item($1,$2,$3,$4,$5,$6,$7,$8)', [
@@ -563,10 +572,11 @@ describe('voids: PIN-gated after KOT (CLAUDE.md #5)', () => {
           'kitchen delay',
           ctx.deviceId,
           ctx.staffId,
-          ctx.managerStaffId,
+          approval.approval_id,
         ]),
       { commit: true },
     );
+    expect(done).toHaveLength(1);
     const [voided] = await admin<{ status: string }>(
       'select status from public.order_items where id = $1',
       [line!.id],
@@ -577,9 +587,14 @@ describe('voids: PIN-gated after KOT (CLAUDE.md #5)', () => {
       [line!.id],
     );
     expect(v).toEqual({ after_kot: true, approved_by_staff_id: ctx.managerStaffId });
+    const audit = await admin<{ action: string; actor_staff_id: string }>(
+      `select action, actor_staff_id from public.audit_log where org_id = $1 and entity_id = $2 and action = 'order.void'`,
+      [ctx.org.id, line!.id],
+    );
+    expect(audit).toEqual([{ action: 'order.void', actor_staff_id: ctx.staffId }]);
   });
 
-  it('a cashier from another branch cannot approve (fails the staff-session check)', async () => {
+  it('a stranger staff id cannot approve (not on this branch, no PIN)', async () => {
     const order = await submit(ctx, [{ menu_item_id: ctx.itemA.id, quantity: 1 }]);
     await asUser(
       ctx.manager,
@@ -797,7 +812,8 @@ describe('payments: split-capable, idempotent, assigns an invoice number once', 
       { commit: true },
     );
     expect(p2!.payment_status).toBe('paid');
-    expect(p2!.order_status).toBe('completed');
+    // Order status is separate from payment status: paying never closes a kitchen ticket.
+    expect(p2!.order_status).toBe('open');
     expect(p2!.invoice_no).toMatch(/^INV-\d{6}-\d{6}$/);
 
     const paidSum = await admin<{ s: number }>(

@@ -34,7 +34,7 @@ export function Receipt({
     <div className="print-sheet">
       <p className="center bold">{orgName}</p>
       <p className="center">{branchName}</p>
-      {kind === 'kot' ? <p className="center bold">KOT</p> : null}
+      {kind === 'kot' ? <p className="center bold big">{t('kotLabel')}</p> : null}
       {tableName ? <p className="center">{tableName}</p> : null}
       <p className="center">{formatDhakaDateTime(new Date(order.placed_at), locale)}</p>
       <div className="rule" />

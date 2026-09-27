@@ -8,6 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: t('appName'), template: `%s · ${t('appName')}` },
     description: t('tagline'),
+    applicationName: t('appName'),
   };
 }
 
@@ -23,6 +24,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className="dark">
       <body>
+        <div aria-hidden className="aurora" />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

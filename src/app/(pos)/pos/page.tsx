@@ -7,5 +7,10 @@ import dynamic from 'next/dynamic';
 const PosApp = dynamic(() => import('@/modules/pos/PosApp').then((m) => m.PosApp), { ssr: false });
 
 export default function PosPage() {
-  return <PosApp />;
+  // BRAND.md: the till needs denser, higher-contrast glass than the dashboard (bright rooms, cheap tablets).
+  return (
+    <div data-surface="till" className="min-h-dvh">
+      <PosApp />
+    </div>
+  );
 }

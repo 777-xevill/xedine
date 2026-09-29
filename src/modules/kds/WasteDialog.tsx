@@ -154,7 +154,7 @@ export function WasteDialog({
                 onClick={() => setReason(r.id)}
                 className={`min-h-11 rounded-full border px-4 text-sm font-medium transition ${
                   reason === r.id
-                    ? 'border-cyan bg-surface-elevated text-foreground'
+                    ? 'border-purple bg-surface-elevated text-foreground'
                     : 'glass-tile text-secondary'
                 }`}
               >

@@ -31,7 +31,7 @@ export function Segmented<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        'glass inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1',
+        'inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-elevated p-1',
         className,
       )}
     >
@@ -49,7 +49,7 @@ export function Segmented<T extends string>({
               'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition',
               size === 'lg' ? 'min-h-12' : 'min-h-9',
               active
-                ? 'bg-surface-elevated text-foreground shadow-[inset_0_1px_0_0_var(--glass-edge-strong)]'
+                ? 'bg-surface text-foreground shadow-soft'
                 : 'text-secondary hover:text-foreground',
             )}
           >
@@ -91,13 +91,13 @@ export function Switch({
       onClick={() => onChange(!checked)}
       className={cn(
         'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition disabled:opacity-45',
-        checked ? 'border-cyan/60 bg-action' : 'glass-tile',
+        checked ? 'border-transparent bg-action' : 'border-line-strong bg-surface-elevated',
       )}
     >
       <span
         aria-hidden
         className={cn(
-          'inline-block size-5 rounded-full bg-foreground shadow transition-transform',
+          'inline-block size-5 rounded-full bg-surface shadow-soft transition-transform',
           checked ? 'translate-x-6' : 'translate-x-1',
         )}
       />

@@ -2,18 +2,20 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-/** Pill buttons (UI_UX_design/). min-h-11 = 44px, the smallest comfortable touch target on a tablet. */
+/** Pill buttons. min-h-11 = 44px, the smallest comfortable touch target on a tablet. */
 export const buttonVariants = cva(
   'inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold whitespace-nowrap transition duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45',
   {
     variants: {
       variant: {
-        // Dark text on the blue→cyan gradient passes AA; white on the pink/purple end does not (BRAND.md).
+        // White on purple → deep blue passes AA at body size (ADR 0024, BRAND.md).
         primary: 'bg-action text-on-action glow-action hover:brightness-110',
-        secondary: 'glass text-foreground hover:border-edge-strong hover:bg-surface-elevated/70',
-        ghost: 'text-secondary hover:bg-surface-elevated/60 hover:text-foreground',
-        danger: 'glass border-danger/50 text-danger hover:border-danger hover:bg-danger/10',
-        subtle: 'glass-tile text-foreground hover:border-edge-strong',
+        secondary:
+          'border border-line bg-surface text-foreground shadow-soft hover:border-line-strong hover:bg-surface-elevated',
+        ghost: 'text-secondary hover:bg-surface-elevated hover:text-foreground',
+        danger:
+          'border border-danger/30 bg-surface text-danger hover:border-danger/60 hover:bg-danger/5',
+        subtle: 'bg-surface-elevated text-foreground hover:bg-line',
       },
       size: {
         default: '',

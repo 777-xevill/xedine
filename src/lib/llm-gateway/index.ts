@@ -11,6 +11,17 @@ import {
   type Transport,
   type UsageStore,
 } from './core';
+import {
+  chatBody,
+  completionBody,
+  parsedJson,
+  responseFormat,
+  stopReason,
+  toContentBlocks,
+  toOpenAiMessages,
+  usage,
+  type OpenAiCompletion,
+} from './openai';
 
 export {
   AiError,
@@ -21,18 +32,50 @@ export {
 } from './core';
 
 /**
- * Production wiring. Models come from the environment, never code (ARCHITECTURE.md "AI layer"):
- * AI_MODEL_ASSISTANT (default claude-sonnet-5) and AI_MODEL_FAST (default claude-haiku-4-5). Confirm both
- * against GET /v1/models when the key is added. Rates are USD per million tokens (ADR 0008).
+ * Production wiring. The provider and models come from the environment, never code
+ * (ARCHITECTURE.md "AI layer", ADR 0024):
+ *
+ * - AI_PROVIDER = openai | anthropic. Default: OpenAI when OPENAI_API_KEY is set, else Anthropic
+ *   when ANTHROPIC_API_KEY is set. With neither, AI is off and the deterministic router answers.
+ * - AI_MODEL_ASSISTANT / AI_MODEL_FAST override the per-provider defaults below.
+ * - AI_MODEL_RATES (JSON, USD per million tokens) adds prices for a model not listed here, e.g.
+ *   {"gpt-5.1":{"input":1.25,"output":10}}. A model with no price is refused, so spend is never
+ *   uncounted (ADR 0008).
  */
-const MODELS = {
-  assistant: process.env.AI_MODEL_ASSISTANT ?? 'claude-sonnet-5',
-  fast: process.env.AI_MODEL_FAST ?? 'claude-haiku-4-5',
+type Provider = 'openai' | 'anthropic';
+
+function provider(): Provider | null {
+  const chosen = process.env.AI_PROVIDER;
+  if (chosen === 'openai' || chosen === 'anthropic') return chosen;
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
+  return null;
+}
+
+// TODO(verify): model ids and list prices against each provider's pricing page when the key is added.
+const DEFAULT_MODELS: Record<Provider, { assistant: string; fast: string }> = {
+  openai: { assistant: 'gpt-5-mini', fast: 'gpt-5-nano' },
+  anthropic: { assistant: 'claude-sonnet-5', fast: 'claude-haiku-4-5' },
 };
 const RATES: Record<string, { input: number; output: number }> = {
+  'gpt-5': { input: 1.25, output: 10 },
+  'gpt-5-mini': { input: 0.25, output: 2 },
+  'gpt-5-nano': { input: 0.05, output: 0.4 },
   'claude-sonnet-5': { input: 2, output: 10 },
   'claude-haiku-4-5': { input: 1, output: 5 },
 };
+
+function extraRates(): Record<string, { input: number; output: number }> {
+  try {
+    return JSON.parse(process.env.AI_MODEL_RATES ?? '{}') as Record<
+      string,
+      { input: number; output: number }
+    >;
+  } catch {
+    return {};
+  }
+}
+
 /** Per org per day; default $1. Plans set their own caps in Phase 10. */
 const DAILY_CAP_USD_MICROS = Number(process.env.AI_DAILY_CAP_USD_MICROS ?? 1_000_000);
 
@@ -46,9 +89,18 @@ export function aiErrorKey(e: unknown): string {
 }
 
 export function aiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  const p = provider();
+  if (p === 'openai') return Boolean(process.env.OPENAI_API_KEY);
+  if (p === 'anthropic') return Boolean(process.env.ANTHROPIC_API_KEY);
+  return false;
 }
 
+/** The provider's display name, for Settings → Assistant. */
+export function aiProvider(): string {
+  return provider() === 'anthropic' ? 'Anthropic' : 'OpenAI';
+}
+
+// --- Anthropic ------------------------------------------------------------------------------------
 const anthropicTransport: Transport = async (req) => {
   const client = new Anthropic();
   const message = await client.messages.parse({
@@ -96,6 +148,60 @@ const anthropicChatTransport: ChatTransport = async (req) => {
   };
 };
 
+// --- OpenAI (Chat Completions over fetch: no SDK dependency) ---------------------------------------
+async function openAiComplete(body: Record<string, unknown>): Promise<OpenAiCompletion> {
+  const url = `${process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1'}/chat/completions`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch {
+    // Network failure or timeout: an AiError, so callers fall back (the assistant to its router).
+    throw new AiError('invalid_output', 'the AI provider could not be reached');
+  }
+  if (!res.ok) {
+    // Never echo the provider's error body to users; the status is enough for the logs.
+    console.error('openai', res.status);
+    throw new AiError('invalid_output', `the AI provider returned ${res.status}`);
+  }
+  const json = (await res.json()) as OpenAiCompletion;
+  if (!json.choices?.[0]) throw new AiError('invalid_output', 'the AI provider returned no answer');
+  return json;
+}
+
+const reasoningEffort = () => process.env.AI_REASONING_EFFORT ?? 'low';
+
+const openAiTransport: Transport = async (req) => {
+  const completion = await openAiComplete({
+    ...completionBody(req, reasoningEffort()),
+    messages: toOpenAiMessages([req.system], [{ role: 'user', content: req.content }]),
+    response_format: responseFormat(req.schema),
+  });
+  const choice = completion.choices[0]!;
+  return {
+    parsed: parsedJson(choice) as never,
+    stopReason: stopReason(choice),
+    usage: usage(completion.usage),
+  };
+};
+
+const openAiChatTransport: ChatTransport = async (req) => {
+  const completion = await openAiComplete(chatBody(req, reasoningEffort()));
+  const choice = completion.choices[0]!;
+  return {
+    content: toContentBlocks(choice),
+    stopReason: stopReason(choice),
+    usage: usage(completion.usage),
+  };
+};
+
 // ai_usage is written only by the gateway (service role), always for an explicit org (CLAUDE.md #2).
 const supabaseUsageStore: UsageStore = {
   async planAllowsAi(orgId) {
@@ -132,14 +238,19 @@ const supabaseUsageStore: UsageStore = {
 };
 
 export function gateway() {
-  if (!aiConfigured()) throw new AiError('not_configured', 'ANTHROPIC_API_KEY is not set');
+  const p = provider();
+  if (!p || !aiConfigured()) throw new AiError('not_configured', 'no AI provider key is set');
+  const defaults = DEFAULT_MODELS[p];
   return createGateway({
-    transport: anthropicTransport,
-    chatTransport: anthropicChatTransport,
+    transport: p === 'openai' ? openAiTransport : anthropicTransport,
+    chatTransport: p === 'openai' ? openAiChatTransport : anthropicChatTransport,
     store: supabaseUsageStore,
     config: {
-      models: MODELS,
-      rates: RATES,
+      models: {
+        assistant: process.env.AI_MODEL_ASSISTANT ?? defaults.assistant,
+        fast: process.env.AI_MODEL_FAST ?? defaults.fast,
+      },
+      rates: { ...RATES, ...extraRates() },
       dailyCapUsdMicros: DAILY_CAP_USD_MICROS,
       today: () => businessDate(now()),
     },

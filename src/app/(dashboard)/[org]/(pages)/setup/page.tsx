@@ -12,6 +12,7 @@ import { formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { importMenuAction, readMenuPhotoAction } from '@/modules/menu/import-actions';
 import { getOrgContext } from '@/modules/tenancy/context';
+import { SettingsNav } from '@/components/settings-nav';
 
 const HREF: Record<string, string> = {
   profile: 'settings',
@@ -61,6 +62,7 @@ export default async function SetupPage({ params }: { params: Promise<{ org: str
 
   return (
     <>
+      <SettingsNav ctx={ctx} current="setup" />
       <PageTitle
         title={t('title')}
         subtitle={t('subtitle', {

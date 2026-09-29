@@ -227,7 +227,7 @@ export function CartScreen({
               onClick={() => setCategory(c.id)}
               className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium transition ${
                 category === c.id
-                  ? 'border-cyan bg-surface-elevated text-foreground'
+                  ? 'border-purple bg-surface-elevated text-foreground'
                   : 'glass-tile text-secondary'
               }`}
             >
@@ -251,7 +251,7 @@ export function CartScreen({
                       key={item.id}
                       type="button"
                       onClick={() => tap(item)}
-                      className="glass-tile flex min-h-20 flex-col items-start justify-between rounded-input p-3 text-start transition hover:border-cyan active:scale-[0.98]"
+                      className="glass-tile flex min-h-20 flex-col items-start justify-between rounded-input p-3 text-start transition hover:border-purple active:scale-[0.98]"
                     >
                       <span className="text-sm leading-snug font-semibold">
                         {itemLabel(item, locale)}
@@ -831,7 +831,7 @@ export function OrdersScreen({
             <button
               type="button"
               onClick={() => onOpen(o)}
-              className="glass-tile flex w-full flex-wrap items-center justify-between gap-2 rounded-input p-3 text-start transition hover:border-cyan"
+              className="glass-tile flex w-full flex-wrap items-center justify-between gap-2 rounded-input p-3 text-start transition hover:border-purple"
             >
               <div>
                 <p className="font-semibold">

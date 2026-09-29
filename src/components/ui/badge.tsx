@@ -5,12 +5,12 @@ import { cn } from '@/lib/utils';
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
 
 const TONES: Record<BadgeTone, string> = {
-  neutral: 'glass-tile text-secondary',
-  success: 'border border-success/40 bg-success/10 text-success',
-  warning: 'border border-warning/40 bg-warning/10 text-warning',
-  danger: 'border border-danger/45 bg-danger/10 text-danger',
-  info: 'border border-info/40 bg-info/10 text-info',
-  accent: 'border border-purple/60 bg-purple/15 text-foreground',
+  neutral: 'border border-line bg-surface-elevated text-secondary',
+  success: 'border border-success/20 bg-success/8 text-success',
+  warning: 'border border-warning/25 bg-warning/10 text-warning',
+  danger: 'border border-danger/20 bg-danger/8 text-danger',
+  info: 'border border-info/20 bg-info/8 text-info',
+  accent: 'border border-purple/25 bg-purple/8 text-purple',
 };
 
 /** Pill badge. Status badges pass an icon so colour is never the only signal (BRAND.md). */

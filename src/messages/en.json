@@ -107,7 +107,6 @@
     "submit": "Create restaurant"
   },
   "nav": {
-    "overview": "Overview",
     "team": "Team",
     "settings": "Settings",
     "organization": "Restaurant",
@@ -116,14 +115,11 @@
     "staff": "Staff",
     "allBranches": "All branches",
     "main": "Main",
-    "openPos": "POS",
-    "openKds": "Kitchen",
     "sales": "Sales",
-    "leaks": "Leaks",
+    "leaks": "Money leaks",
     "costs": "Costs",
     "recipes": "Recipes",
     "menuProfit": "Menu profit",
-    "assistant": "Assistant",
     "stock": "Stock",
     "purchases": "Purchases",
     "plan": "Plan",
@@ -136,27 +132,46 @@
     "staffRecords": "Staff records",
     "setup": "Setup",
     "billing": "Billing",
-    "growth": "Growth"
+    "growth": "Growth",
+    "home": "Home",
+    "menu": "Menu",
+    "chat": "Chat",
+    "newChat": "New chat",
+    "recentChats": "Recent chats",
+    "noChats": "Your chats will appear here.",
+    "more": "More",
+    "apps": "Screens",
+    "pos": "POS till",
+    "kds": "Kitchen screen",
+    "general": "General",
+    "features": "Features",
+    "assistantRules": "Assistant",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "everyBranch": "All branches"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
     "subtitle": "Here's what needs your attention.",
     "emptyTitle": "Your workspace is ready",
     "emptyBody": "Sales, profit and leak findings will appear here once orders start flowing in. Next: set up your menu and start taking orders.",
-    "yourRole": "Your role",
-    "yourBranches": "Your branches",
-    "everyBranch": "All branches",
-    "quickActions": "Quick actions",
     "actionPos": "Open the till",
     "actionPosBody": "Take orders, send to kitchen, take payment.",
-    "actionKds": "Open the kitchen screen",
-    "actionKdsBody": "See tickets oldest-first, mark them ready.",
     "actionMenu": "Manage the menu",
     "actionMenuBody": "Categories, items, prices, add-ons.",
-    "actionStaff": "Manage staff",
-    "actionStaffBody": "Add staff, set PINs, manage devices.",
-    "actionBranch": "Branch setup",
-    "actionBranchBody": "Tables, kitchen stations, branch prices."
+    "howDoing": "How you’re doing today",
+    "estimatedProfit": "Est. profit",
+    "needsAttention": "Needs your attention",
+    "attentionCount": "{count, plural, one {# thing needs attention} other {# things need attention}}",
+    "allClear": "All clear",
+    "allClearBody": "Nothing urgent right now. We’ll flag low stock and money leaks here as soon as they show up.",
+    "stockRunningOut": "{count, plural, one {# item is running out} other {# items are running out}}",
+    "stockWatch": "Stock watch",
+    "stockEmpty": "Stock levels appear after your first stock count.",
+    "stockHealthy": "Every ingredient has at least a week of cover.",
+    "stockMore": "{count} more running low",
+    "actionSetup": "Finish setup",
+    "actionSetupBody": "A short checklist: menu, recipes, staff and costs."
   },
   "team": {
     "title": "Team",
@@ -296,7 +311,8 @@
     "reasonKindOptions": {
       "void": "Voids",
       "discount": "Discounts",
-      "refund": "Refunds"
+      "refund": "Refunds",
+      "waste": "Waste"
     },
     "reasonLabel": "Label",
     "requiresApproval": "Needs manager approval",
@@ -917,7 +933,7 @@
     "save": "Save",
     "draftTitle": "Draft recipes with AI",
     "draftBody": "Paste your menu or add a photo. You get draft recipes to correct; nothing is used until the owner approves it.",
-    "aiNotConfigured": "AI drafting needs an Anthropic API key on the server. Until then, write recipes by hand in the Recipes tab.",
+    "aiNotConfigured": "AI drafting needs an AI key (OpenAI) on the server. Until then, write recipes by hand in the Recipes tab.",
     "menuText": "Menu",
     "menuPlaceholder": "Kacchi Biryani (Mutton) — ৳420\nBeef Tehari — ৳230",
     "menuPhoto": "Or a photo of the menu",
@@ -1075,8 +1091,6 @@
   "assistantPage": {
     "title": "Assistant",
     "subtitle": "Ask about your sales and leaks in Bangla, Banglish or English. Every number comes from your data.",
-    "newChat": "New conversation",
-    "history": "Earlier conversations",
     "rulesTitle": "What I should know",
     "rulesBody": "Your goals and rules. The assistant follows them in every answer.",
     "kinds": {
@@ -1089,15 +1103,32 @@
     "ruleText": "Goal or rule",
     "rulePlaceholder": "e.g. Keep food cost under 35%",
     "addRule": "Add",
-    "routerMode": "AI is not switched on yet: I answer common questions (item counts, sales, top items) directly from your data.",
-    "emptyTitle": "Ask me anything about your restaurant",
-    "emptyBody": "For example: how many mutton kacchi did we sell in the last 2 hours?",
+    "routerMode": "AI is off: common questions (sales, top items, stock, leaks) are answered straight from your data.",
     "aiWritten": "AI written",
     "verified": "Numbers checked",
     "askLabel": "Your question",
-    "askPlaceholder": "Ask about sales, items, leaks…",
-    "examples": "Try: ajke koto ta kacchi bikri hoyeche?",
-    "ask": "Ask"
+    "askPlaceholder": "Ask about sales, stock or money leaks…",
+    "ask": "Send",
+    "hello": "Hi {name}",
+    "greeting": "What would you like to know today?",
+    "homePlaceholder": "Ask Xedine anything about your restaurant…",
+    "footnote": "Every number comes from your own data and is checked before you see it.",
+    "suggestionsLabel": "Try asking",
+    "suggestions": {
+      "sales": "How are sales today?",
+      "stock": "Which items are running low?",
+      "top": "What are my best-selling items this week?",
+      "leak": "Explain my biggest money leak"
+    },
+    "thinking": "Xedine is thinking…",
+    "sources": "Source: {list}",
+    "settingsTitle": "Assistant",
+    "settingsSubtitle": "How the AI assistant answers, and the goals and rules it follows.",
+    "aiStatusTitle": "AI answers",
+    "aiOn": "On",
+    "aiOff": "Off",
+    "aiOnBody": "Answers are written by {provider} from your data, and every number is checked against it.",
+    "noRules": "No goals or rules yet."
   },
   "briefs": {
     "morningSales": "Yesterday: net sales {net} from {orders} orders (same day last week: {lastWeek}).",
@@ -1556,7 +1587,7 @@
       "wrong_order": "Wrong order",
       "praise": "Praise"
     },
-    "aiNotConfigured": "AI drafts are off until the Anthropic key is added. You can still write replies yourself.",
+    "aiNotConfigured": "AI drafts are off until an AI key is added. You can still write replies yourself.",
     "none": "No reviews yet",
     "starsOf": "{stars} stars",
     "anonymous": "Anonymous",
@@ -1871,7 +1902,7 @@
     "readPhoto": "Read the photo",
     "photoRead": "Done — check the draft above before importing.",
     "photoHint": "The AI copies what is printed; a price it cannot read is left empty for you to fill in.",
-    "aiOff": "Photo reading is off until the Anthropic key is added. Paste the menu instead.",
+    "aiOff": "Photo reading is off until an AI key is added. Paste the menu instead.",
     "stepTitle": "{n}. {title}"
   },
   "billing": {
@@ -1937,7 +1968,7 @@
   "growth": {
     "title": "Growth",
     "subtitle": "Content ideas grounded in your own sales data — you write or approve everything before it goes anywhere.",
-    "aiNotConfigured": "AI drafts are off until the Anthropic key is added. You can still write ideas yourself.",
+    "aiNotConfigured": "AI drafts are off until an AI key is added. You can still write ideas yourself.",
     "pushItemTitle": "Push a strong seller",
     "pushItemFact": "{item} sold {qty} times in the last 28 days.",
     "fixDaypartTitle": "Fix a quiet time",
@@ -1968,5 +1999,45 @@
     "drafted": "Idea drafted below — check it before approving.",
     "approved": "Approved.",
     "noAutoPost": "Xedine never posts anything by itself. Copy an approved caption to the platform yourself, then mark it posted."
+  },
+  "features": {
+    "title": "Features",
+    "subtitle": "Keep Xedine simple: switch on only what your restaurant uses. Switched-on features appear in the sidebar.",
+    "adds": "Adds: {list}",
+    "footnote": "Switching a feature off only hides it. Nothing is deleted, and staff whose job it is (like a purchaser) still see it.",
+    "items": {
+      "recipes": {
+        "title": "Recipes & food cost",
+        "body": "Recipes for each dish, so Xedine knows your real food cost and profit per item."
+      },
+      "purchasing": {
+        "title": "Purchases & suppliers",
+        "body": "Record bazar and supplier bills, from a photo or by voice."
+      },
+      "planning": {
+        "title": "Forecast & shopping list",
+        "body": "What tomorrow will sell, what to cook and what to buy."
+      },
+      "customers": {
+        "title": "Customers & marketing",
+        "body": "Regulars, win-back offers and content ideas."
+      },
+      "reviews": {
+        "title": "Reviews",
+        "body": "Collect feedback and draft replies to reviews."
+      },
+      "branches": {
+        "title": "Branch comparison",
+        "body": "Compare branches side by side and against similar restaurants."
+      },
+      "compliance": {
+        "title": "Licences & VAT",
+        "body": "Licence renewal reminders and the monthly VAT summary."
+      },
+      "staffRecords": {
+        "title": "Staff records",
+        "body": "Attendance, advances and salary notes."
+      }
+    }
   }
 }

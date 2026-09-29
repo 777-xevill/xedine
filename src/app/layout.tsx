@@ -13,8 +13,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#05060a',
-  colorScheme: 'dark',
+  themeColor: '#f7f8fc',
+  colorScheme: 'light',
   width: 'device-width',
   initialScale: 1,
 };
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   return (
-    <html lang={locale} className="dark">
+    <html lang={locale}>
       <body>
         <div aria-hidden className="aurora" />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>

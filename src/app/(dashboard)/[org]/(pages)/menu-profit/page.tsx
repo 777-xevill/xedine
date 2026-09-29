@@ -136,7 +136,7 @@ export default async function MenuProfitPage({
       {total?.coverage_bps != null && Number(total.coverage_bps) < 9000 ? (
         <Hint className="-mt-4 mb-6">
           {t('coverageHint')}{' '}
-          <Link href={`/${ctx.org.slug}/recipes`} className="text-cyan hover:underline">
+          <Link href={`/${ctx.org.slug}/recipes`} className="text-purple hover:underline">
             {t('addRecipes')}
           </Link>
         </Hint>

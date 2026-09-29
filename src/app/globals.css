@@ -2,32 +2,29 @@
 @import 'tw-animate-css';
 
 /*
- * Brand tokens (docs/BRAND.md, ADR 0009). Components never hardcode a colour: everything reads these
- * variables, so a rebrand is a token swap. Dark is the only theme.
+ * Brand tokens (docs/BRAND.md, ADR 0009, ADR 0024). Components never hardcode a colour: everything
+ * reads these variables, so a rebrand is a token swap.
+ *
+ * 1. The guideline palette, exactly as specified (Brand_assets/brand_guidline.png). Raw values only:
+ *    components use the semantic tokens in step 2, never these.
  */
 :root {
-  --bg: #05060a;
-  --bg-secondary: #080b16;
-  --surface: #0d1120;
-  --surface-elevated: #12182a;
-
-  --text: #f7f8fc;
-  --text-secondary: #a7adbf;
-  /* Fails AA for body text (3.8:1): large labels only, never a figure. */
-  --text-muted: #687087;
-  --text-disabled: #41485a;
-
-  --border: #1b2133;
-  --border-strong: #2a3248;
+  --palette-night: #05060a;
+  --palette-night-2: #080b16;
+  --palette-navy: #0d1120;
+  --palette-navy-2: #12182a;
+  --palette-mist: #f7f8fc;
+  --palette-slate-300: #a7adbf;
+  --palette-slate-500: #687087;
+  --palette-slate-700: #41485a;
+  --palette-line-dark: #1b2133;
+  --palette-line-dark-2: #2a3248;
 
   --accent-pink: #e84cff;
   --accent-purple: #7c3cff;
   --accent-blue: #267bff;
   --accent-cyan: #17d9ff;
   --brand-gradient: linear-gradient(135deg, #e84cff, #7c3cff, #267bff, #17d9ff);
-  /* Blue → cyan with dark text passes AA (5.6:1 and 12.5:1); white on the pink/purple end does not. */
-  --action-gradient: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
-  --on-action: var(--bg);
 
   --success: #3dda9a;
   --warning: #ffbe55;
@@ -35,44 +32,93 @@
   --info: #4a9aff;
 
   /*
-   * Glass surfaces (ADR 0015, the founder's UI_UX_design/ references). Glass is built from the brand
-   * tokens above at partial opacity — a frosted fill, a light rim, a soft sheen — never a new hue.
+   * 2. The light theme (ADR 0024: the founder asked for a clean, light UI with no black background).
+   *    Built from the guideline: the guideline's primary-text mist is the page, its navy card colour is
+   *    the text, its slate greys are secondary text. Neutrals in between are mixes of those, not new hues.
    */
-  --glass-fill: color-mix(in srgb, var(--surface) 58%, transparent);
-  --glass-fill-strong: color-mix(in srgb, var(--surface-elevated) 84%, transparent);
-  --glass-fill-soft: color-mix(in srgb, var(--surface) 42%, transparent);
-  --glass-edge: color-mix(in srgb, var(--text) 9%, transparent);
-  --glass-edge-strong: color-mix(in srgb, var(--text) 17%, transparent);
+  --white: #ffffff;
+  --bg: var(--palette-mist);
+  --bg-secondary: color-mix(in srgb, var(--palette-mist) 88%, var(--palette-slate-300));
+  --surface: var(--white);
+  /* Hover / selected fills and nested panels: a whisper of slate on white. */
+  --surface-elevated: color-mix(in srgb, var(--white) 86%, var(--palette-slate-300));
+
+  --text: var(--palette-navy);
+  /* 9.3:1 on white. */
+  --text-secondary: var(--palette-slate-700);
+  /* 4.9:1 on white, 4.6:1 on --bg: passes AA on light, unlike on the dark theme. */
+  --text-muted: var(--palette-slate-500);
+  --text-disabled: var(--palette-slate-300);
+
+  --border: color-mix(in srgb, var(--palette-slate-300) 32%, white);
+  --border-strong: color-mix(in srgb, var(--palette-slate-300) 58%, white);
+
+  /*
+   * Status and accent colours are bright on purpose (made for a dark page); on white they fail AA as
+   * text. "Ink" variants mix each with the guideline navy so labels read (all ≥ 4.5:1 on white). The
+   * bright originals stay for dots, bars and fills.
+   */
+  --success-ink: color-mix(in srgb, var(--success) 50%, var(--palette-navy));
+  --warning-ink: color-mix(in srgb, var(--warning) 52%, var(--palette-navy));
+  --danger-ink: color-mix(in srgb, var(--danger) 62%, var(--palette-navy));
+  --info-ink: color-mix(in srgb, var(--info) 70%, var(--palette-navy));
+  --cyan-ink: color-mix(in srgb, var(--accent-cyan) 55%, var(--palette-navy));
+  --blue-ink: color-mix(in srgb, var(--accent-blue) 82%, var(--palette-navy));
+  --pink-ink: color-mix(in srgb, var(--accent-pink) 72%, var(--palette-navy));
+
+  /*
+   * Primary action: purple into a deepened blue, white text — 5.6:1 at the purple end and 6.4:1 at the
+   * blue end, so it passes AA at body size. The full four-colour gradient stays for the brand mark and
+   * decorative glow, never behind body text.
+   */
+  --action-gradient: linear-gradient(
+    135deg,
+    var(--accent-purple),
+    color-mix(in srgb, var(--accent-blue) 70%, var(--palette-navy))
+  );
+  --on-action: var(--white);
+
+  /* Light glass: frosted white over a faint brand glow, a hairline rim and a soft navy shadow. */
+  --glass-fill: color-mix(in srgb, var(--white) 82%, transparent);
+  --glass-fill-strong: color-mix(in srgb, var(--white) 94%, transparent);
+  --glass-fill-soft: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
+  --glass-edge: var(--border);
+  --glass-edge-strong: var(--border-strong);
   --glass-sheen: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--text) 7%, transparent) 0%,
+    color-mix(in srgb, white 60%, transparent),
     transparent 40%
   );
-  --glass-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, var(--text) 9%, transparent),
-    0 24px 60px -30px color-mix(in srgb, var(--bg) 90%, transparent);
-  --glass-blur: 20px;
-  --glow-action: 0 12px 32px -12px color-mix(in srgb, var(--accent-cyan) 55%, transparent);
+  --shadow-soft:
+    0 1px 2px color-mix(in srgb, var(--palette-navy) 5%, transparent),
+    0 8px 24px -14px color-mix(in srgb, var(--palette-navy) 16%, transparent);
+  --shadow-lift:
+    0 1px 2px color-mix(in srgb, var(--palette-navy) 6%, transparent),
+    0 22px 48px -22px color-mix(in srgb, var(--palette-navy) 28%, transparent);
+  --glass-shadow: var(--shadow-soft);
+  --glass-blur: 18px;
+  --glow-action: 0 10px 24px -12px color-mix(in srgb, var(--accent-purple) 60%, transparent);
   --glow-danger: 0 0 0 1px color-mix(in srgb, var(--danger) 55%, transparent);
 
-  /* Inferred from the UI_UX_design/ references: soft, pill-heavy geometry. */
-  --radius-input: 0.875rem;
-  --radius-card: 1.5rem;
-  --radius-sheet: 1.75rem;
+  /* Soft, rounded geometry (ADR 0015's references), a touch tighter for a calmer SaaS feel. */
+  --radius-input: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-sheet: 1.5rem;
 
-  color-scheme: dark;
+  --sidebar-width: 16.5rem;
+
+  color-scheme: light;
 }
 
 /*
  * The POS and KDS run on cheap tablets in bright dining rooms (BRAND.md "surface personalities"):
- * denser fills, less blur, stronger rims — legibility beats translucency there.
+ * solid fills and no blur — legibility beats translucency there.
  */
 [data-surface='till'] {
-  --glass-fill: color-mix(in srgb, var(--surface) 88%, transparent);
-  --glass-fill-strong: color-mix(in srgb, var(--surface-elevated) 94%, transparent);
-  --glass-fill-soft: color-mix(in srgb, var(--surface-elevated) 72%, transparent);
-  --glass-edge: color-mix(in srgb, var(--text) 13%, transparent);
-  --glass-blur: 10px;
+  --glass-fill: var(--surface);
+  --glass-fill-strong: var(--surface);
+  --glass-fill-soft: var(--surface-elevated);
+  --glass-blur: 0px;
 }
 
 /* People who ask for less transparency (or browsers without backdrop-filter) get solid surfaces. */
@@ -80,8 +126,8 @@
   :root,
   [data-surface='till'] {
     --glass-fill: var(--surface);
-    --glass-fill-strong: var(--surface-elevated);
-    --glass-fill-soft: var(--surface);
+    --glass-fill-strong: var(--surface);
+    --glass-fill-soft: var(--surface-elevated);
     --glass-blur: 0px;
   }
 }
@@ -89,13 +135,14 @@
   :root,
   [data-surface='till'] {
     --glass-fill: var(--surface);
-    --glass-fill-strong: var(--surface-elevated);
+    --glass-fill-strong: var(--surface);
   }
 }
 @media (prefers-contrast: more) {
   :root {
-    --glass-edge: var(--border-strong);
-    --glass-edge-strong: var(--text-secondary);
+    --glass-edge: var(--palette-slate-500);
+    --glass-edge-strong: var(--palette-slate-700);
+    --border: var(--palette-slate-300);
   }
 }
 
@@ -112,14 +159,20 @@
   --color-line-strong: var(--border-strong);
   --color-edge: var(--glass-edge);
   --color-edge-strong: var(--glass-edge-strong);
-  --color-pink: var(--accent-pink);
+  /* Utility colours resolve to the readable ink on light; raw brights stay reachable via *-bright. */
+  --color-pink: var(--pink-ink);
   --color-purple: var(--accent-purple);
-  --color-blue: var(--accent-blue);
-  --color-cyan: var(--accent-cyan);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-info: var(--info);
+  --color-blue: var(--blue-ink);
+  --color-cyan: var(--cyan-ink);
+  --color-success: var(--success-ink);
+  --color-warning: var(--warning-ink);
+  --color-danger: var(--danger-ink);
+  --color-info: var(--info-ink);
+  --color-success-bright: var(--success);
+  --color-warning-bright: var(--warning);
+  --color-danger-bright: var(--danger);
+  --color-cyan-bright: var(--accent-cyan);
+  --color-pink-bright: var(--accent-pink);
   --color-on-action: var(--on-action);
   --radius-input: var(--radius-input);
   --radius-card: var(--radius-card);
@@ -142,41 +195,50 @@ body {
   scrollbar-color: var(--border-strong) transparent;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent-cyan);
-  outline-offset: 2px;
+/* In the base layer so a component's own focus style (a utility) can replace it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent-purple);
+    outline-offset: 2px;
+  }
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent-purple) 45%, transparent);
+  background: color-mix(in srgb, var(--accent-purple) 22%, transparent);
   color: var(--text);
 }
 
 /* ------------------------------------------------------------------------------------------- */
-/* Glass utilities                                                                              */
+/* Surface utilities                                                                            */
 /* ------------------------------------------------------------------------------------------- */
 @utility glass {
   background-color: var(--glass-fill);
-  background-image: var(--glass-sheen);
   border: 1px solid var(--glass-edge);
   box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
 }
 
 @utility glass-strong {
   background-color: var(--glass-fill-strong);
-  background-image: var(--glass-sheen);
-  border: 1px solid var(--glass-edge-strong);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--shadow-lift);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
 }
 
-/* Many-per-screen surfaces (menu tiles, list rows): translucent, no blur, so cheap GPUs keep up. */
+/* Many-per-screen surfaces (menu tiles, list rows): a flat tint, no blur, so cheap GPUs keep up. */
 @utility glass-tile {
   background-color: var(--glass-fill-soft);
   border: 1px solid var(--glass-edge);
+}
+
+@utility shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+
+@utility shadow-lift {
+  box-shadow: var(--shadow-lift);
 }
 
 @utility text-brand {
@@ -206,8 +268,8 @@ body {
 }
 
 /*
- * The field behind the glass: blurred brand-colour light, fixed to the viewport. Colour comes only
- * from the four accent tokens; the POS/KDS variant is dimmer so figures stay the brightest thing.
+ * A barely-there wash of brand light behind the page, so white cards have something to sit on.
+ * Kept very faint: the page must read as light and clean (ADR 0024).
  */
 .aurora {
   position: fixed;
@@ -216,30 +278,179 @@ body {
   pointer-events: none;
   background:
     radial-gradient(
-      42rem 30rem at 8% -6%,
-      color-mix(in srgb, var(--accent-purple) 30%, transparent),
+      40rem 26rem at 100% -8%,
+      color-mix(in srgb, var(--accent-purple) 7%, transparent),
       transparent 70%
     ),
     radial-gradient(
-      36rem 28rem at 96% 4%,
-      color-mix(in srgb, var(--accent-blue) 24%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      40rem 30rem at 82% 108%,
-      color-mix(in srgb, var(--accent-pink) 18%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      30rem 24rem at -4% 92%,
-      color-mix(in srgb, var(--accent-cyan) 14%, transparent),
+      34rem 24rem at -6% 104%,
+      color-mix(in srgb, var(--accent-cyan) 7%, transparent),
       transparent 70%
     ),
     var(--bg);
 }
 [data-surface='till'] .aurora,
 .aurora[data-dim] {
-  opacity: 0.55;
+  opacity: 0.5;
+}
+
+/*
+ * The assistant composer (the founder's reference video): a soft brand-gradient halo behind a white
+ * card. The halo is decoration around an input, never behind a figure.
+ */
+.composer-halo {
+  position: relative;
+  isolation: isolate;
+  padding: 1px;
+}
+/* The ring: the gradient fills the box and the white field inside covers all but 1px of it. */
+.composer-halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--brand-gradient);
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+/* The glow: the same gradient, blurred, spilling out below the card. */
+.composer-halo::after {
+  content: '';
+  position: absolute;
+  inset: 30% 8% -22%;
+  z-index: -2;
+  border-radius: inherit;
+  background: var(--brand-gradient);
+  filter: blur(34px);
+  opacity: 0.14;
+  transition: opacity 0.2s ease;
+}
+.composer-halo:focus-within::before {
+  opacity: 1;
+}
+.composer-halo:focus-within::after {
+  opacity: 0.24;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .composer-halo::after {
+    display: none;
+  }
+}
+
+/*
+ * New-chat intro (the founder's reference video): purple, pink and blue light swirling behind the
+ * greeting for ~4.5 s, then slowly settling into the light page. It sits behind the content and
+ * ignores the pointer, so the composer works the whole time. Never dark: the base is a lavender tint.
+ */
+.chat-intro {
+  position: fixed;
+  inset: 0;
+  /* Above the body's own background, below the chat content (which sits at z-index 1). */
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent-purple) 14%, var(--bg));
+  animation: chat-intro-fade 4.5s ease-in-out forwards;
+}
+.chat-intro::before,
+.chat-intro::after,
+.chat-intro > span {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(56px);
+  will-change: transform;
+}
+.chat-intro > span {
+  left: 50%;
+  top: 50%;
+  width: min(62rem, 95vw);
+  height: 22rem;
+  margin: -11rem 0 0 calc(min(62rem, 95vw) / -2);
+  background: linear-gradient(
+    100deg,
+    transparent 5%,
+    color-mix(in srgb, var(--accent-purple) 85%, transparent) 35%,
+    color-mix(in srgb, var(--accent-blue) 70%, transparent) 60%,
+    transparent 95%
+  );
+  animation: chat-intro-swirl 4.5s ease-in-out forwards;
+}
+.chat-intro::before {
+  right: 8%;
+  top: 12%;
+  width: 26rem;
+  height: 20rem;
+  background: color-mix(in srgb, var(--accent-pink) 70%, transparent);
+  animation: chat-intro-drift 4.5s ease-in-out forwards;
+}
+.chat-intro::after {
+  left: 6%;
+  bottom: 8%;
+  width: 28rem;
+  height: 18rem;
+  background: color-mix(in srgb, var(--accent-blue) 55%, transparent);
+  animation: chat-intro-drift 4.5s ease-in-out reverse forwards;
+}
+/* In fast, hold, then a long gentle fade (about 2.8 s of the 4.5 s). */
+@keyframes chat-intro-fade {
+  0% {
+    opacity: 0;
+  }
+  9%,
+  38% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes chat-intro-swirl {
+  from {
+    transform: rotate(-24deg) scale(0.8);
+  }
+  to {
+    transform: rotate(18deg) scale(1.12);
+  }
+}
+@keyframes chat-intro-drift {
+  from {
+    transform: translate(-6%, 8%) scale(0.9);
+  }
+  to {
+    transform: translate(10%, -8%) scale(1.1);
+  }
+}
+/* The workspace only: the sidebar stays as it is. */
+@media (min-width: 64rem) {
+  .chat-intro {
+    inset-inline-start: var(--sidebar-width);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-intro {
+    display: none;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise-in {
+  animation: rise-in 0.28s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in {
+    animation: none;
+  }
 }
 
 @keyframes pulse-dot {

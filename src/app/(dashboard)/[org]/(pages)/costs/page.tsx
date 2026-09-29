@@ -23,6 +23,7 @@ import {
   setSalaryAction,
 } from '@/modules/costs/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
+import { SettingsNav } from '@/components/settings-nav';
 
 const FIXED_KINDS = ['rent', 'utilities', 'gas', 'fuel', 'internet', 'other'] as const;
 
@@ -74,6 +75,7 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
 
   return (
     <>
+      <SettingsNav ctx={ctx} current="costs" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
       <Card className="mb-6">

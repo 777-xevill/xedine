@@ -195,7 +195,7 @@ export function ReasonCodeForm({ orgId, orgSlug }: { orgId: string; orgSlug: str
         <Input id="reason-label" name="label" required maxLength={80} className="w-48" />
       </div>
       <label className="mb-0.5 flex min-h-11 items-center gap-2 text-sm">
-        <input type="checkbox" name="requiresApproval" className="size-4 accent-blue" />
+        <input type="checkbox" name="requiresApproval" className="size-4 accent-purple" />
         {t('requiresApproval')}
       </label>
       <Button type="submit">{t('addReason')}</Button>

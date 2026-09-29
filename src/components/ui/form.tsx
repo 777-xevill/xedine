@@ -12,7 +12,7 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 }
 
 const field =
-  'w-full min-h-11 rounded-input border border-edge bg-background-secondary/70 px-3.5 text-foreground shadow-[inset_0_1px_0_0_var(--glass-edge)] transition placeholder:text-muted hover:border-edge-strong focus:border-cyan focus:outline-none focus:ring-2 focus:ring-cyan/25 disabled:opacity-50';
+  'w-full min-h-11 rounded-input border border-line bg-surface px-3.5 text-foreground transition placeholder:text-muted hover:border-line-strong focus:border-purple focus:outline-none focus:ring-4 focus:ring-purple/10 disabled:opacity-50';
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(field, className)} {...props} />;
@@ -40,10 +40,10 @@ const TONE_ICON = {
 } as const;
 
 const TONE_CLASS: Record<Tone, string> = {
-  danger: 'border-danger/45 text-danger',
-  success: 'border-success/45 text-success',
-  info: 'border-info/45 text-info',
-  warning: 'border-warning/45 text-warning',
+  danger: 'border-danger/25 bg-danger/5 text-danger',
+  success: 'border-success/25 bg-success/5 text-success',
+  info: 'border-info/25 bg-info/5 text-info',
+  warning: 'border-warning/30 bg-warning/5 text-warning',
 };
 
 /** Status text is never colour alone (BRAND.md): every alert carries an icon and a text label. */
@@ -58,7 +58,7 @@ export function Alert({
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
       className={cn(
-        'glass flex items-start gap-2.5 rounded-input px-3.5 py-3 text-sm',
+        'flex items-start gap-2.5 rounded-input border px-3.5 py-3 text-sm',
         TONE_CLASS[tone],
         className,
       )}
@@ -71,11 +71,16 @@ export function Alert({
 }
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('glass rounded-card p-6', className)} {...props} />;
+  return (
+    <div
+      className={cn('rounded-card border border-line bg-surface p-6 shadow-soft', className)}
+      {...props}
+    />
+  );
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('mb-4 text-lg font-bold tracking-tight', className)} {...props} />;
+  return <h2 className={cn('mb-4 text-base font-semibold tracking-tight', className)} {...props} />;
 }
 
 export function PageTitle({
@@ -88,10 +93,10 @@ export function PageTitle({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-[-0.02em] sm:text-4xl">{title}</h1>
-        {subtitle ? <p className="mt-2 max-w-2xl text-secondary">{subtitle}</p> : null}
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">{title}</h1>
+        {subtitle ? <p className="mt-1.5 max-w-2xl text-secondary">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>
@@ -111,9 +116,9 @@ export function Stat({
   testId?: string;
 }) {
   return (
-    <div className={cn('glass-tile rounded-input px-4 py-3', className)}>
-      <p className="text-xs font-medium tracking-wide text-secondary uppercase">{label}</p>
-      <p className="mt-1 text-xl font-bold text-foreground tabular-nums" data-testid={testId}>
+    <div className={cn('rounded-input bg-surface-elevated px-4 py-3', className)}>
+      <p className="text-xs font-medium text-secondary">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-foreground tabular-nums" data-testid={testId}>
         {value}
       </p>
     </div>
@@ -130,7 +135,12 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn('glass-tile rounded-card px-6 py-10 text-center', className)}>
+    <div
+      className={cn(
+        'rounded-card border border-dashed border-line-strong bg-surface/70 px-6 py-10 text-center',
+        className,
+      )}
+    >
       <p className="font-semibold">{title}</p>
       {body ? <p className="mx-auto mt-1 max-w-md text-sm text-secondary">{body}</p> : null}
     </div>

@@ -329,7 +329,7 @@ export default async function LeaksPage({
                     </ul>
                     <Link
                       href={`/${ctx.org.slug}/leaks/${f.id}`}
-                      className="mt-2 inline-block text-sm font-semibold text-cyan hover:underline"
+                      className="mt-2 inline-block text-sm font-semibold text-purple hover:underline"
                     >
                       {t('seeEvidence')}
                     </Link>

@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-/** ADR 0009: brand colour lives in CSS variables only. A hex literal in a component defeats "rebrand = token swap". */
+/** ADR 0009 / 0024: brand colour lives in CSS variables only. A hex literal in a component defeats "rebrand = token swap". */
 const SRC = join(import.meta.dirname, '..');
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((name) => {
@@ -14,17 +14,18 @@ describe('brand tokens (ADR 0009, docs/BRAND.md)', () => {
   const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8').toLowerCase();
 
   it('defines every colour from the brand guideline as a CSS variable', () => {
+    // ADR 0024: the guideline palette is kept verbatim as raw tokens; the light theme maps onto it.
     const guideline: Record<string, string> = {
-      '--bg': '#05060a',
-      '--bg-secondary': '#080b16',
-      '--surface': '#0d1120',
-      '--surface-elevated': '#12182a',
-      '--text': '#f7f8fc',
-      '--text-secondary': '#a7adbf',
-      '--text-muted': '#687087',
-      '--text-disabled': '#41485a',
-      '--border': '#1b2133',
-      '--border-strong': '#2a3248',
+      '--palette-night': '#05060a',
+      '--palette-night-2': '#080b16',
+      '--palette-navy': '#0d1120',
+      '--palette-navy-2': '#12182a',
+      '--palette-mist': '#f7f8fc',
+      '--palette-slate-300': '#a7adbf',
+      '--palette-slate-500': '#687087',
+      '--palette-slate-700': '#41485a',
+      '--palette-line-dark': '#1b2133',
+      '--palette-line-dark-2': '#2a3248',
       '--accent-pink': '#e84cff',
       '--accent-purple': '#7c3cff',
       '--accent-blue': '#267bff',
@@ -36,6 +37,17 @@ describe('brand tokens (ADR 0009, docs/BRAND.md)', () => {
     for (const [name, hex] of Object.entries(guideline)) {
       expect(css, `${name} should be ${hex}`).toContain(`${name}: ${hex};`);
     }
+  });
+
+  it('the light theme is built on the guideline palette (ADR 0024)', () => {
+    for (const mapping of [
+      '--bg: var(--palette-mist);',
+      '--text: var(--palette-navy);',
+      '--text-secondary: var(--palette-slate-700);',
+      '--text-muted: var(--palette-slate-500);',
+      'color-scheme: light;',
+    ])
+      expect(css).toContain(mapping);
   });
 
   it('no component, page or module hardcodes a colour', () => {

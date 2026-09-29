@@ -35,7 +35,7 @@ export function DialogShell({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-30 flex items-end justify-center bg-background/70 p-3 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-30 flex items-end justify-center bg-foreground/25 p-3 backdrop-blur-[2px] sm:items-center"
     >
       <div
         className={`glass-strong max-h-[90dvh] w-full space-y-3 overflow-y-auto rounded-sheet p-5 ${wide ? 'max-w-lg' : 'max-w-sm'}`}
@@ -334,7 +334,7 @@ export function CustomerDialog({
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
-          className="size-4 accent-blue"
+          className="size-4 accent-purple"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
         />
@@ -444,7 +444,7 @@ export function MethodPicker({
             onClick={() => onChange(m)}
             className={`min-h-11 rounded-full border px-2 text-sm font-medium transition ${
               value === m
-                ? 'border-cyan bg-surface-elevated text-foreground'
+                ? 'border-purple bg-surface-elevated text-foreground'
                 : 'glass-tile text-secondary'
             }`}
           >
@@ -535,7 +535,7 @@ export function ItemPicker({
                 onClick={() => setVariantId(v.id)}
                 className={`min-h-11 rounded-full border px-4 text-sm font-medium transition ${
                   variantId === v.id
-                    ? 'border-cyan bg-surface-elevated text-foreground'
+                    ? 'border-purple bg-surface-elevated text-foreground'
                     : 'glass-tile text-secondary'
                 }`}
               >
@@ -570,7 +570,7 @@ export function ItemPicker({
                     onClick={() => toggle(g.id, m.id, g.max_select)}
                     className={`min-h-11 rounded-full border px-4 text-sm transition ${
                       on
-                        ? 'border-cyan bg-surface-elevated text-foreground'
+                        ? 'border-purple bg-surface-elevated text-foreground'
                         : 'glass-tile text-secondary'
                     }`}
                   >

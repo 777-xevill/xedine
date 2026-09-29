@@ -20,6 +20,7 @@ import {
   toggleReasonActiveAction,
 } from '@/modules/settings/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
+import { SettingsNav } from '@/components/settings-nav';
 
 export default async function SettingsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
@@ -92,6 +93,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
 
   return (
     <>
+      <SettingsNav ctx={ctx} current="general" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
       <Card>
@@ -255,7 +257,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
               type="checkbox"
               name="consent"
               defaultChecked={Boolean(profile?.owner_whatsapp_opt_in_at)}
-              className="size-4 accent-blue"
+              className="size-4 accent-purple"
             />
             {t('whatsappConsent')}
           </label>

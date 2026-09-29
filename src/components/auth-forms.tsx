@@ -46,7 +46,7 @@ export function SignInForm({ next }: { next?: string }) {
       </Button>
       <p className="text-center text-sm text-secondary">
         {t('auth.noAccount')}{' '}
-        <Link href={signUpHref} className="text-cyan underline-offset-4 hover:underline">
+        <Link href={signUpHref} className="text-purple underline-offset-4 hover:underline">
           {t('common.signUp')}
         </Link>
       </p>
@@ -93,7 +93,7 @@ export function SignUpForm({ next }: { next?: string }) {
       </Button>
       <p className="text-center text-sm text-secondary">
         {t('auth.haveAccount')}{' '}
-        <Link href={signInHref} className="text-cyan underline-offset-4 hover:underline">
+        <Link href={signInHref} className="text-purple underline-offset-4 hover:underline">
           {t('common.signIn')}
         </Link>
       </p>

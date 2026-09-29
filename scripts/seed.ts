@@ -21,6 +21,9 @@ if (!['127.0.0.1', 'localhost', '::1'].includes(host) && process.env.SEED_ALLOW_
 
 const pool = new pg.Pool({ connectionString: url, max: 1 });
 const client = await pool.connect();
+// A hosted free-tier database's default statement timeout (commonly 2 min) is too short for a year of
+// synthetic data; local/CI Postgres has no such cap, so this is a no-op there.
+await client.query("set statement_timeout = '30min'");
 const started = Date.now();
 
 try {
@@ -50,12 +53,21 @@ try {
     if (++days % 400 === 0) process.stdout.write('.');
   });
   await buffer.flush(client);
+  // Per month, not the whole year in one statement: keeps each call small on a slow or capped-timeout
+  // database (a hosted free tier), with identical results either way (backfill is idempotent per row).
   for (const org of ORGS) {
-    await client.query('select private.backfill_item_costs($1, $2::date, $3::date)', [
-      ids.org(org),
-      manifest.first_date,
-      manifest.anchor_date,
-    ]);
+    let from = new Date(`${manifest.first_date}T00:00:00Z`);
+    const to = new Date(`${manifest.anchor_date}T00:00:00Z`);
+    while (from <= to) {
+      const monthEnd = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 0));
+      const chunkTo = monthEnd < to ? monthEnd : to;
+      await client.query('select private.backfill_item_costs($1, $2::date, $3::date)', [
+        ids.org(org),
+        from.toISOString().slice(0, 10),
+        chunkTo.toISOString().slice(0, 10),
+      ]);
+      from = new Date(chunkTo.getTime() + 86_400_000);
+    }
   }
   await client.query('commit');
 

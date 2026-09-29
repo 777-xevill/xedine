@@ -13,6 +13,7 @@ import {
   toggleTableActiveAction,
 } from '@/modules/branch/actions';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
+import { SettingsNav } from '@/components/settings-nav';
 
 export default async function BranchPage({
   params,
@@ -65,6 +66,7 @@ export default async function BranchPage({
 
   return (
     <>
+      <SettingsNav ctx={ctx} current="branchSetup" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       {ctx.branches.length > 1 ? (
         <PillNav

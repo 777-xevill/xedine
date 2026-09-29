@@ -188,7 +188,7 @@ function Board({
               onClick={() => setStationFilter(s.id)}
               className={`min-h-10 rounded-full border px-4 text-sm font-medium transition ${
                 stationFilter === s.id
-                  ? 'border-cyan bg-surface-elevated text-foreground'
+                  ? 'border-purple bg-surface-elevated text-foreground'
                   : 'glass-tile text-secondary'
               }`}
             >

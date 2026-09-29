@@ -174,7 +174,7 @@ export function StaffGate({
                 setPicked(s);
                 setMessage(null);
               }}
-              className="glass-tile min-h-16 rounded-card px-4 text-lg font-medium transition hover:border-cyan"
+              className="glass-tile min-h-16 rounded-card px-4 text-lg font-medium transition hover:border-purple"
             >
               {s.display_name}
             </button>

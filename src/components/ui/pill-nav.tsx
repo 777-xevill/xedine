@@ -16,7 +16,7 @@ export function PillNav({
     <nav
       aria-label={label}
       className={cn(
-        'glass inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1',
+        'inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-elevated p-1',
         className,
       )}
     >
@@ -28,7 +28,7 @@ export function PillNav({
           className={cn(
             'inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition',
             item.active
-              ? 'bg-surface-elevated text-foreground shadow-[inset_0_1px_0_0_var(--glass-edge-strong)]'
+              ? 'bg-surface text-foreground shadow-soft'
               : 'text-secondary hover:text-foreground',
           )}
         >

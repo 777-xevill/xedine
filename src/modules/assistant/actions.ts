@@ -8,7 +8,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
-import { askAssistant } from './agent';
+import { ASSISTANT_PROMPT, askAssistant } from './agent';
 import type { Translate } from './answers';
 
 /**
@@ -50,6 +50,12 @@ export async function askAction(_prev: FormState, formData: FormData): Promise<F
       .single();
     if (error) return { error: mapDbError(error) };
     conversationId = data.id as string;
+  } else {
+    // Continuing a chat moves it to the top of the sidebar's history (ADR 0024).
+    await supabase
+      .from('ai_conversations')
+      .update({ updated_at: now().toISOString() })
+      .eq('id', conversationId);
   }
 
   // The last few turns give the model context; older ones are left out to keep prompts small.
@@ -107,7 +113,8 @@ export async function askAction(_prev: FormState, formData: FormData): Promise<F
       role: 'assistant',
       content: { text: answer.text, source: answer.source, language: answer.language },
       numeric_check: answer.numericCheck,
-      prompt_version: answer.source === 'llm' ? 'assistant@1' : null,
+      prompt_version:
+        answer.source === 'llm' ? `${ASSISTANT_PROMPT.key}@${ASSISTANT_PROMPT.version}` : null,
     })
     .select('id')
     .single();
@@ -126,7 +133,8 @@ export async function askAction(_prev: FormState, formData: FormData): Promise<F
       })),
     );
   }
-  revalidatePath(`/${orgSlug}/assistant`);
+  // The sidebar's chat history lives in the org layout.
+  revalidatePath(`/${orgSlug}`, 'layout');
   if (!parsed.data.conversationId) redirect(`/${orgSlug}/assistant?c=${conversationId}`);
   return { ok: true };
 }
@@ -153,7 +161,7 @@ export async function addContextAction(_prev: FormState, formData: FormData): Pr
     created_by: user?.id ?? null,
   });
   if (error) return { error: mapDbError(error) };
-  revalidatePath(`/${parsed.data.orgSlug}/assistant`);
+  revalidatePath(`/${parsed.data.orgSlug}/settings/assistant`);
   return { ok: true };
 }
 
@@ -167,5 +175,5 @@ export async function removeContextAction(formData: FormData): Promise<void> {
     .update({ is_active: false })
     .eq('id', id.data);
   if (error) console.error('org_context remove', error.code);
-  revalidatePath(`/${slug.data}/assistant`);
+  revalidatePath(`/${slug.data}/settings/assistant`);
 }

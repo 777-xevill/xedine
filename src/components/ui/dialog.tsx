@@ -44,7 +44,7 @@ export function Dialog({
         onClose();
       }}
       className={cn(
-        'glass-strong m-auto max-h-[92dvh] w-[calc(100%-2rem)] overflow-hidden rounded-sheet p-0 text-foreground backdrop:bg-background/70 backdrop:backdrop-blur-sm',
+        'glass-strong m-auto max-h-[92dvh] w-[calc(100%-2rem)] overflow-hidden rounded-sheet p-0 text-foreground backdrop:bg-foreground/25 backdrop:backdrop-blur-[2px]',
         size === 'sm' && 'max-w-sm',
         size === 'md' && 'max-w-lg',
         size === 'lg' && 'max-w-2xl',

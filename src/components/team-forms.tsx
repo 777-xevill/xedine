@@ -88,7 +88,7 @@ export function InviteForm({
                   type="checkbox"
                   name="branchIds"
                   value={b.id}
-                  className="size-4 accent-blue"
+                  className="size-4 accent-purple"
                 />
                 {b.name}
               </label>
@@ -138,7 +138,7 @@ export function SettingsForm({
             name="priceIncludesVat"
             value="true"
             defaultChecked={settings.priceIncludesVat}
-            className="size-4 accent-blue"
+            className="size-4 accent-purple"
           />
           {t('settings.priceInclusive')}
         </label>
@@ -148,7 +148,7 @@ export function SettingsForm({
             name="priceIncludesVat"
             value="false"
             defaultChecked={!settings.priceIncludesVat}
-            className="size-4 accent-blue"
+            className="size-4 accent-purple"
           />
           {t('settings.priceExclusive')}
         </label>

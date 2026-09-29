@@ -39,8 +39,8 @@ export function BarList({
                 ) : null}
               </span>
             </div>
-            <div className="h-2 rounded-full bg-surface-elevated/60" aria-hidden>
-              <div className="h-full rounded-full bg-cyan/80" style={{ width: `${pct}%` }} />
+            <div className="h-1.5 rounded-full bg-surface-elevated" aria-hidden>
+              <div className="h-full rounded-full bg-purple/70" style={{ width: `${pct}%` }} />
             </div>
           </li>
         );

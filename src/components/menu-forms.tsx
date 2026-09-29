@@ -223,7 +223,7 @@ export function ItemModifierGroupsForm({
           return (
             <label
               key={g.id}
-              className={`glass-tile flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm ${active ? 'border-cyan/60 text-foreground' : 'text-secondary'}`}
+              className={`glass-tile flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm ${active ? 'border-purple/60 text-foreground' : 'text-secondary'}`}
             >
               <input
                 type="checkbox"
@@ -238,7 +238,7 @@ export function ItemModifierGroupsForm({
                     return next;
                   })
                 }
-                className="size-3.5 accent-blue"
+                className="size-3.5 accent-purple"
               />
               {g.name}
             </label>

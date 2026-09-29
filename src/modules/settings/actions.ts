@@ -8,6 +8,7 @@ import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
 import { normalizeBdPhone } from '@/lib/messaging/phone';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+import { FEATURE_KEYS, parseFeatures } from '@/modules/tenancy/navigation';
 
 /** Owner-only restaurant setup: receipt header, channels + commissions (money-gated), reason codes. */
 
@@ -214,5 +215,38 @@ export async function setOwnerWhatsappAction(
   });
   if (error) return { error: mapDbError(error) };
   refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+/**
+ * Settings → Features (ADR 0024): switch an optional module's sidebar links on or off. Presentation
+ * only — access is still decided by RLS and each page. Owner-only through org_settings' RLS: a
+ * non-owner's update matches no row, which is reported as not allowed.
+ */
+export async function toggleFeatureAction(formData: FormData): Promise<FormState> {
+  const parsed = base
+    .extend({ feature: z.enum(FEATURE_KEYS), on: z.enum(['true', 'false']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { orgId, orgSlug, feature, on } = parsed.data;
+  const supabase = await createClient();
+  const { data: current, error: readError } = await supabase
+    .from('org_settings')
+    .select('enabled_features')
+    .eq('org_id', orgId)
+    .single();
+  if (readError) return { error: mapDbError(readError) };
+  const enabled = new Set(parseFeatures(current.enabled_features));
+  if (on === 'true') enabled.add(feature);
+  else enabled.delete(feature);
+  const { data: updated, error } = await supabase
+    .from('org_settings')
+    .update({ enabled_features: FEATURE_KEYS.filter((k) => enabled.has(k)) })
+    .eq('org_id', orgId)
+    .select('org_id');
+  if (error) return { error: mapDbError(error) };
+  if (!updated?.length) return { error: 'notAllowed' };
+  // The sidebar lives in the org layout, so refresh the whole org tree.
+  revalidatePath(`/${orgSlug}`, 'layout');
   return { ok: true };
 }

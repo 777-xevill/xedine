@@ -510,12 +510,13 @@ async function loadCosting(client: pg.PoolClient, org: OrgCfg): Promise<void> {
     // Fresh goods bought every morning: a day's stock is healthy (Phase 5 days-of-cover bands).
     const daily = supply[i.key]?.daily ?? false;
     await client.query(
-      `insert into public.ingredients (id, org_id, name, base, cover_green_days, cover_red_days, bazar_days, pack_qty)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `insert into public.ingredients (id, org_id, name, name_bn, base, cover_green_days, cover_red_days, bazar_days, pack_qty)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         ingId(i.key),
         orgId,
         i.name,
+        i.nameBn ?? null,
         i.base,
         daily ? DAILY_COVER.green : null,
         daily ? DAILY_COVER.red : null,

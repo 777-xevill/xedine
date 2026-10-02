@@ -26,6 +26,29 @@ describe('numeric-consistency validator', () => {
     expect(r.unsupported).toEqual([8, 20]);
   });
 
+  it('accepts what the model saw: taka (exact or whole), percent, and grams written as kg', () => {
+    const seen = {
+      data: {
+        loss_total_taka: 8657.5,
+        items: [{ over_pct: 1.32, used_more_than_recipes: '9.55 kg', usage_actual_qty: 9554 }],
+      },
+    };
+    expect(
+      validateNumbers('Loss ৳8,657.50 (about ৳8,658), 1.32% over, 9.55 kg more.', [seen]).ok,
+    ).toBe(true);
+    expect(validateNumbers('Really used 9.6 kg.', [seen]).ok).toBe(true);
+    // The mistake that started this: 865,750 poisha written as ৳865.75.
+    expect(validateNumbers('৳৮৬৫.৭৫', [{ unexplained_usage_taka: 8657.5 }]).ok).toBe(false);
+  });
+
+  it('list numbering is not a figure; a quoted quantity may be rounded', () => {
+    const seen = { data: { items: [{ of_which_not_explained: '57.65 kg' }] } };
+    expect(validateNumbers('(১) চাল দেখুন (২) মাংস (৩) গণনা — ৫৭.৬৫ কেজি', [seen]).ok).toBe(true);
+    expect(validateNumbers('1. Rice 58 kg\n2. Check 57.7 kg', [seen]).ok).toBe(true);
+    // A number inside a sentence is still checked.
+    expect(validateNumbers('about 3 times more', [seen]).ok).toBe(false);
+  });
+
   it('allows numbers quoted from the question', () => {
     expect(
       validateNumbers('In the last 2 hours: 7.', [tool], 'how many in the last 2 hours').ok,
@@ -39,6 +62,9 @@ describe('language detection', () => {
     ['ajke koto ta kacchi bikri hoyeche', 'banglish'],
     ['koto bikri?', 'banglish'],
     ['How many kacchi did we sell today?', 'en'],
+    ['uttara branch er loss ber koro', 'banglish'],
+    ['uttaray branch er kon jinish er jonno loss hocche ??', 'banglish'],
+    ['Where is the loss in Uttara branch?', 'en'],
   ])('%s → %s', (q, lang) => {
     expect(detectLanguage(q)).toBe(lang);
   });

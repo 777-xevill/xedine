@@ -134,7 +134,7 @@ describe('seed stock ledger matches the database’s stock maths', () => {
         const detect = async (orgKey: typeof kacchi) =>
           (
             await client.query(
-              `select type, branch_id, subject, impact_poisha from private.detect_all($1, $2::date, $3::date, array['stock', 'price', 'transfer'])`,
+              `select type, branch_id, subject, impact_poisha, evidence from private.detect_all($1, $2::date, $3::date, array['stock', 'price', 'transfer'])`,
               [ids.org(orgKey), ...period],
             )
           ).rows as {
@@ -142,6 +142,7 @@ describe('seed stock ledger matches the database’s stock maths', () => {
             branch_id: string;
             subject: Record<string, string>;
             impact_poisha: string;
+            evidence: Record<string, unknown>;
           }[];
         const found = await detect(kacchi);
         const facts = (sid: string) =>
@@ -178,9 +179,18 @@ describe('seed stock ledger matches the database’s stock maths', () => {
             `S7 ${n(s7?.impact_poisha)}/${facts('S7').extra_value_poisha}, S8 ${n(s8?.impact_poisha)}/${facts('S8').overpaid_poisha}, ` +
             `S9 ${n(s9?.impact_poisha)}/${facts('S9').wasted_value_poisha}`,
         );
-        // Besides the four plants, only the transfer Uttara never confirmed.
+        // Besides the four plants: the transfer Uttara never confirmed, and (ADR 0027) background
+        // over-use at or over the 1% loss line, each smaller than the smallest plant.
         const others = found.filter((f) => ![s6, s7, s8, s9].includes(f));
-        expect(others.map((f) => f.type)).toEqual(['transfer.unconfirmed']);
+        const smallest = Math.min(...[s6, s7, s8, s9].map((f) => n(f?.impact_poisha)));
+        const background = others.filter((f) => f.type === 'usage.unexplained');
+        for (const f of background) {
+          expect(n(f.evidence.rate_bps)).toBeGreaterThanOrEqual(100);
+          expect(n(f.impact_poisha)).toBeLessThan(smallest);
+        }
+        expect(others.filter((f) => !background.includes(f)).map((f) => f.type)).toEqual([
+          'transfer.unconfirmed',
+        ]);
         expect(await detect(cafe)).toEqual([]);
 
         // Phase 8 (S11): Friday nights at Dhanmondi are a slow slot; nothing else is, and the café is quiet.

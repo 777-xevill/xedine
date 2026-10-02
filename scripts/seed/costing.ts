@@ -18,6 +18,8 @@ export type Base = 'g' | 'ml' | 'pcs';
 export interface IngredientCfg {
   key: string;
   name: string;
+  /** Shown instead of `name` when the app is in Bangla, so the demo reads Bangla end to end. */
+  nameBn?: string;
   base: Base;
   /** Poisha per base unit (per gram, millilitre or piece). */
   poishaPerBase: number;
@@ -40,9 +42,16 @@ export interface OrgCosting {
 export const BEEF_SPIKE_FROM = addDays(FIRST_DATE, 133);
 export const BEEF_SPIKE_TO = addDays(FIRST_DATE, 160);
 
-const ing = (key: string, name: string, base: Base, poishaPerBase: number): IngredientCfg => ({
+const ing = (
+  key: string,
+  name: string,
+  base: Base,
+  poishaPerBase: number,
+  nameBn?: string,
+): IngredientCfg => ({
   key,
   name,
+  ...(nameBn ? { nameBn } : {}),
   base,
   poishaPerBase,
 });
@@ -51,25 +60,25 @@ export const COSTING: Record<string, OrgCosting> = {
   demo_kacchi_house: {
     targetFoodCostBps: 4000,
     ingredients: [
-      ing('mutton', 'Mutton', 'g', 110),
-      ing('beef', 'Beef', 'g', 72),
-      ing('chicken', 'Chicken', 'g', 32),
-      ing('rice', 'Chinigura rice', 'g', 14),
-      ing('potato', 'Potato', 'g', 4),
-      ing('oil', 'Soybean oil', 'ml', 18),
-      ing('ghee', 'Ghee', 'ml', 150),
-      ing('spices', 'Spice mix', 'g', 60),
-      ing('onion', 'Onion', 'g', 6),
-      ing('yogurt', 'Yogurt', 'g', 12),
-      ing('egg', 'Egg', 'pcs', 1300),
-      ing('milk', 'Milk', 'ml', 10),
-      ing('sugar', 'Sugar', 'g', 12),
-      ing('bread', 'Bread slice', 'pcs', 1000),
-      ing('soft', 'Soft drink (can)', 'pcs', 1800),
-      ing('water', 'Mineral water (bottle)', 'pcs', 1000),
-      ing('cucumber', 'Cucumber', 'g', 5),
-      ing('mint', 'Mint', 'g', 40),
-      ing('nuts', 'Nuts', 'g', 150),
+      ing('mutton', 'Mutton', 'g', 110, 'খাসির মাংস'),
+      ing('beef', 'Beef', 'g', 72, 'গরুর মাংস'),
+      ing('chicken', 'Chicken', 'g', 32, 'মুরগি'),
+      ing('rice', 'Chinigura rice', 'g', 14, 'চিনিগুড়া চাল'),
+      ing('potato', 'Potato', 'g', 4, 'আলু'),
+      ing('oil', 'Soybean oil', 'ml', 18, 'সয়াবিন তেল'),
+      ing('ghee', 'Ghee', 'ml', 150, 'ঘি'),
+      ing('spices', 'Spice mix', 'g', 60, 'মশলা মিক্স'),
+      ing('onion', 'Onion', 'g', 6, 'পেঁয়াজ'),
+      ing('yogurt', 'Yogurt', 'g', 12, 'দই'),
+      ing('egg', 'Egg', 'pcs', 1300, 'ডিম'),
+      ing('milk', 'Milk', 'ml', 10, 'দুধ'),
+      ing('sugar', 'Sugar', 'g', 12, 'চিনি'),
+      ing('bread', 'Bread slice', 'pcs', 1000, 'পাউরুটি (স্লাইস)'),
+      ing('soft', 'Soft drink (can)', 'pcs', 1800, 'কোমল পানীয় (ক্যান)'),
+      ing('water', 'Mineral water (bottle)', 'pcs', 1000, 'মিনারেল ওয়াটার (বোতল)'),
+      ing('cucumber', 'Cucumber', 'g', 5, 'শসা'),
+      ing('mint', 'Mint', 'g', 40, 'পুদিনা পাতা'),
+      ing('nuts', 'Nuts', 'g', 150, 'বাদাম'),
     ],
     recipes: {
       kacchi_mutton: [
@@ -178,26 +187,26 @@ export const COSTING: Record<string, OrgCosting> = {
   demo_cafe: {
     targetFoodCostBps: 3500,
     ingredients: [
-      ing('beans', 'Coffee beans', 'g', 250),
-      ing('milk', 'Milk', 'ml', 10),
-      ing('sugar', 'Sugar', 'g', 12),
-      ing('icecream', 'Ice cream', 'g', 40),
-      ing('tea', 'Tea leaves', 'g', 150),
-      ing('lemon', 'Lemon', 'pcs', 500),
-      ing('bread', 'Bread slice', 'pcs', 1000),
-      ing('chicken', 'Chicken', 'g', 32),
-      ing('mayo', 'Mayonnaise', 'g', 40),
-      ing('lettuce', 'Lettuce', 'g', 10),
-      ing('egg', 'Egg', 'pcs', 1300),
-      ing('cheese', 'Cheese', 'g', 100),
-      ing('pasta', 'Pasta', 'g', 25),
-      ing('cream', 'Cream', 'ml', 50),
-      ing('potato', 'Potato', 'g', 4),
-      ing('oil', 'Oil', 'ml', 18),
-      ing('flour', 'Flour', 'g', 8),
-      ing('butter', 'Butter', 'g', 120),
-      ing('chocolate', 'Chocolate', 'g', 90),
-      ing('biscuit', 'Biscuit crumb', 'g', 30),
+      ing('beans', 'Coffee beans', 'g', 250, 'কফি বিন'),
+      ing('milk', 'Milk', 'ml', 10, 'দুধ'),
+      ing('sugar', 'Sugar', 'g', 12, 'চিনি'),
+      ing('icecream', 'Ice cream', 'g', 40, 'আইসক্রিম'),
+      ing('tea', 'Tea leaves', 'g', 150, 'চা পাতা'),
+      ing('lemon', 'Lemon', 'pcs', 500, 'লেবু'),
+      ing('bread', 'Bread slice', 'pcs', 1000, 'পাউরুটি (স্লাইস)'),
+      ing('chicken', 'Chicken', 'g', 32, 'মুরগি'),
+      ing('mayo', 'Mayonnaise', 'g', 40, 'মেয়োনেজ'),
+      ing('lettuce', 'Lettuce', 'g', 10, 'লেটুস'),
+      ing('egg', 'Egg', 'pcs', 1300, 'ডিম'),
+      ing('cheese', 'Cheese', 'g', 100, 'পনির'),
+      ing('pasta', 'Pasta', 'g', 25, 'পাস্তা'),
+      ing('cream', 'Cream', 'ml', 50, 'ক্রিম'),
+      ing('potato', 'Potato', 'g', 4, 'আলু'),
+      ing('oil', 'Oil', 'ml', 18, 'তেল'),
+      ing('flour', 'Flour', 'g', 8, 'ময়দা'),
+      ing('butter', 'Butter', 'g', 120, 'মাখন'),
+      ing('chocolate', 'Chocolate', 'g', 90, 'চকলেট'),
+      ing('biscuit', 'Biscuit crumb', 'g', 30, 'বিস্কুটের গুঁড়া'),
     ],
     recipes: {
       espresso: [{ ing: 'beans', qty: 18 }],

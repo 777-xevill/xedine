@@ -76,6 +76,14 @@ export interface ChatTransportResponse {
 }
 export type ChatTransport = (req: ChatTransportRequest) => Promise<ChatTransportResponse>;
 
+/** Speech to text (ADR 0025): the audio as sent, and a hint of the words to expect. */
+export type SpeechTransport = (req: {
+  model: string;
+  audio: Uint8Array;
+  filename: string;
+  prompt: string;
+}) => Promise<string>;
+
 export interface ToolCallRecord {
   name: string;
   input: Record<string, unknown>;
@@ -102,6 +110,8 @@ export interface GatewayConfig {
   /** USD per million tokens, per model — which is exactly USD micros per token. */
   rates: Record<string, { input: number; output: number }>;
   dailyCapUsdMicros: number;
+  /** Speech-to-text model and its list price per minute of audio, in USD micros. */
+  speech?: { model: string; usdMicrosPerMinute: number };
   /** The business date usage is counted against (Asia/Dhaka; injected clock). */
   today: () => string;
 }
@@ -114,7 +124,9 @@ export class AiError extends Error {
       | 'truncated'
       | 'invalid_output'
       | 'not_configured'
-      | 'not_in_plan',
+      | 'not_in_plan'
+      /** The provider's per-minute limit was hit, even after its fallback and a short wait. */
+      | 'rate_limited',
     message: string,
   ) {
     super(message);
@@ -150,6 +162,7 @@ export function costUsdMicros(
 export function createGateway(deps: {
   transport: Transport;
   chatTransport?: ChatTransport;
+  speechTransport?: SpeechTransport;
   store: UsageStore;
   config: GatewayConfig;
 }) {
@@ -252,6 +265,41 @@ export function createGateway(deps: {
         messages.push({ role: 'user', content: results });
       }
       throw new AiError('truncated', 'too many tool calls');
+    },
+
+    /**
+     * A voice note to text, cap-checked and costed by its length like every other call. The text is a
+     * transcript for a person to check, never a figure (CLAUDE.md #1).
+     */
+    async transcribe(req: {
+      orgId: string;
+      feature: string;
+      audio: Uint8Array;
+      filename: string;
+      seconds: number;
+      prompt: string;
+    }): Promise<string> {
+      const speech = config.speech;
+      if (!deps.speechTransport || !speech) {
+        throw new AiError('not_configured', 'no speech-to-text transport');
+      }
+      const today = config.today();
+      await guard(req.orgId, today);
+      const text = await deps.speechTransport({
+        model: speech.model,
+        audio: req.audio,
+        filename: req.filename,
+        prompt: req.prompt,
+      });
+      await store.record({
+        orgId: req.orgId,
+        date: today,
+        model: speech.model,
+        feature: req.feature,
+        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        costUsdMicros: Math.ceil((Math.max(1, req.seconds) * speech.usdMicrosPerMinute) / 60),
+      });
+      return text.trim();
     },
 
     async run<T>(req: GatewayRequest<T>): Promise<GatewayResult<T>> {

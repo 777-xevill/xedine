@@ -1,5 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { BaseUnit } from '@/modules/purchasing/lines';
+import { qtyText } from './for-model';
 import { matchItem, type MenuRef, type Window } from './router';
 
 /**
@@ -210,6 +212,58 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
     input_schema: {
       type: 'object',
       properties: { branch: branchProp },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_stock_loss',
+    description:
+      "WHERE THE LOSS IS, item by item: which ingredients were used more than the recipes of the dishes sold needed, between the branch's last two stock counts (the Stock page's Loss tab). Every gram over the recipe is a loss; at or over the owner's loss line (loss_line) it is a real loss, under it a small loss. Per item: how much more than the recipes, % over, the loss in money (owner and accountant only), how much of it was written down as waste and how much is not explained, and staff food (shown apart, not a loss). Biggest loss first, plus the total loss and counts. Use this for 'where / which item / why is there a loss'.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        branch: branchProp,
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 20,
+          description: 'Items to list (default 8).',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_waste',
+    description:
+      'Food written down as waste in a period (spoiled, burnt, dropped, cooked but not sold, returned, staff food): per reason and item, how much, how many times, and its value (owner and accountant only). Biggest first, plus the total.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        window: {
+          ...windowProp,
+          enum: ['today', 'yesterday', 'last_7d', 'week_to_date', 'month_to_date', 'last_30d'],
+        },
+        branch: branchProp,
+      },
+      required: ['window'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_purchases',
+    description:
+      'What was bought (the bazar) in a period: per ingredient the quantity, the money spent and how many purchases, biggest spend first, plus the total spent. Owner, accountant and purchaser only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        window: {
+          ...windowProp,
+          enum: ['today', 'yesterday', 'last_7d', 'week_to_date', 'month_to_date', 'last_30d'],
+        },
+        branch: branchProp,
+      },
+      required: ['window'],
       additionalProperties: false,
     },
   },
@@ -470,6 +524,11 @@ export async function runTool(
             ingredient: r.name,
             base: r.base,
             stock_qty: r.stock_qty === null ? null : num(r.stock_qty),
+            on_shelf: r.stock_qty === null ? null : qtyText(num(r.stock_qty), r.base as BaseUnit),
+            used_per_day:
+              r.avg_daily_qty === null ? null : qtyText(num(r.avg_daily_qty), r.base as BaseUnit),
+            // ADR 0030: never counted — stock_qty is bought minus used, an estimate.
+            estimated: r.estimated === true,
             days_of_cover: r.days_of_cover === null ? null : num(r.days_of_cover),
             band: r.band,
             last_count_date: r.last_count_date,
@@ -700,6 +759,162 @@ export async function runTool(
             review_themes: [...counts.entries()]
               .sort((a, b) => b[1] - a[1])
               .map(([theme, count]) => ({ theme, count })),
+          },
+        };
+      }
+      case 'get_stock_loss': {
+        let counts = ctx.sb
+          .from('stock_counts')
+          .select('counted_on')
+          .eq('org_id', ctx.orgId)
+          .eq('status', 'submitted');
+        if (branch) counts = counts.eq('branch_id', branch);
+        const { data: countDays } = await counts
+          .order('counted_on', { ascending: false })
+          .limit(40);
+        const dates = [...new Set((countDays ?? []).map((c) => c.counted_on as string))];
+        if (dates.length < 2)
+          return { error: 'not_found', detail: { reason: 'two_counts_needed' } };
+        const [{ data, error }, { data: settings }] = await Promise.all([
+          ctx.sb.rpc('metric_stock_variance', {
+            p_org: ctx.orgId,
+            p_branch: branch,
+            p_from: dates[1],
+            p_to: dates[0],
+          }),
+          ctx.sb.from('org_settings').select('loss_line_bps').eq('org_id', ctx.orgId).maybeSingle(),
+        ]);
+        if (error) return fail(error);
+        const rows = (data ?? []) as Record<string, unknown>[];
+        const line = num(settings?.loss_line_bps ?? 100);
+        // The metric lists the biggest money first; over-usage only (under-usage is never a gain).
+        const over = rows.filter((r) => num(r.over_qty) > 0);
+        const money = !over.some((r) => r.over_poisha === null);
+        const limit = Math.min(Math.max(Number(input.limit) || 8, 1), 20);
+        const base = (r: Record<string, unknown>) => r.base as BaseUnit;
+        return {
+          metric_id: 'usage.over_qty',
+          filters: { branch: input.branch ?? null, from: dates[1], to: dates[0] },
+          as_of,
+          data: {
+            loss_line_bps: line,
+            // stock.loss_value: the over-usage money added up, never netted (METRICS.md).
+            loss_total_poisha: money ? over.reduce((s, r) => s + num(r.over_poisha), 0) : null,
+            items_over_recipe: over.length,
+            items_at_or_over_loss_line: over.filter(
+              (r) => r.over_bps === null || num(r.over_bps) >= line,
+            ).length,
+            items_under_recipe: rows.filter((r) => num(r.over_qty) < 0).length,
+            items: over.slice(0, limit).map((r) => ({
+              branch: ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null,
+              ingredient: r.name,
+              ingredient_bn: r.name_bn ?? null,
+              used_more_than_recipes: qtyText(num(r.over_qty), base(r)),
+              over_bps: r.over_bps === null ? null : num(r.over_bps),
+              loss_poisha: r.over_poisha === null ? null : num(r.over_poisha),
+              recipes_needed: qtyText(num(r.usage_theoretical_qty), base(r)),
+              really_used: qtyText(num(r.usage_actual_qty), base(r)),
+              of_which_written_down_as_waste: qtyText(
+                num(r.waste_qty) - num(r.staff_food_qty),
+                base(r),
+              ),
+              of_which_not_explained: qtyText(num(r.variance_qty), base(r)),
+              staff_food_apart:
+                num(r.staff_food_qty) > 0 ? qtyText(num(r.staff_food_qty), base(r)) : null,
+            })),
+          },
+        };
+      }
+      case 'get_waste': {
+        const { from, to } = await windowDates(ctx, window);
+        const { data, error } = await ctx.sb.rpc('metric_waste_board', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_from: from,
+          p_to: to,
+        });
+        if (error) return fail(error);
+        const rows = ((data ?? []) as Record<string, unknown>[]).slice();
+        rows.sort(
+          (a, b) => num(b.value_poisha) - num(a.value_poisha) || num(b.entries) - num(a.entries),
+        );
+        const money = !rows.some((r) => r.value_poisha === null);
+        return {
+          metric_id: 'waste.logged',
+          filters: { window, branch: input.branch ?? null, from, to },
+          as_of,
+          data: {
+            total_value_poisha: money ? rows.reduce((s, r) => s + num(r.value_poisha), 0) : null,
+            entries: rows.reduce((s, r) => s + num(r.entries), 0),
+            items: rows.slice(0, 10).map((r) => ({
+              reason: r.reason_label,
+              reason_bn: r.reason_label_bn ?? null,
+              item: r.name,
+              item_bn: r.name_bn ?? null,
+              times: num(r.entries),
+              amount:
+                r.qty_base !== null && r.qty_base !== undefined
+                  ? qtyText(num(r.qty_base), r.base as BaseUnit)
+                  : `${num(r.qty_portions)} portions`,
+              value_poisha: r.value_poisha === null ? null : num(r.value_poisha),
+            })),
+          },
+        };
+      }
+      case 'get_purchases': {
+        const { from, to } = await windowDates(ctx, window);
+        let q = ctx.sb
+          .from('purchases')
+          .select('id')
+          .eq('org_id', ctx.orgId)
+          .eq('status', 'confirmed')
+          .gte('purchased_on', from)
+          .lte('purchased_on', to);
+        if (branch) q = q.eq('branch_id', branch);
+        const { data: purchases, error } = await q;
+        if (error) return fail(error);
+        const ids = (purchases ?? []).map((p) => p.id as string);
+        if (ids.length === 0)
+          return {
+            metric_id: 'purchases.by_ingredient',
+            filters: { window, branch: input.branch ?? null, from, to },
+            as_of,
+            data: { purchases: 0, total_spent_poisha: 0, items: [] },
+          };
+        const [{ data: lines, error: le }, { data: ings }] = await Promise.all([
+          ctx.sb
+            .from('purchase_lines')
+            .select('purchase_id, ingredient_id, qty_base, line_total_poisha')
+            .eq('org_id', ctx.orgId)
+            .in('purchase_id', ids),
+          ctx.sb.from('ingredients').select('id, name, name_bn, base').eq('org_id', ctx.orgId),
+        ]);
+        if (le) return fail(le);
+        const byIng = new Map<string, { qty: number; spent: number; buys: Set<string> }>();
+        for (const l of lines ?? []) {
+          const k = l.ingredient_id as string;
+          const e = byIng.get(k) ?? { qty: 0, spent: 0, buys: new Set<string>() };
+          e.qty += num(l.qty_base);
+          e.spent += num(l.line_total_poisha);
+          e.buys.add(l.purchase_id as string);
+          byIng.set(k, e);
+        }
+        const info = new Map((ings ?? []).map((i) => [i.id as string, i]));
+        const items = [...byIng.entries()].sort((a, b) => b[1].spent - a[1].spent);
+        return {
+          metric_id: 'purchases.by_ingredient',
+          filters: { window, branch: input.branch ?? null, from, to },
+          as_of,
+          data: {
+            purchases: ids.length,
+            total_spent_poisha: items.reduce((s, [, e]) => s + e.spent, 0),
+            items: items.slice(0, 12).map(([id, e]) => ({
+              ingredient: info.get(id)?.name ?? null,
+              ingredient_bn: info.get(id)?.name_bn ?? null,
+              bought: qtyText(e.qty, (info.get(id)?.base ?? 'g') as BaseUnit),
+              spent_poisha: e.spent,
+              times_bought: e.buys.size,
+            })),
           },
         };
       }

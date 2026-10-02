@@ -34,6 +34,14 @@ export interface StockRow {
   days_of_cover: number | null;
   band: CoverBand;
   as_of: string;
+  /** ADR 0030: never counted here, so stock_qty is what was bought minus what was used since. */
+  estimated: boolean;
+  /** The first of the last D days (14, or fewer for a newer item) that "used" and "a day" cover. */
+  since_on: string | null;
+  /** What the recipes of the dishes sold took over those days. */
+  used_since_qty: number | null;
+  /** used_since_qty ÷ D (null when unused): days_of_cover = stock_qty ÷ this. */
+  avg_daily_qty: number | null;
 }
 
 /** metric: stock.theoretical + stock.days_of_cover, as of the injected now. */
@@ -56,6 +64,10 @@ export async function stockStatus(orgId: string, branchId: string | null): Promi
     days_of_cover: numOrNull(r.days_of_cover),
     band: r.band as CoverBand,
     as_of: String(r.as_of),
+    estimated: r.estimated === true,
+    since_on: (r.since_on as string | null) ?? null,
+    used_since_qty: numOrNull(r.used_since_qty),
+    avg_daily_qty: numOrNull(r.avg_daily_qty),
   }));
 }
 
@@ -79,9 +91,19 @@ export interface VarianceRow {
   variance_qty: number;
   variance_bps: number | null;
   variance_poisha: number | null;
+  /**
+   * ADR 0027 / 0029: really used − recipes − staff food (other logged waste included). > 0 a loss,
+   * < 0 under-usage, 0 on recipe.
+   */
+  over_qty: number;
+  over_bps: number | null;
+  over_poisha: number | null;
+  /** ADR 0029: written down as staff food — shown on its own, never part of the loss. */
+  staff_food_qty: number;
+  staff_food_poisha: number | null;
 }
 
-/** metric: usage.actual and variance.usage_qty / value between two counts. */
+/** metric: usage.actual, usage.over_* and variance.usage_qty / value between two counts. */
 export async function stockVariance(
   orgId: string,
   branchId: string | null,
@@ -114,14 +136,55 @@ export async function stockVariance(
     variance_qty: num(r.variance_qty),
     variance_bps: numOrNull(r.variance_bps),
     variance_poisha: numOrNull(r.variance_poisha),
+    over_qty: num(r.over_qty),
+    over_bps: numOrNull(r.over_bps),
+    over_poisha: numOrNull(r.over_poisha),
+    staff_food_qty: num(r.staff_food_qty),
+    staff_food_poisha: numOrNull(r.staff_food_poisha),
   }));
 }
 
-/** METRICS.md bands for variance.pct: < 2% healthy · 2–5% watch · > 5% problem. */
-export function varianceBand(bps: number | null): 'healthy' | 'watch' | 'problem' | 'none' {
-  if (bps === null) return 'none';
-  const a = Math.abs(bps);
-  return a < 200 ? 'healthy' : a <= 500 ? 'watch' : 'problem';
+export type LotStatus = 'running' | 'ended';
+
+export interface LotRow {
+  branch_id: string;
+  ingredient_id: string;
+  name: string;
+  name_bn: string | null;
+  base: BaseUnit;
+  bought_on: string;
+  qty: number;
+  for_days: number;
+  ends_on: string;
+  /** Including today; 0 once the lot's last day has passed. */
+  days_left: number;
+  status: LotStatus;
+  prev_for_days: number | null;
+  prev_lasted_days: number | null;
+}
+
+/** metric: stock.lot (ADR 0029) — the latest lot per item and its days left. */
+export async function stockLots(orgId: string, branchId: string | null): Promise<LotRow[]> {
+  const rows = await rpc('metric_stock_lots', {
+    p_org: orgId,
+    p_branch: branchId,
+    p_now: now().toISOString(),
+  });
+  return rows.map((r) => ({
+    branch_id: r.branch_id as string,
+    ingredient_id: r.ingredient_id as string,
+    name: String(r.name),
+    name_bn: (r.name_bn as string | null) ?? null,
+    base: r.base as BaseUnit,
+    bought_on: String(r.bought_on),
+    qty: num(r.qty),
+    for_days: num(r.for_days),
+    ends_on: String(r.ends_on),
+    days_left: num(r.days_left),
+    status: r.status as LotStatus,
+    prev_for_days: numOrNull(r.prev_for_days),
+    prev_lasted_days: numOrNull(r.prev_lasted_days),
+  }));
 }
 
 export interface DisciplineRow {

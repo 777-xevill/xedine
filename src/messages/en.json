@@ -57,7 +57,6 @@
     "quantityInvalid": "That quantity does not fit — use numbers, and a unit that suits the ingredient.",
     "countEmpty": "Count at least one ingredient before submitting.",
     "wasteInvalid": "Pick what was wasted, how much, and why.",
-    "transferInvalid": "Pick another branch and at least one ingredient to send.",
     "referenceCsvInvalid": "No usable rows. Use: ingredient, taka, per (kg / litre / piece / dozen), date (YYYY-MM-DD), source.",
     "calendarInvalid": "Give the day a name, a kind, and an end date on or after the start.",
     "campaignInvalid": "Give the campaign a name and a message in Bangla or English.",
@@ -68,7 +67,11 @@
     "menuImportBadLines": "These lines need a name and a price: {lines}. Fix them and import again.",
     "aiNotInPlan": "Your plan does not include AI. The owner can change the plan on the Billing page.",
     "growthNoData": "Not enough sales yet to ground an idea.",
-    "growthInvalid": "Give the idea a title and a caption in Bangla or English."
+    "growthInvalid": "Give the idea a title and a caption in Bangla or English.",
+    "telegramNotSetUp": "The Telegram bot is not set up yet (see the steps on this page).",
+    "lossLineInvalid": "Enter a percent between 0.1 and 20.",
+    "itemStillInStock": "Some of this is still in stock, so it cannot be hidden. Count it, or log it as waste first.",
+    "itemStockUnknown": "This was never counted. Say whether any is left before hiding it."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -148,7 +151,8 @@
     "assistantRules": "Assistant",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "everyBranch": "All branches"
+    "everyBranch": "All branches",
+    "telegram": "Telegram"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -1086,7 +1090,8 @@
       "4": "Thursday",
       "5": "Friday",
       "6": "Saturday"
-    }
+    },
+    "busy": "Too many questions this minute for the AI. Please ask again in a minute."
   },
   "assistantPage": {
     "title": "Assistant",
@@ -1152,64 +1157,89 @@
   },
   "stock": {
     "title": "Stock",
-    "subtitle": "What should be on the shelf, how long it lasts, and where the gaps are.",
+    "subtitle": "What is on your shelf, what you lost, and what got thrown away.",
     "noBranch": "You have no branch to look after yet.",
     "branches": "Branches",
     "sections": "Stock sections",
     "tabs": {
-      "status": "Levels",
-      "variance": "Counts & gaps",
-      "waste": "Waste",
-      "transfers": "Transfers"
+      "status": "In stock",
+      "variance": "Loss",
+      "waste": "Waste"
     },
-    "unit": "Unit",
-    "countSubmitted": "Count submitted. Levels now start from what you counted.",
-    "countDue": "Today is count day. The weekly count takes ten minutes and keeps every number honest.",
-    "countTitle": "Stock count",
-    "countBody": "Count what is on the shelf at close. The guided count asks only for the costliest items.",
+    "tabHints": {
+      "status": "What you have now",
+      "variance": "What was used over the recipes",
+      "waste": "What gets thrown away"
+    },
+    "how": {
+      "title": "How does stock work?",
+      "buyTitle": "You buy",
+      "buyBody": "Everything you buy is added to your stock.",
+      "sellTitle": "You sell",
+      "sellBody": "Each dish you sell takes its ingredients out of stock, by its recipe.",
+      "countTitle": "You count",
+      "countBody": "Once a week, count your shelf. If more went than the recipes needed, we show you the loss in ৳."
+    },
+    "count": {
+      "title": "Count your shelf",
+      "body": "Once a week is enough. We compare your count with your sales and your bazar to find your loss.",
+      "hint": "Quick count: your most expensive items only. Count everything: the whole shelf.",
+      "last": "Last counted {date}",
+      "never": "Not counted yet"
+    },
     "continueCount": "Continue today’s count",
     "start": {
-      "guided_weekly": "Guided weekly count",
-      "full": "Full count",
+      "guided_weekly": "Quick count",
+      "full": "Count everything",
       "spot": "Spot count"
     },
-    "levelsTitle": "Stock levels",
-    "levelsRed": "{count, plural, one {# ingredient is} other {# ingredients are}} running low.",
-    "levelsBody": "From your last count, plus purchases and transfers, minus what the sales used and waste.",
-    "noStock": "No stock to show yet",
-    "noStockBody": "Do a first count, and levels will follow from sales and purchases.",
-    "col": {
-      "ingredient": "Ingredient",
-      "stock": "Should be in stock",
-      "cover": "Lasts",
-      "lastCount": "Last counted",
-      "inTransit": "On the way",
-      "opening": "Counted before",
-      "bought": "Bought",
-      "transfers": "Transfers",
-      "closing": "Counted now",
-      "used": "Actually used",
-      "shouldUse": "Recipes say",
-      "waste": "Waste logged",
-      "variance": "Gap",
-      "value": "Gap ৳"
+    "countSubmitted": "Count saved. From now on, stock starts from what you counted.",
+    "countDue": "Today is count day. It only takes a few minutes.",
+    "summary": {
+      "low": "{count, plural, one {# item is} other {# items are}} running low",
+      "lowBody": "Buy these first.",
+      "more": "+{count} more",
+      "ok": "Nothing is running low",
+      "okBody": "You have enough of everything for now.",
+      "neverTitle": "Start by counting your shelf",
+      "neverBody": "Count what you have today. After that, stock updates by itself from your sales and your bazar."
     },
-    "neverCounted": "Not counted yet",
-    "noUsage": "Not used lately",
-    "days": "{days} days",
-    "levelsHint": "A negative level means more was used than the records explain — count it to find out.",
-    "needTwoCounts": "Two counts are needed",
-    "needTwoCountsBody": "The gap between what was used and what recipes say appears after your second count.",
+    "levelsTitle": "Your stock",
+    "level": {
+      "low": "Running low",
+      "getting": "Getting low",
+      "enough": "Enough",
+      "notCounted": "Not counted yet",
+      "daysLeft": "{days, plural, one {About # day left} other {About # days left}}",
+      "lessThanDay": "Less than a day left",
+      "countIt": "Count it to see how much is left",
+      "negative": "The records say less than zero. Please count this.",
+      "perDay": "about {qty} a day",
+      "estimate": "estimate: not counted yet",
+      "estimateHint": "≈ means an estimate: what you bought, minus what the recipes of the dishes sold used and any waste written down. Count it once to make it exact.",
+      "used": "Used {qty} in {days}"
+    },
+    "noStock": "Nothing to show yet",
+    "noStockBody": "Count your shelf once. After that, stock follows your sales and your bazar.",
+    "needTwoCounts": "You need two counts to see your loss",
+    "needTwoCountsBody": "Count your shelf now, and again next week. We compare the two counts with your sales and your bazar.",
     "period": {
-      "from": "From count",
-      "to": "To count",
+      "from": "From the count of",
+      "to": "To the count of",
       "label": "Period"
     },
     "show": "Show",
-    "varianceTitle": "Between the counts of {from} and {to}",
-    "varianceBody": "Actually used = counted before + bought + transfers − counted now. The gap is what was used beyond the recipes and the logged waste. Under 2% is healthy, 2–5% worth watching, over 5% a problem.",
-    "varianceTotal": "Total gap at today’s cost: {amount}",
-    "varianceHint": "A gap in one branch mirrored by the opposite gap in another often means goods moved without a transfer.",
+    "bridgeTitle": "Why food cost differs from the recipes",
+    "bridgeBody": "What the recipes say the food should cost, and what made the real cost different. In taka, and the parts add up.",
+    "bridge": {
+      "tfc": "Food should cost (by the recipes)",
+      "waste": "Waste you wrote down",
+      "price": "Paying more than the usual price",
+      "unexplained": "Over-usage not explained",
+      "actual": "What the food really cost"
+    },
+    "bridgeFoot": "Counts can be off by about ±{band}. Food cost was {pct} of sales in this period.",
+    "unit": "Unit",
     "wasteLogTitle": "Log waste",
     "wasteWhat": "What was wasted",
     "choose": "Choose…",
@@ -1229,27 +1259,6 @@
     "noReason": "No reason",
     "entries": "{count, plural, one {# entry} other {# entries}}",
     "portionCount": "{count, plural, one {# portion} other {# portions}}",
-    "incomingTitle": "Arriving here — confirm what came",
-    "fromBranch": "From {branch}, sent {date}",
-    "sentQty": "sent {qty}",
-    "receivedQty": "Received",
-    "receiveHint": "Leave a line blank if all of it arrived. A different amount marks the transfer disputed.",
-    "receive": "Confirm received",
-    "received": "Received.",
-    "sendTitle": "Send to another branch",
-    "toBranch": "To",
-    "sendHint": "The other branch confirms what arrives; until then it shows as on the way.",
-    "send": "Send",
-    "sent": "Sent. The other branch will confirm.",
-    "recentTransfers": "Recent transfers",
-    "noTransfers": "No transfers yet.",
-    "arrived": "{qty} arrived",
-    "transferStatus": {
-      "draft": "Draft",
-      "sent": "On the way",
-      "received": "Received",
-      "disputed": "Disputed"
-    },
     "countSubtitle": "{branch} · closing stock for {date}",
     "back": "Back to stock",
     "countProgress": "{done} of {total} counted",
@@ -1262,18 +1271,88 @@
     "saveCount": "Save",
     "submitCount": "Submit count",
     "submitHint": "Submitting is final. Save to come back later.",
-    "route": "{from} → {to}",
-    "bridgeTitle": "Why food cost differs from the recipes",
-    "bridgeBody": "What the recipes say the food should have cost, and each reason the real cost was different, in taka. The parts always add up.",
-    "bridge": {
-      "tfc": "Recipes say food should have cost",
-      "waste": "Logged waste",
-      "price": "Prices paid above the period’s standard",
-      "unexplained": "Used beyond recipes and waste",
-      "actual": "What the food actually cost"
+    "bridgeUncosted": "{count, plural, one {# ingredient has} other {# ingredients have}} no price yet and are left out.",
+    "noUsage": "Not used lately",
+    "days": "{days} days",
+    "loss": {
+      "between": "Between your counts on {from} and {to}",
+      "changeDates": "Change dates",
+      "titleMoney": "Stock loss: {amount}",
+      "titleItems": "{count, plural, one {# item} other {# items}} used more than the recipes",
+      "body": "Every gram used over the recipes, added up. Using less never cancels a loss.",
+      "bodyItems": "{count, plural, one {# item} other {# items}} used more than the recipes. Using less never cancels a loss.",
+      "noLoss": "No loss",
+      "noLossBody": "Nothing used more than its recipe between these two counts.",
+      "definition": "Over-usage = what really left your shelf − what the recipes of the dishes you sold needed.",
+      "line": "Loss line: {pct} over the recipe",
+      "lineChange": "Change the loss line",
+      "lineLabel": "Count it as a loss at this much over the recipe (%)",
+      "lineSave": "Save",
+      "lineHint": "Between 0.1% and 20%. Money leaks uses the same line.",
+      "lineSaved": "Loss line saved.",
+      "legendShould": "Should have used",
+      "legendShouldHint": "what the recipes of the dishes you sold need",
+      "legendReally": "Really used",
+      "legendReallyHint": "what really left your shelf",
+      "groupLoss": "Loss — {pct} or more over the recipe",
+      "groupSmall": "Small loss — less than {pct} over the recipe",
+      "groupUnder": "Under-usage — used less than the recipes",
+      "underBody": "Not a profit. Usually a count mistake, bazar that was not entered, or smaller portions.",
+      "groupOnRecipe": "{count, plural, one {# item} other {# items}} on recipe",
+      "verdict": {
+        "over": "{qty} over-usage ({pct} over the recipe)",
+        "overNoRecipe": "{qty} used, but no dish sold needs it",
+        "under": "{qty} under-usage ({pct} under the recipe)",
+        "onRecipe": "On recipe — no difference"
+      },
+      "story": "The dishes you sold should have used {should}. But {really} really left your shelf.",
+      "split": "Over-usage {over} = {waste} written down as waste + {unexplained} not explained.",
+      "lossMoney": "Loss: {amount}",
+      "underExplain": "{qty} less than the recipes. This is not counted as profit.",
+      "onRecipeExplain": "Exactly what the recipes needed.",
+      "rule": "Counted as a loss to act on at {pct} or more over the recipe. Every gram over is counted in ৳.",
+      "checksTitle": "Things to check",
+      "checks": {
+        "over": {
+          "portions": "Are portions bigger than the recipe says?",
+          "waste": "Was food wasted or given away without writing it down?",
+          "moved": "Did food go to another branch or to staff meals?"
+        },
+        "under": {
+          "portions": "Are portions smaller than the recipe says?",
+          "bazar": "Did bazar come in that was not entered?",
+          "count": "Was the count right?"
+        }
+      },
+      "shouldUse": "Should have used",
+      "reallyUsed": "Really used",
+      "worked": "How we worked this out",
+      "ledger": {
+        "before": "On the shelf on {date}",
+        "bought": "You bought",
+        "moved": "Moved between branches",
+        "after": "Left on the shelf on {date}",
+        "used": "Really used",
+        "recipes": "Recipes needed",
+        "over": "Over-usage",
+        "waste": "of which written down as waste",
+        "unexplained": "of which not explained"
+      },
+      "staffFood": "Staff food: {qty}. Shown on its own, not part of the loss.",
+      "staffFoodMoney": "Staff food: {qty} ({amount}). Shown on its own, not part of the loss.",
+      "staffTitleMoney": "Staff food in this period: {amount}",
+      "staffTitleItems": "{count, plural, one {Staff food was written down for # item} other {Staff food was written down for # items}}",
+      "staffBody": "Food the staff ate, written down as waste with the reason “Staff food”. It costs money, but it is planned, so it is not added to the loss.",
+      "ledgerStaff": "Staff food (written down)"
     },
-    "bridgeFoot": "Counts are trusted to about ±{band}. Food cost was {pct} of sales in this period.",
-    "bridgeUncosted": "{count, plural, one {# ingredient has} other {# ingredients have}} no price yet and are left out."
+    "lot": {
+      "bought": "Bought {date} for {days}",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "lastDay": "last day today",
+      "lastTimeShort": "last time it lasted {lasted}, not {planned}",
+      "dayOf": "day {n} of {total}",
+      "ended": "days are up"
+    }
   },
   "purchases": {
     "title": "Purchases",
@@ -1342,7 +1421,11 @@
     "marketCsv": "Market prices as CSV",
     "marketPlaceholder": "Beef, 780, kg, 2026-09-20, TCB\nOnion, 60, kg, 2026-09-20, TCB",
     "marketImport": "Import prices",
-    "marketImported": "Prices imported. Rows that did not match an ingredient were skipped."
+    "marketImported": "Prices imported. Rows that did not match an ingredient were skipped.",
+    "forDays": "For how many days?",
+    "forDaysNone": "Not said",
+    "forDaysHint": "Xedine shows a countdown on the Stock page.",
+    "daysOption": "{count, plural, one {# day} other {# days}}"
   },
   "plan": {
     "title": "Plan",
@@ -2038,6 +2121,114 @@
         "title": "Staff records",
         "body": "Attendance, advances and salary notes."
       }
+    }
+  },
+  "telegramPage": {
+    "title": "Telegram bazar bot",
+    "subtitle": "Purchasers send the day’s bazar to a Telegram bot, typed or by voice, and tap ✅ to add it to stock. No need to open Xedine.",
+    "notSetUp": "The Telegram bot is not set up yet. Create a bot with @BotFather, then add TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME and TELEGRAM_WEBHOOK_SECRET to the server settings.",
+    "connectTitle": "Connect a purchaser",
+    "connectBody": "Make a one-time link and send it to the person (WhatsApp, SMS, any way). When they tap it, Telegram opens the bot and their chat is connected.",
+    "person": "Person and branch",
+    "linkHint": "The link works once and expires after 48 hours. Only the owner and purchasers can record the bazar.",
+    "makeLink": "Make link",
+    "linkReady": "Send this link to them: {link}",
+    "noPurchasers": "No one can record purchases yet. Invite a purchaser on the Team page first.",
+    "connectedTitle": "Connected chats",
+    "noneConnected": "No chats connected yet.",
+    "connectedOn": "Connected {date}",
+    "waiting": "Link not used yet · expires {date}",
+    "disconnect": "Disconnect",
+    "cancelLink": "Cancel link",
+    "unnamed": "No name",
+    "howTitle": "How it works",
+    "how1": "The purchaser sends the list, one item per line: name, quantity, unit, total paid (e.g. murgi 10 kg 1800).",
+    "how2": "The bot answers with every line it understood, matched to your ingredients, and the total.",
+    "how3": "Nothing changes until they tap ✅ Add to stock. Then the purchase is recorded in their name and stock goes up.",
+    "how4Voice": "Voice notes and photos of the chit work too.",
+    "how4NoVoice": "Voice notes and photos need AI: add an OpenAI key to switch them on. Typed lists work without it."
+  },
+  "chatBot": {
+    "heading": "🧾 {branch} · bazar of {date}",
+    "flags": {
+      "no_match": "could not read the unit or price",
+      "unit_mismatch": "that unit does not fit this item",
+      "no_total": "no price: write the total paid",
+      "low_confidence_name": "the name is unclear",
+      "low_confidence_qty": "the quantity is unclear",
+      "low_confidence_total": "the price is unclear",
+      "pick": "which item is this? Tap it below"
+    },
+    "total": "Total {amount}",
+    "askConfirm": "Add this to stock?",
+    "needsFix": "Some lines need fixing. Send the whole list again with them corrected, or fix it in Xedine → Purchases → From photo or voice.",
+    "btnAdd": "✅ Add to stock",
+    "btnCancel": "❌ Cancel",
+    "added": "✅ Added to stock.",
+    "cancelled": "❌ Cancelled. Nothing was added.",
+    "alreadyDone": "This list was already handled.",
+    "notConnected": "This chat is not connected to a restaurant yet. Ask the owner for a Xedine link and tap it.",
+    "notAllowed": "You can no longer record purchases for this branch. Please ask the owner.",
+    "failed": "Something went wrong. Please try again.",
+    "linkInvalid": "This link was already used, has expired, or is wrong. Ask the owner for a new one.",
+    "welcome": "Connected ✅ You are recording the bazar for {org}, {branch}.",
+    "help": "Send today’s bazar like this:\nmurgi 10 kg 1800 3 din\npiyaj 5 kg 300\ndim 2 dozen 330\n\nOne item per line: name, quantity, unit, total paid, and how many days it is for. I will show you the list; tap ✅ to add it to stock.\n/stop disconnects this chat.",
+    "stopped": "Disconnected. This chat will no longer record purchases.",
+    "voiceOff": "Voice notes are not switched on yet. Please type the list.",
+    "photoOff": "Reading photos is not switched on yet. Please type the list.",
+    "tooLong": "That is too long for me. Keep a voice note under 5 minutes.",
+    "heard": "🎤 I heard: {text}",
+    "cantRead": "I could not read this:\n{lines}\n\nWrite each item like: murgi 10 kg 1800 (name, quantity, unit, total taka).",
+    "nothingFound": "I could not find any items in that. Write each item like: murgi 10 kg 1800",
+    "ai": {
+      "aiNotConfigured": "Reading this needs AI, which is not switched on yet. Please type the list like: murgi 10 kg 1800",
+      "aiCapExceeded": "Today’s AI allowance is used up. Please type the list like: murgi 10 kg 1800",
+      "aiNotInPlan": "Your restaurant’s plan does not include AI. Please type the list like: murgi 10 kg 1800",
+      "aiFailed": "I could not read that this time. Please try again, or type the list."
+    },
+    "newItemsNote": "🆕 = new item. Tapping ✅ also adds it to your ingredient list.",
+    "pickBelow": "Tap the right item for each ❓ line (or 🆕 if it is new). Then ✅ appears.",
+    "btnNewItem": "🆕 New: {name}",
+    "days": {
+      "one": "1 day",
+      "many": "{n} days"
+    },
+    "daysNote": "📅 = how many days it is for. The owner sees a countdown in Xedine.",
+    "askDays": "📅 For how many days is this bazar? Tap a number below, or write it on a line (murgi 10 kg 3200 3 din)."
+  },
+  "stockGuard": {
+    "title": "Stock Guard",
+    "intro": "{count, plural, one {# thing} other {# things}} in your stock records to check.",
+    "allClear": "All clear ✅ Nothing in your stock records needs checking.",
+    "howItWorks": "Stock Guard checks your purchases, counts and waste with fixed rules every time you open this page. It never changes anything by itself.",
+    "hidden": "Hidden. Its history stays, and buying it again brings it back.",
+    "priceTypo": {
+      "title": "{name}: the price looks wrong",
+      "body": "Paid {paid} for {qty} on {date}. Usually that much costs about {usual}. Check the chit: a zero too many or too few?",
+      "action": "Open purchases"
+    },
+    "belowZero": {
+      "title": "{name}: records say {qty} left",
+      "body": "Less than nothing is impossible: a purchase may not be recorded, or the last count was wrong. Count it again."
+    },
+    "idleStock": {
+      "title": "{name}: {qty} sitting unused",
+      "body": "Not bought, used or thrown away since {date}. This is money on the shelf: use it in a dish, or log it as waste if it went bad."
+    },
+    "newItem": {
+      "title": "{name}: new item",
+      "byWhom": "Added by {who} from Telegram on {date}. It already counts in stock and money leaks. Check the name is right.",
+      "body": "Added from Telegram on {date}. It already counts in stock and money leaks. Check the name is right."
+    },
+    "unused": {
+      "title": "{name}: not bought any more?",
+      "body": "Last bought {date} and none is left. Hide it from the bazar list and counts? Its history stays.",
+      "action": "Hide from lists"
+    },
+    "unusedUnknown": {
+      "title": "{name}: is any left?",
+      "body": "Last bought {date} and never counted. If none is left, hide it from the bazar list and counts. If some is left, count it first.",
+      "action": "None left, hide it"
     }
   }
 }

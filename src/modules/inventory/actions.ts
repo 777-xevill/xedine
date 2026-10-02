@@ -13,8 +13,9 @@ import {
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
- * Stock counts, waste and transfers (ROADMAP Phase 5). Every write is an audited RPC that checks the
- * caller's branch and role in SQL; these actions only parse forms and convert units to base units.
+ * Stock counts and waste (ROADMAP Phase 5). Every write is an audited RPC that checks the caller's
+ * branch and role in SQL; these actions only parse forms and convert units to base units. (Transfers
+ * between branches keep their RPCs, but have no screen since ADR 0026.)
  */
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -145,82 +146,26 @@ export async function logWasteAction(_prev: FormState, formData: FormData): Prom
 }
 
 // ---------------------------------------------------------------------------------------------
-// Transfers
+// The loss line (ADR 0027)
 // ---------------------------------------------------------------------------------------------
-export async function sendTransferAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = base
-    .extend({
-      fromBranchId: z.uuid(),
-      toBranchId: z.uuid(),
-      notes: z.string().trim().max(500).optional(),
-    })
-    .safeParse({
-      orgId: formData.get('orgId'),
-      orgSlug: formData.get('orgSlug'),
-      fromBranchId: formData.get('fromBranchId'),
-      toBranchId: formData.get('toBranchId'),
-      notes: formData.get('notes') ?? undefined,
-    });
-  if (!parsed.success || parsed.data.fromBranchId === parsed.data.toBranchId)
-    return { error: 'transferInvalid' };
-  const bases = await ingredientBases(parsed.data.orgId);
-  const lines: { ingredient_id: string; qty_base: number }[] = [];
-  for (let i = 0; i < 20; i++) {
-    const ingredient = String(formData.get(`line-${i}-ingredient`) ?? '');
-    const text = String(formData.get(`line-${i}-qty`) ?? '').trim();
-    if (!ingredient && !text) continue;
-    const qty = qtyBase(text, String(formData.get(`line-${i}-unit`) ?? ''), bases.get(ingredient));
-    if (!qty || qty <= 0) return { error: 'quantityInvalid' };
-    lines.push({ ingredient_id: ingredient, qty_base: qty });
-  }
-  if (lines.length === 0) return { error: 'transferInvalid' };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc('send_transfer', {
-    p_org: parsed.data.orgId,
-    p_from: parsed.data.fromBranchId,
-    p_to: parsed.data.toBranchId,
-    p_lines: lines,
-    p_notes: parsed.data.notes || null,
+/** The owner's loss line, typed as a percent (Bangla or Latin digits). org_settings RLS: owner only. */
+export async function setLossLineAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = base.extend({ pct: z.string().trim().min(1) }).safeParse({
+    orgId: formData.get('orgId'),
+    orgSlug: formData.get('orgSlug'),
+    pct: String(formData.get('pct') ?? '').replace('%', ''),
   });
-  if (error) return { error: mapDbError(error) };
-  refresh(parsed.data.orgSlug);
-  return { ok: true };
-}
-
-/** recv-<lineId> holds what arrived (in the line's display unit, unit-<lineId>); blank = all of it. */
-export async function receiveTransferAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base
-    .extend({ transferId: z.uuid(), note: z.string().trim().max(500).optional() })
-    .safeParse({
-      orgId: formData.get('orgId'),
-      orgSlug: formData.get('orgSlug'),
-      transferId: formData.get('transferId'),
-      note: formData.get('note') ?? undefined,
-    });
-  if (!parsed.success) return { error: 'invalidInput' };
+  if (!parsed.success) return { error: 'lossLineInvalid' };
+  const pct = parseQuantity(parsed.data.pct);
+  if (pct === null || pct < 0.1 || pct > 20) return { error: 'lossLineInvalid' };
   const supabase = await createClient();
-  const { data: lines } = await supabase
-    .from('transfer_lines')
-    .select('id, ingredient_id, ingredients(base)')
-    .eq('transfer_id', parsed.data.transferId);
-  const received: { line_id: string; qty_base_received: number }[] = [];
-  for (const l of lines ?? []) {
-    const text = String(formData.get(`recv-${l.id}`) ?? '').trim();
-    if (text === '') continue;
-    const ing = l.ingredients as unknown as { base: BaseUnit } | null;
-    const qty = qtyBase(text, String(formData.get(`unit-${l.id}`) ?? ''), ing?.base);
-    if (qty === null) return { error: 'quantityInvalid' };
-    received.push({ line_id: l.id as string, qty_base_received: qty });
-  }
-  const { error } = await supabase.rpc('receive_transfer', {
-    p_transfer: parsed.data.transferId,
-    p_lines: received,
-    p_note: parsed.data.note || null,
-  });
+  const { data, error } = await supabase
+    .from('org_settings')
+    .update({ loss_line_bps: Math.round(pct * 100) })
+    .eq('org_id', parsed.data.orgId)
+    .select('org_id');
   if (error) return { error: mapDbError(error) };
+  if (!data || data.length === 0) return { error: 'notAllowed' };
   refresh(parsed.data.orgSlug);
   return { ok: true };
 }

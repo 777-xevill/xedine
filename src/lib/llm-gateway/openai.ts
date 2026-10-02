@@ -155,7 +155,7 @@ export function responseFormat(schema: z.ZodType): {
 
 /** Reasoning models spend completion tokens thinking; give them headroom beyond the answer budget. */
 export function isReasoningModel(model: string): boolean {
-  return /^(gpt-5|o\d)/.test(model);
+  return /^(gpt-5|o\d|openai\/gpt-oss)/.test(model);
 }
 
 export function completionBody(

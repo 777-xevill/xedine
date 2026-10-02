@@ -31,7 +31,7 @@
 - **Planning:** calendar_events, forecasts, forecast_accuracy, bazar_lists, bazar_list_lines.
 - **Intelligence:** findings, finding_evidence, insight_feed, benchmark_snapshots.
 - **Ops:** fixed_costs, salary_entries, advances, attendance, licences, reviews, review_replies.
-- **AI & messaging:** ai_conversations, ai_messages, ai_tool_calls, ai_usage, prompt_versions, message_outbox, message_templates, webhook_events, job_runs.
+- **AI & messaging:** ai_conversations, ai_messages, ai_tool_calls, ai_usage, prompt_versions, message_outbox, message_templates, webhook_events, chat_links, job_runs.
 - **Billing:** plans, subscriptions, usage_counters, feature_flags.
 
 ## Metrics layer (semantic layer)
@@ -69,6 +69,8 @@ Phase 1: browser print with 58/80 mm CSS templates (receipt, KOT). Later: option
 
 ## Messaging
 WhatsApp Cloud API: per-recipient opt-in, approved templates for briefs/alerts/campaigns, webhooks for inbound replies (Q&A, approvals), 24-hour service-window rules, outbox with retries and delivery status. SMS (Bangladeshi provider TBD) behind the same interface. Check Meta's current Bangladesh pricing before setting plan limits.
+
+**Bazar by chat (ADR 0025):** a Telegram bot (WhatsApp later, same core) takes the purchaser's list as text, a voice note or a chit photo and answers with the lines and a ✅ button; only the tap records the purchase. The webhook runs as the service role but every write goes through a `chat_*` function that acts as the one person the chat is linked to (`chat_links`), so role checks and the audit trail are the web's. Typed lists are parsed without AI; voice goes through the gateway's `transcribe` (capped and costed).
 
 ## Integrations (later phases)
 Google Business Profile (reviews) · weather API (forecasting) · reference prices via CSV import (e.g., TCB market prices) · delivery platforms via manual tagging/CSV · subscription payments (provider TBD) · CSV/Excel exports for accountants · lender-partner report (later).

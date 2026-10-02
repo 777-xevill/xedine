@@ -32,9 +32,17 @@ Rules: money in poisha · quantities in base units · periods use `business_date
 - `usage.actual(period between counts)` = opening count + purchases + transfers_in − transfers_out − closing count
 - `cogs.actual` = usage.actual × period weighted unit_cost
 - `variance.usage_qty` = usage.actual − usage.theoretical − waste.logged; `variance.value` = qty × unit_cost
-- `variance.pct_of_sales` = Σ variance.value ÷ sales.net. Bands: < 2% healthy · 2–5% watch · > 5% problem
+- `variance.pct_of_sales` = Σ variance.value ÷ sales.net. Bands: < 2% healthy · 2–5% watch · > 5% problem (the whole restaurant; never applied per ingredient)
+- `usage.staff_food` = waste.logged with the reason **Staff food** (`reason_codes.code = 'staff_food'`; a dish through its recipe), per ingredient between two counts — shown on its own line, valued like variance.value, **never part of over-usage or the loss** (ADR 0029)
+- `usage.over_qty` = usage.actual − usage.theoretical − usage.staff_food (= other waste.logged + variance.usage_qty), per ingredient between two counts. > 0 is **over-usage, a loss**; < 0 is **under-usage** (never a gain); exactly 0 is **on recipe** (ADR 0027, 0029)
+- `usage.over_pct` = usage.over_qty ÷ usage.theoretical; `usage.over_value` = usage.over_qty × unit_cost (closing-day cost, like variance.value)
+- **Loss line** (`org_settings.loss_line_bps`, owner setting, default 1%): usage.over_pct ≥ the line — or over-usage of an ingredient no sold recipe needs — is a **loss** to act on; over-usage below the line is a **small loss** (still counted in ৳). The `usage.unexplained` detector uses the same line as its minimum rate
+- `stock.loss_value` = Σ usage.over_value over ingredients with usage.over_qty > 0. Under-usage is never subtracted (netting would hide a loss)
 - **Variance bridge:** total gap (cogs.actual − TFC) = logged-waste value + price effect (paid − standard cost × qty) + unexplained-usage value + count-uncertainty band
-- `stock.days_of_cover` = stock.theoretical ÷ avg daily usage.theoretical (last 14 days): 🟢 ≥ 7 · 🟡 3–6.99 · 🔴 < 3 (per-ingredient override)
+- `stock.days_of_cover` = stock.theoretical ÷ average daily usage.theoretical: 🟢 ≥ 7 · 🟡 3–6.99 · 🔴 < 3 (per-ingredient override). The average is usage.theoretical over the last **D** days ÷ D, D = 14, or the days since the item was first bought, counted or received at the branch (today included) when fewer (ADR 0030); the count-based ledger `private.m_stock` (Stock Guard, hiding, bazar list, golden checks) keeps D = 14
+- `stock.estimate` (ADR 0030), for an item never counted at a branch: purchases + transfers in − transfers out − usage.theoretical − waste.logged from the first day it was bought or arrived there (as if the shelf was empty before). Shown as stock with `estimated = true` (≈) until the first count; the count-based `stock.theoretical` (Stock Guard, hiding, bazar list, golden checks) still says unknown
+- `stock.used` = usage.theoretical over the same last D days the average is taken over (from `since_on`, the first of them), so "used ÷ days = a day" always holds on the Stock page
+- `stock.lot` (ADR 0029), per branch and active ingredient: the **lot** = every confirmed purchase line of the latest business day it was bought; its days = `for_days` of that day's latest line that says them (no days said → no lot). `ends_on` = bought_on + days − 1; `days_left` = max(ends_on − today + 1, 0), today included. State: **running** (today ≤ ends_on) · **ended** (listed for 7 days after ends_on). `prev_lasted_days` = this lot's day − the previous lot's day, shown when below the previous lot's days
 - `waste.pct` = waste.logged value ÷ purchases value
 
 ## Purchasing
@@ -95,6 +103,17 @@ Star = high popularity, high margin · Plowhorse = high, low · Puzzle = low, hi
 ## Growth (ADR 0023, optional)
 - `growth.top_item` = a menu-matrix `star` if one exists (needs recipe costs), else the top seller by units, over the last 28 days.
 - `growth.daypart_share` = each configured daypart's share of the last 28 days' net sales; the weakest and strongest are surfaced. Revenue only — no cost or margin, so no money gate.
+
+## Stock Guard (ADR 0028)
+`metric_stock_guard(org, branch, now)`: fixed rules over the stock records, one row per thing a person should look at. No AI, no thresholds per org yet. "Today" is the org's business date at the injected now; scope is the caller's stock branches.
+- `guard.price_typo` — the latest confirmed purchase line's unit price (`line_total ÷ qty_base`) is ≥ 2× or ≤ ½ the median unit price of the 5 lines before it (≥ 3 needed). Returns the paid total and `usual_total = round(median × qty_base)`. **Owner and accountant only** (`can_see_money`).
+- `guard.below_zero` — `stock.theoretical` < 0 at a branch (a purchase not recorded, or a bad count).
+- `guard.idle_stock` — bought at some time, but no purchase, recipe usage or waste in the last 60 days, and `stock.theoretical` > 0 somewhere (or some on the way): money sitting on the shelf.
+- `guard.unused` — the same 60 quiet days, and every branch that bought it has counted it and shows ≤ 0: the owner may hide it.
+- `guard.unused_unknown` — the same 60 quiet days, but a branch that bought it never counted it: the owner must say whether any is left before hiding.
+- `guard.new_item` — an item purchasers added from the chat (`added_via = 'chat'`) in the last 14 business days, with who added it (from the audit log).
+
+Hiding (`set_ingredient_hidden`) is refused while `stock.theoretical` > 0 or anything is in transit in any branch, and needs the owner's "none left" where the item was bought but never counted. A hidden item drops out of `stock.theoretical`'s list, count sheets and the bazar list (it has no stock by then), keeps all its history in every period metric, and comes back on its next purchase.
 
 ## Discipline score (per branch per day, 0–100)
 Bazar entries recorded (25) · waste log touched (15) · cash close done (20) · scheduled count done (25) · recipe coverage ≥ 90% (15).

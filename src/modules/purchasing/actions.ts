@@ -38,7 +38,12 @@ async function ingredientBases(orgId: string): Promise<Map<string, BaseUnit>> {
   return new Map((data ?? []).map((i) => [i.id as string, i.base as BaseUnit]));
 }
 
-type PurchaseLine = { ingredient_id: string; qty_base: number; line_total_poisha: number };
+type PurchaseLine = {
+  ingredient_id: string;
+  qty_base: number;
+  line_total_poisha: number;
+  for_days?: number;
+};
 
 /** Rows named line-<i>-ingredient / -qty / -unit / -total; blank rows are skipped, bad ones refused. */
 function readPurchaseLines(
@@ -68,6 +73,8 @@ const purchaseFields = base.extend({
   supplierId: z.union([z.uuid(), z.literal('')]),
   supplierName: z.string().trim().max(120).optional(),
   purchasedOn: z.string().regex(DATE),
+  // ADR 0029: how many days the whole purchase is for; blank = not said.
+  forDays: z.union([z.literal(''), z.coerce.number().int().min(1).max(30)]).default(''),
 });
 
 export async function recordPurchaseAction(
@@ -81,10 +88,13 @@ export async function recordPurchaseAction(
     supplierId: formData.get('supplierId') ?? '',
     supplierName: formData.get('supplierName') ?? undefined,
     purchasedOn: formData.get('purchasedOn'),
+    forDays: formData.get('forDays') ?? '',
   });
   if (!parsed.success) return { error: 'invalidInput' };
-  const lines = readPurchaseLines(formData, await ingredientBases(parsed.data.orgId));
-  if (!lines || lines.length === 0) return { error: 'purchaseLinesInvalid' };
+  const read = readPurchaseLines(formData, await ingredientBases(parsed.data.orgId));
+  if (!read || read.length === 0) return { error: 'purchaseLinesInvalid' };
+  const forDays = parsed.data.forDays;
+  const lines = forDays === '' ? read : read.map((l) => ({ ...l, for_days: forDays }));
   const supabase = await createClient();
   const { error } = await supabase.rpc('record_purchase', {
     p_org: parsed.data.orgId,

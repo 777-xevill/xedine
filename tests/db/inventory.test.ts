@@ -445,8 +445,9 @@ describe('stock, days of cover and variance between counts', () => {
       waste: 300,
       stock: 6300,
     });
-    // 14-day usage 1,200 g → 6,300 × 14 ÷ 1,200 = 73.5 days: green.
-    expect(n(chicken.days_of_cover)).toBe(73.5);
+    // Usage 1,200 g over the 2 days since chicken was first counted here (ADR 0030: fewer than 14
+    // days of history are not spread over 14) → 6,300 × 2 ÷ 1,200 = 10.5 days: green (≥ 7).
+    expect(n(chicken.days_of_cover)).toBe(10.5);
     expect(chicken.band).toBe('green');
     // Rice: 2,000 − 600 − 50 = 1,350; 1,350 × 14 ÷ 600 = 31.5.
     const rice = (await status(fx.manager)).find((r) => r.ingredient_id === fx.rice)!;
@@ -503,6 +504,11 @@ describe('stock, days of cover and variance between counts', () => {
       bps: n(owner.variance_bps),
       value: n(owner.variance_poisha),
       purchases: n(owner.purchases_poisha),
+      // ADR 0027: the whole over-usage, logged waste included: 1,800 − 1,200 = 600 g, 50% over the
+      // recipes, ৳198 at 33 poisha/g.
+      over: n(owner.over_qty),
+      overBps: n(owner.over_bps),
+      overValue: n(owner.over_poisha),
     }).toEqual({
       open: 5000,
       close: 6000,
@@ -511,11 +517,16 @@ describe('stock, days of cover and variance between counts', () => {
       bps: 2500,
       value: 9900,
       purchases: 99000,
+      over: 600,
+      overBps: 5000,
+      overValue: 19800,
     });
     // The manager sees the quantities, never the money.
     const manager = (await run(fx.manager)).find((r) => r.ingredient_id === fx.chicken)!;
     expect(n(manager.variance_qty)).toBe(300);
+    expect(n(manager.over_qty)).toBe(600);
     expect(manager.variance_poisha).toBeNull();
+    expect(manager.over_poisha).toBeNull();
     expect(manager.purchases_poisha).toBeNull();
     // After the count, stock is the count itself.
     const chicken = (await status(fx.manager)).find((r) => r.ingredient_id === fx.chicken)!;
@@ -760,5 +771,51 @@ describe('discipline score and the guided count', () => {
       false,
     );
     expect(mine.map((r) => r.branch_id)).toEqual([fx.b1]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+describe('the loss line (ADR 0027): one owner setting for the Stock page and Money leaks', () => {
+  let fx: Fx;
+  beforeAll(async () => {
+    fx = await fixture();
+  });
+
+  const line = async () =>
+    n(
+      (
+        await admin<{ v: number }>(
+          `select (private.detector_config($1) ->> 'usage_min_rate_bps')::int as v`,
+          [fx.org.id],
+        )
+      )[0]!.v,
+    );
+
+  it('starts at 1% and drives the unexplained-usage detector, over any older override', async () => {
+    const [s] = await admin<{ loss_line_bps: number }>(
+      'select loss_line_bps from public.org_settings where org_id = $1',
+      [fx.org.id],
+    );
+    expect(s!.loss_line_bps).toBe(100);
+    await admin(
+      `update public.org_settings set detector_config = '{"usage_min_rate_bps": 500}' where org_id = $1`,
+      [fx.org.id],
+    );
+    expect(await line()).toBe(100);
+  });
+
+  it('only the owner changes it, within 0.1%–20%', async () => {
+    const set = (user: TestUser, bps: number) =>
+      attempt(user, 'update public.org_settings set loss_line_bps = $2 where org_id = $1', [
+        fx.org.id,
+        bps,
+      ]);
+    const byManager = await set(fx.manager, 300);
+    expect(byManager.ok && byManager.rowCount > 0).toBe(false);
+    expect((await set(fx.org.owner, 5000)).ok).toBe(false);
+    await q(fx.org.owner, 'update public.org_settings set loss_line_bps = 250 where org_id = $1', [
+      fx.org.id,
+    ]);
+    expect(await line()).toBe(250);
   });
 });

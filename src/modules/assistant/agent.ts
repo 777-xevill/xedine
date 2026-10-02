@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AiError, aiConfigured, gateway, type PromptVersion } from '@/lib/llm-gateway';
 import { renderAnswer, toolForIntent, type Translate } from './answers';
 import { answerLocale, detectLanguage, type QuestionLanguage } from './language';
+import { forModel, plain } from './for-model';
 import { routeQuestion, type MenuRef } from './router';
 import { runTool, TOOL_DEFS, type ToolContext, type ToolResult } from './tools';
 import { validateNumbers } from './validator';
@@ -15,19 +16,37 @@ import { validateNumbers } from './validator';
  */
 export const ASSISTANT_PROMPT: PromptVersion = {
   key: 'assistant',
-  version: 3,
+  version: 4,
   body: [
-    'You are Xedine, the profit assistant for a restaurant owner in Bangladesh.',
-    'Answer only from the tools. Every number you write must appear in a tool result: never add, subtract,',
-    'average, estimate or round figures yourself, and never invent one. Money in tool results is in poisha',
-    '(*_poisha: divide by 100 for taka); write taka with ৳. Percentages in *_bps are basis points (divide by 100).',
-    'If the tools return nothing, an error, or not_permitted, say plainly that you do not have that data or',
-    'that this person cannot see it. Do not guess. If an item is ambiguous, ask which one.',
-    'Reply in the language of the question: Bangla script for Bangla or Banglish, English for English.',
-    'Be brief: one to four short sentences, or a short list. Respect the owner rules given in the context.',
-    'Write plain text for a chat bubble: no Markdown, no headings, no bold or tables; use "- " for a list.',
-    'Estimated profit uses recipe costs where they exist; when food_cost_basis is assumed or mixed, say the food cost is partly an assumption.',
-    'To explain a money leak, call explain_finding and describe the evidence in plain words, then the suggested actions.',
+    "You are Xedine, the owner's sharp profit advisor for a restaurant in Bangladesh. You know the restaurant",
+    "only through your tools: sales, items, today's profit, money leaks from the till, stock on the shelf and",
+    'how long it lasts, loss per ingredient, waste, purchases, food cost, forecast, menu, branches, customers',
+    'and reviews. Call as many tools as the question needs before answering; for a broad question ("how are',
+    'we doing", "what is wrong") look at several.',
+    '',
+    'Numbers: every number you write must appear in a tool result (or the question). Never add, subtract,',
+    'divide, average, estimate or round figures yourself, and never invent one. Money in tool results is',
+    'already in taka (*_taka): write it with ৳ exactly as given. Never mention poisha. *_pct fields are',
+    'already percent. Quantities you should quote are ready-written text such as "9.55 kg" — copy them.',
+    '',
+    'Loss: for "loss", "লস", "kothay loss", "kon jinish", "where is money going", call get_stock_loss for the',
+    'branch (which ingredients cost money, how much, and whether it was written-down waste or not explained),',
+    "and get_findings (money leaks in the till: voids, discounts, cash). Use get_flash_pnl only for today's",
+    'profit. Say where the loss is (the top items with their amounts), why (waste or not explained), and one',
+    'or two practical things to check (portion size, a bad count, unrecorded waste or transfers, theft).',
+    'Staff food is shown apart and is not a loss.',
+    '',
+    'If the tools return nothing, an error, two_counts_needed or not_permitted, say plainly what is missing',
+    '(for example: count the shelf twice to see loss per item) or that this person cannot see it. Do not',
+    'guess. If an item or branch is ambiguous, ask which one.',
+    '',
+    'Language: answer in the language of the question. Bangla or Banglish question → answer only in Bangla',
+    'script (ingredient and dish names may stay as written); English question → English. Never mix.',
+    'Style: short and plain for a phone chat bubble — one to five short sentences or a short list with "- ".',
+    'No Markdown, headings, bold or tables. Respect the owner rules in the context.',
+    'Estimated profit uses recipe costs where they exist; when food_cost_basis is assumed or mixed, say the',
+    'food cost is partly an assumption. To explain one money leak, call explain_finding and describe the',
+    'evidence in plain words, then the suggested actions.',
   ].join('\n'),
 };
 
@@ -131,7 +150,10 @@ export async function askAssistant(args: {
         tier: 'assistant' as const,
         context,
         tools: TOOL_DEFS,
-        executeTool: (name: string, input: Record<string, unknown>) => runTool(name, input, ctx),
+        // The model sees taka and percent, never poisha or basis points (see for-model.ts); the
+        // validator checks the answer against exactly what the model saw.
+        executeTool: async (name: string, input: Record<string, unknown>) =>
+          forModel(await runTool(name, input, ctx)),
       };
       const first = await gw.chat({
         ...base,
@@ -150,7 +172,7 @@ export async function askAssistant(args: {
       );
       if (check.ok)
         return {
-          text: first.text,
+          text: plain(first.text),
           language,
           source: 'llm',
           numericCheck: first.toolCalls.length ? 'ok' : 'not_applicable',
@@ -174,7 +196,7 @@ export async function askAssistant(args: {
       );
       if (recheck.ok)
         return {
-          text: second.text,
+          text: plain(second.text),
           language,
           source: 'llm',
           numericCheck: 'retried',
@@ -198,7 +220,12 @@ export async function askAssistant(args: {
       // Cap reached, refusal or a cut-off answer: the deterministic path still answers what it can.
       const fallback = await routerAnswer(ctx, args.question, t, locale);
       return {
-        text: e.code === 'cap_exceeded' ? `${fallback.text}\n\n${t('capNote')}` : fallback.text,
+        text:
+          e.code === 'cap_exceeded'
+            ? `${fallback.text}\n\n${t('capNote')}`
+            : e.code === 'rate_limited' && !fallback.answered
+              ? t('busy')
+              : fallback.text,
         language,
         source: 'router',
         numericCheck: 'fallback',

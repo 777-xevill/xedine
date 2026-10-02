@@ -2,11 +2,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { LocaleSwitcher } from '@/components/locale-switcher';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, Hint, Input, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { type Locale } from '@/lib/i18n/format';
+import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
 import { saveCountAction } from '@/modules/inventory/actions';
 import { formatQuantity } from '@/modules/inventory/format';
 import { splitQuantity, unitsFor, type BaseUnit } from '@/modules/purchasing/lines';
@@ -108,11 +109,17 @@ export default async function CountPage({
     <>
       <PageTitle
         title={t(`start.${count.kind as string}`)}
-        subtitle={t('countSubtitle', { branch: branchName, date: count.counted_on as string })}
+        subtitle={t('countSubtitle', {
+          branch: branchName,
+          date: formatDhakaDate(new Date(`${count.counted_on as string}T06:00:00Z`), loc),
+        })}
         actions={
-          <Link href={back} className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
-            {t('back')}
-          </Link>
+          <>
+            <LocaleSwitcher />
+            <Link href={back} className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
+              {t('back')}
+            </Link>
+          </>
         }
       />
       <Card className="mx-auto max-w-2xl p-4 sm:p-6">

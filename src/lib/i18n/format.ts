@@ -90,6 +90,16 @@ export function formatDhakaDate(instant: Date, locale: Locale): string {
   }).format(instant);
 }
 
+/** A day in a list, with its weekday: "Sat, 28 Sept" / "শনি, ২৮ সেপ"; a business date as noon Dhaka. */
+export function formatDhakaDay(instant: Date, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: DHAKA_TZ,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(instant);
+}
+
 export function formatDhakaTime(instant: Date, locale: Locale): string {
   return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: DHAKA_TZ,

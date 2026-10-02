@@ -389,10 +389,11 @@ async function phase6() {
     branch_id: string;
     subject: Record<string, string>;
     impact_poisha: string;
+    evidence: Record<string, unknown>;
   };
   const run = (o: OrgCfg) =>
     q<Row>(
-      `select type, branch_id, subject, impact_poisha from private.detect_all($1, $2::date, $3::date, array['stock', 'price', 'transfer'])`,
+      `select type, branch_id, subject, impact_poisha, evidence from private.detect_all($1, $2::date, $3::date, array['stock', 'price', 'transfer'])`,
       [orgId(o), from, to],
     );
   const found = await run(kacchi);
@@ -421,10 +422,38 @@ async function phase6() {
   const s6 = plants[0]![1];
   if (s6 && s6.subject.to_branch_id !== branch('mirpur'))
     failures.push('S6: the suspected transfer does not point at Mirpur');
+  // ADR 0027: anything at or over the org's loss line (default 1%) over its recipe is a real loss, so the
+  // seed's own background over-use (e.g. Mirpur not logging weekend waste) may surface as small
+  // usage.unexplained findings. They are allowed — but only at or over the line, and never bigger than
+  // the smallest planted leak, so the plants stay on top.
+  const lossLine = n(
+    (
+      await q<{ v: string }>(`select (private.detector_config($1) ->> 'usage_min_rate_bps') as v`, [
+        orgId(kacchi),
+      ])
+    )[0]!.v,
+  );
+  const smallestPlant = Math.min(
+    ...plants.filter(([, f]) => f).map(([, f]) => n(f!.impact_poisha)),
+  );
   const others = found.filter((f) => !plants.some(([, p]) => p === f));
-  if (others.some((f) => f.type !== 'transfer.unconfirmed'))
+  const unexpected = others.filter(
+    (f) =>
+      f.type !== 'transfer.unconfirmed' &&
+      !(
+        f.type === 'usage.unexplained' &&
+        n(f.evidence.rate_bps) >= lossLine &&
+        n(f.impact_poisha) < smallestPlant
+      ),
+  );
+  if (unexpected.length > 0)
     failures.push(
-      `Kacchi House: unexpected stock/price findings: ${others.map((f) => f.type).join(', ')}`,
+      `Kacchi House: unexpected stock/price findings: ${unexpected.map((f) => f.type).join(', ')}`,
+    );
+  const background = others.filter((f) => f.type === 'usage.unexplained');
+  if (background.length > 0)
+    notes.push(
+      `Phase 6: ${background.length} background over-use finding(s) at or over the ${lossLine} bps loss line (ADR 0027)`,
     );
   const ranked = [...plants]
     .filter(([, f]) => f)

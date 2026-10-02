@@ -37,3 +37,7 @@ Thumbs.db
 
 # local experiments
 .scratch/
+
+.vercel
+.env*
+!.env.example

@@ -30,7 +30,9 @@
     "manifest:build": "tsx scripts/build-manifest.ts",
     "manifest:validate": "tsx scripts/validate-manifest.ts",
     "metrics:validate": "tsx scripts/validate-metrics.ts",
-    "ai:evals": "vitest run --project ai-evals"
+    "ai:evals": "vitest run --project ai-evals",
+    "telegram:poll": "tsx --env-file=.env.local scripts/telegram.ts poll",
+    "telegram:webhook": "tsx --env-file=.env.local scripts/telegram.ts webhook"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

@@ -226,6 +226,18 @@ export default async function PurchasesPage({
                   required
                 />
               </div>
+              <div>
+                <Label htmlFor="p-days">{t('forDays')}</Label>
+                <Select id="p-days" name="forDays" defaultValue="">
+                  <option value="">{t('forDaysNone')}</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 10, 14, 30].map((d) => (
+                    <option key={d} value={d}>
+                      {t('daysOption', { count: d })}
+                    </option>
+                  ))}
+                </Select>
+                <Hint>{t('forDaysHint')}</Hint>
+              </div>
               {supplierFields('p')}
             </div>
             <p className="pt-2 text-sm font-semibold">{t('lines')}</p>

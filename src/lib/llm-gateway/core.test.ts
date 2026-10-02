@@ -241,3 +241,53 @@ describe('LLM gateway tool loop', () => {
     ).rejects.toMatchObject({ code: 'truncated' });
   });
 });
+
+describe('speech to text', () => {
+  function speechHarness(spent = 0) {
+    const recorded: Parameters<UsageStore['record']>[0][] = [];
+    const heard: { model: string; filename: string }[] = [];
+    const gw = createGateway({
+      transport: (async () => {
+        throw new Error('unused');
+      }) as Transport,
+      speechTransport: async (req) => {
+        heard.push({ model: req.model, filename: req.filename });
+        return '  murgi 10 kg 1800  ';
+      },
+      store: { spentTodayUsdMicros: async () => spent, record: async (r) => void recorded.push(r) },
+      config: {
+        models: { assistant: 'a', fast: 'f' },
+        rates: {},
+        dailyCapUsdMicros: 1_000_000,
+        speech: { model: 'gpt-4o-transcribe', usdMicrosPerMinute: 6_000 },
+        today: () => '2026-10-01',
+      },
+    });
+    const transcribe = (seconds: number) =>
+      gw.transcribe({
+        orgId: 'org',
+        feature: 'purchase_voice',
+        audio: new Uint8Array([1, 2, 3]),
+        filename: 'voice.ogg',
+        seconds,
+        prompt: 'bazar',
+      });
+    return { transcribe, recorded, heard };
+  }
+
+  it('returns the transcript and costs the audio by its length', async () => {
+    const h = speechHarness();
+    expect(await h.transcribe(45)).toBe('murgi 10 kg 1800');
+    expect(h.heard).toEqual([{ model: 'gpt-4o-transcribe', filename: 'voice.ogg' }]);
+    // 45 s at $0.006 a minute = 4,500 micros.
+    expect(h.recorded).toMatchObject([
+      { orgId: 'org', date: '2026-10-01', feature: 'purchase_voice', costUsdMicros: 4_500 },
+    ]);
+  });
+
+  it('is refused once the daily cap is spent, before any audio is sent', async () => {
+    const h = speechHarness(1_000_000);
+    await expect(h.transcribe(10)).rejects.toMatchObject({ code: 'cap_exceeded' });
+    expect(h.heard).toEqual([]);
+  });
+});

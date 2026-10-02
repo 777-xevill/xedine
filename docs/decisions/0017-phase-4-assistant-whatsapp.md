@@ -1,0 +1,7 @@
+
+## Amendment (2026-10-02): the assistant finds the loss
+The founder's "uttara branch er loss ber koro / kon jinish er jonno loss hocche" failed: no tool listed loss per item, and the model converted 865,750 poisha to "৳865.75" (the validator rightly rejected it). Changes (prompt version 4):
+- **The model never converts units.** `forModel` (src/modules/assistant/for-model.ts) turns every `*_poisha` into `*_taka` and `*_bps` into `*_pct` before the model sees a tool result, and quantities come as ready text ("9.55 kg"); the validator checks against exactly that. It also accepts whole-taka rounding, g written as kg, a quoted quantity to one decimal, and ignores list numbering ("(১)", "2.").
+- **New tools:** `get_stock_loss` (the Loss tab per ingredient: over-usage, loss ৳, written-down waste vs not explained, staff food apart, totals), `get_waste` (by reason and item), `get_purchases` (spend per ingredient); `get_stock_status` gains the shelf amount and daily use as text.
+- **Prompt:** an advisor that calls as many tools as needed; for loss questions it uses `get_stock_loss` and `get_findings`, says where, why and what to check; answers Banglish in Bangla script; Markdown is stripped from answers (`plain`).
+- On Groq the assistant runs on `openai/gpt-oss-120b` (Qwen for photos). The account's 8,000 tokens a minute per model fits about one question a minute; past that the answer says "too many questions this minute" (`rate_limited`) instead of the generic help text.

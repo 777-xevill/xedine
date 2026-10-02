@@ -137,6 +137,16 @@ describe('OpenAI provider mapping (ADR 0024)', () => {
     const plain = chatBody({ ...base, model: 'gpt-4.1', maxTokens: 4000 }, 'low');
     expect(plain).toMatchObject({ max_completion_tokens: 4000 });
     expect(plain).not.toHaveProperty('reasoning_effort');
+    // Groq: gpt-oss reasons like OpenAI's models; Llama does not.
+    expect(
+      chatBody({ ...base, model: 'openai/gpt-oss-120b', maxTokens: 4000 }, 'low'),
+    ).toMatchObject({
+      max_completion_tokens: 8000,
+      reasoning_effort: 'low',
+    });
+    expect(chatBody({ ...base, model: 'qwen/qwen3.8-27b', maxTokens: 4000 }, 'low')).toMatchObject({
+      max_completion_tokens: 4000,
+    });
   });
 
   it('drives the gateway tool loop end to end through the mapping', async () => {

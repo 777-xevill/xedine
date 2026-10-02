@@ -1,9 +1,40 @@
-import { ArrowLeftRight, ClipboardList, Package, Trash2 } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Boxes,
+  ChefHat,
+  CircleAlert,
+  CircleCheck,
+  CircleHelp,
+  ClipboardCheck,
+  Info,
+  Lightbulb,
+  PackageMinus,
+  PackageSearch,
+  ShoppingBasket,
+  Soup,
+  Trash2,
+  TriangleAlert,
+  UtensilsCrossed,
+} from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
-import { StatusBadge } from '@/components/ui/badge';
+import { LocaleSwitcher } from '@/components/locale-switcher';
+import {
+  Banner,
+  BarLine,
+  Callout,
+  Chips,
+  Disclosure,
+  GroupHeading,
+  ItemRow,
+  LedgerLine,
+  LevelRow,
+  SectionTabs,
+  ToneIcon,
+  type Tone,
+} from '@/components/stock/parts';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Alert,
@@ -18,49 +49,50 @@ import {
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
-import { addDays, weekday } from '@/lib/time/business-date';
 import {
-  logWasteAction,
-  receiveTransferAction,
-  sendTransferAction,
-  startCountAction,
-} from '@/modules/inventory/actions';
+  formatBDT,
+  formatBps,
+  formatDhakaDate,
+  formatDhakaDay,
+  formatNumber,
+  type Locale,
+} from '@/lib/i18n/format';
+import { addDays, weekday } from '@/lib/time/business-date';
+import { logWasteAction, setLossLineAction, startCountAction } from '@/modules/inventory/actions';
 import { formatQuantity } from '@/modules/inventory/format';
 import {
+  stockLots,
   stockStatus,
   stockVariance,
-  varianceBand,
   varianceBridge,
   wasteBoard,
-  type CoverBand,
+  type LotRow,
+  type StockRow,
+  type VarianceRow,
 } from '@/modules/inventory/queries';
+import {
+  compareBars,
+  daysInclusive,
+  DEFAULT_LOSS_LINE_BPS,
+  groupLevels,
+  lossKind,
+  lossTotal,
+  splitLoss,
+  staffFoodTotal,
+} from '@/modules/inventory/simple';
 import { businessToday } from '@/modules/metrics/queries';
-import { splitQuantity, type BaseUnit, type PurchaseUnit } from '@/modules/purchasing/lines';
+import type { BaseUnit, PurchaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
+import { StockGuardCard } from '@/components/stock/guard-card';
 
-const TABS = ['status', 'variance', 'waste', 'transfers'] as const;
+const TABS = ['status', 'variance', 'waste'] as const;
 type Tab = (typeof TABS)[number];
-const BAND_TONE: Record<CoverBand, 'success' | 'warning' | 'danger' | 'neutral'> = {
-  green: 'success',
-  yellow: 'warning',
-  red: 'danger',
-  none: 'neutral',
-};
-const VARIANCE_TONE = {
-  healthy: 'success',
-  watch: 'warning',
-  problem: 'danger',
-  none: 'neutral',
-} as const;
-const TRANSFER_TONE = {
-  draft: 'neutral',
-  sent: 'info',
-  received: 'success',
-  disputed: 'warning',
-} as const;
 
-/** Stock (ROADMAP Phase 5): what should be on the shelf, how long it lasts, counts, waste, transfers. */
+/**
+ * Stock (ROADMAP Phase 5, simplified in ADR 0026). Three plain questions, each with its own icon:
+ * what do I have, is anything missing, what did I throw away. Every figure still comes from the
+ * Phase 5 metrics; this page only chooses words, icons and order — it never calculates a quantity.
+ */
 export default async function StockPage({
   params,
   searchParams,
@@ -91,12 +123,25 @@ export default async function StockPage({
     getLocale(),
   ]);
   const loc = locale as Locale;
-  const qty = (q: number, b: BaseUnit) => formatQuantity(q, b, loc, (u) => tu(u));
+  const unit = (u: PurchaseUnit) => tu(u);
+  // "6.4 kg" for a quick read; two decimals where a sum has to add up on screen.
+  const qty = (q: number, b: BaseUnit) => formatQuantity(q, b, loc, unit, { maxDecimals: 1 });
+  const qtyExact = (q: number, b: BaseUnit) => formatQuantity(q, b, loc, unit, { maxDecimals: 2 });
+  // The loss view shows quantities in full (ADR 0027): the exact difference, never a rounded one.
+  const qtyFull = (q: number, b: BaseUnit) => formatQuantity(q, b, loc, unit);
   const label = (name: string, nameBn: string | null) => (loc === 'bn' && nameBn ? nameBn : name);
+  // A business day as a date in the reader's language and digits (06:00Z is midday in Dhaka).
+  const day = (d: string) => formatDhakaDate(new Date(`${d}T06:00:00Z`), loc);
+  // The same, short and with its weekday, for a lot's countdown ("Sat, 28 Sept").
+  const shortDay = (d: string) => formatDhakaDay(new Date(`${d}T06:00:00Z`), loc);
+  const title = (
+    <PageTitle title={t('title')} subtitle={t('subtitle')} actions={<LocaleSwitcher />} />
+  );
+
   if (!branch) {
     return (
       <>
-        <PageTitle title={t('title')} subtitle={t('subtitle')} />
+        {title}
         <EmptyState title={t('noBranch')} />
       </>
     );
@@ -105,6 +150,8 @@ export default async function StockPage({
     const q = new URLSearchParams({ tab, branch: branch.id, ...over });
     return `/${ctx.org.slug}/stock?${q.toString()}`;
   };
+  const tabHref = (key: Tab) =>
+    `/${ctx.org.slug}/stock?${new URLSearchParams({ tab: key, branch: branch.id }).toString()}`;
   const { date: today } = await businessToday(ctx.org.id);
   const supabase = await createClient();
   const hidden = (
@@ -113,23 +160,102 @@ export default async function StockPage({
       <input type="hidden" name="orgSlug" value={ctx.org.slug} />
     </>
   );
-  const unitSelect = (name: string) => (
-    <Select name={name} aria-label={t('unit')} defaultValue="kg" className="w-24">
-      {(['kg', 'g', 'l', 'ml', 'pcs', 'dozen'] as PurchaseUnit[]).map((u) => (
-        <option key={u} value={u}>
-          {tu(u)}
-        </option>
-      ))}
-    </Select>
+
+  // Today's counts decide whether to offer "continue"; the weekday decides whether today is count day.
+  const [{ data: settings }, { data: todaysCounts }] = await Promise.all([
+    supabase
+      .from('org_settings')
+      .select('count_weekday, loss_line_bps')
+      .eq('org_id', ctx.org.id)
+      .maybeSingle(),
+    supabase
+      .from('stock_counts')
+      .select('id, status, kind, counted_on')
+      .eq('org_id', ctx.org.id)
+      .eq('branch_id', branch.id)
+      .eq('counted_on', today),
+  ]);
+  const lossLine = Number(settings?.loss_line_bps ?? DEFAULT_LOSS_LINE_BPS);
+  const openCount = (todaysCounts ?? []).find((c) => c.status === 'open');
+  const countDue =
+    weekday(today) === Number(settings?.count_weekday ?? 0) &&
+    !(todaysCounts ?? []).some((c) => c.status === 'submitted');
+
+  /** "Count your shelf": the one thing the owner does by hand, in two plain buttons. */
+  const countCard = (lastCounted: string | null) =>
+    canCount ? (
+      <Card className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-4">
+          <ToneIcon tone="info" icon={<ClipboardCheck />} className="size-12" />
+          <div className="min-w-0 flex-1 basis-64">
+            <h2 className="text-base font-semibold">{t('count.title')}</h2>
+            <p className="text-sm text-secondary">{t('count.body')}</p>
+            <p className="mt-1 text-sm font-medium">
+              {lastCounted ? t('count.last', { date: day(lastCounted) }) : t('count.never')}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {openCount ? (
+              <Link
+                href={`/${ctx.org.slug}/stock/count/${openCount.id as string}`}
+                className={buttonVariants()}
+              >
+                {t('continueCount')}
+              </Link>
+            ) : null}
+            {(['guided_weekly', 'full'] as const).map((kind) => (
+              <form key={kind} action={startCountAction}>
+                {hidden}
+                <input type="hidden" name="branchId" value={branch.id} />
+                <input type="hidden" name="kind" value={kind} />
+                <Button
+                  type="submit"
+                  variant={kind === 'guided_weekly' && !openCount ? 'primary' : 'secondary'}
+                >
+                  {t(`start.${kind}`)}
+                </Button>
+              </form>
+            ))}
+          </div>
+        </div>
+        <Hint className="mt-3">{t('count.hint')}</Hint>
+      </Card>
+    ) : null;
+
+  /** The whole idea in three pictures, for someone who has never kept a stock book. */
+  const howItWorks = (open: boolean) => (
+    <Card className="p-4 sm:p-5">
+      <Disclosure summary={t('how.title')} icon={<Lightbulb />} open={open}>
+        <ol className="grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              ['buy', <ShoppingBasket key="buy" />, 'info'],
+              ['sell', <UtensilsCrossed key="sell" />, 'warning'],
+              ['count', <ClipboardCheck key="count" />, 'success'],
+            ] as const
+          ).map(([key, icon, tone], i) => (
+            <li key={key} className="glass-tile flex items-start gap-3 rounded-input p-3.5">
+              <ToneIcon tone={tone} icon={icon} className="size-11" solid />
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {`${formatNumber(i + 1, loc)}. ${t(`how.${key}Title`)}`}
+                </p>
+                <p className="mt-0.5 text-sm text-secondary">{t(`how.${key}Body`)}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Disclosure>
+    </Card>
   );
 
   return (
     <>
-      <PageTitle title={t('title')} subtitle={t('subtitle')} />
+      {title}
       {ctx.branches.length > 1 ? (
         <PillNav
           label={t('branches')}
-          className="mb-3"
+          className="mb-4"
           items={ctx.branches.map((b) => ({
             href: `/${ctx.org.slug}/stock?${new URLSearchParams({ tab, branch: b.id }).toString()}`,
             label: b.name,
@@ -137,133 +263,208 @@ export default async function StockPage({
           }))}
         />
       ) : null}
-      <PillNav
+      <SectionTabs
         label={t('sections')}
-        className="mb-6 flex"
-        items={[
-          { key: 'status' as const, icon: <Package /> },
-          { key: 'variance' as const, icon: <ClipboardList /> },
-          { key: 'waste' as const, icon: <Trash2 /> },
-          { key: 'transfers' as const, icon: <ArrowLeftRight /> },
-        ].map((x) => ({
-          href: `/${ctx.org.slug}/stock?${new URLSearchParams({ tab: x.key, branch: branch.id }).toString()}`,
+        tabs={(
+          [
+            { key: 'status', icon: <Boxes />, tone: 'info' },
+            { key: 'variance', icon: <PackageSearch />, tone: 'warning' },
+            { key: 'waste', icon: <Trash2 />, tone: 'danger' },
+          ] satisfies { key: Tab; icon: React.ReactNode; tone: Tone }[]
+        ).map((x) => ({
+          ...x,
+          href: tabHref(x.key),
           label: t(`tabs.${x.key}`),
+          hint: t(`tabHints.${x.key}`),
           active: x.key === tab,
-          icon: x.icon,
         }))}
       />
 
       {tab === 'status'
         ? await (async () => {
-            const [rows, { data: settings }, { data: counts }] = await Promise.all([
+            const [rows, lotRows] = await Promise.all([
               stockStatus(ctx.org.id, branch.id),
-              supabase
-                .from('org_settings')
-                .select('count_weekday')
-                .eq('org_id', ctx.org.id)
-                .maybeSingle(),
-              supabase
-                .from('stock_counts')
-                .select('id, status, kind, counted_on')
-                .eq('org_id', ctx.org.id)
-                .eq('branch_id', branch.id)
-                .eq('counted_on', today),
+              stockLots(ctx.org.id, branch.id).catch(() => [] as LotRow[]),
             ]);
-            const due = weekday(today) === Number(settings?.count_weekday ?? 0);
-            const submitted = (counts ?? []).some((c) => c.status === 'submitted');
-            const open = (counts ?? []).find((c) => c.status === 'open');
-            const red = rows.filter((r) => r.band === 'red').length;
+            const groups = groupLevels(rows);
+            const lots = new Map(
+              lotRows.filter((l) => l.branch_id === branch.id).map((l) => [l.ingredient_id, l]),
+            );
+            /** ADR 0029: the latest lot, as the purchaser said it — a countdown, then "days are up". */
+            const lotNote = (l: LotRow | undefined): { text: string; tone: Tone } | undefined => {
+              if (!l) return undefined;
+              const bought = t('lot.bought', {
+                date: shortDay(l.bought_on),
+                days: t('lot.days', { count: l.for_days }),
+              });
+              if (l.status === 'ended')
+                return { text: `${bought} · ${t('lot.ended')}`, tone: 'neutral' };
+              const short =
+                l.prev_for_days !== null &&
+                l.prev_lasted_days !== null &&
+                l.prev_lasted_days < l.prev_for_days;
+              return {
+                text: [
+                  bought,
+                  // "day 2 of 3", so it is never mixed up with how long the shelf will last.
+                  l.days_left <= 1
+                    ? t('lot.lastDay')
+                    : t('lot.dayOf', {
+                        n: formatNumber(l.for_days - l.days_left + 1, loc),
+                        total: formatNumber(l.for_days, loc),
+                      }),
+                  short
+                    ? t('lot.lastTimeShort', {
+                        lasted: t('lot.days', { count: l.prev_lasted_days! }),
+                        planned: t('lot.days', { count: l.prev_for_days! }),
+                      })
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+                tone: short ? 'warning' : 'info',
+              };
+            };
+            /** ADR 0030: what the recipes used over the same days as the daily average, and ≈. */
+            const usedNote = (r: StockRow) => {
+              const days = r.since_on ? daysInclusive(r.since_on, r.as_of) : 0;
+              return [
+                r.used_since_qty !== null && r.used_since_qty > 0 && days > 0
+                  ? t('level.used', {
+                      qty: qty(r.used_since_qty, r.base),
+                      days: t('lot.days', { count: days }),
+                    })
+                  : null,
+                r.avg_daily_qty !== null && r.avg_daily_qty > 0
+                  ? t('level.perDay', { qty: qty(r.avg_daily_qty, r.base) })
+                  : null,
+                r.estimated ? t('level.estimate') : null,
+              ]
+                .filter(Boolean)
+                .join(' · ');
+            };
+            const anyEstimate = rows.some((r) => r.estimated);
+            const neverCounted = rows.length > 0 && rows.every((r) => r.stock_qty === null);
+            const lastCounted = rows.reduce<string | null>(
+              (latest, r) =>
+                r.last_count_date && (!latest || r.last_count_date > latest)
+                  ? r.last_count_date
+                  : latest,
+              null,
+            );
+            const names = groups.low.map((r) => label(r.name, r.name_bn));
+            // How long it lasts, in a sentence: whole days once it is comfortable, a decimal when it is tight.
+            const lasts = (d: number) =>
+              d < 1
+                ? t('level.lessThanDay')
+                : t('level.daysLeft', { days: d < 10 ? Math.round(d * 10) / 10 : Math.round(d) });
+            const sections = [
+              { key: 'low', tone: 'danger', icon: <CircleAlert /> },
+              { key: 'getting', tone: 'warning', icon: <TriangleAlert /> },
+              { key: 'enough', tone: 'success', icon: <CircleCheck /> },
+              { key: 'notCounted', tone: 'neutral', icon: <CircleHelp /> },
+            ] as const;
             return (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {sp.counted ? <Alert tone="success">{t('countSubmitted')}</Alert> : null}
-                {due && !submitted ? <Alert tone="warning">{t('countDue')}</Alert> : null}
-                {canCount ? (
-                  <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div>
-                      <p className="font-semibold">{t('countTitle')}</p>
-                      <p className="text-sm text-secondary">{t('countBody')}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {open ? (
-                        <Link
-                          href={`/${ctx.org.slug}/stock/count/${open.id as string}`}
-                          className={buttonVariants({ size: 'sm' })}
-                        >
-                          {t('continueCount')}
-                        </Link>
-                      ) : null}
-                      {(['guided_weekly', 'full'] as const).map((kind) => (
-                        <form key={kind} action={startCountAction}>
-                          {hidden}
-                          <input type="hidden" name="branchId" value={branch.id} />
-                          <input type="hidden" name="kind" value={kind} />
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant={kind === 'guided_weekly' && !open ? 'primary' : 'secondary'}
-                          >
-                            {t(`start.${kind}`)}
-                          </Button>
-                        </form>
-                      ))}
+                {countDue ? <Alert tone="warning">{t('countDue')}</Alert> : null}
+                {rows.length > 0 ? (
+                  neverCounted ? (
+                    <Banner
+                      tone="info"
+                      icon={<ClipboardCheck />}
+                      title={t('summary.neverTitle')}
+                      body={t('summary.neverBody')}
+                    />
+                  ) : groups.low.length > 0 ? (
+                    <Banner
+                      tone="danger"
+                      icon={<CircleAlert />}
+                      title={t('summary.low', { count: groups.low.length })}
+                      body={t('summary.lowBody')}
+                    >
+                      <Chips
+                        items={names.slice(0, 6)}
+                        more={
+                          names.length > 6
+                            ? t('summary.more', { count: names.length - 6 })
+                            : undefined
+                        }
+                      />
+                    </Banner>
+                  ) : (
+                    <Banner
+                      tone="success"
+                      icon={<CircleCheck />}
+                      title={t('summary.ok')}
+                      body={t('summary.okBody')}
+                    />
+                  )
+                ) : null}
+                {neverCounted ? howItWorks(true) : null}
+                {countCard(lastCounted)}
+                <StockGuardCard
+                  orgId={ctx.org.id}
+                  orgSlug={ctx.org.slug}
+                  branchId={branch.id}
+                  canHide={ctx.isOwner}
+                />
+                {rows.length === 0 ? (
+                  <EmptyState title={t('noStock')} body={t('noStockBody')} />
+                ) : (
+                  <Card className="p-4 sm:p-6">
+                    <CardTitle className={anyEstimate ? 'mb-1 text-lg' : 'mb-5 text-lg'}>
+                      {t('levelsTitle')}
+                    </CardTitle>
+                    {anyEstimate ? <Hint className="mb-5">{t('level.estimateHint')}</Hint> : null}
+                    <div className="space-y-6">
+                      {sections.map(({ key, tone, icon }) =>
+                        groups[key].length === 0 ? null : (
+                          <section key={key}>
+                            <GroupHeading tone={tone} icon={icon}>
+                              {t(`level.${key}`)} ({formatNumber(groups[key].length, loc)})
+                            </GroupHeading>
+                            <ul className="space-y-2">
+                              {groups[key].map((r) => {
+                                const negative = r.stock_qty !== null && r.stock_qty < 0;
+                                const counted = r.stock_qty !== null;
+                                return (
+                                  <LevelRow
+                                    key={r.ingredient_id}
+                                    tone={negative ? 'danger' : tone}
+                                    icon={negative ? <CircleAlert /> : icon}
+                                    name={label(r.name, r.name_bn)}
+                                    note={
+                                      !counted
+                                        ? t('level.countIt')
+                                        : negative
+                                          ? t('level.negative')
+                                          : r.days_of_cover === null
+                                            ? t('noUsage')
+                                            : lasts(r.days_of_cover)
+                                    }
+                                    noteTone={
+                                      negative ? 'danger' : key === 'enough' ? 'neutral' : tone
+                                    }
+                                    detail={usedNote(r) || undefined}
+                                    amount={
+                                      counted
+                                        ? `${r.estimated ? '≈ ' : ''}${qty(r.stock_qty!, r.base)}`
+                                        : '—'
+                                    }
+                                    amountTone={negative ? 'danger' : 'neutral'}
+                                    lot={lotNote(lots.get(r.ingredient_id))}
+                                  />
+                                );
+                              })}
+                            </ul>
+                          </section>
+                        ),
+                      )}
                     </div>
                   </Card>
-                ) : null}
-                <Card className="p-4 sm:p-6">
-                  <CardTitle>{t('levelsTitle')}</CardTitle>
-                  <p className="-mt-2 mb-4 text-sm text-secondary">
-                    {red > 0 ? t('levelsRed', { count: red }) : t('levelsBody')}
-                  </p>
-                  {rows.length === 0 ? (
-                    <EmptyState title={t('noStock')} body={t('noStockBody')} />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[36rem] text-sm">
-                        <thead className="text-start text-xs text-secondary uppercase">
-                          <tr>
-                            <th className="py-2 text-start font-medium">{t('col.ingredient')}</th>
-                            <th className="py-2 text-end font-medium">{t('col.stock')}</th>
-                            <th className="py-2 text-end font-medium">{t('col.cover')}</th>
-                            <th className="py-2 text-end font-medium">{t('col.lastCount')}</th>
-                            <th className="py-2 text-end font-medium">{t('col.inTransit')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows.map((r) => (
-                            <tr key={r.ingredient_id} className="border-t border-line">
-                              <td className="py-2.5 font-medium">{label(r.name, r.name_bn)}</td>
-                              <td
-                                className={`py-2.5 text-end tabular-nums ${r.stock_qty !== null && r.stock_qty < 0 ? 'text-danger' : ''}`}
-                              >
-                                {r.stock_qty === null
-                                  ? t('neverCounted')
-                                  : qty(r.stock_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end">
-                                <StatusBadge tone={BAND_TONE[r.band]}>
-                                  {r.days_of_cover === null
-                                    ? t('noUsage')
-                                    : t('days', {
-                                        days: formatNumber(r.days_of_cover, loc, {
-                                          fractionDigits: 1,
-                                        }),
-                                      })}
-                                </StatusBadge>
-                              </td>
-                              <td className="py-2.5 text-end text-secondary tabular-nums">
-                                {r.last_count_date ?? '—'}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {r.in_transit_qty > 0 ? qty(r.in_transit_qty, r.base) : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  <Hint className="mt-3">{t('levelsHint')}</Hint>
-                </Card>
+                )}
+                {neverCounted ? null : howItWorks(false)}
               </div>
             );
           })()
@@ -281,174 +482,437 @@ export default async function StockPage({
               .limit(40);
             const dates = [...new Set((countDays ?? []).map((c) => c.counted_on as string))];
             if (dates.length < 2)
-              return <EmptyState title={t('needTwoCounts')} body={t('needTwoCountsBody')} />;
+              return (
+                <div className="space-y-5">
+                  <Banner
+                    tone="info"
+                    icon={<PackageSearch />}
+                    title={t('needTwoCounts')}
+                    body={t('needTwoCountsBody')}
+                  />
+                  {countCard(dates[0] ?? null)}
+                  {howItWorks(true)}
+                </div>
+              );
             const to = dates.includes(sp.to ?? '') ? sp.to! : dates[0]!;
             const from =
               dates.includes(sp.from ?? '') && sp.from! < to
                 ? sp.from!
                 : (dates.find((d) => d < to) ?? dates[1]!);
             const rows = await stockVariance(ctx.org.id, branch.id, from, to);
-            const total = rows.reduce((s, r) => s + (r.variance_poisha ?? 0), 0);
+            const groups = splitLoss(rows, lossLine);
+            const overCount = groups.loss.length + groups.small.length;
+            const total = lossTotal(rows);
+            const staffTotal = staffFoodTotal(rows);
+            const staffItems = rows.filter((r) => r.staff_food_qty > 0).length;
+            const lineText = formatBps(lossLine, loc);
             const bridge = canSeeMoney
               ? ((await varianceBridge(ctx.org.id, branch.id, from, to).catch(() => [])).find(
                   (b) => b.branch_id === branch.id,
                 ) ?? null)
               : null;
-            return (
-              <div className="space-y-6">
-                <Card className="p-4">
-                  <form
-                    className="flex flex-wrap items-end gap-3"
-                    action={`/${ctx.org.slug}/stock`}
-                  >
-                    <input type="hidden" name="tab" value="variance" />
-                    <input type="hidden" name="branch" value={branch.id} />
-                    {(['from', 'to'] as const).map((k) => (
-                      <div key={k}>
-                        <Label htmlFor={`v-${k}`}>{t(`period.${k}`)}</Label>
-                        <Select
-                          id={`v-${k}`}
-                          name={k}
-                          defaultValue={k === 'from' ? from : to}
-                          className="w-40"
-                        >
-                          {dates.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    ))}
-                    <Button type="submit" size="sm" variant="secondary">
-                      {t('show')}
-                    </Button>
-                  </form>
-                </Card>
-                <Card className="p-4 sm:p-6">
-                  <CardTitle>{t('varianceTitle', { from, to })}</CardTitle>
-                  <p className="-mt-2 mb-4 max-w-3xl text-sm text-secondary">{t('varianceBody')}</p>
-                  {canSeeMoney ? (
-                    <p className="mb-4 text-sm">
-                      {t('varianceTotal', { amount: formatBDT(total, loc) })}
-                    </p>
-                  ) : null}
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[56rem] text-sm">
-                      <thead className="text-xs text-secondary uppercase">
-                        <tr>
-                          <th className="py-2 text-start font-medium">{t('col.ingredient')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.opening')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.bought')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.transfers')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.closing')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.used')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.shouldUse')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.waste')}</th>
-                          <th className="py-2 text-end font-medium">{t('col.variance')}</th>
-                          {canSeeMoney ? (
-                            <th className="py-2 text-end font-medium">{t('col.value')}</th>
-                          ) : null}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((r) => {
-                          const band = varianceBand(r.variance_bps);
-                          const net = r.transfers_in_qty - r.transfers_out_qty;
-                          return (
-                            <tr key={r.ingredient_id} className="border-t border-line">
-                              <td className="py-2.5 font-medium">{label(r.name, r.name_bn)}</td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {qty(r.opening_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {qty(r.purchases_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {net === 0 ? '—' : `${net > 0 ? '+' : ''}${qty(net, r.base)}`}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {qty(r.closing_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {qty(r.usage_actual_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {qty(r.usage_theoretical_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end tabular-nums">
-                                {qty(r.waste_qty, r.base)}
-                              </td>
-                              <td className="py-2.5 text-end">
-                                <StatusBadge tone={VARIANCE_TONE[band]}>
-                                  {`${r.variance_qty > 0 ? '+' : ''}${qty(r.variance_qty, r.base)}`}
-                                  {r.variance_bps === null
-                                    ? ''
-                                    : ` · ${formatBps(r.variance_bps, loc)}`}
-                                </StatusBadge>
-                              </td>
-                              {canSeeMoney ? (
-                                <td
-                                  className={`py-2.5 text-end tabular-nums ${(r.variance_poisha ?? 0) > 0 ? 'text-danger' : ''}`}
-                                >
-                                  {r.variance_poisha === null
-                                    ? '—'
-                                    : formatBDT(r.variance_poisha, loc)}
-                                </td>
-                              ) : null}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+
+            /**
+             * One ingredient (ADR 0027): the exact over- or under-usage, its ৳, and the sum behind it.
+             * Quantities are shown in full (no rounding to one decimal) so the sums can be checked.
+             */
+            const row = (r: VarianceRow, open = false) => {
+              const kind = lossKind(r, lossLine);
+              const rowTone: Tone =
+                kind === 'loss'
+                  ? 'danger'
+                  : kind === 'small'
+                    ? 'warning'
+                    : kind === 'under'
+                      ? 'info'
+                      : 'success';
+              const Icon =
+                kind === 'loss'
+                  ? CircleAlert
+                  : kind === 'small'
+                    ? TriangleAlert
+                    : kind === 'under'
+                      ? Info
+                      : CircleCheck;
+              const bars = compareBars(r.usage_theoretical_qty, r.usage_actual_qty);
+              const moved = r.transfers_in_qty - r.transfers_out_qty;
+              const amount = qtyFull(Math.abs(r.over_qty), r.base);
+              const pct = r.over_bps === null ? null : formatBps(Math.abs(r.over_bps), loc);
+              const over = kind === 'loss' || kind === 'small';
+              const money =
+                over && canSeeMoney && r.over_poisha !== null
+                  ? formatBDT(r.over_poisha, loc)
+                  : null;
+              // ADR 0029: staff food is written-down waste kept out of over-usage, shown on its own.
+              const staff = r.staff_food_qty > 0;
+              const otherWaste = r.waste_qty - r.staff_food_qty;
+              const verdict =
+                kind === 'onRecipe'
+                  ? t('loss.verdict.onRecipe')
+                  : kind === 'under'
+                    ? t('loss.verdict.under', { qty: amount, pct: pct ?? '—' })
+                    : pct === null
+                      ? t('loss.verdict.overNoRecipe', { qty: amount })
+                      : t('loss.verdict.over', { qty: amount, pct });
+              const checks = over
+                ? r.variance_qty > 0
+                  ? (['portions', 'waste', 'moved'] as const)
+                  : null
+                : kind === 'under'
+                  ? (['portions', 'bazar', 'count'] as const)
+                  : null;
+              return (
+                <ItemRow
+                  key={r.ingredient_id}
+                  tone={rowTone}
+                  icon={<Icon />}
+                  name={label(r.name, r.name_bn)}
+                  note={verdict}
+                  noteTone={rowTone}
+                  aside={money ?? undefined}
+                  open={open}
+                >
+                  <p className="mb-3 text-sm">
+                    {t('loss.story', {
+                      should: qtyFull(r.usage_theoretical_qty, r.base),
+                      really: qtyFull(r.usage_actual_qty, r.base),
+                    })}
+                  </p>
+                  <div className="space-y-3">
+                    <BarLine
+                      icon={<ChefHat />}
+                      label={t('loss.shouldUse')}
+                      value={qtyFull(r.usage_theoretical_qty, r.base)}
+                      percent={bars.should}
+                      tone="neutral"
+                    />
+                    <BarLine
+                      icon={<PackageMinus />}
+                      label={t('loss.reallyUsed')}
+                      value={qtyFull(r.usage_actual_qty, r.base)}
+                      percent={bars.really}
+                      tone={rowTone}
+                    />
                   </div>
-                  <Hint className="mt-3">{t('varianceHint')}</Hint>
-                </Card>
-                {bridge ? (
-                  <Card className="p-4 sm:p-6">
-                    <CardTitle>{t('bridgeTitle')}</CardTitle>
-                    <p className="-mt-2 mb-4 max-w-3xl text-sm text-secondary">{t('bridgeBody')}</p>
-                    <dl className="space-y-2 text-sm">
-                      {(
-                        [
-                          ['tfc', bridge.tfc_standard_poisha, false],
-                          ['waste', bridge.waste_poisha, true],
-                          ['price', bridge.price_effect_poisha, true],
-                          ['unexplained', bridge.unexplained_poisha, true],
-                        ] as const
-                      ).map(([k, v, signed]) => (
-                        <div
-                          key={k}
-                          className="glass-tile flex justify-between gap-2 rounded-input px-4 py-2.5"
-                        >
-                          <dt>{t(`bridge.${k}`)}</dt>
-                          <dd
-                            className={`font-semibold tabular-nums ${signed && v > 0 ? 'text-danger' : ''}`}
+                  <div className="mt-4">
+                    <Callout tone={rowTone} icon={<Icon />}>
+                      <p className="font-medium">
+                        {over
+                          ? t('loss.split', {
+                              over: amount,
+                              waste: qtyFull(otherWaste, r.base),
+                              unexplained: qtyFull(r.variance_qty, r.base),
+                            })
+                          : kind === 'under'
+                            ? t('loss.underExplain', { qty: amount })
+                            : t('loss.onRecipeExplain')}
+                      </p>
+                      {money ? (
+                        <p className="mt-1 font-semibold">
+                          {t('loss.lossMoney', { amount: money })}
+                        </p>
+                      ) : null}
+                      {checks ? (
+                        <>
+                          <p className="mt-2 text-secondary">{t('loss.checksTitle')}</p>
+                          <ul className="mt-1 list-disc space-y-1 ps-5 text-secondary">
+                            {checks.map((c) => (
+                              <li key={c}>
+                                {t(`loss.checks.${kind === 'under' ? 'under' : 'over'}.${c}`)}
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : null}
+                    </Callout>
+                    {staff ? (
+                      <p className="mt-2 flex items-start gap-1.5 text-sm text-secondary">
+                        <Soup aria-hidden className="mt-0.5 size-4 shrink-0" />
+                        <span>
+                          {canSeeMoney && r.staff_food_poisha !== null
+                            ? t('loss.staffFoodMoney', {
+                                qty: qtyFull(r.staff_food_qty, r.base),
+                                amount: formatBDT(r.staff_food_poisha, loc),
+                              })
+                            : t('loss.staffFood', { qty: qtyFull(r.staff_food_qty, r.base) })}
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
+                  <Hint className="mt-2">{t('loss.rule', { pct: lineText })}</Hint>
+                  <Disclosure
+                    summary={t('loss.worked')}
+                    className="mt-3 border-t border-line pt-1.5"
+                  >
+                    <div className="rounded-input bg-surface-elevated/60 px-3.5 py-1.5">
+                      <LedgerLine
+                        icon={<ClipboardCheck />}
+                        label={t('loss.ledger.before', { date: day(r.opening_date) })}
+                        value={qtyFull(r.opening_qty, r.base)}
+                      />
+                      <LedgerLine
+                        icon={<ShoppingBasket />}
+                        label={t('loss.ledger.bought')}
+                        value={`+ ${qtyFull(r.purchases_qty, r.base)}`}
+                      />
+                      {moved === 0 ? null : (
+                        <LedgerLine
+                          icon={<ArrowLeftRight />}
+                          label={t('loss.ledger.moved')}
+                          value={`${moved > 0 ? '+' : '−'} ${qtyFull(Math.abs(moved), r.base)}`}
+                        />
+                      )}
+                      <LedgerLine
+                        icon={<ClipboardCheck />}
+                        label={t('loss.ledger.after', { date: day(r.closing_date) })}
+                        value={`− ${qtyFull(r.closing_qty, r.base)}`}
+                      />
+                      <LedgerLine
+                        strong
+                        icon={<PackageMinus />}
+                        label={t('loss.ledger.used')}
+                        value={qtyFull(r.usage_actual_qty, r.base)}
+                      />
+                      <LedgerLine
+                        icon={<ChefHat />}
+                        label={t('loss.ledger.recipes')}
+                        value={`− ${qtyFull(r.usage_theoretical_qty, r.base)}`}
+                      />
+                      {staff ? (
+                        <LedgerLine
+                          icon={<Soup />}
+                          label={t('loss.ledgerStaff')}
+                          value={`− ${qtyFull(r.staff_food_qty, r.base)}`}
+                        />
+                      ) : null}
+                      <LedgerLine
+                        strong
+                        tone={rowTone}
+                        icon={<PackageSearch />}
+                        label={t('loss.ledger.over')}
+                        value={qtyFull(r.over_qty, r.base)}
+                      />
+                      <LedgerLine
+                        icon={<Trash2 />}
+                        label={t('loss.ledger.waste')}
+                        value={qtyFull(otherWaste, r.base)}
+                      />
+                      <LedgerLine
+                        icon={<CircleHelp />}
+                        label={t('loss.ledger.unexplained')}
+                        value={qtyFull(r.variance_qty, r.base)}
+                      />
+                    </div>
+                  </Disclosure>
+                </ItemRow>
+              );
+            };
+
+            return (
+              <div className="space-y-5">
+                <div className="space-y-1">
+                  <p className="text-sm text-secondary">
+                    {t('loss.between', { from: day(from), to: day(to) })}
+                  </p>
+                  <Disclosure summary={t('loss.changeDates')}>
+                    <form
+                      className="flex flex-wrap items-end gap-3"
+                      action={`/${ctx.org.slug}/stock`}
+                    >
+                      <input type="hidden" name="tab" value="variance" />
+                      <input type="hidden" name="branch" value={branch.id} />
+                      {(['from', 'to'] as const).map((k) => (
+                        <div key={k}>
+                          <Label htmlFor={`v-${k}`}>{t(`period.${k}`)}</Label>
+                          <Select
+                            id={`v-${k}`}
+                            name={k}
+                            defaultValue={k === 'from' ? from : to}
+                            className="w-44"
                           >
-                            {signed && v > 0 ? '+' : ''}
-                            {formatBDT(v, loc)}
-                          </dd>
+                            {dates.map((d) => (
+                              <option key={d} value={d}>
+                                {day(d)}
+                              </option>
+                            ))}
+                          </Select>
                         </div>
                       ))}
-                      <div className="flex justify-between gap-2 rounded-input border-t border-line px-4 pt-3">
-                        <dt className="font-bold">{t('bridge.actual')}</dt>
-                        <dd className="text-lg font-extrabold tabular-nums">
-                          {formatBDT(bridge.cogs_actual_poisha, loc)}
-                        </dd>
+                      <Button type="submit" variant="secondary">
+                        {t('show')}
+                      </Button>
+                    </form>
+                  </Disclosure>
+                </div>
+
+                {overCount > 0 ? (
+                  <Banner
+                    tone={groups.loss.length > 0 ? 'danger' : 'warning'}
+                    icon={groups.loss.length > 0 ? <CircleAlert /> : <TriangleAlert />}
+                    title={
+                      canSeeMoney
+                        ? t('loss.titleMoney', { amount: formatBDT(total, loc) })
+                        : t('loss.titleItems', { count: overCount })
+                    }
+                    body={canSeeMoney ? t('loss.bodyItems', { count: overCount }) : t('loss.body')}
+                  />
+                ) : (
+                  <Banner
+                    tone="success"
+                    icon={<CircleCheck />}
+                    title={t('loss.noLoss')}
+                    body={t('loss.noLossBody')}
+                  />
+                )}
+
+                {staffItems > 0 ? (
+                  <Banner
+                    tone="neutral"
+                    icon={<Soup />}
+                    title={
+                      canSeeMoney
+                        ? t('loss.staffTitleMoney', { amount: formatBDT(staffTotal, loc) })
+                        : t('loss.staffTitleItems', { count: staffItems })
+                    }
+                    body={t('loss.staffBody')}
+                  />
+                ) : null}
+
+                <Card className="p-4 sm:p-5">
+                  <p className="text-sm">{t('loss.definition')}</p>
+                  <p className="mt-1 text-sm font-semibold">{t('loss.line', { pct: lineText })}</p>
+                  {ctx.isOwner ? (
+                    <Disclosure summary={t('loss.lineChange')} className="mt-1">
+                      <ActionForm
+                        action={setLossLineAction}
+                        successKey="stock.loss.lineSaved"
+                        className="flex flex-wrap items-end gap-3"
+                      >
+                        {hidden}
+                        <div>
+                          <Label htmlFor="loss-line">{t('loss.lineLabel')}</Label>
+                          <Input
+                            id="loss-line"
+                            name="pct"
+                            inputMode="decimal"
+                            defaultValue={String(lossLine / 100)}
+                            className="w-28"
+                            required
+                          />
+                        </div>
+                        <Button type="submit" variant="secondary">
+                          {t('loss.lineSave')}
+                        </Button>
+                        <Hint className="basis-full">{t('loss.lineHint')}</Hint>
+                      </ActionForm>
+                    </Disclosure>
+                  ) : null}
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">
+                    {(
+                      [
+                        ['legendShould', 'legendShouldHint', <ChefHat key="s" />],
+                        ['legendReally', 'legendReallyHint', <PackageMinus key="r" />],
+                      ] as const
+                    ).map(([name, hint, icon]) => (
+                      <div
+                        key={name}
+                        className="glass-tile flex items-center gap-2.5 rounded-input p-2.5 sm:gap-3 sm:p-3"
+                      >
+                        <ToneIcon tone="neutral" icon={icon} className="size-9 sm:size-10" solid />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold">{t(`loss.${name}`)}</p>
+                          <p className="text-xs text-secondary">{t(`loss.${hint}`)}</p>
+                        </div>
                       </div>
-                    </dl>
-                    <p className="mt-3 text-sm text-secondary">
-                      {t('bridgeFoot', {
-                        band: formatBDT(bridge.uncertainty_poisha, loc),
-                        pct:
-                          bridge.cogs_pct_of_sales_bps === null
-                            ? '—'
-                            : formatBps(bridge.cogs_pct_of_sales_bps, loc),
-                      })}
-                    </p>
-                    {bridge.uncosted_ingredients > 0 ? (
-                      <Hint>{t('bridgeUncosted', { count: bridge.uncosted_ingredients })}</Hint>
-                    ) : null}
+                    ))}
+                  </div>
+                </Card>
+
+                {groups.loss.length > 0 ? (
+                  <section>
+                    <GroupHeading tone="danger" icon={<CircleAlert />}>
+                      {`${t('loss.groupLoss', { pct: lineText })} (${formatNumber(groups.loss.length, loc)})`}
+                    </GroupHeading>
+                    <ul className="space-y-3">{groups.loss.map((r, i) => row(r, i < 3))}</ul>
+                  </section>
+                ) : null}
+
+                {groups.small.length > 0 ? (
+                  <section>
+                    <GroupHeading tone="warning" icon={<TriangleAlert />}>
+                      {`${t('loss.groupSmall', { pct: lineText })} (${formatNumber(groups.small.length, loc)})`}
+                    </GroupHeading>
+                    <ul className="space-y-3">{groups.small.map((r) => row(r))}</ul>
+                  </section>
+                ) : null}
+
+                {groups.under.length > 0 ? (
+                  <section>
+                    <GroupHeading tone="info" icon={<Info />}>
+                      {`${t('loss.groupUnder')} (${formatNumber(groups.under.length, loc)})`}
+                    </GroupHeading>
+                    <p className="-mt-1 mb-2 text-sm text-secondary">{t('loss.underBody')}</p>
+                    <ul className="space-y-3">{groups.under.map((r) => row(r))}</ul>
+                  </section>
+                ) : null}
+
+                {groups.onRecipe.length > 0 ? (
+                  <Card className="p-4 sm:p-5">
+                    <Disclosure
+                      icon={<CircleCheck />}
+                      summary={t('loss.groupOnRecipe', { count: groups.onRecipe.length })}
+                    >
+                      <ul className="space-y-3">{groups.onRecipe.map((r) => row(r))}</ul>
+                    </Disclosure>
+                  </Card>
+                ) : null}
+
+                {bridge ? (
+                  <Card className="p-4 sm:p-5">
+                    <Disclosure summary={t('bridgeTitle')} icon={<ChefHat />}>
+                      <p className="mb-3 max-w-3xl text-sm text-secondary">{t('bridgeBody')}</p>
+                      <dl className="space-y-2 text-sm">
+                        {(
+                          [
+                            ['tfc', bridge.tfc_standard_poisha, false],
+                            ['waste', bridge.waste_poisha, true],
+                            ['price', bridge.price_effect_poisha, true],
+                            ['unexplained', bridge.unexplained_poisha, true],
+                          ] as const
+                        ).map(([k, v, signed]) => (
+                          <div
+                            key={k}
+                            className="glass-tile flex justify-between gap-2 rounded-input px-4 py-2.5"
+                          >
+                            <dt>{t(`bridge.${k}`)}</dt>
+                            <dd
+                              className={`font-semibold tabular-nums ${signed && v > 0 ? 'text-danger' : ''}`}
+                            >
+                              {signed && v > 0 ? '+' : ''}
+                              {formatBDT(v, loc)}
+                            </dd>
+                          </div>
+                        ))}
+                        <div className="flex justify-between gap-2 rounded-input border-t border-line px-4 pt-3">
+                          <dt className="font-bold">{t('bridge.actual')}</dt>
+                          <dd className="text-lg font-extrabold tabular-nums">
+                            {formatBDT(bridge.cogs_actual_poisha, loc)}
+                          </dd>
+                        </div>
+                      </dl>
+                      <p className="mt-3 text-sm text-secondary">
+                        {t('bridgeFoot', {
+                          band: formatBDT(bridge.uncertainty_poisha, loc),
+                          pct:
+                            bridge.cogs_pct_of_sales_bps === null
+                              ? '—'
+                              : formatBps(bridge.cogs_pct_of_sales_bps, loc),
+                        })}
+                      </p>
+                      {bridge.uncosted_ingredients > 0 ? (
+                        <Hint>{t('bridgeUncosted', { count: bridge.uncosted_ingredients })}</Hint>
+                      ) : null}
+                    </Disclosure>
                   </Card>
                 ) : null}
               </div>
@@ -566,7 +1030,7 @@ export default async function StockPage({
                       label={t('period.label')}
                       items={[7, 30].map((d) => ({
                         href: href({ days: String(d) }),
-                        label: t('lastDays', { days: d }),
+                        label: t('lastDays', { days: formatNumber(d, loc) }),
                         active: d === days,
                       }))}
                     />
@@ -595,7 +1059,7 @@ export default async function StockPage({
                           <div className="text-end text-sm tabular-nums">
                             <p>
                               {r.qty_base !== null && r.base
-                                ? qty(r.qty_base, r.base)
+                                ? qtyExact(r.qty_base, r.base)
                                 : t('portionCount', { count: r.qty_portions ?? 0 })}
                             </p>
                             {r.value_poisha !== null ? (
@@ -605,227 +1069,6 @@ export default async function StockPage({
                         </li>
                       ))}
                     </ol>
-                  )}
-                </Card>
-              </div>
-            );
-          })()
-        : null}
-
-      {tab === 'transfers'
-        ? await (async () => {
-            const [{ data: destinations }, { data: transfers }, { data: ingredients }] =
-              await Promise.all([
-                canCount
-                  ? supabase.rpc('transfer_destinations', { p_org: ctx.org.id })
-                  : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-                supabase
-                  .from('transfers')
-                  .select(
-                    'id, from_branch_id, to_branch_id, status, sent_on, received_on, notes, transfer_lines(id, qty_base_sent, qty_base_received, ingredients(name, name_bn, base))',
-                  )
-                  .eq('org_id', ctx.org.id)
-                  .or(`from_branch_id.eq.${branch.id},to_branch_id.eq.${branch.id}`)
-                  .order('created_at', { ascending: false })
-                  .limit(30),
-                supabase
-                  .from('ingredients')
-                  .select('id, name, name_bn, base')
-                  .eq('org_id', ctx.org.id)
-                  .eq('is_active', true)
-                  .order('name'),
-              ]);
-            const names = new Map(
-              ((destinations ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]),
-            );
-            for (const b of ctx.branches) names.set(b.id, b.name);
-            type TLine = {
-              id: string;
-              qty_base_sent: number;
-              qty_base_received: number | null;
-              ingredients: { name: string; name_bn: string | null; base: BaseUnit } | null;
-            };
-            const list = (transfers ?? []) as unknown as {
-              id: string;
-              from_branch_id: string;
-              to_branch_id: string;
-              status: keyof typeof TRANSFER_TONE;
-              sent_on: string | null;
-              received_on: string | null;
-              notes: string | null;
-              transfer_lines: TLine[];
-            }[];
-            const incoming = list.filter(
-              (x) => x.to_branch_id === branch.id && x.status === 'sent',
-            );
-            const others = ((destinations ?? []) as { id: string; name: string }[]).filter(
-              (b) => b.id !== branch.id,
-            );
-            return (
-              <div className="space-y-6">
-                {canCount && incoming.length > 0 ? (
-                  <Card>
-                    <CardTitle>{t('incomingTitle')}</CardTitle>
-                    <ul className="space-y-4">
-                      {incoming.map((x) => (
-                        <li key={x.id} className="glass-tile rounded-input p-4">
-                          <p className="mb-2 text-sm font-semibold">
-                            {t('fromBranch', {
-                              branch: names.get(x.from_branch_id) ?? '—',
-                              date: x.sent_on ?? '',
-                            })}
-                          </p>
-                          <ActionForm
-                            action={receiveTransferAction}
-                            successKey="stock.received"
-                            className="space-y-2"
-                          >
-                            {hidden}
-                            <input type="hidden" name="transferId" value={x.id} />
-                            {x.transfer_lines.map((l) => {
-                              const b = l.ingredients?.base ?? 'g';
-                              const shown = splitQuantity(Number(l.qty_base_sent), b);
-                              return (
-                                <div key={l.id} className="flex flex-wrap items-center gap-2">
-                                  <span className="min-w-40 flex-1 text-sm">
-                                    {label(
-                                      l.ingredients?.name ?? '',
-                                      l.ingredients?.name_bn ?? null,
-                                    )}{' '}
-                                    · {t('sentQty', { qty: qty(Number(l.qty_base_sent), b) })}
-                                  </span>
-                                  <Input
-                                    name={`recv-${l.id}`}
-                                    inputMode="decimal"
-                                    aria-label={t('receivedQty')}
-                                    placeholder={formatNumber(shown.value, 'en', {
-                                      fractionDigits: Number.isInteger(shown.value) ? 0 : 3,
-                                    })}
-                                    className="min-h-9 w-28"
-                                  />
-                                  <input type="hidden" name={`unit-${l.id}`} value={shown.unit} />
-                                  <span className="text-xs text-secondary">{tu(shown.unit)}</span>
-                                </div>
-                              );
-                            })}
-                            <Hint>{t('receiveHint')}</Hint>
-                            <Input
-                              name="note"
-                              maxLength={500}
-                              placeholder={t('note')}
-                              aria-label={t('note')}
-                            />
-                            <Button type="submit" size="sm">
-                              {t('receive')}
-                            </Button>
-                          </ActionForm>
-                        </li>
-                      ))}
-                    </ul>
-                  </Card>
-                ) : null}
-                {canCount && others.length > 0 ? (
-                  <Card>
-                    <CardTitle>{t('sendTitle')}</CardTitle>
-                    <ActionForm
-                      action={sendTransferAction}
-                      successKey="stock.sent"
-                      className="space-y-3"
-                    >
-                      {hidden}
-                      <input type="hidden" name="fromBranchId" value={branch.id} />
-                      <div className="max-w-xs">
-                        <Label htmlFor="t-to">{t('toBranch')}</Label>
-                        <Select id="t-to" name="toBranchId" required defaultValue="">
-                          <option value="" disabled>
-                            {t('choose')}
-                          </option>
-                          {others.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.name}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                      {[0, 1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] gap-2"
-                        >
-                          <Select
-                            name={`line-${i}-ingredient`}
-                            aria-label={t('col.ingredient')}
-                            defaultValue=""
-                          >
-                            <option value="">{t('choose')}</option>
-                            {(ingredients ?? []).map((ing) => (
-                              <option key={ing.id} value={ing.id as string}>
-                                {label(ing.name as string, ing.name_bn as string | null)}
-                              </option>
-                            ))}
-                          </Select>
-                          <Input
-                            name={`line-${i}-qty`}
-                            inputMode="decimal"
-                            aria-label={t('qty')}
-                            placeholder={t('qty')}
-                          />
-                          {unitSelect(`line-${i}-unit`)}
-                        </div>
-                      ))}
-                      <Hint>{t('sendHint')}</Hint>
-                      <Input
-                        name="notes"
-                        maxLength={500}
-                        placeholder={t('note')}
-                        aria-label={t('note')}
-                      />
-                      <Button type="submit">{t('send')}</Button>
-                    </ActionForm>
-                  </Card>
-                ) : null}
-                <Card>
-                  <CardTitle>{t('recentTransfers')}</CardTitle>
-                  {list.length === 0 ? (
-                    <EmptyState title={t('noTransfers')} />
-                  ) : (
-                    <ul className="space-y-2">
-                      {list.map((x) => (
-                        <li
-                          key={x.id}
-                          className="glass-tile flex flex-wrap items-center justify-between gap-2 rounded-input p-3 text-sm"
-                        >
-                          <div>
-                            <p className="font-semibold">
-                              {t('route', {
-                                from: names.get(x.from_branch_id) ?? '—',
-                                to: names.get(x.to_branch_id) ?? '—',
-                              })}
-                            </p>
-                            <p className="text-xs text-secondary">
-                              {x.transfer_lines
-                                .map(
-                                  (l) =>
-                                    `${label(l.ingredients?.name ?? '', l.ingredients?.name_bn ?? null)} ${qty(Number(l.qty_base_sent), l.ingredients?.base ?? 'g')}` +
-                                    (l.qty_base_received !== null &&
-                                    Number(l.qty_base_received) !== Number(l.qty_base_sent)
-                                      ? ` (${t('arrived', { qty: qty(Number(l.qty_base_received), l.ingredients?.base ?? 'g') })})`
-                                      : ''),
-                                )
-                                .join(' · ')}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-secondary tabular-nums">
-                              {x.received_on ?? x.sent_on ?? ''}
-                            </span>
-                            <StatusBadge tone={TRANSFER_TONE[x.status]}>
-                              {t(`transferStatus.${x.status}`)}
-                            </StatusBadge>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
                   )}
                 </Card>
               </div>

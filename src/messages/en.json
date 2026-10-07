@@ -437,6 +437,7 @@
     "helperNotFound": "Not found on the menu: {items}",
     "helperRemove": "Remove",
     "helperAdd": "Add to cart",
+    "sessionExpired": "Your sign-in has ended (it lasts 12 hours). Please enter your PIN again.",
     "allItems": "All",
     "allSynced": "All synced",
     "approvalRejected": "The manager approval was missing, expired or already used. Ask again.",

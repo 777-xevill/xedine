@@ -23,11 +23,14 @@ export function WasteDialog({
   sb,
   device,
   staff,
+  onSessionExpired,
   onClose,
 }: {
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
   staff: StaffSessionState;
+  /** The database says this cook's session has ended: go back to the PIN screen. */
+  onSessionExpired: () => void;
   onClose: () => void;
 }) {
   const t = useTranslations('kds');
@@ -81,7 +84,9 @@ export function WasteDialog({
       p_device: device.deviceId,
       p_staff: staff.staffId,
     }).then(({ error }) => {
-      if (error) setState('error');
+      // 42501 = no active staff session for this device (it lasts 12 hours), not a connection problem.
+      if (error?.code === '42501') onSessionExpired();
+      else if (error) setState('error');
       else {
         setState('done');
         setItem('');

@@ -116,9 +116,12 @@ export function StaffGate({
   device,
   onSignedIn,
   onReset,
+  notice,
 }: {
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
+  /** Why the person is back at the PIN screen (e.g. their 12-hour session ended). */
+  notice?: string | null;
   onSignedIn: (s: { sessionId: string; staffId: string; staffName: string }) => void;
   /** Forget this till's setup and go back to the pairing screen. */
   onReset: () => void;
@@ -260,6 +263,7 @@ export function StaffGate({
     <div className="mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
       <h1 className="text-center text-xl font-semibold">{picked.display_name}</h1>
       <p className="text-center text-secondary">{t('enterPin')}</p>
+      {notice && !message ? <Alert tone="warning">{notice}</Alert> : null}
       {message ? <Alert tone="danger">{message}</Alert> : null}
       <div className="text-center text-3xl tracking-[0.5em]">
         {'•'.repeat(pin.length).padEnd(6, '·')}

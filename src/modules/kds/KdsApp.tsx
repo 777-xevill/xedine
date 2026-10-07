@@ -42,11 +42,14 @@ const minutesSince = (iso: string) =>
 /** Kitchen Display: oldest-first, two-tap, dark by construction (KDS has no light variant). */
 export function KdsApp() {
   const sb = useMemo(() => createClient(), []);
+  const tp = useTranslations('pos');
   // Client-only mount (page.tsx uses next/dynamic, ssr: false) — safe to read localStorage eagerly.
   const [device, setDeviceState] = useState<DeviceState | null>(() => getDevice());
   const [staffSession, setStaffSessionState] = useState<StaffSessionState | null>(() =>
     getStaffSession(),
   );
+  // Set when the database has ended the cook's session (it lasts 12 hours) while the screen still held it.
+  const [expired, setExpired] = useState(false);
 
   if (!device)
     return (
@@ -63,7 +66,9 @@ export function KdsApp() {
       <StaffGate
         sb={sb}
         device={device}
+        notice={expired ? tp('sessionExpired') : null}
         onSignedIn={(s) => {
+          setExpired(false);
           setStaffSession(s);
           setStaffSessionState(s);
         }}
@@ -81,6 +86,11 @@ export function KdsApp() {
       sb={sb}
       device={device}
       staff={staffSession}
+      onSessionExpired={() => {
+        clearStaffSession();
+        setStaffSessionState(null);
+        setExpired(true);
+      }}
       onSwitchStaff={() => {
         void endStaffSession(sb, staffSession.sessionId).catch(() => undefined);
         clearStaffSession();
@@ -102,11 +112,13 @@ function Board({
   device,
   staff,
   onSwitchStaff,
+  onSessionExpired,
 }: {
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
   staff: StaffSessionState;
   onSwitchStaff: () => void;
+  onSessionExpired: () => void;
 }) {
   const t = useTranslations('kds');
   const tp = useTranslations('pos');
@@ -216,7 +228,13 @@ function Board({
         </div>
       </header>
       {wasteOpen ? (
-        <WasteDialog sb={sb} device={device} staff={staff} onClose={() => setWasteOpen(false)} />
+        <WasteDialog
+          sb={sb}
+          device={device}
+          staff={staff}
+          onSessionExpired={onSessionExpired}
+          onClose={() => setWasteOpen(false)}
+        />
       ) : null}
       {error ? <Alert tone="warning">{error}</Alert> : null}
 

@@ -94,3 +94,13 @@ export function nextProvisionalCounter(deviceId: string): number {
   safeSet(key, next);
   return next;
 }
+
+/**
+ * How this till shows the menu (ADR 0031): words only, or a photo above the words. A choice of the
+ * device, not of the restaurant — a counter till can show photos while a back-office till stays plain.
+ */
+export type TillView = 'text' | 'photo';
+const VIEW_KEY = 'xedine.pos.view';
+export const getTillView = (): TillView =>
+  safeGet<string>(VIEW_KEY) === 'photo' ? 'photo' : 'text';
+export const setTillView = (view: TillView): void => safeSet(VIEW_KEY, view);

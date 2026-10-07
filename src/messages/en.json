@@ -390,7 +390,7 @@
     "approve": "Approve",
     "shiftClosedBanner": "No shift is open on this device.",
     "openShift": "Open shift",
-    "openingFloat": "Opening float",
+    "openingFloat": "Cash in the drawer",
     "closeShift": "Close shift",
     "countedCash": "Counted cash",
     "expectedCash": "Expected cash",
@@ -416,6 +416,27 @@
     "addToCart": "Add",
     "addToOrder": "Add to order",
     "addingToOrder": "Adding to {order}",
+    "viewLabel": "Menu view",
+    "viewText": "Words",
+    "viewPhoto": "Photos",
+    "helperOpen": "Quick order",
+    "helperTitle": "Type what the customer said",
+    "helperPlaceholder": "e.g. 2 chicken biryani, 1 borhani, no onion",
+    "helperBadge": "AI draft — check before adding",
+    "helperSpeak": "Speak",
+    "helperStop": "Stop",
+    "helperRead": "Read order",
+    "helperReading": "Reading…",
+    "helperClear": "Clear",
+    "helperOffline": "Needs internet.",
+    "helperOff": "The AI helper is not switched on. Tap the items instead.",
+    "helperCap": "Today's AI allowance is used up. Tap the items instead.",
+    "helperFailed": "The helper could not read that. Try again, or tap the items.",
+    "helperEmpty": "No dishes found in that. Try again, or tap the items.",
+    "helperChoose": "Choose size / add-ons",
+    "helperNotFound": "Not found on the menu: {items}",
+    "helperRemove": "Remove",
+    "helperAdd": "Add to cart",
     "allItems": "All",
     "allSynced": "All synced",
     "approvalRejected": "The manager approval was missing, expired or already used. Ask again.",
@@ -505,7 +526,20 @@
       "submit_order": "New order",
       "send_to_kitchen": "Send to kitchen",
       "record_payment": "Payment"
-    }
+    },
+    "noStaffTitle": "No cashier has been added yet",
+    "noStaffBody": "The till for {branch} needs at least one person with a PIN. Add a cashier on the Staff page, then come back and reload.",
+    "noStaffAction": "Add a cashier",
+    "noStaffReload": "I have added one – reload",
+    "tillFor": "This till: {org}, {branch}",
+    "resetTill": "Set up this till again",
+    "otherTitle": "This till belongs to another restaurant",
+    "otherBody": "It was set up for {org} ({branch}), but this browser is signed in as {email}. Set it up again for your restaurant, or sign in with that restaurant’s account.",
+    "otherSignIn": "Sign in with another account",
+    "noPin": "{name} has no PIN yet. A manager sets it on the Staff page (Set PIN), then {name} can sign in here.",
+    "shiftTitle": "Start your shift",
+    "shiftExplain": "A shift is your working time on this till. Open it before you take the first order, and close it at the end of the day to count the cash.",
+    "floatHint": "The cash already in the drawer now, for giving change. Count it and type the amount in ৳."
   },
   "kds": {
     "allStations": "All stations",
@@ -530,6 +564,13 @@
     "wasteReason": "Why?"
   },
   "menu": {
+    "photoTitle": "Photo on the till",
+    "photoAdd": "Add photo",
+    "photoReplace": "Change photo",
+    "photoRemove": "Remove",
+    "photoWorking": "Uploading…",
+    "photoHint": "Shown on the till when a cashier picks \"Photos\". Any phone picture works; it is made small automatically.",
+    "photoFailed": "The photo could not be saved. Check the internet and try again.",
     "title": "Menu",
     "subtitle": "Categories and items. Prices are the printed menu price.",
     "categoriesTitle": "Categories",
@@ -1181,11 +1222,15 @@
       "countBody": "Once a week, count your shelf. If more went than the recipes needed, we show you the loss in ৳."
     },
     "count": {
-      "title": "Count your shelf",
-      "body": "Once a week is enough. We compare your count with your sales and your bazar to find your loss.",
-      "hint": "Quick count: your most expensive items only. Count everything: the whole shelf.",
+      "title": "Count what is left on your shelf",
+      "body": "Look at each item and type how much is left. Xedine then shows you where food went missing. Once a week is enough.",
       "last": "Last counted {date}",
-      "never": "Not counted yet"
+      "never": "You have not counted yet. Start with a quick count.",
+      "today": "today",
+      "ago": "{days, plural, one {# day ago} other {# days ago}}",
+      "choose": "Choose how to count",
+      "quickHint": "Only the {count} items that cost the most",
+      "fullHint": "Every item on your shelf"
     },
     "continueCount": "Continue today’s count",
     "start": {
@@ -1226,7 +1271,16 @@
     "period": {
       "from": "From the count of",
       "to": "To the count of",
-      "label": "Period"
+      "label": "Period",
+      "last": "Last week",
+      "month": "Last month",
+      "quarter": "Last 3 months",
+      "all": "Everything",
+      "pickLast": "Now tap the last count day",
+      "chosen": "{from} → {to} · {days} days",
+      "prev": "Earlier month",
+      "next": "Later month",
+      "legend": "Days you counted the shelf. Tap two of them."
     },
     "show": "Show",
     "bridgeTitle": "Why food cost differs from the recipes",
@@ -1290,10 +1344,6 @@
       "lineSave": "Save",
       "lineHint": "Between 0.1% and 20%. Money leaks uses the same line.",
       "lineSaved": "Loss line saved.",
-      "legendShould": "Should have used",
-      "legendShouldHint": "what the recipes of the dishes you sold need",
-      "legendReally": "Really used",
-      "legendReallyHint": "what really left your shelf",
       "groupLoss": "Loss — {pct} or more over the recipe",
       "groupSmall": "Small loss — less than {pct} over the recipe",
       "groupUnder": "Under-usage — used less than the recipes",
@@ -1305,8 +1355,6 @@
         "under": "{qty} under-usage ({pct} under the recipe)",
         "onRecipe": "On recipe — no difference"
       },
-      "story": "The dishes you sold should have used {should}. But {really} really left your shelf.",
-      "split": "Over-usage {over} = {waste} written down as waste + {unexplained} not explained.",
       "lossMoney": "Loss: {amount}",
       "underExplain": "{qty} less than the recipes. This is not counted as profit.",
       "onRecipeExplain": "Exactly what the recipes needed.",
@@ -1324,7 +1372,6 @@
           "count": "Was the count right?"
         }
       },
-      "shouldUse": "Should have used",
       "reallyUsed": "Really used",
       "worked": "How we worked this out",
       "ledger": {
@@ -1343,7 +1390,22 @@
       "staffTitleMoney": "Staff food in this period: {amount}",
       "staffTitleItems": "{count, plural, one {Staff food was written down for # item} other {Staff food was written down for # items}}",
       "staffBody": "Food the staff ate, written down as waste with the reason “Staff food”. It costs money, but it is planned, so it is not added to the loss.",
-      "ledgerStaff": "Staff food (written down)"
+      "ledgerStaff": "Staff food (written down)",
+      "chart": {
+        "allTitle": "Everything that left your shelf",
+        "recipesTitle": "What the dishes you sold needed",
+        "needed": "Needed for the dishes sold",
+        "neededHint": "what the recipes of the dishes you sold take",
+        "extra": "Extra",
+        "extraHint": "everything over that: this is your loss",
+        "less": "Less than the recipes",
+        "zoomTitle": "The extra, zoomed in",
+        "waste": "Written down as waste",
+        "unexplained": "Not explained",
+        "ariaOver": "{used} left the shelf: {needed} needed for the dishes sold and {extra} extra.",
+        "ariaUnder": "{used} left the shelf, {less} less than the {needed} the dishes needed.",
+        "ariaOn": "{used} left the shelf, exactly what the dishes needed."
+      }
     },
     "lot": {
       "bought": "Bought {date} for {days}",
@@ -2193,8 +2255,8 @@
       "one": "1 day",
       "many": "{n} days"
     },
-    "daysNote": "📅 = how many days it is for. The owner sees a countdown in Xedine.",
-    "askDays": "📅 For how many days is this bazar? Tap a number below, or write it on a line (murgi 10 kg 3200 3 din)."
+    "daysNote": "📅 = how many days it is for. The owner sees a countdown in Xedine. To change it, tap a number below.",
+    "askDays": "📅 For how many days is this bazar? Tap a number below. If you skip it, the owner sees no countdown."
   },
   "stockGuard": {
     "title": "Stock Guard",

@@ -4,10 +4,12 @@ import {
   ArrowLeft,
   CloudOff,
   History,
+  Image as ImageIcon,
   Minus,
   Plus,
   Printer,
   RefreshCw,
+  Type,
   UserPlus,
   Wifi,
 } from 'lucide-react';
@@ -16,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { StatusBadge, type BadgeTone } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label, Select } from '@/components/ui/form';
+import { Segmented } from '@/components/ui/segmented';
 import { formatBDT, formatDhakaDateTime } from '@/lib/i18n/format';
 import { parseTakaToPoisha, type LineAmounts } from '@/lib/money';
 import type {
@@ -41,6 +44,9 @@ import {
   type PaymentMethod,
   type PickedItem,
 } from './dialogs';
+import { CashierHelper } from './cashier-helper';
+import { getTillView, setTillView, type TillView } from './device-storage';
+import { ItemTile } from './item-tile';
 import type { OutboxEntry } from './outbox';
 import { Receipt } from './Receipt';
 import { useTill } from './till-context';
@@ -155,6 +161,11 @@ export function CartScreen({
   const money = (p: number) => formatBDT(p, locale);
   const [category, setCategory] = useState<string>('all');
   const [picking, setPicking] = useState<MenuItem | null>(null);
+  const [view, setView] = useState<TillView>(() => getTillView());
+  const chooseView = (next: TillView) => {
+    setView(next);
+    setTillView(next);
+  };
   const shown = category === 'all' ? menu : menu.filter((c) => c.id === category);
 
   const tap = (item: MenuItem) => {
@@ -212,29 +223,51 @@ export function CartScreen({
           </div>
         )}
 
-        <nav
-          aria-label={t('categories')}
-          className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1"
-        >
-          {[
-            { id: 'all', label: t('allItems') },
-            ...menu.map((c) => ({ id: c.id, label: itemLabel(c, locale) })),
-          ].map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              aria-pressed={category === c.id}
-              onClick={() => setCategory(c.id)}
-              className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium transition ${
-                category === c.id
-                  ? 'border-purple bg-surface-elevated text-foreground'
-                  : 'glass-tile text-secondary'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </nav>
+        <CashierHelper menu={menu} onAdd={onAdd} />
+
+        <div className="mb-3 flex items-start gap-2">
+          <nav
+            aria-label={t('categories')}
+            className="-mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 pb-1"
+          >
+            {[
+              { id: 'all', label: t('allItems') },
+              ...menu.map((c) => ({ id: c.id, label: itemLabel(c, locale) })),
+            ].map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={category === c.id}
+                onClick={() => setCategory(c.id)}
+                className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium transition ${
+                  category === c.id
+                    ? 'border-purple bg-surface-elevated text-foreground'
+                    : 'glass-tile text-secondary'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </nav>
+          <Segmented
+            label={t('viewLabel')}
+            value={view}
+            onChange={chooseView}
+            className="shrink-0"
+            options={[
+              {
+                value: 'text',
+                label: t('viewText'),
+                icon: <Type aria-hidden className="size-4" />,
+              },
+              {
+                value: 'photo',
+                label: t('viewPhoto'),
+                icon: <ImageIcon aria-hidden className="size-4" />,
+              },
+            ]}
+          />
+        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pe-1">
           {shown.map((cat) => {
@@ -247,20 +280,13 @@ export function CartScreen({
                 </h2>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                   {items.map((item) => (
-                    <button
+                    <ItemTile
                       key={item.id}
-                      type="button"
-                      onClick={() => tap(item)}
-                      className="glass-tile flex min-h-20 flex-col items-start justify-between rounded-input p-3 text-start transition hover:border-purple active:scale-[0.98]"
-                    >
-                      <span className="text-sm leading-snug font-semibold">
-                        {itemLabel(item, locale)}
-                      </span>
-                      <span className="text-xs text-secondary tabular-nums">
-                        {money(itemUnitPrice(item, null))}
-                        {item.variants.length > 0 || item.modifier_groups.length > 0 ? ' +' : ''}
-                      </span>
-                    </button>
+                      item={item}
+                      label={itemLabel(item, locale)}
+                      view={view}
+                      onTap={() => tap(item)}
+                    />
                   ))}
                 </div>
               </div>

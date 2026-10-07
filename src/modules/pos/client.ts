@@ -68,6 +68,8 @@ export interface MenuItem {
   branch_price_poisha: number | null;
   is_available: boolean;
   is_combo: boolean;
+  /** Path in the public menu-photos bucket (ADR 0031); null = no photo. */
+  photo_path: string | null;
   variants: ItemVariant[];
   modifier_groups: ModifierGroup[];
 }
@@ -273,7 +275,7 @@ export async function fetchMenu(
       .order('sort_order'),
     sb
       .from('menu_items')
-      .select('id, category_id, name, name_bn, base_price_poisha, is_combo, is_active')
+      .select('id, category_id, name, name_bn, base_price_poisha, is_combo, is_active, photo_path')
       .eq('org_id', orgId)
       .eq('is_active', true),
     sb
@@ -411,6 +413,7 @@ export async function fetchMenu(
       branch_price_poisha: branchPrice?.price ?? null,
       is_available: branchPrice ? branchPrice.available : true,
       is_combo: it.is_combo as boolean,
+      photo_path: it.photo_path as string | null,
       variants: variantsByItem.get(it.id as string) ?? [],
       modifier_groups: groupsByItem.get(it.id as string) ?? [],
     };

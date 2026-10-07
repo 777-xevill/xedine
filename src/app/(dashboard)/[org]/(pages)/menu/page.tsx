@@ -9,6 +9,7 @@ import {
   ModifierGroupForm,
   VariantForm,
 } from '@/components/menu-forms';
+import { ItemPhotoField } from '@/components/item-photo-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
@@ -44,7 +45,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
       .order('sort_order'),
     supabase
       .from('menu_items')
-      .select('id, category_id, name, base_price_poisha, is_active')
+      .select('id, category_id, name, base_price_poisha, is_active, photo_path')
       .eq('org_id', ctx.org.id)
       .order('name'),
     supabase
@@ -176,6 +177,13 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                   </summary>
 
                   <div className="mt-3 ms-6 space-y-4 border-s border-line ps-4">
+                    <ItemPhotoField
+                      orgId={ctx.org.id}
+                      orgSlug={ctx.org.slug}
+                      itemId={item.id}
+                      photoPath={(item.photo_path as string | null) ?? null}
+                    />
+
                     <div>
                       <h3 className="mb-2 text-sm font-semibold text-secondary">
                         {t('variantsTitle')}

@@ -3,6 +3,7 @@
 import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label, Select, Textarea } from '@/components/ui/form';
 import { formatBDT } from '@/lib/i18n/format';
@@ -30,7 +31,9 @@ export function DialogShell({
   children: ReactNode;
 }) {
   const t = useTranslations('pos');
-  return (
+  // Rendered on <body>: a dialog opened from inside the glass top bar (backdrop-filter) would otherwise
+  // be positioned relative to that bar, not the screen, and show up as a clipped strip.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -48,7 +51,8 @@ export function DialogShell({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

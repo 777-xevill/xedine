@@ -162,10 +162,10 @@ export function withDays(
   });
 }
 
-/** A tap on "N days" sets every line the purchaser did not write days on. */
+/** A tap on "N days" sets every line: the tap is the purchaser's latest word, over what was typed. */
 export function setListDays(lines: ReviewLine[], days: number): ReviewLine[] | null {
   if (!validDays(days)) return null;
-  return lines.map((l) => (l.days_typed && validDays(l.for_days) ? l : { ...l, for_days: days }));
+  return lines.map((l) => ({ ...l, for_days: days, days_typed: false }));
 }
 
 export const LOW_CONFIDENCE = 0.7;

@@ -1,13 +1,17 @@
+import { CountPeriod } from '@/components/stock/count-period';
 import {
   ArrowLeftRight,
   Boxes,
   ChefHat,
   CircleAlert,
   CircleCheck,
+  ChevronRight,
   CircleHelp,
   ClipboardCheck,
+  ClipboardList,
   Info,
   Lightbulb,
+  ListChecks,
   PackageMinus,
   PackageSearch,
   ShoppingBasket,
@@ -23,7 +27,6 @@ import { ActionForm } from '@/components/action-form';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import {
   Banner,
-  BarLine,
   Callout,
   Chips,
   Disclosure,
@@ -33,6 +36,8 @@ import {
   LevelRow,
   SectionTabs,
   ToneIcon,
+  UsageSplit,
+  type SplitPart,
   type Tone,
 } from '@/components/stock/parts';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -71,7 +76,6 @@ import {
   type VarianceRow,
 } from '@/modules/inventory/queries';
 import {
-  compareBars,
   daysInclusive,
   DEFAULT_LOSS_LINE_BPS,
   groupLevels,
@@ -154,6 +158,21 @@ export default async function StockPage({
     `/${ctx.org.slug}/stock?${new URLSearchParams({ tab: key, branch: branch.id }).toString()}`;
   const { date: today } = await businessToday(ctx.org.id);
   const supabase = await createClient();
+  /** Every ingredient of the org, paged past the API's row cap so none is left out of a picker. */
+  const allIngredients = async () => {
+    const rows: { id: string; name: string; name_bn: string | null; base: string }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('ingredients')
+        .select('id, name, name_bn, base')
+        .eq('org_id', ctx.org.id)
+        .order('name')
+        .order('id')
+        .range(from, from + 999);
+      rows.push(...(data ?? []));
+      if ((data?.length ?? 0) < 1000) return { data: rows };
+    }
+  };
   const hidden = (
     <>
       <input type="hidden" name="orgId" value={ctx.org.id} />
@@ -165,7 +184,7 @@ export default async function StockPage({
   const [{ data: settings }, { data: todaysCounts }] = await Promise.all([
     supabase
       .from('org_settings')
-      .select('count_weekday, loss_line_bps')
+      .select('count_weekday, loss_line_bps, guided_count_size')
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     supabase
@@ -176,51 +195,81 @@ export default async function StockPage({
       .eq('counted_on', today),
   ]);
   const lossLine = Number(settings?.loss_line_bps ?? DEFAULT_LOSS_LINE_BPS);
+  const quickSize = Number(settings?.guided_count_size ?? 12);
   const openCount = (todaysCounts ?? []).find((c) => c.status === 'open');
   const countDue =
     weekday(today) === Number(settings?.count_weekday ?? 0) &&
     !(todaysCounts ?? []).some((c) => c.status === 'submitted');
 
   /** "Count your shelf": the one thing the owner does by hand, in two plain buttons. */
-  const countCard = (lastCounted: string | null) =>
-    canCount ? (
+  const countCard = (lastCounted: string | null) => {
+    if (!canCount) return null;
+    // How long ago, in words: "today", "3 days ago". A week or more is the nudge to count again.
+    const daysAgo = lastCounted ? Math.max(daysInclusive(lastCounted, today) - 1, 0) : null;
+    const stale = daysAgo === null || daysAgo >= 8;
+    const options = [
+      {
+        kind: 'guided_weekly',
+        icon: <ListChecks />,
+        hint: t('count.quickHint', { count: quickSize }),
+      },
+      { kind: 'full', icon: <ClipboardList />, hint: t('count.fullHint') },
+    ] as const;
+    return (
       <Card className="p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-4">
-          <ToneIcon tone="info" icon={<ClipboardCheck />} className="size-12" />
-          <div className="min-w-0 flex-1 basis-64">
+        <div className="flex items-start gap-4">
+          <ToneIcon
+            tone={stale ? 'warning' : 'info'}
+            icon={<ClipboardCheck />}
+            className="size-12"
+          />
+          <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">{t('count.title')}</h2>
-            <p className="text-sm text-secondary">{t('count.body')}</p>
-            <p className="mt-1 text-sm font-medium">
-              {lastCounted ? t('count.last', { date: day(lastCounted) }) : t('count.never')}
+            <p className="mt-0.5 text-sm text-secondary">{t('count.body')}</p>
+            <p className={`mt-1.5 text-sm font-medium ${stale ? 'text-warning' : ''}`}>
+              {lastCounted && daysAgo !== null
+                ? `${t('count.last', { date: day(lastCounted) })} · ${
+                    daysAgo === 0 ? t('count.today') : t('count.ago', { days: daysAgo })
+                  }`
+                : t('count.never')}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {openCount ? (
-              <Link
-                href={`/${ctx.org.slug}/stock/count/${openCount.id as string}`}
-                className={buttonVariants()}
-              >
-                {t('continueCount')}
-              </Link>
-            ) : null}
-            {(['guided_weekly', 'full'] as const).map((kind) => (
-              <form key={kind} action={startCountAction}>
-                {hidden}
-                <input type="hidden" name="branchId" value={branch.id} />
-                <input type="hidden" name="kind" value={kind} />
-                <Button
-                  type="submit"
-                  variant={kind === 'guided_weekly' && !openCount ? 'primary' : 'secondary'}
-                >
-                  {t(`start.${kind}`)}
-                </Button>
-              </form>
-            ))}
-          </div>
         </div>
-        <Hint className="mt-3">{t('count.hint')}</Hint>
+        {openCount ? (
+          <Link
+            href={`/${ctx.org.slug}/stock/count/${openCount.id as string}`}
+            className={`${buttonVariants()} mt-4 w-full`}
+          >
+            {t('continueCount')}
+          </Link>
+        ) : null}
+        <p className="mt-4 mb-2 text-sm font-semibold">{t('count.choose')}</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {options.map(({ kind, icon, hint }) => (
+            <form key={kind} action={startCountAction}>
+              {hidden}
+              <input type="hidden" name="branchId" value={branch.id} />
+              <input type="hidden" name="kind" value={kind} />
+              <button
+                type="submit"
+                className="glass-tile flex w-full items-center gap-3 rounded-input p-3 text-start transition hover:border-purple/40 focus-visible:outline-2 focus-visible:outline-purple"
+              >
+                <ToneIcon tone="info" icon={icon} className="size-10" solid />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{t(`start.${kind}`)}</span>
+                  <span className="block text-sm text-secondary">{hint}</span>
+                </span>
+                <ChevronRight
+                  aria-hidden
+                  className="size-5 shrink-0 text-secondary rtl:rotate-180"
+                />
+              </button>
+            </form>
+          ))}
+        </div>
       </Card>
-    ) : null;
+    );
+  };
 
   /** The whole idea in three pictures, for someone who has never kept a stock book. */
   const howItWorks = (open: boolean) => (
@@ -534,7 +583,6 @@ export default async function StockPage({
                     : kind === 'under'
                       ? Info
                       : CircleCheck;
-              const bars = compareBars(r.usage_theoretical_qty, r.usage_actual_qty);
               const moved = r.transfers_in_qty - r.transfers_out_qty;
               const amount = qtyFull(Math.abs(r.over_qty), r.base);
               const pct = r.over_bps === null ? null : formatBps(Math.abs(r.over_bps), loc);
@@ -546,6 +594,82 @@ export default async function StockPage({
               // ADR 0029: staff food is written-down waste kept out of over-usage, shown on its own.
               const staff = r.staff_food_qty > 0;
               const otherWaste = r.waste_qty - r.staff_food_qty;
+              // The picture (UsageSplit): what the dishes needed, then the extra, which the zoom splits into
+              // waste written down and what nobody explained. Quantities only, straight from the metric.
+              const needText = qtyFull(r.usage_theoretical_qty, r.base);
+              const reallyText = qtyFull(r.usage_actual_qty, r.base);
+              const needed: SplitPart = {
+                key: 'needed',
+                label: t('loss.chart.needed'),
+                value: needText,
+                qty: r.usage_theoretical_qty,
+                tone: 'success',
+              };
+              const chartMain: SplitPart[] =
+                kind === 'under'
+                  ? [
+                      {
+                        key: 'used',
+                        label: t('loss.reallyUsed'),
+                        value: reallyText,
+                        qty: r.usage_actual_qty,
+                        tone: 'success',
+                      },
+                      {
+                        key: 'less',
+                        label: t('loss.chart.less'),
+                        value: amount,
+                        qty: Math.abs(r.over_qty),
+                        tone: 'info',
+                      },
+                    ]
+                  : over
+                    ? [
+                        needed,
+                        {
+                          key: 'extra',
+                          label: t('loss.chart.extra'),
+                          value: amount,
+                          qty: r.over_qty,
+                          tone: rowTone,
+                        },
+                      ]
+                    : [{ ...needed, value: reallyText, qty: r.usage_actual_qty }];
+              // Written-down waste first; whatever is left of the extra was not explained. When more waste
+              // was written down than the extra, all of the extra is explained.
+              const explained = r.variance_qty >= 0 ? otherWaste : r.over_qty;
+              const chartZoom = over
+                ? {
+                    title: t('loss.chart.zoomTitle'),
+                    total: amount,
+                    parts: [
+                      {
+                        key: 'waste',
+                        label: t('loss.chart.waste'),
+                        value: qtyFull(explained, r.base),
+                        qty: explained,
+                        tone: 'warning' as const,
+                      },
+                      {
+                        key: 'unexplained',
+                        label: t('loss.chart.unexplained'),
+                        value: qtyFull(Math.max(r.variance_qty, 0), r.base),
+                        qty: Math.max(r.variance_qty, 0),
+                        tone: 'danger' as const,
+                      },
+                    ],
+                  }
+                : undefined;
+              const chartAria =
+                kind === 'under'
+                  ? t('loss.chart.ariaUnder', { used: reallyText, needed: needText, less: amount })
+                  : over
+                    ? t('loss.chart.ariaOver', {
+                        used: reallyText,
+                        needed: needText,
+                        extra: amount,
+                      })
+                    : t('loss.chart.ariaOn', { used: reallyText });
               const verdict =
                 kind === 'onRecipe'
                   ? t('loss.verdict.onRecipe')
@@ -572,45 +696,26 @@ export default async function StockPage({
                   aside={money ?? undefined}
                   open={open}
                 >
-                  <p className="mb-3 text-sm">
-                    {t('loss.story', {
-                      should: qtyFull(r.usage_theoretical_qty, r.base),
-                      really: qtyFull(r.usage_actual_qty, r.base),
-                    })}
-                  </p>
-                  <div className="space-y-3">
-                    <BarLine
-                      icon={<ChefHat />}
-                      label={t('loss.shouldUse')}
-                      value={qtyFull(r.usage_theoretical_qty, r.base)}
-                      percent={bars.should}
-                      tone="neutral"
-                    />
-                    <BarLine
-                      icon={<PackageMinus />}
-                      label={t('loss.reallyUsed')}
-                      value={qtyFull(r.usage_actual_qty, r.base)}
-                      percent={bars.really}
-                      tone={rowTone}
-                    />
-                  </div>
+                  <UsageSplit
+                    title={
+                      kind === 'under' ? t('loss.chart.recipesTitle') : t('loss.chart.allTitle')
+                    }
+                    total={kind === 'under' ? needText : reallyText}
+                    main={chartMain}
+                    zoom={chartZoom}
+                    ariaLabel={chartAria}
+                  />
                   <div className="mt-4">
                     <Callout tone={rowTone} icon={<Icon />}>
-                      <p className="font-medium">
-                        {over
-                          ? t('loss.split', {
-                              over: amount,
-                              waste: qtyFull(otherWaste, r.base),
-                              unexplained: qtyFull(r.variance_qty, r.base),
-                            })
-                          : kind === 'under'
+                      {over ? null : (
+                        <p className="font-medium">
+                          {kind === 'under'
                             ? t('loss.underExplain', { qty: amount })
                             : t('loss.onRecipeExplain')}
-                      </p>
-                      {money ? (
-                        <p className="mt-1 font-semibold">
-                          {t('loss.lossMoney', { amount: money })}
                         </p>
+                      )}
+                      {money ? (
+                        <p className="font-semibold">{t('loss.lossMoney', { amount: money })}</p>
                       ) : null}
                       {checks ? (
                         <>
@@ -715,33 +820,28 @@ export default async function StockPage({
                     {t('loss.between', { from: day(from), to: day(to) })}
                   </p>
                   <Disclosure summary={t('loss.changeDates')}>
-                    <form
-                      className="flex flex-wrap items-end gap-3"
-                      action={`/${ctx.org.slug}/stock`}
-                    >
-                      <input type="hidden" name="tab" value="variance" />
-                      <input type="hidden" name="branch" value={branch.id} />
-                      {(['from', 'to'] as const).map((k) => (
-                        <div key={k}>
-                          <Label htmlFor={`v-${k}`}>{t(`period.${k}`)}</Label>
-                          <Select
-                            id={`v-${k}`}
-                            name={k}
-                            defaultValue={k === 'from' ? from : to}
-                            className="w-44"
-                          >
-                            {dates.map((d) => (
-                              <option key={d} value={d}>
-                                {day(d)}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                      ))}
-                      <Button type="submit" variant="secondary">
-                        {t('show')}
-                      </Button>
-                    </form>
+                    <CountPeriod
+                      dates={dates}
+                      from={from}
+                      to={to}
+                      basePath={`/${ctx.org.slug}/stock`}
+                      params={{ tab: 'variance', branch: branch.id }}
+                      locale={loc}
+                      labels={{
+                        presets: {
+                          last: t('period.last'),
+                          month: t('period.month'),
+                          quarter: t('period.quarter'),
+                          all: t('period.all'),
+                        },
+                        pickLast: t('period.pickLast'),
+                        chosen: t.raw('period.chosen') as string,
+                        show: t('show'),
+                        prev: t('period.prev'),
+                        next: t('period.next'),
+                        legend: t('period.legend'),
+                      }}
+                    />
                   </Disclosure>
                 </div>
 
@@ -810,8 +910,8 @@ export default async function StockPage({
                   <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">
                     {(
                       [
-                        ['legendShould', 'legendShouldHint', <ChefHat key="s" />],
-                        ['legendReally', 'legendReallyHint', <PackageMinus key="r" />],
+                        ['needed', 'neededHint', <ChefHat key="s" />],
+                        ['extra', 'extraHint', <PackageMinus key="r" />],
                       ] as const
                     ).map(([name, hint, icon]) => (
                       <div
@@ -820,8 +920,8 @@ export default async function StockPage({
                       >
                         <ToneIcon tone="neutral" icon={icon} className="size-9 sm:size-10" solid />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold">{t(`loss.${name}`)}</p>
-                          <p className="text-xs text-secondary">{t(`loss.${hint}`)}</p>
+                          <p className="text-sm font-semibold">{t(`loss.chart.${name}`)}</p>
+                          <p className="text-xs text-secondary">{t(`loss.chart.${hint}`)}</p>
                         </div>
                       </div>
                     ))}
@@ -935,12 +1035,10 @@ export default async function StockPage({
                   .eq('kind', 'waste')
                   .eq('is_active', true)
                   .order('label'),
-                supabase
-                  .from('ingredients')
-                  .select('id, name, name_bn, base')
-                  .eq('org_id', ctx.org.id)
-                  .eq('is_active', true)
-                  .order('name'),
+                // Every item, straight from the records on each visit: a new ingredient is here the
+                // moment it exists, even with nothing wasted yet. Hidden (retired) items stay listed
+                // too, so a spill of something no longer bought can still be written down.
+                allIngredients(),
                 supabase
                   .from('menu_items')
                   .select('id, name, name_bn')

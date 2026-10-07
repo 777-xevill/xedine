@@ -3,7 +3,8 @@
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Input, Label, Select } from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   fetchActiveStaff,
   fetchBranches,
@@ -114,17 +115,36 @@ export function StaffGate({
   sb,
   device,
   onSignedIn,
+  onReset,
 }: {
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
   onSignedIn: (s: { sessionId: string; staffId: string; staffName: string }) => void;
+  /** Forget this till's setup and go back to the pairing screen. */
+  onReset: () => void;
 }) {
   const t = useTranslations('pos');
   const te = useTranslations('errors');
-  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staff, setStaff] = useState<StaffMember[] | null>(null);
   const [picked, setPicked] = useState<StaffMember | null>(null);
   const [pin, setPin] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  // Whether the account signed into this browser can open the restaurant the till was set up for.
+  // When it cannot (someone signed in with another restaurant's account), RLS hides its staff and
+  // its Staff page is a 404, so the till says so instead of showing an empty list.
+  const [other, setOther] = useState<{ email: string } | null>(null);
+
+  useEffect(() => {
+    void Promise.all([
+      sb.from('organizations').select('id').eq('id', device.orgId).maybeSingle(),
+      sb.auth.getUser(),
+    ])
+      .then(([org, user]) => {
+        // Offline or an error: keep going with the till's snapshot; only a clear "not yours" counts.
+        if (!org.error && !org.data) setOther({ email: user.data.user?.email ?? '' });
+      })
+      .catch(() => undefined);
+  }, [sb, device.orgId]);
 
   useEffect(() => {
     // Offline, the names come from the till's last snapshot; the PIN itself still needs the server.
@@ -153,7 +173,8 @@ export function StaffGate({
         return;
       }
       setPin('');
-      if (result.reason === 'locked') setMessage(t('pinLocked'));
+      if (result.reason === 'no_pin') setMessage(t('noPin', { name: picked.display_name }));
+      else if (result.reason === 'locked') setMessage(t('pinLocked'));
       else if (result.reason === 'wrong_pin')
         setMessage(t('pinWrong', { attempts: result.attempts_left ?? 0 }));
       else setMessage(te('generic'));
@@ -161,12 +182,62 @@ export function StaffGate({
     [sb, device, picked, onSignedIn, t, te],
   );
 
+  const footer = (
+    <p className="text-center text-sm text-secondary">
+      {t('tillFor', { org: device.orgSlug, branch: device.branchName })} ·{' '}
+      <button type="button" className="font-medium text-purple underline" onClick={onReset}>
+        {t('resetTill')}
+      </button>
+    </p>
+  );
+
+  if (other) {
+    return (
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
+        <h1 className="text-2xl font-semibold">{t('otherTitle')}</h1>
+        <Alert tone="warning">
+          {t('otherBody', {
+            org: device.orgSlug,
+            branch: device.branchName,
+            email: other.email,
+          })}
+        </Alert>
+        <Button className="w-full" onClick={onReset}>
+          {t('resetTill')}
+        </Button>
+        <Link
+          href="/sign-in?next=%2Fpos"
+          className={`${buttonVariants({ variant: 'ghost' })} w-full`}
+        >
+          {t('otherSignIn')}
+        </Link>
+      </div>
+    );
+  }
+
   if (!picked) {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
         <h1 className="text-2xl font-semibold">{t('chooseStaff')}</h1>
+        {staff && staff.length === 0 ? (
+          <div className="space-y-3">
+            <Alert tone="warning">
+              <p className="font-semibold">{t('noStaffTitle')}</p>
+              <p className="mt-1">{t('noStaffBody', { branch: device.branchName })}</p>
+            </Alert>
+            <Link
+              href={`/${device.orgSlug}/staff?branch=${device.branchId}`}
+              className={`${buttonVariants()} w-full`}
+            >
+              {t('noStaffAction')}
+            </Link>
+            <Button variant="ghost" className="w-full" onClick={() => window.location.reload()}>
+              {t('noStaffReload')}
+            </Button>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
-          {staff.map((s) => (
+          {(staff ?? []).map((s) => (
             <button
               key={s.id}
               type="button"
@@ -180,6 +251,7 @@ export function StaffGate({
             </button>
           ))}
         </div>
+        {footer}
       </div>
     );
   }

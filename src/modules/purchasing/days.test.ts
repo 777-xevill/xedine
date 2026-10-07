@@ -53,9 +53,9 @@ describe('withDays and setListDays', () => {
     expect(withDays(lines, 2, usual).map((l) => l.for_days)).toEqual([3, 2, 2]);
   });
 
-  it('a tap sets every line except those with their own days; nonsense is refused', () => {
+  it('a tap sets every line, over typed days too; nonsense is refused', () => {
     const filled = withDays(lines, undefined, usual);
-    expect(setListDays(filled, 1)?.map((l) => l.for_days)).toEqual([3, 1, 1]);
+    expect(setListDays(filled, 1)?.map((l) => l.for_days)).toEqual([1, 1, 1]);
     expect(setListDays(filled, 0)).toBeNull();
     expect(setListDays(filled, 31)).toBeNull();
   });

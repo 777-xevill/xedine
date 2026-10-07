@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StockRow, VarianceRow } from './queries';
 import {
-  compareBars,
   daysInclusive,
   groupLevels,
   levelGroup,
@@ -183,18 +182,5 @@ describe('staffFoodTotal', () => {
     expect(staffFoodTotal(rows)).toBe(23_200);
     expect(lossTotal(rows)).toBe(3_200);
     expect(staffFoodTotal([])).toBe(0);
-  });
-});
-
-describe('compareBars', () => {
-  it('draws the longer one full and the other to scale', () => {
-    expect(compareBars(50.32, 59.874)).toEqual({ should: 84, really: 100 });
-    expect(compareBars(100, 25)).toEqual({ should: 100, really: 25 });
-  });
-
-  it('handles nothing used, and never goes negative', () => {
-    expect(compareBars(0, 0)).toEqual({ should: 0, really: 0 });
-    expect(compareBars(0, 10)).toEqual({ should: 0, really: 100 });
-    expect(compareBars(-5, 10)).toEqual({ should: 0, really: 100 });
   });
 });

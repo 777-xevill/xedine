@@ -45,6 +45,7 @@ import {
   type StaffMember,
 } from './client';
 import {
+  clearDevice,
   clearStaffSession,
   getDevice,
   getStaffSession,
@@ -114,6 +115,12 @@ export function PosApp() {
         onSignedIn={(s) => {
           setStaffSession(s);
           setStaffSessionState(s);
+        }}
+        onReset={() => {
+          clearStaffSession();
+          clearDevice();
+          setStaffSessionState(null);
+          setDeviceState(null);
         }}
       />
     );
@@ -828,7 +835,7 @@ function Till({
   return (
     <TillContext.Provider value={ctx}>
       <div className="mx-auto flex h-dvh max-w-7xl flex-col gap-3 px-3 py-3">
-        <header className="glass flex flex-wrap items-center justify-between gap-2 rounded-full px-4 py-2">
+        <header className="glass flex flex-wrap items-center justify-between gap-2 rounded-card px-4 py-2 sm:rounded-full">
           <span className="text-sm">
             <span className="font-semibold">{device.branchName}</span>
             <span className="text-secondary"> · {staffSession.staffName}</span>
@@ -975,7 +982,10 @@ function ShiftOpener({
   return (
     <div className="mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
       <div className="glass space-y-4 rounded-sheet p-6">
-        <p className="text-secondary">{t('shiftClosedBanner')}</p>
+        <div>
+          <h1 className="text-lg font-semibold">{t('shiftTitle')}</h1>
+          <p className="mt-1 text-sm text-secondary">{t('shiftExplain')}</p>
+        </div>
         {!online ? <Alert tone="warning">{t('needsInternet')}</Alert> : null}
         {error ? <Alert tone="danger">{error}</Alert> : null}
         <div>
@@ -986,6 +996,7 @@ function ShiftOpener({
             value={float}
             onChange={(e) => setFloat(e.target.value)}
           />
+          <p className="mt-1 text-sm text-secondary">{t('floatHint')}</p>
         </div>
         <Button
           className="w-full"

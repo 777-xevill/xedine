@@ -101,14 +101,3 @@ export function staffFoodTotal(rows: readonly VarianceRow[]): number {
     0,
   );
 }
-
-/** Bar lengths in percent: the longer of the two fills the track, the other is drawn to scale. */
-export function compareBars(
-  shouldUse: number,
-  reallyUsed: number,
-): { should: number; really: number } {
-  const longest = Math.max(shouldUse, reallyUsed, 0);
-  if (longest === 0) return { should: 0, really: 0 };
-  const pct = (v: number) => Math.round((Math.max(v, 0) / longest) * 100);
-  return { should: pct(shouldUse), really: pct(reallyUsed) };
-}

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/db/supabase-browser';
 import { now } from '@/lib/time/clock';
 import { endStaffSession } from '@/modules/pos/client';
 import {
+  clearDevice,
   clearStaffSession,
   getDevice,
   getStaffSession,
@@ -65,6 +66,13 @@ export function KdsApp() {
         onSignedIn={(s) => {
           setStaffSession(s);
           setStaffSessionState(s);
+        }}
+
+        onReset={() => {
+          clearStaffSession();
+          clearDevice();
+          setStaffSessionState(null);
+          setDeviceState(null);
         }}
       />
     );

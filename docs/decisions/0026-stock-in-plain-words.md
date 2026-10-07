@@ -23,3 +23,7 @@ The founder tried the Phase 5 Stock page and found it too hard for the people it
 - The owner reads the page top to bottom in a minute: one banner, what to buy, what is missing, what was thrown away.
 - Multi-branch owners can no longer record a transfer from the app until it returns (see §1).
 - `stock.*` messages were rewritten; `errors.transferInvalid` and the old column labels are gone. Home's stock watch still uses `stock.days` and `stock.noUsage`.
+
+## Amendment (2026-10-02): one chart that shows the extra, and a count card that explains itself
+- The two bars "should have used / really used" were nearly the same length for a small loss, so the loss did not show. A Loss row now has one picture (`UsageSplit`): a bar for everything that left the shelf (the part the dishes needed in green, the extra at the end in red, or amber under the loss line), and a **zoom** below it that opens the extra and splits it into "written down as waste" and "not explained". Under-usage and on-recipe items get the same bar without a zoom. All parts are quantities from `metric_stock_variance`, drawn to scale (the zoom is the extra alone); nothing is added up in the page.
+- The "Count your shelf" card says what a count is ("look at each item and type how much is left"), shows how long ago the last count was (amber from 8 days), and offers the two ways to count as tappable choices with a one-line hint each ("Only the 12 items that cost the most" / "Every item on your shelf").

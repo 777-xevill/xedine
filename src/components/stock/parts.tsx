@@ -300,35 +300,96 @@ export function ItemRow({
   );
 }
 
-/** "Should have used" / "Really used": a label, the amount, and a bar drawn to scale. */
-export function BarLine({
-  icon,
-  label,
-  value,
-  percent,
-  tone,
-}: {
-  icon: ReactNode;
+export interface SplitPart {
+  key: string;
   label: string;
+  /** Ready-written quantity ("1.034 kg"). */
   value: string;
-  percent: number;
+  /** The raw quantity, only to draw this part to scale. */
+  qty: number;
   tone: Tone;
-}) {
+}
+
+/** Segments of one bar drawn to scale: 2px gaps, 4px corners, never thinner than a tap-sized sliver. */
+function SplitBar({ parts }: { parts: SplitPart[] }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="flex min-w-0 items-center gap-1.5 text-secondary [&>span>svg]:size-4">
-          <span aria-hidden className="inline-flex shrink-0">
-            {icon}
-          </span>
-          {label}
-        </span>
-        <span className="shrink-0 font-semibold tabular-nums">{value}</span>
-      </div>
-      <div aria-hidden className="mt-1 h-2.5 overflow-hidden rounded-full bg-surface-elevated">
-        <div className={cn('h-full rounded-full', BAR[tone])} style={{ width: `${percent}%` }} />
-      </div>
+    <div aria-hidden className="flex h-6 gap-0.5">
+      {parts
+        .filter((p) => p.qty > 0)
+        .map((p) => (
+          <div
+            key={p.key}
+            className={cn('h-full min-w-1.5 rounded-[4px]', BAR[p.tone])}
+            style={{ flexGrow: p.qty, flexBasis: 0 }}
+          />
+        ))}
     </div>
+  );
+}
+
+function Swatch({ tone }: { tone: Tone }) {
+  return <span aria-hidden className={cn('size-3 shrink-0 rounded-[3px]', BAR[tone])} />;
+}
+
+/**
+ * Where the stock went, in one picture (replaces two near-equal bars that hid a small loss).
+ * Top: one bar for everything that left the shelf — the part the dishes needed, then the extra at the
+ * end. When there is an extra, a zoom opens below it: the same extra drawn big and split into what was
+ * written down as waste and what nobody explained, so even a 2% loss reads at a glance. Every part
+ * is a quantity from the metric, drawn to scale; this component adds nothing up.
+ */
+export function UsageSplit({
+  title,
+  total,
+  main,
+  zoom,
+  ariaLabel,
+}: {
+  title: string;
+  total: string;
+  /** The bar's parts in order; the last one is what the zoom opens up when `zoom` is given. */
+  main: SplitPart[];
+  zoom?: { title: string; total: string; parts: SplitPart[] };
+  ariaLabel: string;
+}) {
+  const shown = main.filter((p) => p.qty > 0);
+  return (
+    <figure role="img" aria-label={ariaLabel} className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <span className="font-medium">{title}</span>
+        <span className="shrink-0 font-semibold tabular-nums">{total}</span>
+      </div>
+      <SplitBar parts={main} />
+      <ul className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm">
+        {shown.map((p) => (
+          <li key={p.key} className="flex min-w-0 items-center gap-1.5">
+            <Swatch tone={p.tone} />
+            <span className="text-secondary">{p.label}</span>
+            <span className="font-semibold tabular-nums">{p.value}</span>
+          </li>
+        ))}
+      </ul>
+      {zoom ? (
+        <>
+          <div className="flex items-baseline justify-between gap-3 pt-4 text-sm">
+            <span className="font-medium">{zoom.title}</span>
+            <span className="shrink-0 font-semibold tabular-nums">{zoom.total}</span>
+          </div>
+          <SplitBar parts={zoom.parts} />
+          <ul className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm">
+            {zoom.parts
+              .filter((p) => p.qty > 0)
+              .map((p) => (
+                <li key={p.key} className="flex min-w-0 items-center gap-1.5">
+                  <Swatch tone={p.tone} />
+                  <span className="text-secondary">{p.label}</span>
+                  <span className="font-semibold tabular-nums">{p.value}</span>
+                </li>
+              ))}
+          </ul>
+        </>
+      ) : null}
+    </figure>
   );
 }
 

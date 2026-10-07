@@ -23,7 +23,7 @@ export function Segmented<T extends string>({
   value: T;
   onChange: (value: T) => void;
   label: string;
-  size?: 'default' | 'lg';
+  size?: 'sm' | 'default' | 'lg';
   className?: string;
 }) {
   return (
@@ -46,15 +46,21 @@ export function Segmented<T extends string>({
             data-testid={o.testId}
             onClick={() => onChange(o.value)}
             className={cn(
-              'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition',
-              size === 'lg' ? 'min-h-12' : 'min-h-9',
+              'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition',
+              size === 'sm' ? 'min-h-7 px-2.5 text-xs' : 'px-4 text-sm',
+              size === 'lg' ? 'min-h-12' : size === 'sm' ? '' : 'min-h-9',
               active
                 ? 'bg-surface text-foreground shadow-soft'
                 : 'text-secondary hover:text-foreground',
             )}
           >
             {o.icon ? (
-              <span aria-hidden className="inline-flex [&>svg]:size-4">
+              <span
+                aria-hidden
+                className={
+                  size === 'sm' ? 'inline-flex [&>svg]:size-3.5' : 'inline-flex [&>svg]:size-4'
+                }
+              >
                 {o.icon}
               </span>
             ) : null}

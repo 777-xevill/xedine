@@ -223,9 +223,32 @@ export function CartScreen({
           </div>
         )}
 
-        <CashierHelper menu={menu} onAdd={onAdd} />
+        <CashierHelper
+          menu={menu}
+          onAdd={onAdd}
+          toolbar={
+            <Segmented
+              label={t('viewLabel')}
+              value={view}
+              onChange={chooseView}
+              size="sm"
+              options={[
+                {
+                  value: 'text',
+                  label: t('viewText'),
+                  icon: <Type aria-hidden className="size-3.5" />,
+                },
+                {
+                  value: 'photo',
+                  label: t('viewPhoto'),
+                  icon: <ImageIcon aria-hidden className="size-3.5" />,
+                },
+              ]}
+            />
+          }
+        />
 
-        <div className="mb-3 flex items-start gap-2">
+        <div className="mb-3">
           <nav
             aria-label={t('categories')}
             className="-mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 pb-1"
@@ -249,24 +272,6 @@ export function CartScreen({
               </button>
             ))}
           </nav>
-          <Segmented
-            label={t('viewLabel')}
-            value={view}
-            onChange={chooseView}
-            className="shrink-0"
-            options={[
-              {
-                value: 'text',
-                label: t('viewText'),
-                icon: <Type aria-hidden className="size-4" />,
-              },
-              {
-                value: 'photo',
-                label: t('viewPhoto'),
-                icon: <ImageIcon aria-hidden className="size-4" />,
-              },
-            ]}
-          />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto pe-1">

@@ -44,6 +44,21 @@ export default async function SalesPage({
     supabase.from('org_settings').select('dayparts').eq('org_id', ctx.org.id).maybeSingle(),
     supabase.from('menu_items').select('id, name').eq('org_id', ctx.org.id).eq('is_active', true),
   ]);
+  // A restaurant that never sold takeaway/delivery should not see channel options: list only the
+  // channels that have at least one order, and show the filter only when there is a real choice.
+  const used = await Promise.all(
+    (channels ?? []).map(async (c) => {
+      const { data } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('org_id', ctx.org.id)
+        .eq('channel_id', c.id)
+        .limit(1);
+      return (data?.length ?? 0) > 0 || c.id === channelId;
+    }),
+  );
+  const activeChannels = (channels ?? []).filter((_, i) => used[i]);
+  const showChannels = activeChannels.length > 1 || channelId !== null;
   const dayparts = ((settings?.dayparts as { key: string }[] | null) ?? []).map((d) => d.key);
   const daypart = sp.daypart && dayparts.includes(sp.daypart) ? sp.daypart : null;
   const scope = ctx.selectedBranchId;
@@ -88,17 +103,19 @@ export default async function SalesPage({
       />
       <form method="get" className="glass mb-6 flex flex-wrap items-end gap-3 rounded-card p-4">
         <input type="hidden" name="window" value={window} />
-        <div>
-          <Label htmlFor="channel">{t('channel')}</Label>
-          <Select id="channel" name="channel" defaultValue={channelId ?? ''}>
-            <option value="">{t('allChannels')}</option>
-            {(channels ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-        </div>
+        {showChannels ? (
+          <div>
+            <Label htmlFor="channel">{t('channel')}</Label>
+            <Select id="channel" name="channel" defaultValue={channelId ?? ''}>
+              <option value="">{t('allChannels')}</option>
+              {activeChannels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : null}
         <div>
           <Label htmlFor="daypart">{t('daypart')}</Label>
           <Select id="daypart" name="daypart" defaultValue={daypart ?? ''}>

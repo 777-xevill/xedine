@@ -100,6 +100,15 @@ export function formatDhakaDay(instant: Date, locale: Locale): string {
   }).format(instant);
 }
 
+/** A short chart-axis day: "8 Oct" / "৮ অক্টো"; a business date as noon Dhaka. */
+export function formatDhakaDayMonth(instant: Date, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: DHAKA_TZ,
+    day: 'numeric',
+    month: 'short',
+  }).format(instant);
+}
+
 export function formatDhakaTime(instant: Date, locale: Locale): string {
   return new Intl.DateTimeFormat(intlLocale(locale), {
     timeZone: DHAKA_TZ,

@@ -703,7 +703,36 @@
     "byDaypart": "By time of day",
     "byHour": "By hour",
     "hour": "{hour}:00",
-    "notSold": "Not sold in this period"
+    "notSold": "Not sold in this period",
+    "charts": {
+      "tapHint": "Tap or point at a bar to see the amount.",
+      "byDay": "Sales by day",
+      "byDayBody": "How much you sold each day.",
+      "bestDay": "Best day: {day} · {amount}",
+      "hours": "Busiest hours",
+      "hoursBody": "Which hours bring the most money.",
+      "busiest": "Busiest: {hour} · {amount}",
+      "itemsBody": "Most sold first: how many, and the money they brought.",
+      "sold": "{n} sold",
+      "showAll": "Show all {n} items",
+      "daypartBody": "Breakfast, lunch, dinner: which part of the day earns most.",
+      "byChannel": "Where orders came from",
+      "byChannelBody": "Dine-in, takeaway and delivery apps.",
+      "byPayment": "How customers paid",
+      "byPaymentBody": "Cash, cards and mobile money.",
+      "byBranch": "Sales by branch",
+      "byBranchBody": "Which branch sold the most.",
+      "ordersHint": "{count, plural, one {{n} order} other {{n} orders}}"
+    },
+    "clock": {
+      "night": "{hour} am",
+      "dawn": "{hour} am",
+      "morning": "{hour} am",
+      "noon": "{hour} pm",
+      "afternoon": "{hour} pm",
+      "evening": "{hour} pm",
+      "late": "{hour} pm"
+    }
   },
   "leaks": {
     "title": "Where am I losing money?",

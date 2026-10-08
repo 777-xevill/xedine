@@ -1,3 +1,4 @@
+import { toBanglaDigits } from '@/lib/i18n/format';
 import { formatQuantity } from '@/modules/inventory/format';
 import type { BaseUnit, PurchaseUnit } from '@/modules/purchasing/lines';
 
@@ -46,4 +47,14 @@ export function plain(text: string): string {
     .replace(/__(.+?)__/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
     .trim();
+}
+
+/**
+ * The model's answer as the owner reads it, after the numeric check: plain text, taka never written as
+ * rupees (the model sometimes writes ₹), and a Bangla answer in Bangla digits like the rest of the
+ * app. Only the script changes, never a value; the validator reads both digit sets.
+ */
+export function forReader(text: string, locale: 'bn' | 'en'): string {
+  const out = plain(text).replace(/₹/g, '৳');
+  return locale === 'bn' ? toBanglaDigits(out) : out;
 }

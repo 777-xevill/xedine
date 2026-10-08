@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AiError, aiConfigured, gateway, type PromptVersion } from '@/lib/llm-gateway';
 import { renderAnswer, toolForIntent, type Translate } from './answers';
 import { answerLocale, detectLanguage, type QuestionLanguage } from './language';
-import { forModel, plain } from './for-model';
+import { forModel, forReader } from './for-model';
 import { routeQuestion, type MenuRef } from './router';
 import { runTool, TOOL_DEFS, type ToolContext, type ToolResult } from './tools';
 import { validateNumbers } from './validator';
@@ -172,7 +172,7 @@ export async function askAssistant(args: {
       );
       if (check.ok)
         return {
-          text: plain(first.text),
+          text: forReader(first.text, locale),
           language,
           source: 'llm',
           numericCheck: first.toolCalls.length ? 'ok' : 'not_applicable',
@@ -196,7 +196,7 @@ export async function askAssistant(args: {
       );
       if (recheck.ok)
         return {
-          text: plain(second.text),
+          text: forReader(second.text, locale),
           language,
           source: 'llm',
           numericCheck: 'retried',

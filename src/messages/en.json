@@ -724,6 +724,23 @@
       "byBranchBody": "Which branch sold the most.",
       "ordersHint": "{count, plural, one {{n} order} other {{n} orders}}"
     },
+    "agent": {
+      "period": {
+        "last_2h": "the last 2 hours",
+        "today": "today",
+        "yesterday": "yesterday",
+        "last_7d": "the last 7 days",
+        "week_to_date": "this week",
+        "month_to_date": "this month",
+        "last_30d": "the last 30 days"
+      },
+      "summary": "Explain my sales for {period} in simple words: how much I sold, what sold best, where orders came from, and one thing I should do next.",
+      "summaryBranch": "Explain my sales at {branch} branch for {period} in simple words: how much I sold, what sold best, where orders came from, and one thing I should do next.",
+      "leastSold": "What sold least {period}?",
+      "channels": "Which channel brought the most money {period}?",
+      "branches": "Compare my branches {period}",
+      "push": "Which item should I push to sell more?"
+    },
     "clock": {
       "night": "{hour} am",
       "dawn": "{hour} am",
@@ -1163,6 +1180,14 @@
       "6": "Saturday"
     },
     "busy": "Too many questions this minute for the AI. Please ask again in a minute."
+  },
+  "agent": {
+    "open": "Explain my sales",
+    "title": "Sales helper",
+    "subtitle": "Ask anything about these numbers",
+    "placeholder": "Ask about these sales…",
+    "openChat": "Open in chat",
+    "close": "Close"
   },
   "assistantPage": {
     "title": "Assistant",

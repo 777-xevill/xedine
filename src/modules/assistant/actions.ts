@@ -17,22 +17,52 @@ import type { Translate } from './answers';
  */
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
+const askSchema = z.object({
+  orgId: z.uuid(),
+  orgSlug: z.string().regex(SLUG),
+  conversationId: z.union([z.uuid(), z.literal('')]),
+  question: z.string().trim().min(1).max(1000),
+});
+
+/** One answer as a chat bubble shows it (same shape the chat page builds from stored rows). */
+export interface AskReply {
+  id: string;
+  text: string;
+  aiWritten: boolean;
+  verified: boolean;
+  sources: string[];
+}
+
+type AskResult = { error: string } | { conversationId: string; reply: AskReply };
+
 export async function askAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = z
-    .object({
-      orgId: z.uuid(),
-      orgSlug: z.string().regex(SLUG),
-      conversationId: z.union([z.uuid(), z.literal('')]),
-      question: z.string().trim().min(1).max(1000),
-    })
-    .safeParse(Object.fromEntries(formData));
+  const parsed = askSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
+  const result = await ask(parsed.data);
+  if ('error' in result) return { error: result.error };
+  // The sidebar's chat history lives in the org layout.
+  revalidatePath(`/${parsed.data.orgSlug}`, 'layout');
+  if (!parsed.data.conversationId)
+    redirect(`/${parsed.data.orgSlug}/assistant?c=${result.conversationId}`);
+  return { ok: true };
+}
+
+/**
+ * The same assistant, answered in place (the Sales page's helper): no redirect, the reply comes
+ * back to the panel, and the conversation is kept so it also appears in the chat history.
+ */
+export async function askHereAction(input: z.input<typeof askSchema>): Promise<AskResult> {
+  const parsed = askSchema.safeParse(input);
+  if (!parsed.success) return { error: 'invalidInput' };
+  return ask(parsed.data);
+}
+
+async function ask({ orgId, question, ...rest }: z.output<typeof askSchema>): Promise<AskResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: 'notAllowed' };
-  const { orgId, orgSlug, question } = parsed.data;
   // Only a member may ask (and spend the org's AI allowance); RLS hides other organizations.
   const { data: member } = await supabase
     .from('organizations')
@@ -41,7 +71,7 @@ export async function askAction(_prev: FormState, formData: FormData): Promise<F
     .maybeSingle();
   if (!member) return { error: 'notAllowed' };
 
-  let conversationId = parsed.data.conversationId;
+  let conversationId = rest.conversationId;
   if (!conversationId) {
     const { data, error } = await supabase
       .from('ai_conversations')
@@ -133,10 +163,24 @@ export async function askAction(_prev: FormState, formData: FormData): Promise<F
       })),
     );
   }
-  // The sidebar's chat history lives in the org layout.
-  revalidatePath(`/${orgSlug}`, 'layout');
-  if (!parsed.data.conversationId) redirect(`/${orgSlug}/assistant?c=${conversationId}`);
-  return { ok: true };
+  const sources: string[] = [];
+  for (const c of answer.toolCalls) {
+    const id = String(c.resultMeta.metric_id ?? c.name);
+    if (!sources.includes(id)) sources.push(id);
+  }
+  return {
+    conversationId,
+    reply: {
+      id: reply.id as string,
+      text: answer.text,
+      aiWritten: answer.source === 'llm',
+      verified:
+        answer.numericCheck === 'ok' ||
+        answer.numericCheck === 'retried' ||
+        answer.source === 'router',
+      sources,
+    },
+  };
 }
 
 const contextSchema = z.object({

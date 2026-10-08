@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { PageAgent } from '@/components/chat/page-agent';
 import { BarList } from '@/components/metrics/bar-list';
 import { ColumnChart } from '@/components/metrics/column-chart';
 import { daySeries, hour12, hourPeriod, hourSeries, peakKey } from '@/components/metrics/series';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, Label, PageTitle, Select, Stat } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
+import { aiConfigured } from '@/lib/llm-gateway';
 import {
   formatBDT,
   formatDhakaDate,
@@ -152,6 +154,8 @@ export default async function SalesPage({
           .sort((a, b) => b.net_poisha - a.net_poisha)
       : [];
   const branchName = (id: string | null) => ctx.branches.find((b) => b.id === id)?.name ?? '';
+  const selectedBranch = scope === null ? null : branchName(scope) || null;
+  const period = t(`agent.period.${window}`);
   const ordersHint = (n: number) => t('charts.ordersHint', { count: n, n: formatNumber(n, loc) });
 
   const itemBars = items.rows.map((i) => ({
@@ -385,6 +389,25 @@ export default async function SalesPage({
           ) : null}
         </div>
       </div>
+      {/* Room under the last card so the helper button never covers it. */}
+      <div aria-hidden className="h-20" />
+      <PageAgent
+        key={`${window}:${scope ?? 'all'}`}
+        orgId={ctx.org.id}
+        orgSlug={ctx.org.slug}
+        aiOn={aiConfigured()}
+        summaryQuestion={
+          selectedBranch
+            ? t('agent.summaryBranch', { period, branch: selectedBranch })
+            : t('agent.summary', { period })
+        }
+        followUps={[
+          t('agent.leastSold', { period }),
+          t('agent.channels', { period }),
+          ...(scope === null && ctx.branches.length > 1 ? [t('agent.branches', { period })] : []),
+          t('agent.push'),
+        ]}
+      />
     </>
   );
 }

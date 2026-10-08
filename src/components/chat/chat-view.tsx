@@ -64,7 +64,7 @@ function Hidden({
   );
 }
 
-function AssistantAvatar() {
+export function AssistantAvatar() {
   return (
     <Image
       src="/brand/logo-64.png"
@@ -76,7 +76,7 @@ function AssistantAvatar() {
   );
 }
 
-function Thinking({ label }: { label: string }) {
+export function Thinking({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3" role="status">
       <AssistantAvatar />

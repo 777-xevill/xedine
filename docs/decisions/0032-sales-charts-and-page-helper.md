@@ -1,4 +1,4 @@
-# ADR 0032 — Sales charts and the page helper
+# ADR 0032 — Sales charts and the page helpers (Sales, Stock)
 
 - Date: 2026-10-09
 - Status: accepted
@@ -20,6 +20,10 @@ Owners opened the Sales explorer and saw a table and a "Takeaway" filter they ne
 - An "Explain my sales" button docked on the page. **Nothing runs until it is tapped** — the Groq plan allows about one answer a minute, so an automatic summary on every page view would exhaust it.
 - The first tap asks the page's summary question (period and branch in words) through the same assistant, tools, numeric validator and permissions as the full chat (`askHereAction`, no redirect). Follow-up chips and a typed question continue the same conversation, which is kept in the chat history and can be opened there.
 - The model's answer is shown with ₹ written as ৳ and, for Bangla answers, Bangla digits (`forReader`, after validation; the validator and evals read both digit sets).
+
+- **The same helper sits on the Stock page** (owner, manager, accountant only; the kitchen and purchaser roles never get the assistant). Its summary question follows the tab and branch: *In stock* (what I have, what runs out first, what to buy), *Loss* (which items and why) or *Waste* (biggest reasons, how to cut it), with starter questions per tab. `PageAgent` takes its wording as `labels`, so a page adds a helper with only messages and a question.
+- `get_stock_status` lists the 15 most urgent ingredients (red, then yellow, then fewest days) plus a `summary` of counts, instead of 40 in database order. The full list overflowed the model's request limit (Groq 413) on the Stock page's summary question; the shortcut answer shows 10, so it is unaffected.
+- Every question now also carries an explicit "answer only in English / only in Bangla" line: the model had answered an English question in Bangla.
 
 ## Alternatives considered
 - A Settings switch per channel: more work for the owner; the order history already says which channels are used.

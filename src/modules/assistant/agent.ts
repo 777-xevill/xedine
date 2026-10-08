@@ -137,6 +137,10 @@ export async function askAssistant(args: {
     try {
       const context = [
         `Today's business date (Asia/Dhaka): ${args.businessDate}. Question language: ${language}.`,
+        language === 'en'
+          ? 'Write the whole answer in English only, no Bangla words.'
+          : 'Write the whole answer in Bangla script only (dish and ingredient names may stay as written).',
+        'Write for a restaurant owner: plain words, never tool field names or "=" signs.',
         `Branches: ${ctx.branches.map((b) => b.name).join(', ') || 'none'}.`,
         args.ownerRules.length > 0
           ? `Owner rules and goals:\n- ${args.ownerRules.join('\n- ')}`

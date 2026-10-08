@@ -1182,12 +1182,32 @@
     "busy": "Too many questions this minute for the AI. Please ask again in a minute."
   },
   "agent": {
-    "open": "Explain my sales",
-    "title": "Sales helper",
-    "subtitle": "Ask anything about these numbers",
-    "placeholder": "Ask about these sales…",
     "openChat": "Open in chat",
-    "close": "Close"
+    "close": "Close",
+    "sales": {
+      "open": "Explain my sales",
+      "title": "Sales helper",
+      "subtitle": "Ask anything about these numbers",
+      "placeholder": "Ask about these sales…"
+    },
+    "stock": {
+      "open": "Explain my stock",
+      "title": "Stock helper",
+      "subtitle": "Ask anything about your stock",
+      "placeholder": "Ask about your stock…"
+    },
+    "stockAsk": {
+      "status": "Explain my stock at {branch} in simple words: what I have, which items run out first, and what I should buy next.",
+      "variance": "Where is my stock loss at {branch}? Tell me which items, how much, and the likely reason, in simple words.",
+      "waste": "What did we throw away at {branch} recently? Tell me the biggest reasons and items in simple words, and how to cut it.",
+      "lowFirst": "Which items run out first?",
+      "buy": "What should I buy today?",
+      "lossWhy": "Which item has the biggest loss, and why?",
+      "check": "What should I check in the kitchen to cut loss?",
+      "wasteWhy": "What is the biggest reason for waste?",
+      "wasteCut": "How can I throw away less?",
+      "bought": "What did we buy this week?"
+    }
   },
   "assistantPage": {
     "title": "Assistant",

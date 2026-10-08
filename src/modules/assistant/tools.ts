@@ -19,7 +19,14 @@ export interface ToolContext {
 }
 
 export type ToolResult =
-  | { metric_id: string; filters: Record<string, unknown>; as_of: string; data: unknown }
+  | {
+      metric_id: string;
+      filters: Record<string, unknown>;
+      as_of: string;
+      data: unknown;
+      /** Totals for a list that was cut short, so the model knows how much more there is. */
+      summary?: Record<string, unknown>;
+    }
   | { error: 'not_permitted' | 'not_found' | 'ambiguous' | 'failed'; detail?: unknown };
 
 const WINDOW_ENUM = [
@@ -269,6 +276,9 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   },
 ];
 
+/** Most ingredients a stock answer lists (worst first). */
+const STOCK_ROWS = 15;
+
 const num = (v: unknown) => Number(v ?? 0);
 
 function fail(error: { code?: string } | null): ToolResult {
@@ -517,8 +527,18 @@ export async function runTool(
           p_now: ctx.nowIso,
         });
         if (error) return fail(error);
-        const rows = ((data ?? []) as Record<string, unknown>[])
+        const all = (data ?? []) as Record<string, unknown>[];
+        // Most urgent first, so the cap below drops the comfortable items, not the ones running out.
+        const urgency = (r: Record<string, unknown>) =>
+          r.band === 'red' ? 0 : r.band === 'yellow' ? 1 : r.band === 'green' ? 2 : 3;
+        const rows = all
           .filter((r) => !input.only_low || r.band === 'red' || r.band === 'yellow')
+          .sort(
+            (a, b) =>
+              urgency(a) - urgency(b) ||
+              (a.days_of_cover === null ? Infinity : num(a.days_of_cover)) -
+                (b.days_of_cover === null ? Infinity : num(b.days_of_cover)),
+          )
           .map((r) => ({
             branch: ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null,
             ingredient: r.name,
@@ -537,7 +557,16 @@ export async function runTool(
           metric_id: 'stock.days_of_cover',
           filters: { branch: input.branch ?? null, only_low: input.only_low ?? false },
           as_of,
-          data: rows.slice(0, 40),
+          // A phone-sized answer needs the worst few, not every ingredient (and the model's request
+          // has a size limit): the counts say how many more there are.
+          summary: {
+            ingredients: all.length,
+            red: all.filter((r) => r.band === 'red').length,
+            yellow: all.filter((r) => r.band === 'yellow').length,
+            green: all.filter((r) => r.band === 'green').length,
+            listed: Math.min(rows.length, STOCK_ROWS),
+          },
+          data: rows.slice(0, STOCK_ROWS),
         };
       }
       case 'get_food_cost_gap': {

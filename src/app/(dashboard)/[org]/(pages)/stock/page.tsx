@@ -1,3 +1,4 @@
+import { PageAgent } from '@/components/chat/page-agent';
 import { CountPeriod } from '@/components/stock/count-period';
 import {
   ArrowLeftRight,
@@ -54,6 +55,7 @@ import {
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
+import { aiConfigured } from '@/lib/llm-gateway';
 import {
   formatBDT,
   formatBps,
@@ -121,9 +123,10 @@ export default async function StockPage({
   const tab: Tab = (TABS as readonly string[]).includes(sp.tab ?? '') ? (sp.tab as Tab) : 'status';
   const branch = pickBranch(ctx, sp.branch);
 
-  const [t, tu, locale] = await Promise.all([
+  const [t, tu, ta, locale] = await Promise.all([
     getTranslations('stock'),
     getTranslations('units'),
+    getTranslations('agent'),
     getLocale(),
   ]);
   const loc = locale as Locale;
@@ -1173,6 +1176,33 @@ export default async function StockPage({
             );
           })()
         : null}
+      {/* The AI helper is for the people who can use the assistant (owner, manager, accountant). */}
+      {['owner', 'manager', 'accountant'].some(has) ? (
+        <>
+          {/* Room under the last card so the helper button never covers it. */}
+          <div aria-hidden className="h-20" />
+          <PageAgent
+            key={`${tab}:${branch.id}`}
+            orgId={ctx.org.id}
+            orgSlug={ctx.org.slug}
+            aiOn={aiConfigured()}
+            labels={{
+              open: ta('stock.open'),
+              title: ta('stock.title'),
+              subtitle: ta('stock.subtitle'),
+              placeholder: ta('stock.placeholder'),
+            }}
+            summaryQuestion={ta(`stockAsk.${tab}`, { branch: branch.name })}
+            followUps={(
+              {
+                status: ['lowFirst', 'buy', 'bought'],
+                variance: ['lossWhy', 'check'],
+                waste: ['wasteWhy', 'wasteCut'],
+              } satisfies Record<Tab, string[]>
+            )[tab].map((k) => ta(`stockAsk.${k}`))}
+          />
+        </>
+      ) : null}
     </>
   );
 }

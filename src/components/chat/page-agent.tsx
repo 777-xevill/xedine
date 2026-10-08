@@ -12,8 +12,16 @@ import { Composer } from './composer';
 
 type Message = AskReply & { role: 'user' | 'assistant' };
 
+export interface AgentLabels {
+  /** The floating button. */
+  open: string;
+  title: string;
+  subtitle: string;
+  placeholder: string;
+}
+
 /**
- * A chat helper docked on a page (the Sales page first). Nothing runs until it is opened: the first
+ * A chat helper docked on a page (Sales, Stock). Nothing runs until it is opened: the first
  * tap asks the page's summary question, then follow-ups and typed questions continue the same
  * conversation, which also lands in the chat history. Same assistant, tools and number checks as the
  * full chat.
@@ -21,12 +29,14 @@ type Message = AskReply & { role: 'user' | 'assistant' };
 export function PageAgent({
   orgId,
   orgSlug,
+  labels,
   summaryQuestion,
   followUps,
   aiOn,
 }: {
   orgId: string;
   orgSlug: string;
+  labels: AgentLabels;
   /** Asked automatically the first time the panel opens. */
   summaryQuestion: string;
   followUps: string[];
@@ -100,7 +110,7 @@ export function PageAgent({
         className="glow-action fixed end-4 bottom-4 z-40 inline-flex items-center gap-2 rounded-full bg-action px-5 py-3 text-sm font-semibold text-on-action transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-purple/40 focus-visible:outline-none sm:end-6 sm:bottom-6"
       >
         <Sparkles className="size-4" aria-hidden />
-        {t('open')}
+        {labels.open}
       </button>
     );
   }
@@ -108,14 +118,14 @@ export function PageAgent({
   return (
     <section
       role="dialog"
-      aria-label={t('title')}
+      aria-label={labels.title}
       className="fixed inset-x-0 bottom-0 z-40 flex h-[85dvh] flex-col rounded-t-sheet border border-line bg-surface shadow-lift sm:inset-x-auto sm:end-6 sm:bottom-6 sm:h-[min(40rem,80dvh)] sm:w-[26rem] sm:rounded-card"
     >
       <header className="flex items-center gap-3 border-b border-line px-4 py-3">
         <AssistantAvatar />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{t('title')}</p>
-          <p className="truncate text-xs text-secondary">{t('subtitle')}</p>
+          <p className="font-semibold">{labels.title}</p>
+          <p className="truncate text-xs text-secondary">{labels.subtitle}</p>
         </div>
         {conversationId ? (
           <Link
@@ -218,7 +228,7 @@ export function PageAgent({
             onChange={setValue}
             pending={pending}
             label={ta('askLabel')}
-            placeholder={t('placeholder')}
+            placeholder={labels.placeholder}
             sendLabel={ta('ask')}
           />
         </form>

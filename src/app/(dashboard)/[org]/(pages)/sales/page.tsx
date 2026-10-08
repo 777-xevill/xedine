@@ -396,6 +396,12 @@ export default async function SalesPage({
         orgId={ctx.org.id}
         orgSlug={ctx.org.slug}
         aiOn={aiConfigured()}
+        labels={{
+          open: t('agent.sales.open'),
+          title: t('agent.sales.title'),
+          subtitle: t('agent.sales.subtitle'),
+          placeholder: t('agent.sales.placeholder'),
+        }}
         summaryQuestion={
           selectedBranch
             ? t('agent.summaryBranch', { period, branch: selectedBranch })

@@ -5,7 +5,7 @@ import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { ErrorAlert } from '@/components/auth-forms';
 import { Button } from '@/components/ui/button';
-import { Input, Label, Select } from '@/components/ui/form';
+import { Hint, Input, Label, Select } from '@/components/ui/form';
 import {
   createCategoryAction,
   createItemAction,
@@ -26,7 +26,14 @@ export function CategoryForm({ orgId, orgSlug }: { orgId: string; orgSlug: strin
       <input type="hidden" name="orgSlug" value={orgSlug} />
       <div>
         <Label htmlFor="catName">{t('categoryName')}</Label>
-        <Input id="catName" name="name" required maxLength={120} />
+        <Input
+          id="catName"
+          name="name"
+          required
+          maxLength={120}
+          autoComplete="off"
+          placeholder={t('categoryPlaceholder')}
+        />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? tc('loading') : t('addCategory')}
@@ -51,14 +58,21 @@ export function ItemForm({
   return (
     <form
       action={action}
-      className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1.5fr_1fr_auto] sm:items-end"
     >
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="orgSlug" value={orgSlug} />
       <ErrorAlert error={state.error} />
       <div>
         <Label htmlFor="itemName">{t('itemName')}</Label>
-        <Input id="itemName" name="name" required maxLength={200} />
+        <Input
+          id="itemName"
+          name="name"
+          required
+          maxLength={200}
+          autoComplete="off"
+          placeholder={t('itemPlaceholder')}
+        />
       </div>
       <div>
         <Label htmlFor="itemCategory">{t('categoryLabel')}</Label>
@@ -73,7 +87,14 @@ export function ItemForm({
       </div>
       <div>
         <Label htmlFor="itemPrice">{t('basePrice')}</Label>
-        <Input id="itemPrice" name="price" inputMode="decimal" required />
+        <Input
+          id="itemPrice"
+          name="price"
+          inputMode="decimal"
+          required
+          autoComplete="off"
+          placeholder={t('pricePlaceholder')}
+        />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? tc('loading') : t('addItem')}
@@ -99,7 +120,15 @@ export function VariantForm({
       <input type="hidden" name="itemId" value={itemId} />
       <div>
         <Label htmlFor={`vname-${itemId}`}>{t('variantName')}</Label>
-        <Input id={`vname-${itemId}`} name="name" required maxLength={80} className="w-32" />
+        <Input
+          id={`vname-${itemId}`}
+          name="name"
+          required
+          maxLength={80}
+          autoComplete="off"
+          placeholder={t('variantPlaceholder')}
+          className="w-36"
+        />
       </div>
       <div>
         <Label htmlFor={`vdelta-${itemId}`}>{t('priceDelta')}</Label>
@@ -107,13 +136,18 @@ export function VariantForm({
           id={`vdelta-${itemId}`}
           name="delta"
           inputMode="decimal"
+          autoComplete="off"
           placeholder="-50"
-          className="w-24"
+          aria-describedby={`vhint-${itemId}`}
+          className="w-28"
         />
       </div>
       <Button type="submit" size="sm">
         {t('addVariant')}
       </Button>
+      <Hint id={`vhint-${itemId}`} className="basis-full">
+        {t('priceDeltaHint')}
+      </Hint>
     </ActionForm>
   );
 }
@@ -126,7 +160,15 @@ export function ModifierGroupForm({ orgId, orgSlug }: { orgId: string; orgSlug: 
       <input type="hidden" name="orgSlug" value={orgSlug} />
       <div>
         <Label htmlFor="groupName">{t('groupName')}</Label>
-        <Input id="groupName" name="name" required maxLength={80} className="w-36" />
+        <Input
+          id="groupName"
+          name="name"
+          required
+          maxLength={80}
+          autoComplete="off"
+          placeholder={t('groupPlaceholder')}
+          className="w-40"
+        />
       </div>
       <div>
         <Label htmlFor="groupMin">{t('minSelect')}</Label>
@@ -137,7 +179,8 @@ export function ModifierGroupForm({ orgId, orgSlug }: { orgId: string; orgSlug: 
           min={0}
           max={20}
           defaultValue={0}
-          className="w-16"
+          aria-describedby="groupHint"
+          className="w-20"
         />
       </div>
       <div>
@@ -149,10 +192,14 @@ export function ModifierGroupForm({ orgId, orgSlug }: { orgId: string; orgSlug: 
           min={1}
           max={20}
           defaultValue={1}
-          className="w-16"
+          aria-describedby="groupHint"
+          className="w-20"
         />
       </div>
       <Button type="submit">{t('addGroup')}</Button>
+      <Hint id="groupHint" className="basis-full">
+        {t('groupRangeHint')}
+      </Hint>
     </ActionForm>
   );
 }
@@ -174,7 +221,15 @@ export function ModifierForm({
       <input type="hidden" name="groupId" value={groupId} />
       <div>
         <Label htmlFor={`mname-${groupId}`}>{t('modifierName')}</Label>
-        <Input id={`mname-${groupId}`} name="name" required maxLength={80} className="w-32" />
+        <Input
+          id={`mname-${groupId}`}
+          name="name"
+          required
+          maxLength={80}
+          autoComplete="off"
+          placeholder={t('modifierPlaceholder')}
+          className="w-36"
+        />
       </div>
       <div>
         <Label htmlFor={`mprice-${groupId}`}>{t('modifierPrice')}</Label>
@@ -210,7 +265,7 @@ export function ItemModifierGroupsForm({
   const t = useTranslations('menu');
   const [state, action, pending] = useActionState(setItemModifierGroupsAction, initialState);
   const [picked, setPicked] = useState(new Set(selected));
-  if (groups.length === 0) return <p className="text-sm text-secondary">{t('noGroupsYet')}</p>;
+  if (groups.length === 0) return <p className="text-sm text-secondary">{t('itemNoGroups')}</p>;
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="orgId" value={orgId} />

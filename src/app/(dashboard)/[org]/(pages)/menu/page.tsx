@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import {
@@ -10,6 +10,7 @@ import {
   VariantForm,
 } from '@/components/menu-forms';
 import { ItemPhotoField } from '@/components/item-photo-field';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
@@ -104,12 +105,58 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
   }
   const activeGroups = (groups ?? []).filter((g) => g.is_active);
   const money = (p: number) => formatBDT(p, locale as Locale);
+  // The how-to card ticks itself off from what is already on the menu; the first undone step is "now".
+  const hasCategories = (categories ?? []).length > 0;
+  const hasItems = (items ?? []).length > 0;
+  const steps = [
+    { key: 'step1', done: hasCategories, now: !hasCategories },
+    { key: 'step2', done: hasItems, now: hasCategories && !hasItems },
+    { key: 'step3', done: false, now: false },
+  ];
 
   return (
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
+
+      <Card className="mb-6">
+        <details open={(items ?? []).length < 5} className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+            <CardTitle className="mb-0">{t('howTitle')}</CardTitle>
+            <ChevronDown
+              aria-hidden
+              className="size-4 text-secondary transition group-open:rotate-180"
+            />
+          </summary>
+          <p className="mt-2 text-sm text-secondary">{t('howIntro')}</p>
+          <ol className="mt-4 space-y-3">
+            {steps.map((step, i) => (
+              <li key={step.key} className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${step.done ? 'bg-success text-on-action' : step.now ? 'bg-action text-on-action' : 'bg-surface-elevated text-secondary'}`}
+                >
+                  {step.done ? <Check className="size-3.5" /> : i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {t(`${step.key}Title`)}{' '}
+                    <span
+                      className={`text-xs font-medium ${step.now ? 'text-purple' : 'text-secondary'}`}
+                    >
+                      {step.done ? t('stepDone') : step.now ? t('stepNow') : t('stepLater')}
+                    </span>
+                  </p>
+                  <p className="text-sm text-secondary">{t(`${step.key}Body`)}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </details>
+      </Card>
+
       <Card className="mb-6">
         <CardTitle>{t('categoriesTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 text-sm text-secondary">{t('categoriesBody')}</p>
         <CategoryForm orgId={ctx.org.id} orgSlug={ctx.org.slug} />
         <ul className="mt-3 flex flex-wrap gap-2">
           {(categories ?? []).map((c) => (
@@ -133,6 +180,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
 
       <Card className="mb-6">
         <CardTitle>{t('itemsTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 text-sm text-secondary">{t('itemsBody')}</p>
         <ItemForm orgId={ctx.org.id} orgSlug={ctx.org.slug} categories={categories ?? []} />
         {(items ?? []).length === 0 ? (
           <EmptyState className="mt-4" title={t('noItems')} />
@@ -163,7 +211,8 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                               : 'font-semibold text-muted line-through'
                           }
                         >
-                          {item.name}
+                          {item.name}{' '}
+                          {item.is_active ? null : <Badge tone="neutral">{t('hiddenBadge')}</Badge>}
                         </p>
                         <p className="text-sm text-secondary">
                           {item.category_id
@@ -171,6 +220,12 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                             : t('uncategorised')}
                           {' · '}
                           {money(item.base_price_poisha)}
+                          {(variantsByItem.get(item.id) ?? []).length > 0
+                            ? ` · ${t('itemSizes', { count: (variantsByItem.get(item.id) ?? []).length })}`
+                            : ''}
+                          {(groupsByItem.get(item.id) ?? []).length > 0
+                            ? ` · ${t('itemExtras', { count: (groupsByItem.get(item.id) ?? []).length })}`
+                            : ''}
                         </p>
                       </div>
                     </div>
@@ -185,9 +240,8 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                     />
 
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold text-secondary">
-                        {t('variantsTitle')}
-                      </h3>
+                      <h3 className="text-sm font-semibold">{t('variantsTitle')}</h3>
+                      <p className="mb-2 text-sm text-secondary">{t('variantsBody')}</p>
                       {(variantsByItem.get(item.id) ?? []).length > 0 ? (
                         <ul className="mb-2 flex flex-wrap gap-2">
                           {(variantsByItem.get(item.id) ?? []).map((v) => (
@@ -218,9 +272,8 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                     </div>
 
                     <div>
-                      <h3 className="mb-2 text-sm font-semibold text-secondary">
-                        {t('addOnGroupsTitle')}
-                      </h3>
+                      <h3 className="text-sm font-semibold">{t('itemExtrasTitle')}</h3>
+                      <p className="mb-2 text-sm text-secondary">{t('itemExtrasBody')}</p>
                       <ItemModifierGroupsForm
                         orgId={ctx.org.id}
                         orgSlug={ctx.org.slug}
@@ -237,7 +290,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
         )}
       </Card>
 
-      <Card>
+      <Card id="extras">
         <CardTitle>{t('addOnGroupsTitle')}</CardTitle>
         <p className="-mt-2 mb-4 text-sm text-secondary">{t('addOnGroupsBody')}</p>
         <ModifierGroupForm orgId={ctx.org.id} orgSlug={ctx.org.slug} />

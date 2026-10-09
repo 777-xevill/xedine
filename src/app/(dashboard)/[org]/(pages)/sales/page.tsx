@@ -392,6 +392,8 @@ export default async function SalesPage({
       {/* Room under the last card so the helper button never covers it. */}
       <div aria-hidden className="h-20" />
       <PageAgent
+        page="sales"
+        pageNote={selectedBranch ? `${period}, ${selectedBranch}` : period}
         key={`${window}:${scope ?? 'all'}`}
         orgId={ctx.org.id}
         orgSlug={ctx.org.slug}

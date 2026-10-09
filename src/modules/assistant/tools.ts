@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BaseUnit } from '@/modules/purchasing/lines';
+import { findPages, type Access } from './app-guide';
 import { qtyText } from './for-model';
 import { matchItem, type MenuRef, type Window } from './router';
 
@@ -16,6 +17,8 @@ export interface ToolContext {
   nowIso: string;
   menu: MenuRef[];
   branches: { id: string; name: string }[];
+  /** Who is asking and which sections they have, for the app guide. */
+  access?: Access;
 }
 
 export type ToolResult =
@@ -111,7 +114,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_flash_pnl',
     description:
-      "Today's estimated profit, costs and break-even (owner and accountant only). Food cost comes from recipes where they exist (food_cost_basis 'recipes'), else an assumed % ('assumed' or 'mixed'); say so when it is assumed.",
+      "Today's estimated profit, costs and break-even (owner and accountant only). When food_cost_basis is 'assumed' or 'mixed', say the food cost is partly an assumption.",
     input_schema: {
       type: 'object',
       properties: { branch: branchProp },
@@ -131,7 +134,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'explain_finding',
     description:
-      'Everything behind one money leak (by its id, or its rank in the open list, 1 = biggest): what was found, where, when, the ৳ impact, the evidence (quantities, prices, suspect dishes) and suggested actions. Owner and accountant only. Quantities are base units (g, ml, pcs); *_x1000 fields are poisha per 1,000 base units.',
+      'One money leak in full (by id, or rank in the open list, 1 = biggest): what, where, when, ৳ impact, evidence and suggested actions. Owner and accountant only.',
     input_schema: {
       type: 'object',
       properties: {
@@ -144,7 +147,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_stock_status',
     description:
-      'Stock that should be on the shelf per ingredient, and how many days it lasts (green/yellow/red), from the last count, purchases, transfers, sales and waste. Quantities are base units (g, ml, pcs).',
+      'What is on the shelf per ingredient and how many days it lasts (green/yellow/red), most urgent first.',
     input_schema: {
       type: 'object',
       properties: { branch: branchProp, only_low: { type: 'boolean' } },
@@ -154,7 +157,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_food_cost_gap',
     description:
-      'Between the last two stock counts: what recipes say food should have cost, and why the actual cost differs — logged waste, prices paid above standard, and unexplained usage (owner and accountant only).',
+      'Between the last two counts: what recipes say food should have cost and why the real cost differs (waste, prices paid, unexplained usage). Owner and accountant only.',
     input_schema: {
       type: 'object',
       properties: { branch: branchProp },
@@ -163,8 +166,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   },
   {
     name: 'get_forecast',
-    description:
-      'Forecast units to sell tomorrow per item (all dayparts), per branch and in total. model_shown says whether the calendar-aware model is used (it beats "same weekday last week" by ≥ 10%) or the naive guess.',
+    description: 'Forecast units to sell tomorrow per item.',
     input_schema: {
       type: 'object',
       properties: {
@@ -177,7 +179,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_menu_matrix',
     description:
-      'Menu engineering classes (star, plowhorse, puzzle, dog) with margins per item for a period (owner and accountant only).',
+      'Menu engineering (star, plowhorse, puzzle, dog) with margin per item. Owner and accountant only.',
     input_schema: {
       type: 'object',
       properties: { window: { ...windowProp, enum: ['last_7d', 'last_30d', 'month_to_date'] } },
@@ -188,7 +190,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'compare_branches',
     description:
-      'Branches side by side for a period: sales per day, orders, average order, delivery share, serving time, rating, return rate, discounts; for owner and accountant also food cost %, labour %, waste %, unexplained usage % and the gap to the best branch in poisha.',
+      'Branches side by side for a period: sales, orders, average order, rating, serving time; owner and accountant also food cost, labour, waste and the gap to the best branch.',
     input_schema: {
       type: 'object',
       properties: { window: { ...windowProp, enum: ['last_7d', 'last_30d', 'month_to_date'] } },
@@ -199,13 +201,13 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_benchmarks',
     description:
-      'Last full month against peers (only groups of five or more restaurants) or a labelled industry reference range: own value, p25/p50/p75 and where the restaurant falls (owner and accountant only). Percentages are basis points; money is poisha.',
+      'Last full month against peers (five or more) or a labelled industry range. Owner and accountant only.',
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
     name: 'get_customers_summary',
     description:
-      'Identified orders, first-time customers who came back within 30/60 days, and how many customers are regulars, at risk, new, returning or lost. Counts only — no names or phones.',
+      'First-time customers who came back, and how many are regulars, at risk, new or lost. Counts only.',
     input_schema: {
       type: 'object',
       properties: { branch: branchProp },
@@ -215,7 +217,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_reviews_summary',
     description:
-      'Average rating (0–10) per source for the last 30 days and the most common complaint themes in reviews and after-meal comments.',
+      'Average rating (0–10) per source for 30 days and the most common complaint themes.',
     input_schema: {
       type: 'object',
       properties: { branch: branchProp },
@@ -225,7 +227,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_stock_loss',
     description:
-      "WHERE THE LOSS IS, item by item: which ingredients were used more than the recipes of the dishes sold needed, between the branch's last two stock counts (the Stock page's Loss tab). Every gram over the recipe is a loss; at or over the owner's loss line (loss_line) it is a real loss, under it a small loss. Per item: how much more than the recipes, % over, the loss in money (owner and accountant only), how much of it was written down as waste and how much is not explained, and staff food (shown apart, not a loss). Biggest loss first, plus the total loss and counts. Use this for 'where / which item / why is there a loss'.",
+      'WHERE THE LOSS IS, item by item (Stock page, Loss tab): ingredients used more than the recipes of the dishes sold needed, between the last two counts. Per item: how much over, % over, loss in money (owner and accountant only), how much was written down as waste and how much is not explained. Staff food is apart, not a loss. Biggest first, with totals.',
     input_schema: {
       type: 'object',
       properties: {
@@ -243,7 +245,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_waste',
     description:
-      'Food written down as waste in a period (spoiled, burnt, dropped, cooked but not sold, returned, staff food): per reason and item, how much, how many times, and its value (owner and accountant only). Biggest first, plus the total.',
+      'Food written down as waste in a period: per reason and item, amount, times and value (value: owner and accountant only). Biggest first, with the total.',
     input_schema: {
       type: 'object',
       properties: {
@@ -260,7 +262,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_purchases',
     description:
-      'What was bought (the bazar) in a period: per ingredient the quantity, the money spent and how many purchases, biggest spend first, plus the total spent. Owner, accountant and purchaser only.',
+      'What was bought (the bazar) in a period: per ingredient the amount, money spent and times bought, biggest first, with the total. Owner, accountant and purchaser only.',
     input_schema: {
       type: 'object',
       properties: {
@@ -274,12 +276,113 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'get_today_brief',
+    description:
+      'THE PLACE TO START for "what should I do", "how are we doing", "what needs my attention": today\'s sales and pace against a normal day, the biggest open money leaks, what is running out, licences and tax coming due, and unfinished setup steps. Anything the person may not see is left out.',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_menu',
+    description:
+      'The menu: items with category, price, whether a recipe exists and food cost % (owner and accountant only), plus counts of items, hidden items and items with no recipe.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', description: 'Only this category.' },
+        limit: { type: 'integer', minimum: 1, maximum: 40 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_compliance',
+    description:
+      'Licences and the VAT return: what each is, when it is due or expires, days left and status.',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_staff_exceptions',
+    description:
+      'Per person at the till: discounts, voids after the kitchen ticket or after payment, and refunds, in a period (owner and accountant only). These are things to check, never proof of wrongdoing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        window: {
+          ...windowProp,
+          enum: ['last_7d', 'week_to_date', 'month_to_date', 'last_30d'],
+        },
+        branch: branchProp,
+      },
+      required: ['window'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'find_page',
+    description:
+      'Where something is in the app. Give a topic ("recipes", "add a supplier", "VAT") and get the page name, path, what it does, and whether this person can open it (or how to get it). Empty topic lists every page. Use it before telling anyone where to click.',
+    input_schema: {
+      type: 'object',
+      properties: { topic: { type: 'string' } },
+      additionalProperties: false,
+    },
+  },
 ];
+
+/** The page each tool's answer belongs to, so a reply can offer "Open Stock" (links.ts). */
+export const TOOL_PAGES: Record<string, string> = {
+  get_item_sales: 'sales',
+  get_sales: 'sales',
+  get_top_items: 'sales',
+  get_channel_mix: 'sales',
+  get_flash_pnl: 'home',
+  get_findings: 'leaks',
+  explain_finding: 'leaks',
+  get_stock_status: 'stock',
+  get_stock_loss: 'stock',
+  get_waste: 'stock',
+  get_food_cost_gap: 'stock',
+  get_forecast: 'plan',
+  get_menu_matrix: 'menuProfit',
+  get_menu: 'menu',
+  compare_branches: 'branches',
+  get_benchmarks: 'benchmarks',
+  get_customers_summary: 'customers',
+  get_reviews_summary: 'reviews',
+  get_purchases: 'purchases',
+  get_compliance: 'compliance',
+  get_staff_exceptions: 'staffRecords',
+};
 
 /** Most ingredients a stock answer lists (worst first). */
 const STOCK_ROWS = 15;
 
 const num = (v: unknown) => Number(v ?? 0);
+
+/** Setup checklist steps (metric_setup_progress) in words, with the page each is done on. */
+const SETUP_STEPS: Record<string, { step: string; page: string }> = {
+  profile: { step: 'Restaurant profile', page: 'Settings (General)' },
+  menu: { step: 'Menu', page: 'Menu' },
+  channels: { step: 'Sales channels', page: 'Settings (General)' },
+  staff_pins: { step: 'Staff PINs', page: 'Staff' },
+  pos_device: { step: 'Pair the till', page: 'Staff' },
+  recipes: { step: 'Recipes', page: 'Recipes' },
+  ingredient_prices: { step: 'Ingredient prices', page: 'Recipes' },
+  fixed_costs: { step: 'Fixed costs', page: 'Costs' },
+  salaries: { step: "This month's salaries", page: 'Costs' },
+  opening_count: { step: 'Opening stock count', page: 'Stock' },
+  owner_whatsapp: { step: 'Owner WhatsApp', page: 'Settings (General)' },
+  first_order: { step: 'First order', page: 'POS till' },
+};
 
 function fail(error: { code?: string } | null): ToolResult {
   return { error: error?.code === '42501' ? 'not_permitted' : 'failed' };
@@ -945,6 +1048,198 @@ export async function runTool(
               times_bought: e.buys.size,
             })),
           },
+        };
+      }
+      case 'get_today_brief': {
+        const [sales, findings, stock, loss, pace, compliance, setup] = await Promise.all([
+          runTool('get_sales', { window: 'today', branch: input.branch }, ctx),
+          runTool('get_findings', { limit: 3 }, ctx),
+          runTool('get_stock_status', { only_low: true, branch: input.branch }, ctx),
+          runTool('get_stock_loss', { limit: 3, branch: input.branch }, ctx),
+          ctx.sb.rpc('metric_pace', { p_org: ctx.orgId, p_branch: branch, p_now: ctx.nowIso }),
+          ctx.sb.rpc('metric_compliance', { p_org: ctx.orgId, p_branch: null, p_now: ctx.nowIso }),
+          ctx.sb.rpc('metric_setup_progress', { p_org: ctx.orgId, p_now: ctx.nowIso }),
+        ]);
+        const rows = 'error' in sales ? [] : (sales.data as Record<string, unknown>[]);
+        const total = rows.find((r) => r.branch === 'all') ?? rows[0] ?? null;
+        const paceRow = ((pace.data ?? []) as Record<string, unknown>[]).find((r) => !r.branch_id);
+        return {
+          metric_id: 'brief.today',
+          filters: { branch: input.branch ?? null },
+          as_of,
+          data: {
+            sales_today: total
+              ? {
+                  orders: total.orders,
+                  net_sales_poisha: total.net_sales_poisha,
+                  average_order_poisha: total.average_order_poisha,
+                }
+              : null,
+            pace_against_a_normal_day: paceRow
+              ? {
+                  today_net_poisha: num(paceRow.today_net_poisha),
+                  normal_so_far_poisha: num(paceRow.typical_net_poisha),
+                  pace_bps: num(paceRow.pace_bps),
+                  status: paceRow.rag,
+                }
+              : null,
+            biggest_open_leaks: 'error' in findings ? [] : findings.data,
+            running_out:
+              'error' in stock
+                ? null
+                : {
+                    counts: stock.summary,
+                    most_urgent: (stock.data as Record<string, unknown>[]).slice(0, 4).map((r) => ({
+                      ingredient: r.ingredient,
+                      on_shelf: r.on_shelf,
+                      days_of_cover: r.days_of_cover,
+                      band: r.band,
+                    })),
+                  },
+            stock_loss_between_last_two_counts: 'error' in loss ? null : loss.data,
+            licences_and_tax_due: ((compliance.data ?? []) as Record<string, unknown>[])
+              .filter((r) => r.days_left !== null && num(r.days_left) <= 14)
+              .sort((a, b) => num(a.days_left) - num(b.days_left))
+              .slice(0, 3)
+              .map((r) => ({ what: r.label, due_on: r.due_on, days_left: num(r.days_left) })),
+            setup_steps_left: ((setup.data ?? []) as { step: string; done: boolean }[])
+              .filter((st) => !st.done)
+              .map((st) => SETUP_STEPS[st.step] ?? { step: st.step, page: null }),
+          },
+        };
+      }
+      case 'get_menu': {
+        const [{ data: items, error }, { data: cats }, { data: recipes }, costs] =
+          await Promise.all([
+            ctx.sb
+              .from('menu_items')
+              .select('id, name, category_id, base_price_poisha, is_active')
+              .eq('org_id', ctx.orgId),
+            ctx.sb.from('menu_categories').select('id, name').eq('org_id', ctx.orgId),
+            ctx.sb
+              .from('recipes')
+              .select('menu_item_id')
+              .eq('org_id', ctx.orgId)
+              .eq('status', 'active'),
+            ctx.sb.rpc('metric_recipe_costs', { p_org: ctx.orgId, p_now: ctx.nowIso }),
+          ]);
+        if (error) return fail(error);
+        const catName = new Map((cats ?? []).map((c) => [c.id as string, c.name as string]));
+        const withRecipe = new Set((recipes ?? []).map((r) => r.menu_item_id as string));
+        // Food cost is a money row: for a manager the call fails or is empty, and the field stays null.
+        const bps = new Map(
+          ((costs.data ?? []) as Record<string, unknown>[])
+            .filter((r) => r.complete === true && r.food_cost_bps !== null)
+            .map((r) => [r.menu_item_id as string, num(r.food_cost_bps)]),
+        );
+        const wantCat =
+          typeof input.category === 'string' && input.category.trim()
+            ? input.category.trim().toLowerCase()
+            : null;
+        const live = (items ?? []).filter((i) => i.is_active);
+        const listed = live
+          .filter(
+            (i) =>
+              !wantCat || (catName.get(i.category_id as string) ?? '').toLowerCase() === wantCat,
+          )
+          .sort(
+            (a, b) =>
+              String(catName.get(a.category_id as string)).localeCompare(
+                String(catName.get(b.category_id as string)),
+              ) || String(a.name).localeCompare(String(b.name)),
+          );
+        const limit = Math.min(Math.max(Number(input.limit) || 30, 1), 40);
+        return {
+          metric_id: 'menu.items',
+          filters: { category: input.category ?? null },
+          as_of,
+          summary: {
+            items: live.length,
+            hidden_items: (items ?? []).length - live.length,
+            categories: (cats ?? []).length,
+            with_recipe: live.filter((i) => withRecipe.has(i.id as string)).length,
+            without_recipe: live.filter((i) => !withRecipe.has(i.id as string)).length,
+            listed: Math.min(listed.length, limit),
+          },
+          data: listed.slice(0, limit).map((i) => ({
+            item: i.name,
+            category: catName.get(i.category_id as string) ?? null,
+            price_poisha: num(i.base_price_poisha),
+            has_recipe: withRecipe.has(i.id as string),
+            food_cost_bps: bps.get(i.id as string) ?? null,
+          })),
+        };
+      }
+      case 'get_compliance': {
+        const { data, error } = await ctx.sb.rpc('metric_compliance', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_now: ctx.nowIso,
+        });
+        if (error) return fail(error);
+        return {
+          metric_id: 'compliance.due',
+          filters: { branch: input.branch ?? null },
+          as_of,
+          data: ((data ?? []) as Record<string, unknown>[])
+            .sort((a, b) => num(a.days_left) - num(b.days_left))
+            .slice(0, 12)
+            .map((r) => ({
+              what: r.label,
+              kind: r.kind,
+              branch: ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null,
+              number: r.number ?? null,
+              due_on: r.due_on,
+              days_left: r.days_left === null ? null : num(r.days_left),
+              status: r.status,
+            })),
+        };
+      }
+      case 'get_staff_exceptions': {
+        const { from, to } = await windowDates(ctx, window);
+        const { data, error } = await ctx.sb.rpc('metric_staff_exceptions', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_from: from,
+          p_to: to,
+        });
+        if (error) return fail(error);
+        const people = ((data ?? []) as Record<string, unknown>[])
+          .map((r) => ({
+            person: r.staff_name,
+            orders: num(r.orders),
+            sales_poisha: num(r.completed_net_poisha),
+            discounts: num(r.discount_count),
+            discounts_poisha: num(r.discount_poisha),
+            discounts_without_reason: num(r.discount_no_reason_count),
+            voids_after_kitchen_ticket: num(r.void_after_kot_count),
+            voids_after_kitchen_ticket_poisha: num(r.void_after_kot_poisha),
+            voids_after_payment: num(r.void_after_payment_count),
+            refunds: num(r.refund_count),
+            refunds_poisha: num(r.refund_poisha),
+          }))
+          .sort(
+            (a, b) =>
+              b.discounts_poisha +
+              b.voids_after_kitchen_ticket_poisha +
+              b.refunds_poisha -
+              (a.discounts_poisha + a.voids_after_kitchen_ticket_poisha + a.refunds_poisha),
+          );
+        return {
+          metric_id: 'staff.exceptions',
+          filters: { window, branch: input.branch ?? null, from, to },
+          as_of,
+          data: people.slice(0, 8),
+        };
+      }
+      case 'find_page': {
+        if (!ctx.access) return { error: 'failed' };
+        const topic = typeof input.topic === 'string' ? input.topic : '';
+        return {
+          metric_id: 'app.pages',
+          filters: { topic },
+          as_of,
+          data: findPages(topic, ctx.access),
         };
       }
       default:

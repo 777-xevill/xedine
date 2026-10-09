@@ -2,8 +2,10 @@ import { SquarePen } from 'lucide-react';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { BrandMark } from '@/components/brand-mark';
+import { GlobalAgent } from '@/components/chat/global-agent';
 import { AppShell } from '@/components/shell/app-shell';
 import { Sidebar } from '@/components/shell/sidebar';
+import { aiConfigured } from '@/lib/llm-gateway';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { buildNavigation } from '@/modules/tenancy/navigation';
 import { getEnabledFeatures, recentChats } from '@/modules/tenancy/shell';
@@ -49,6 +51,14 @@ export default async function OrgLayout({
       }
     >
       {children}
+      {nav.canChat ? (
+        <GlobalAgent
+          orgId={ctx.org.id}
+          orgSlug={ctx.org.slug}
+          aiOn={aiConfigured()}
+          canSeeMoney={ctx.roles.some((r) => r === 'owner' || r === 'accountant')}
+        />
+      ) : null}
     </AppShell>
   );
 }

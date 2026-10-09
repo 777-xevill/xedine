@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { ArrowUpRight, ExternalLink, ShieldCheck, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import * as React from 'react';
@@ -21,7 +21,7 @@ export interface AgentLabels {
 }
 
 /**
- * A chat helper docked on a page (Sales, Stock). Nothing runs until it is opened: the first
+ * A chat helper docked on a page (every dashboard page; Sales and Stock have their own wording). Nothing runs until it is opened: the first
  * tap asks the page's summary question, then follow-ups and typed questions continue the same
  * conversation, which also lands in the chat history. Same assistant, tools and number checks as the
  * full chat.
@@ -33,6 +33,8 @@ export function PageAgent({
   summaryQuestion,
   followUps,
   aiOn,
+  page,
+  pageNote,
 }: {
   orgId: string;
   orgSlug: string;
@@ -41,10 +43,14 @@ export function PageAgent({
   summaryQuestion: string;
   followUps: string[];
   aiOn: boolean;
+  /** The page this helper sits on (a `nav.*` key), and what it shows, so the assistant knows. */
+  page?: string;
+  pageNote?: string;
 }) {
   const t = useTranslations('agent');
   const ta = useTranslations('assistantPage');
   const te = useTranslations('errors');
+  const tn = useTranslations('nav');
   const [open, setOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [conversationId, setConversationId] = React.useState('');
@@ -72,7 +78,14 @@ export function PageAgent({
     setInFlight(q);
     setValue('');
     startTransition(async () => {
-      const res = await askHereAction({ orgId, orgSlug, conversationId, question: q });
+      const res = await askHereAction({
+        orgId,
+        orgSlug,
+        conversationId,
+        question: q,
+        ...(page ? { page } : {}),
+        ...(pageNote ? { pageNote } : {}),
+      });
       if ('error' in res) {
         setError(res.error);
         setValue(q);
@@ -88,6 +101,7 @@ export function PageAgent({
           aiWritten: false,
           verified: false,
           sources: [],
+          links: [],
         },
         { ...res.reply, role: 'assistant' },
       ]);
@@ -161,6 +175,22 @@ export function PageAgent({
                 <AssistantAvatar />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-6 whitespace-pre-line">{m.text}</p>
+                  {m.links.length > 0 ? (
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {m.links.map((l) => (
+                        <li key={l.key}>
+                          <Link
+                            href={l.href}
+                            onClick={() => setOpen(false)}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-medium text-foreground shadow-soft transition hover:border-purple/40"
+                          >
+                            {t('openPage', { page: tn(l.key === 'general' ? 'settings' : l.key) })}
+                            <ArrowUpRight className="size-3.5" aria-hidden />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   {m.aiWritten || m.verified ? (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {m.aiWritten ? (

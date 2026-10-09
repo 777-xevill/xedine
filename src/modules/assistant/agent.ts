@@ -2,11 +2,15 @@ import 'server-only';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AiError, aiConfigured, gateway, type PromptVersion } from '@/lib/llm-gateway';
+import type { Access } from './app-guide';
 import { renderAnswer, toolForIntent, type Translate } from './answers';
+import { restaurantCard } from './card';
 import { answerLocale, detectLanguage, type QuestionLanguage } from './language';
 import { forModel, forReader } from './for-model';
+import { pageLinks, type PageLink } from './links';
 import { routeQuestion, type MenuRef } from './router';
-import { runTool, TOOL_DEFS, type ToolContext, type ToolResult } from './tools';
+import { selectTools } from './tool-select';
+import { runTool, type ToolContext, type ToolResult } from './tools';
 import { validateNumbers } from './validator';
 
 /**
@@ -16,37 +20,43 @@ import { validateNumbers } from './validator';
  */
 export const ASSISTANT_PROMPT: PromptVersion = {
   key: 'assistant',
-  version: 4,
+  version: 5,
   body: [
-    "You are Xedine, the owner's sharp profit advisor for a restaurant in Bangladesh. You know the restaurant",
-    "only through your tools: sales, items, today's profit, money leaks from the till, stock on the shelf and",
-    'how long it lasts, loss per ingredient, waste, purchases, food cost, forecast, menu, branches, customers',
-    'and reviews. Call as many tools as the question needs before answering; for a broad question ("how are',
-    'we doing", "what is wrong") look at several.',
+    'You are Xedine, the AI manager of this restaurant in Bangladesh. You work for the owner and know the',
+    'business like a sharp operations manager: sales, menu, recipes, stock, loss, waste, purchases, money',
+    'leaks, staff exceptions, customers, reviews, branches, licences and tax dates. You also know the app.',
+    'You know the restaurant from the Restaurant card in the context; everything live or numeric comes from',
+    'tools. You cannot change anything: you advise and say which page to do it on.',
     '',
-    'Numbers: every number you write must appear in a tool result (or the question). Never add, subtract,',
-    'divide, average, estimate or round figures yourself, and never invent one. Money in tool results is',
-    'already in taka (*_taka): write it with ৳ exactly as given. Never mention poisha. *_pct fields are',
-    'already percent. Quantities you should quote are ready-written text such as "9.55 kg" — copy them.',
+    'How to work:',
+    '- Broad questions ("what should I do", "how are we doing", "what is wrong"): call get_today_brief',
+    '  first, then dig into the biggest thing with another tool if you have one (the cause, not just the',
+    '  symptom). Use as many tools as the question needs.',
+    '- End with what to do next: one to three concrete steps, most important first, each with the page to',
+    '  do it on. Unsure of a page name or "where do I...": call find_page. A page that is switched off is',
+    '  switched on by the owner in Settings → Features; if the role cannot open it, say so.',
+    '- Missing data is an answer: say what is missing and where to add it (no recipes: food cost is only',
+    '  assumed; one stock count: loss per item cannot be shown yet).',
+    '- Staff exceptions are things to check, never accusations.',
+    '- Name only pages that find_page or the card gave you; never invent a page, and never mention tool or',
+    '  field names (like setup_steps_left): say it in plain words.',
+    '- Loss ("loss", "লস", "kothay loss", "where is money going"): say where (top items with amounts), why',
+    '  (written-down waste or not explained) and one or two things to check (portions, a bad count,',
+    '  unrecorded waste, theft). Staff food is shown apart and is not a loss.',
     '',
-    'Loss: for "loss", "লস", "kothay loss", "kon jinish", "where is money going", call get_stock_loss for the',
-    'branch (which ingredients cost money, how much, and whether it was written-down waste or not explained),',
-    "and get_findings (money leaks in the till: voids, discounts, cash). Use get_flash_pnl only for today's",
-    'profit. Say where the loss is (the top items with their amounts), why (waste or not explained), and one',
-    'or two practical things to check (portion size, a bad count, unrecorded waste or transfers, theft).',
-    'Staff food is shown apart and is not a loss.',
-    '',
+    'Numbers: every number you write must appear in a tool result, the Restaurant card or the question.',
+    'Never add, subtract, divide, average, estimate or round figures yourself, never invent one. Money in',
+    'tool results is already in taka (*_taka): write it with ৳ as given, never mention poisha. *_pct is',
+    'already percent. Quantities such as "9.55 kg" are ready to copy.',
     'If the tools return nothing, an error, two_counts_needed or not_permitted, say plainly what is missing',
-    '(for example: count the shelf twice to see loss per item) or that this person cannot see it. Do not',
-    'guess. If an item or branch is ambiguous, ask which one.',
+    'or that this person cannot see it. Do not guess. If an item or branch is ambiguous, ask which one.',
     '',
-    'Language: answer in the language of the question. Bangla or Banglish question → answer only in Bangla',
-    'script (ingredient and dish names may stay as written); English question → English. Never mix.',
-    'Style: short and plain for a phone chat bubble — one to five short sentences or a short list with "- ".',
-    'No Markdown, headings, bold or tables. Respect the owner rules in the context.',
-    'Estimated profit uses recipe costs where they exist; when food_cost_basis is assumed or mixed, say the',
-    'food cost is partly an assumption. To explain one money leak, call explain_finding and describe the',
-    'evidence in plain words, then the suggested actions.',
+    'Language: answer in the language of the question. Bangla or Banglish question → Bangla script only',
+    '(dish and ingredient names may stay as written); English question → English. Never mix.',
+    'Style: plain words for a phone chat bubble. A simple answer is one to five short sentences; a plan or',
+    'broad review may be a short list with "- " (about eight lines at most). No Markdown, headings, bold or',
+    'tables. Respect the owner rules in the context. When food_cost_basis is assumed or mixed, say the food',
+    'cost is partly an assumption.',
   ].join('\n'),
 };
 
@@ -55,6 +65,8 @@ export interface AssistantAnswer {
   language: QuestionLanguage;
   source: 'llm' | 'router';
   numericCheck: 'ok' | 'retried' | 'fallback' | 'not_applicable';
+  /** Pages the answer is about ("Open Stock"); only ones this person can open. */
+  links: PageLink[];
   toolCalls: {
     name: string;
     input: Record<string, unknown>;
@@ -74,6 +86,7 @@ export async function loadToolContext(
   sb: SupabaseClient,
   orgId: string,
   nowIso: string,
+  access?: Access,
 ): Promise<ToolContext> {
   const [{ data: menu }, { data: branches }] = await Promise.all([
     sb.from('menu_items').select('id, name, name_bn').eq('org_id', orgId).eq('is_active', true),
@@ -85,6 +98,7 @@ export async function loadToolContext(
     nowIso,
     menu: (menu ?? []) as MenuRef[],
     branches: (branches ?? []) as { id: string; name: string }[],
+    access,
   };
 }
 
@@ -124,6 +138,10 @@ export async function askAssistant(args: {
   nowIso: string;
   businessDate: string;
   ownerRules: string[];
+  /** Who is asking and which sections they have (the app guide and the restaurant card use it). */
+  access?: Access;
+  /** The page the person has open, as a `nav.*` key, with a note such as "last 7 days". */
+  page?: { key: string; note?: string };
   history?: Anthropic.MessageParam[];
   /** The 'assistant' message namespace in a locale (next-intl in the app, createTranslator in evals). */
   translate: (locale: 'bn' | 'en') => Promise<Translate>;
@@ -131,17 +149,20 @@ export async function askAssistant(args: {
   const language = detectLanguage(args.question);
   const locale = answerLocale(language);
   const t = await args.translate(locale);
-  const ctx = await loadToolContext(args.sb, args.orgId, args.nowIso);
+  const ctx = await loadToolContext(args.sb, args.orgId, args.nowIso, args.access);
+  const linksFor = (calls: { name: string; input: Record<string, unknown> }[]) =>
+    args.access ? pageLinks(calls, args.access, args.page?.key) : [];
 
   if (aiConfigured()) {
     try {
+      const card = await restaurantCard(ctx, args.page);
       const context = [
         `Today's business date (Asia/Dhaka): ${args.businessDate}. Question language: ${language}.`,
         language === 'en'
           ? 'Write the whole answer in English only, no Bangla words.'
           : 'Write the whole answer in Bangla script only (dish and ingredient names may stay as written).',
         'Write for a restaurant owner: plain words, never tool field names or "=" signs.',
-        `Branches: ${ctx.branches.map((b) => b.name).join(', ') || 'none'}.`,
+        `Restaurant card (facts about this business): ${JSON.stringify(card)}`,
         args.ownerRules.length > 0
           ? `Owner rules and goals:\n- ${args.ownerRules.join('\n- ')}`
           : 'No owner rules set.',
@@ -153,7 +174,7 @@ export async function askAssistant(args: {
         prompt: ASSISTANT_PROMPT,
         tier: 'assistant' as const,
         context,
-        tools: TOOL_DEFS,
+        tools: selectTools(args.question, args.page?.key),
         // The model sees taka and percent, never poisha or basis points (see for-model.ts); the
         // validator checks the answer against exactly what the model saw.
         executeTool: async (name: string, input: Record<string, unknown>) =>
@@ -161,6 +182,7 @@ export async function askAssistant(args: {
       };
       const first = await gw.chat({
         ...base,
+        maxSteps: 8,
         messages: [...(args.history ?? []), { role: 'user', content: args.question }],
       });
       const toolCalls = first.toolCalls.map((c) => ({
@@ -171,7 +193,7 @@ export async function askAssistant(args: {
       }));
       const check = validateNumbers(
         first.text,
-        first.toolCalls.map((c) => c.result),
+        [...first.toolCalls.map((c) => c.result), card],
         args.question,
       );
       if (check.ok)
@@ -180,10 +202,12 @@ export async function askAssistant(args: {
           language,
           source: 'llm',
           numericCheck: first.toolCalls.length ? 'ok' : 'not_applicable',
+          links: linksFor(toolCalls),
           toolCalls,
         };
       const second = await gw.chat({
         ...base,
+        maxSteps: 8,
         messages: [
           ...first.messages,
           {
@@ -195,7 +219,7 @@ export async function askAssistant(args: {
       const retryCalls = [...first.toolCalls, ...second.toolCalls];
       const recheck = validateNumbers(
         second.text,
-        retryCalls.map((c) => c.result),
+        [...retryCalls.map((c) => c.result), card],
         args.question,
       );
       if (recheck.ok)
@@ -204,6 +228,7 @@ export async function askAssistant(args: {
           language,
           source: 'llm',
           numericCheck: 'retried',
+          links: linksFor(retryCalls),
           toolCalls: retryCalls.map((c) => ({
             name: c.name,
             input: c.input,
@@ -217,6 +242,7 @@ export async function askAssistant(args: {
         language,
         source: 'router',
         numericCheck: 'fallback',
+        links: linksFor(fallback.toolCalls),
         toolCalls: [...toolCalls, ...fallback.toolCalls],
       };
     } catch (e) {
@@ -233,6 +259,7 @@ export async function askAssistant(args: {
         language,
         source: 'router',
         numericCheck: 'fallback',
+        links: linksFor(fallback.toolCalls),
         toolCalls: fallback.toolCalls,
       };
     }
@@ -243,6 +270,7 @@ export async function askAssistant(args: {
     language,
     source: 'router',
     numericCheck: 'not_applicable',
+    links: linksFor(r.toolCalls),
     toolCalls: r.toolCalls,
   };
 }

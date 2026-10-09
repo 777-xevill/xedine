@@ -1207,6 +1207,19 @@
       "wasteWhy": "What is the biggest reason for waste?",
       "wasteCut": "How can I throw away less?",
       "bought": "What did we buy this week?"
+    },
+    "openPage": "Open {page}",
+    "global": {
+      "open": "Ask Xedine",
+      "title": "Xedine",
+      "subtitle": "Knows your whole restaurant",
+      "placeholder": "Ask anything about your restaurant…",
+      "todo": "What should I do today?",
+      "page": "Look at my {page} page and tell me what matters and what to do next.",
+      "leaks": "Where am I losing money?",
+      "sales": "How are my sales this week?",
+      "stock": "What is running out?",
+      "tour": "Show me around: what can I do in Xedine?"
     }
   },
   "assistantPage": {

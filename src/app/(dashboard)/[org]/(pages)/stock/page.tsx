@@ -1182,6 +1182,8 @@ export default async function StockPage({
           {/* Room under the last card so the helper button never covers it. */}
           <div aria-hidden className="h-20" />
           <PageAgent
+            page="stock"
+            pageNote={`${tab} tab, ${branch.name}`}
             key={`${tab}:${branch.id}`}
             orgId={ctx.org.id}
             orgSlug={ctx.org.slug}

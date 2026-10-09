@@ -8,8 +8,11 @@ import { createClient } from '@/lib/db/supabase-server';
 import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+import type { Role } from '@/modules/tenancy/context';
+import { getEnabledFeatures } from '@/modules/tenancy/shell';
 import { ASSISTANT_PROMPT, askAssistant } from './agent';
 import type { Translate } from './answers';
+import type { PageLink } from './links';
 
 /**
  * Web chat (ROADMAP Phase 4). A conversation, its messages and the tool calls behind each answer are
@@ -22,6 +25,12 @@ const askSchema = z.object({
   orgSlug: z.string().regex(SLUG),
   conversationId: z.union([z.uuid(), z.literal('')]),
   question: z.string().trim().min(1).max(1000),
+  /** The page the question was asked from (a nav key) and what it shows, e.g. "last 7 days". */
+  page: z
+    .string()
+    .regex(/^[A-Za-z]{2,24}$/)
+    .optional(),
+  pageNote: z.string().trim().max(200).optional(),
 });
 
 /** One answer as a chat bubble shows it (same shape the chat page builds from stored rows). */
@@ -31,6 +40,8 @@ export interface AskReply {
   aiWritten: boolean;
   verified: boolean;
   sources: string[];
+  /** Pages the answer is about, as "Open Stock" buttons. */
+  links: PageLink[];
 }
 
 type AskResult = { error: string } | { conversationId: string; reply: AskReply };
@@ -57,7 +68,13 @@ export async function askHereAction(input: z.input<typeof askSchema>): Promise<A
   return ask(parsed.data);
 }
 
-async function ask({ orgId, question, ...rest }: z.output<typeof askSchema>): Promise<AskResult> {
+async function ask({
+  orgId,
+  question,
+  page,
+  pageNote,
+  ...rest
+}: z.output<typeof askSchema>): Promise<AskResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,10 +83,25 @@ async function ask({ orgId, question, ...rest }: z.output<typeof askSchema>): Pr
   // Only a member may ask (and spend the org's AI allowance); RLS hides other organizations.
   const { data: member } = await supabase
     .from('organizations')
-    .select('id')
+    .select('id, slug')
     .eq('id', orgId)
     .maybeSingle();
   if (!member) return { error: 'notAllowed' };
+  // Who is asking decides which pages the assistant may send them to (the same rules as the sidebar).
+  const [{ data: roleRows }, enabled] = await Promise.all([
+    supabase
+      .from('memberships')
+      .select('role')
+      .eq('org_id', orgId)
+      .eq('user_id', user.id)
+      .eq('status', 'active'),
+    getEnabledFeatures(orgId),
+  ]);
+  const access = {
+    slug: member.slug as string,
+    roles: (roleRows ?? []).map((r) => r.role as Role),
+    enabled,
+  };
 
   let conversationId = rest.conversationId;
   if (!conversationId) {
@@ -122,6 +154,8 @@ async function ask({ orgId, question, ...rest }: z.output<typeof askSchema>): Pr
     businessDate: businessDate(at, settings?.default_cutoff_minutes ?? 240),
     ownerRules: (rules ?? []).map((r) => r.body as string),
     history,
+    access,
+    ...(page ? { page: { key: page, ...(pageNote ? { note: pageNote } : {}) } } : {}),
     translate: async (locale) =>
       (await getTranslations({ locale, namespace: 'assistant' })) as unknown as Translate,
   });
@@ -179,6 +213,7 @@ async function ask({ orgId, question, ...rest }: z.output<typeof askSchema>): Pr
         answer.numericCheck === 'retried' ||
         answer.source === 'router',
       sources,
+      links: answer.links,
     },
   };
 }

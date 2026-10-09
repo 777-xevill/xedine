@@ -252,7 +252,8 @@ async function openAiComplete(
   ) {
     console.error(w.name, 429, 'retrying on', fallback);
     const second = await post(w, forModel(body, fallback));
-    if (second.status !== 429) res = second;
+    // Only a good answer replaces the first reply: a second model's own error must not hide the limit.
+    if (second.ok) res = second;
   }
   if (res.status === 429) {
     // Both allowances used up this minute: wait for the reset when it is close, then try once more.
@@ -265,6 +266,19 @@ async function openAiComplete(
       console.error(w.name, 429);
       throw new AiError('rate_limited', 'the AI provider is busy; try again in a minute');
     }
+  }
+  // A 400 from Groq is usually the model writing a tool call it cannot parse (it differs per model and
+  // per run): the other model gets one try before the question fails.
+  if (
+    res.status === 400 &&
+    p === 'groq' &&
+    fallback &&
+    fallback !== body.model &&
+    !hasImage(body)
+  ) {
+    console.error(w.name, 400, 'retrying on', fallback);
+    const again = await post(w, forModel(body, fallback));
+    if (again.ok) res = again;
   }
   if (!res.ok) {
     // Never echo the provider's error body to users; the status is enough for the logs.

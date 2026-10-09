@@ -1179,6 +1179,7 @@
       "5": "Friday",
       "6": "Saturday"
     },
+    "aiTrouble": "I couldn't reach the AI just now. Please try again in a moment.",
     "busy": "Too many questions this minute for the AI. Please ask again in a minute."
   },
   "agent": {

@@ -253,9 +253,13 @@ export async function askAssistant(args: {
         text:
           e.code === 'cap_exceeded'
             ? `${fallback.text}\n\n${t('capNote')}`
-            : e.code === 'rate_limited' && !fallback.answered
+            : !fallback.answered && e.code === 'rate_limited'
               ? t('busy')
-              : fallback.text,
+              : // The router had no answer for this question and the AI failed: say so, not "I can answer
+                // questions like…", which reads as if the question was not understood.
+                !fallback.answered && (e.code === 'invalid_output' || e.code === 'truncated')
+                ? t('aiTrouble')
+                : fallback.text,
         language,
         source: 'router',
         numericCheck: 'fallback',

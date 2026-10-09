@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { Suspense } from 'react';
 import { BrandMark } from '@/components/brand-mark';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { ThemeSwitcher } from '@/components/theme';
 import { cn } from '@/lib/utils';
 import { setBranchAction, signOutAction } from '@/modules/tenancy/actions';
 import type { OrgContext } from '@/modules/tenancy/context';
@@ -179,6 +180,7 @@ export async function Sidebar({
           </form>
         </div>
         <LocaleSwitcher className="w-full [&>form]:flex-1 [&_button]:w-full" />
+        <ThemeSwitcher className="w-full" />
       </div>
     </div>
   );

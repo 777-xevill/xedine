@@ -23,7 +23,10 @@
     "copy": "Copy link",
     "copied": "Copied",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "theme": "Colour mode",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",

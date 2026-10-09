@@ -65,9 +65,10 @@ export default async function SalesPage({
   const allowed = ['owner', 'accountant', 'manager'] as const;
   if (!ctx.roles.some((r) => (allowed as readonly string[]).includes(r))) notFound();
 
-  const [t, tp, locale] = await Promise.all([
+  const [t, tp, ta, locale] = await Promise.all([
     getTranslations('sales'),
     getTranslations('pos.methods'),
+    getTranslations('agent'),
     getLocale(),
   ]);
   const loc = locale as Locale;
@@ -399,10 +400,10 @@ export default async function SalesPage({
         orgSlug={ctx.org.slug}
         aiOn={aiConfigured()}
         labels={{
-          open: t('agent.sales.open'),
-          title: t('agent.sales.title'),
-          subtitle: t('agent.sales.subtitle'),
-          placeholder: t('agent.sales.placeholder'),
+          open: ta('sales.open'),
+          title: ta('sales.title'),
+          subtitle: ta('sales.subtitle'),
+          placeholder: ta('sales.placeholder'),
         }}
         summaryQuestion={
           selectedBranch

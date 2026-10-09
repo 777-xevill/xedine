@@ -50,6 +50,26 @@ describe('brand tokens (ADR 0009, docs/BRAND.md)', () => {
       expect(css).toContain(mapping);
   });
 
+  it('the dark theme (ADR 0034) remaps every surface and text token onto the navy palette', () => {
+    const block = css.slice(css.indexOf("[data-theme='dark'] {"));
+    const dark = block.slice(0, block.indexOf('\n}'));
+    for (const token of [
+      '--bg',
+      '--surface',
+      '--surface-elevated',
+      '--text',
+      '--text-secondary',
+      '--text-muted',
+      '--border',
+      '--glass-fill',
+      '--accent-purple-ink',
+    ])
+      expect(dark, `dark theme should set ${token}`).toContain(`${token}:`);
+    expect(dark).toContain('color-scheme: dark;');
+    // Never a pure-black page (the founder's rule): the page is the guideline navy.
+    expect(dark).toContain('--bg: var(--palette-navy);');
+  });
+
   it('no component, page or module hardcodes a colour', () => {
     const offenders: string[] = [];
     for (const file of walk(SRC).filter(

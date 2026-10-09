@@ -22,7 +22,8 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   return (
-    <html lang={locale}>
+    // data-theme is set before paint by the dashboard's theme script (ADR 0034).
+    <html lang={locale} suppressHydrationWarning>
       <body>
         <div aria-hidden className="aurora" />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>

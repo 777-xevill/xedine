@@ -77,6 +77,8 @@
     color-mix(in srgb, var(--accent-blue) 70%, var(--palette-navy))
   );
   --on-action: var(--white);
+  /* Purple as text, icons and chart fills. Light: the brand purple as is. */
+  --accent-purple-ink: var(--accent-purple);
 
   /* Light glass: frosted white over a faint brand glow, a hairline rim and a soft navy shadow. */
   --glass-fill: color-mix(in srgb, var(--white) 82%, transparent);
@@ -108,6 +110,58 @@
   --sidebar-width: 16.5rem;
 
   color-scheme: light;
+}
+
+/*
+ * 2b. The dark theme (ADR 0034): an opt-in switch in the sidebar, never the default. The same semantic
+ * tokens, remapped onto the guideline's navy (not black): navy page, navy-2 cards, mist text. The status
+ * and accent colours are bright by design, so on navy they are used as they are (the light theme mixes
+ * them with navy to get "ink"). Set on <html> by the theme script; the till and kitchen screens never
+ * get it (their layouts sit outside the dashboard).
+ */
+[data-theme='dark'] {
+  --bg: var(--palette-navy);
+  --bg-secondary: var(--palette-night-2);
+  --surface: var(--palette-navy-2);
+  --surface-elevated: color-mix(in srgb, var(--palette-navy-2) 88%, var(--palette-slate-300));
+
+  --text: var(--palette-mist);
+  /* 8.4:1 on the page, 7.9:1 on a card. */
+  --text-secondary: var(--palette-slate-300);
+  /* 5.9:1 on a card, 4.8:1 on a raised panel. */
+  --text-muted: color-mix(in srgb, var(--palette-slate-300) 86%, var(--palette-navy));
+  --text-disabled: var(--palette-slate-500);
+
+  --border: var(--palette-line-dark-2);
+  --border-strong: color-mix(in srgb, var(--palette-slate-500) 60%, var(--palette-navy));
+
+  --success-ink: var(--success);
+  --warning-ink: var(--warning);
+  --danger-ink: var(--danger);
+  --info-ink: var(--info);
+  --cyan-ink: var(--accent-cyan);
+  --pink-ink: var(--accent-pink);
+  --blue-ink: color-mix(in srgb, var(--accent-blue) 80%, white);
+  /* 6.4:1 on a card: the brand purple itself is 3.4:1 there. */
+  --accent-purple-ink: color-mix(in srgb, var(--accent-purple) 62%, white);
+
+  --glass-fill: color-mix(in srgb, var(--palette-navy-2) 80%, transparent);
+  --glass-fill-strong: color-mix(in srgb, var(--palette-navy-2) 94%, transparent);
+  --glass-fill-soft: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
+  --glass-sheen: linear-gradient(
+    180deg,
+    color-mix(in srgb, white 7%, transparent),
+    transparent 40%
+  );
+  --shadow-soft:
+    0 1px 2px color-mix(in srgb, var(--palette-night) 50%, transparent),
+    0 8px 24px -14px color-mix(in srgb, var(--palette-night) 80%, transparent);
+  --shadow-lift:
+    0 1px 2px color-mix(in srgb, var(--palette-night) 60%, transparent),
+    0 22px 48px -22px color-mix(in srgb, var(--palette-night) 90%, transparent);
+  --glow-action: 0 10px 28px -12px color-mix(in srgb, var(--accent-purple) 75%, transparent);
+
+  color-scheme: dark;
 }
 
 /*
@@ -161,7 +215,7 @@
   --color-edge-strong: var(--glass-edge-strong);
   /* Utility colours resolve to the readable ink on light; raw brights stay reachable via *-bright. */
   --color-pink: var(--pink-ink);
-  --color-purple: var(--accent-purple);
+  --color-purple: var(--accent-purple-ink);
   --color-blue: var(--blue-ink);
   --color-cyan: var(--cyan-ink);
   --color-success: var(--success-ink);

@@ -245,7 +245,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_waste',
     description:
-      'Food written down as waste in a period: per reason and item, amount, times and value (value: owner and accountant only). Biggest first, with the total.',
+      'Food written down as waste in a period: per reason and item, amount, times and value (value: owner and accountant only). Biggest first, with the total. Also staff_notes: what staff typed as the reason (e.g. stolen, customer left).',
     input_schema: {
       type: 'object',
       properties: {
@@ -971,6 +971,28 @@ export async function runTool(
           (a, b) => num(b.value_poisha) - num(a.value_poisha) || num(b.entries) - num(a.entries),
         );
         const money = !rows.some((r) => r.value_poisha === null);
+        // What staff typed under "Other" (e.g. "stole"): the AI reads it and says what it means.
+        let notesQ = ctx.sb
+          .from('waste_logs')
+          .select('note, qty_portions, menu_item_id, ingredient_id')
+          .eq('org_id', ctx.orgId)
+          .not('note', 'is', null)
+          .gte('business_date', from)
+          .lte('business_date', to)
+          .order('logged_at', { ascending: false })
+          .limit(15);
+        if (branch) notesQ = notesQ.eq('branch_id', branch);
+        const { data: noteRows } = await notesQ;
+        const staffNotes = ((noteRows ?? []) as unknown as Record<string, unknown>[]).map((n) => ({
+          note: String(n.note),
+          item:
+            rows.find(
+              (r) =>
+                (n.menu_item_id && r.menu_item_id === n.menu_item_id) ||
+                (n.ingredient_id && r.ingredient_id === n.ingredient_id),
+            )?.name ?? null,
+          portions: n.qty_portions === null ? null : num(n.qty_portions),
+        }));
         return {
           metric_id: 'waste.logged',
           filters: { window, branch: input.branch ?? null, from, to },
@@ -978,6 +1000,7 @@ export async function runTool(
           data: {
             total_value_poisha: money ? rows.reduce((s, r) => s + num(r.value_poisha), 0) : null,
             entries: rows.reduce((s, r) => s + num(r.entries), 0),
+            staff_notes: staffNotes,
             items: rows.slice(0, 10).map((r) => ({
               reason: r.reason_label,
               reason_bn: r.reason_label_bn ?? null,

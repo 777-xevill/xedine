@@ -566,6 +566,7 @@
     "less": "One less",
     "more": "One more",
     "wasteReason": "Why?",
+    "wasteNeedDish": "Choose a dish first",
     "wasteOtherLabel": "What happened?",
     "wasteOtherPlaceholder": "Write the reason"
   },

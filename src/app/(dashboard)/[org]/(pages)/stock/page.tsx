@@ -1026,29 +1026,41 @@ export default async function StockPage({
       {tab === 'waste'
         ? await (async () => {
             const days = sp.days === '30' ? 30 : 7;
-            const [board, { data: reasons }, { data: ingredients }, { data: items }] =
-              await Promise.all([
-                wasteBoard(ctx.org.id, branch.id, addDays(today, -(days - 1)), today).catch(
-                  () => [],
-                ),
-                supabase
-                  .from('reason_codes')
-                  .select('id, label, label_bn')
-                  .eq('org_id', ctx.org.id)
-                  .eq('kind', 'waste')
-                  .eq('is_active', true)
-                  .order('label'),
-                // Every item, straight from the records on each visit: a new ingredient is here the
-                // moment it exists, even with nothing wasted yet. Hidden (retired) items stay listed
-                // too, so a spill of something no longer bought can still be written down.
-                allIngredients(),
-                supabase
-                  .from('menu_items')
-                  .select('id, name, name_bn')
-                  .eq('org_id', ctx.org.id)
-                  .eq('is_active', true)
-                  .order('name'),
-              ]);
+            const [
+              board,
+              { data: reasons },
+              { data: ingredients },
+              { data: items },
+              { data: noteRows },
+            ] = await Promise.all([
+              wasteBoard(ctx.org.id, branch.id, addDays(today, -(days - 1)), today).catch(() => []),
+              supabase
+                .from('reason_codes')
+                .select('id, label, label_bn')
+                .eq('org_id', ctx.org.id)
+                .eq('kind', 'waste')
+                .eq('is_active', true)
+                .order('label'),
+              // Every item, straight from the records on each visit: a new ingredient is here the
+              // moment it exists, even with nothing wasted yet. Hidden (retired) items stay listed
+              // too, so a spill of something no longer bought can still be written down.
+              allIngredients(),
+              supabase
+                .from('menu_items')
+                .select('id, name, name_bn')
+                .eq('org_id', ctx.org.id)
+                .eq('is_active', true)
+                .order('name'),
+              supabase
+                .from('waste_logs')
+                .select('note, menu_item_id, ingredient_id, reason_code_id')
+                .eq('org_id', ctx.org.id)
+                .eq('branch_id', branch.id)
+                .not('note', 'is', null)
+                .gte('business_date', addDays(today, -(days - 1)))
+                .lte('business_date', today)
+                .order('logged_at', { ascending: false }),
+            ]);
             const total = board.reduce((s, r) => s + (r.value_poisha ?? 0), 0);
             return (
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -1156,6 +1168,18 @@ export default async function StockPage({
                               {label(r.reason_label ?? t('noReason'), r.reason_label_bn)} ·{' '}
                               {t('entries', { count: r.entries })}
                             </p>
+                            {(noteRows ?? [])
+                              .filter(
+                                (n) =>
+                                  n.reason_code_id === r.reason_code_id &&
+                                  (n.menu_item_id ?? n.ingredient_id) ===
+                                    (r.menu_item_id ?? r.ingredient_id),
+                              )
+                              .map((n, k) => (
+                                <p key={k} className="mt-1 text-sm">
+                                  {`“${n.note}”`}
+                                </p>
+                              ))}
                           </div>
                           <div className="text-end text-sm tabular-nums">
                             <p>

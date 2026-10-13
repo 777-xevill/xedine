@@ -229,6 +229,7 @@ export async function discipline(
 
 export interface WasteRow {
   branch_id: string;
+  reason_code_id: string | null;
   reason_label: string | null;
   reason_label_bn: string | null;
   ingredient_id: string | null;
@@ -257,6 +258,7 @@ export async function wasteBoard(
   });
   return rows.map((r) => ({
     branch_id: r.branch_id as string,
+    reason_code_id: (r.reason_code_id as string | null) ?? null,
     reason_label: (r.reason_label as string | null) ?? null,
     reason_label_bn: (r.reason_label_bn as string | null) ?? null,
     ingredient_id: (r.ingredient_id as string | null) ?? null,

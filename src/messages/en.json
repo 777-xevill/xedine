@@ -565,7 +565,9 @@
     "portions": "Portions",
     "less": "One less",
     "more": "One more",
-    "wasteReason": "Why?"
+    "wasteReason": "Why?",
+    "wasteOtherLabel": "What happened?",
+    "wasteOtherPlaceholder": "Write the reason"
   },
   "menu": {
     "photoTitle": "Photo on the till",

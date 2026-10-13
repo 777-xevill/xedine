@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { Alert, Label, Select } from '@/components/ui/form';
+import { Alert, Label, Select, Textarea } from '@/components/ui/form';
 import type { createClient } from '@/lib/db/supabase-browser';
 import type { DeviceState, StaffSessionState } from '@/modules/pos/device-storage';
 
@@ -36,11 +36,12 @@ export function WasteDialog({
   const t = useTranslations('kds');
   const locale = useLocale();
   const [items, setItems] = useState<Option[]>([]);
-  const [reasons, setReasons] = useState<{ id: string; label: string; label_bn: string | null }[]>(
-    [],
-  );
+  const [reasons, setReasons] = useState<
+    { id: string; code: string; label: string; label_bn: string | null }[]
+  >([]);
   const [item, setItem] = useState('');
   const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
   const [portions, setPortions] = useState(1);
   const [state, setState] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
   const name = (o: {
@@ -60,16 +61,27 @@ export function WasteDialog({
         .order('name'),
       sb
         .from('reason_codes')
-        .select('id, label, label_bn')
+        .select('id, code, label, label_bn')
         .eq('org_id', device.orgId)
         .eq('kind', 'waste')
         .eq('is_active', true)
         .order('label'),
     ]).then(([i, r]) => {
       setItems((i.data ?? []) as Option[]);
-      setReasons((r.data ?? []) as { id: string; label: string; label_bn: string | null }[]);
+      setReasons(
+        (
+          (r.data ?? []) as {
+            id: string;
+            code: string;
+            label: string;
+            label_bn: string | null;
+          }[]
+        ).sort((a, b) => Number(a.code === 'other') - Number(b.code === 'other')),
+      );
     });
   }, [sb, device.orgId]);
+
+  const isOther = reasons.find((r) => r.id === reason)?.code === 'other';
 
   const save = () => {
     setState('saving');
@@ -80,6 +92,7 @@ export function WasteDialog({
       p_menu_item: item,
       p_qty: portions,
       p_reason: reason,
+      p_note: isOther ? note.trim() : null,
       p_source: 'kds',
       p_device: device.deviceId,
       p_staff: staff.staffId,
@@ -91,6 +104,7 @@ export function WasteDialog({
         setState('done');
         setItem('');
         setPortions(1);
+        setNote('');
       }
     });
   };
@@ -106,7 +120,10 @@ export function WasteDialog({
           <Button variant="ghost" onClick={onClose}>
             {t('close')}
           </Button>
-          <Button disabled={!item || !reason || state === 'saving'} onClick={save}>
+          <Button
+            disabled={!item || !reason || (isOther && !note.trim()) || state === 'saving'}
+            onClick={save}
+          >
             {t('logWaste')}
           </Button>
         </>
@@ -168,6 +185,19 @@ export function WasteDialog({
             ))}
           </div>
         </div>
+        {isOther ? (
+          <div>
+            <Label htmlFor="kds-waste-note">{t('wasteOtherLabel')}</Label>
+            <Textarea
+              id="kds-waste-note"
+              rows={3}
+              maxLength={300}
+              value={note}
+              placeholder={t('wasteOtherPlaceholder')}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </div>
+        ) : null}
       </div>
     </Dialog>
   );

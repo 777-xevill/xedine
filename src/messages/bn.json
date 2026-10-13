@@ -565,7 +565,9 @@
     "portions": "পোর্শন",
     "less": "একটি কম",
     "more": "একটি বেশি",
-    "wasteReason": "কেন?"
+    "wasteReason": "কেন?",
+    "wasteOtherLabel": "কী হয়েছিল?",
+    "wasteOtherPlaceholder": "কারণটি লিখুন"
   },
   "menu": {
     "photoTitle": "টিলে দেখানোর ছবি",

@@ -175,7 +175,8 @@ const variantSchema = base.extend({
   itemId: z.uuid(),
   name: z.string().trim().min(1).max(80),
   nameBn: optionalText.optional(),
-  delta: z.string(),
+  /** The size's own selling price in taka; empty means the same as the dish. */
+  price: z.string(),
 });
 
 export async function createVariantAction(
@@ -184,9 +185,21 @@ export async function createVariantAction(
 ): Promise<FormState> {
   const parsed = variantSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
-  const delta = parsed.data.delta.trim() === '' ? 0 : poisha(parsed.data.delta, true);
-  if (delta === null) return { error: 'invalidPrice' };
   const supabase = await createClient();
+  // Owners type the size's real price; storage keeps the difference from the dish price.
+  let delta = 0;
+  if (parsed.data.price.trim() !== '') {
+    const sizePrice = poisha(parsed.data.price);
+    if (sizePrice === null) return { error: 'invalidPrice' };
+    const { data: item } = await supabase
+      .from('menu_items')
+      .select('base_price_poisha')
+      .eq('org_id', parsed.data.orgId)
+      .eq('id', parsed.data.itemId)
+      .maybeSingle();
+    if (!item) return { error: 'invalidInput' };
+    delta = sizePrice - (item.base_price_poisha as number);
+  }
   const { error } = await supabase.from('item_variants').insert({
     org_id: parsed.data.orgId,
     menu_item_id: parsed.data.itemId,

@@ -82,13 +82,11 @@ test.describe.serial('owner onboarding and a one-branch manager', () => {
     expect(inviteLink).not.toBe('');
     await page.goto(inviteLink);
 
-    // Signed out: bounced to sign-in with the invitation preserved, then create the account.
-    await expect(page).toHaveURL(/\/sign-in\?next=/);
-    await page.getByRole('link', { name: 'Create account' }).click();
-    await signUp(page, 'Manager Test', managerEmail);
-
+    // Signed out: the invitation page itself asks for a name and a password, then they are in.
     await expect(page).toHaveURL(/\/accept-invite\?token=/);
-    await page.getByRole('button', { name: 'Accept invitation' }).click();
+    await page.getByLabel('Your name').fill('Manager Test');
+    await page.getByLabel('Choose a password').fill(password);
+    await page.getByRole('button', { name: 'Join the team' }).click();
 
     await expect(page).toHaveURL(new RegExp(`/${slug}$`));
     await expect(page.getByTestId('role')).toHaveText('Branch manager');

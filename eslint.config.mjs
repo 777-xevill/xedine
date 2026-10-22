@@ -71,6 +71,8 @@ export default defineConfig([
       'src/app/api/webhooks/**',
       'src/modules/**/jobs/**',
       'src/lib/db/service-role.ts',
+      // Creates the confirmed account for a holder of a live invitation token (ADR 0035).
+      'src/modules/tenancy/invite-account.ts',
       // ai_usage is written only by the LLM gateway (ARCHITECTURE.md "AI layer"), for an explicit org.
       'src/lib/llm-gateway/**',
       '**/*.test.{ts,tsx}',

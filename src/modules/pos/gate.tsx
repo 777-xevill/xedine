@@ -65,8 +65,9 @@ export function PairingScreen({
       const branch = branches.find((b) => b.id === branchId)!;
       const deviceId = await registerAndClaimDevice(sb, orgId, branchId, name.trim());
       onPaired({ deviceId, orgId, orgSlug: org.slug, branchId, branchName: branch.name });
-    } catch {
-      setError(te('generic'));
+    } catch (e) {
+      // 42501: only an owner or a manager of the branch may pair a till.
+      setError((e as { code?: string })?.code === '42501' ? t('pairNotAllowed') : te('generic'));
     } finally {
       setBusy(false);
     }

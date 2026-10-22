@@ -50,6 +50,27 @@ export async function updateReceiptSettingsAction(
   return { ok: true };
 }
 
+export async function createBranchAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ name: z.string().trim().min(1).max(80), area: text(80) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  // Owner-only by RLS. The owner's own "all branches" access covers the new branch at once.
+  const { error } = await supabase.from('branches').insert({
+    org_id: parsed.data.orgId,
+    name: parsed.data.name,
+    area: parsed.data.area,
+  });
+  if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
+  // Every page's branch switcher reads the branch list.
+  revalidatePath(`/${parsed.data.orgSlug}`, 'layout');
+  return { ok: true };
+}
+
 const CHANNEL_KINDS = [
   'dine_in',
   'takeaway',
@@ -175,6 +196,18 @@ export async function toggleReasonActiveAction(formData: FormData): Promise<void
     .update({ is_active: parsed.data.active !== 'true' })
     .eq('id', parsed.data.id);
   if (error) console.error('reason toggle', error.code);
+  refresh(parsed.data.orgSlug);
+}
+
+export async function deleteReasonCodeAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgSlug: z.string().regex(SLUG), id: z.uuid() })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  // Past voids, discounts and refunds keep their rows; they just lose the reason label (FK set null).
+  const { error } = await supabase.from('reason_codes').delete().eq('id', parsed.data.id);
+  if (error) console.error('reason delete', error.code);
   refresh(parsed.data.orgSlug);
 }
 

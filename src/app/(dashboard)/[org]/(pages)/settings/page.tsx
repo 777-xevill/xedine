@@ -3,6 +3,8 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import {
   ChannelForm,
   CommissionForm,
+  BranchForm,
+  DeleteReasonButton,
   ReasonCodeForm,
   ReceiptSettingsForm,
 } from '@/components/settings-forms';
@@ -211,14 +213,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
                     </StatusBadge>
                   ) : null}
                 </p>
-                <form action={toggleReasonActiveAction}>
-                  <input type="hidden" name="id" value={r.id} />
-                  <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-                  <input type="hidden" name="active" value={String(r.is_active)} />
-                  <Button type="submit" variant="ghost" size="sm">
-                    {r.is_active ? t('deactivate') : t('activate')}
-                  </Button>
-                </form>
+                <div className="flex items-center gap-1">
+                  <form action={toggleReasonActiveAction}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+                    <input type="hidden" name="active" value={String(r.is_active)} />
+                    <Button type="submit" variant="ghost" size="sm">
+                      {r.is_active ? t('deactivate') : t('activate')}
+                    </Button>
+                  </form>
+                  <DeleteReasonButton orgSlug={ctx.org.slug} id={r.id} />
+                </div>
               </li>
             ))}
           </ul>
@@ -269,6 +274,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
 
       <Card className="mt-6">
         <CardTitle>{t('branchesTitle')}</CardTitle>
+        <BranchForm orgId={ctx.org.id} orgSlug={ctx.org.slug} />
         <ul className="divide-y divide-line">
           {ctx.branches.map((b) => (
             <li key={b.id} className="py-2">

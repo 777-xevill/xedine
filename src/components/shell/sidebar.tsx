@@ -8,7 +8,7 @@ import { ThemeSwitcher } from '@/components/theme';
 import { cn } from '@/lib/utils';
 import { setBranchAction, signOutAction } from '@/modules/tenancy/actions';
 import type { OrgContext } from '@/modules/tenancy/context';
-import type { Navigation } from '@/modules/tenancy/navigation';
+import { groupNavigation, type Navigation } from '@/modules/tenancy/navigation';
 import { ChatHistory, type ChatSummary } from './chat-history';
 import { SidebarNav, sidebarItem, type SidebarLink } from './sidebar-nav';
 
@@ -123,8 +123,14 @@ export async function Sidebar({
       </div>
 
       <div className="mt-2 min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-        <SidebarNav links={label(nav.core)} label={t('main')} />
-        <SidebarNav links={label(nav.more)} label={t('more')} heading={t('more')} />
+        {groupNavigation([...nav.core, ...nav.more]).map((g) => (
+          <SidebarNav
+            key={g.section}
+            links={label(g.links)}
+            label={g.section === 'top' ? t('main') : t(`section.${g.section}`)}
+            heading={g.section === 'top' ? undefined : t(`section.${g.section}`)}
+          />
+        ))}
         <SidebarNav links={label(nav.apps)} label={t('apps')} heading={t('apps')} />
         {nav.canChat ? (
           <Suspense

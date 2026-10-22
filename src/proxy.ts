@@ -10,6 +10,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 const PUBLIC_PREFIXES = [
   '/sign-in',
   '/sign-up',
+  // An invited person lands here first; the page itself offers sign-up or accept.
+  '/accept-invite',
   '/api/health',
   '/api/jobs',
   '/api/webhooks',

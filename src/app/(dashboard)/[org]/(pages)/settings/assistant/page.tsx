@@ -5,7 +5,16 @@ import { ActionForm } from '@/components/action-form';
 import { SettingsNav } from '@/components/settings-nav';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle, EmptyState, Input, Label, PageTitle, Select } from '@/components/ui/form';
+import {
+  Card,
+  CardTitle,
+  EmptyState,
+  Hint,
+  Input,
+  Label,
+  PageTitle,
+  Select,
+} from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { aiConfigured, aiProvider } from '@/lib/llm-gateway';
 import { addContextAction, removeContextAction } from '@/modules/assistant/actions';
@@ -32,6 +41,19 @@ export default async function AssistantSettingsPage({
     .eq('is_active', true)
     .order('created_at');
   const on = aiConfigured();
+  // One-tap starters: nobody has to think of the words. Ones already added are hidden.
+  const EXAMPLES = ['foodCost', 'growth', 'short', 'noRaise', 'noStaff'] as const;
+  const EXAMPLE_KIND = {
+    foodCost: 'goal',
+    growth: 'goal',
+    short: 'rule',
+    noRaise: 'constraint',
+    noStaff: 'constraint',
+  } as const;
+  const have = new Set((rules ?? []).map((r) => r.body as string));
+  const examples = EXAMPLES.map((k) => ({ key: k, body: t(`examples.${k}`) })).filter(
+    (e) => !have.has(e.body),
+  );
 
   return (
     <>
@@ -59,6 +81,15 @@ export default async function AssistantSettingsPage({
       <Card>
         <CardTitle className="mb-1">{t('rulesTitle')}</CardTitle>
         <p className="mb-4 text-sm text-secondary">{t('rulesBody')}</p>
+        <ul className="mb-4 space-y-1 text-sm text-secondary">
+          {(['goal', 'rule', 'constraint'] as const).map((k) => (
+            <li key={k}>
+              <span className="font-medium text-foreground">{t(`kinds.${k}`)}</span>
+              {' — '}
+              {t(`kindHelp.${k}`)}
+            </li>
+          ))}
+        </ul>
         {(rules ?? []).length === 0 ? (
           <EmptyState title={t('noRules')} className="py-6" />
         ) : (
@@ -80,10 +111,32 @@ export default async function AssistantSettingsPage({
             ))}
           </ul>
         )}
+        {examples.length > 0 ? (
+          <div className="mt-5 border-t border-line pt-5">
+            <p className="text-sm font-medium">{t('examplesTitle')}</p>
+            <p className="mb-2 text-sm text-secondary">{t('examplesBody')}</p>
+            <ul className="flex flex-wrap gap-2">
+              {examples.map((e) => (
+                <li key={e.key}>
+                  <ActionForm action={addContextAction}>
+                    <input type="hidden" name="orgId" value={ctx.org.id} />
+                    <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+                    <input type="hidden" name="kind" value={EXAMPLE_KIND[e.key]} />
+                    <input type="hidden" name="body" value={e.body} />
+                    <Button type="submit" variant="secondary" size="sm">
+                      + {e.body}
+                    </Button>
+                  </ActionForm>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <p className="mt-5 border-t border-line pt-5 text-sm font-medium">{t('writeOwn')}</p>
         <ActionForm
           action={addContextAction}
           successKey="common.saved"
-          className="mt-5 grid gap-3 border-t border-line pt-5 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end"
+          className="mt-3 grid gap-3 border-t border-line pt-5 sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-end"
         >
           <input type="hidden" name="orgId" value={ctx.org.id} />
           <input type="hidden" name="orgSlug" value={ctx.org.slug} />
@@ -111,6 +164,7 @@ export default async function AssistantSettingsPage({
           <Button type="submit" variant="secondary">
             {t('addRule')}
           </Button>
+          <Hint className="col-span-full">{t('ruleHint')}</Hint>
         </ActionForm>
       </Card>
     </>

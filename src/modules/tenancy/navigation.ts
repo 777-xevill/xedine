@@ -155,6 +155,49 @@ export interface Navigation {
   settings: NavLink[];
 }
 
+/**
+ * Plain-word sections for the sidebar, so the list reads as a few small groups instead of one long
+ * column. Grouping only changes how links are laid out; which links exist is still decided above.
+ */
+export type NavSectionKey = 'top' | 'daily' | 'money' | 'customers' | 'restaurant';
+
+const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
+  home: 'top',
+  stock: 'daily',
+  purchases: 'daily',
+  plan: 'daily',
+  recipes: 'daily',
+  sales: 'money',
+  leaks: 'money',
+  menuProfit: 'money',
+  benchmarks: 'money',
+  customers: 'customers',
+  campaigns: 'customers',
+  growth: 'customers',
+  reviews: 'customers',
+  menu: 'restaurant',
+  branches: 'restaurant',
+  staffRecords: 'restaurant',
+  compliance: 'restaurant',
+};
+
+const SECTION_ORDER: NavSectionKey[] = ['top', 'daily', 'money', 'customers', 'restaurant'];
+
+export function groupNavigation(links: NavLink[]): { section: NavSectionKey; links: NavLink[] }[] {
+  return SECTION_ORDER.map((section) => ({
+    section,
+    links: links
+      .filter((l) => (SECTION_OF[l.key] ?? 'restaurant') === section)
+      // Keep each section in the order the model above lists them.
+      .sort((a, b) => orderIndex(a.key) - orderIndex(b.key)),
+  })).filter((g) => g.links.length > 0);
+}
+
+function orderIndex(key: IconKey): number {
+  const i = Object.keys(SECTION_OF).indexOf(key);
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+}
+
 export function buildNavigation(input: {
   slug: string;
   roles: Role[];

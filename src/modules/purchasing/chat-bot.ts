@@ -8,6 +8,13 @@ import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
+import {
+  answerOwnerQuestion,
+  ASK_CALLBACK,
+  isActiveOwner,
+  sendOwnerMenu,
+  topicQuestion,
+} from '@/modules/assistant/telegram-owner';
 import { parseBazarText } from './bazar-text';
 import {
   DAYS_CALLBACK,
@@ -195,10 +202,18 @@ export async function handleTelegramUpdate(update: TelegramUpdate, api: Telegram
     return api.sendMessage(chatId, translators(session?.locale ?? 'bn').t('stopped'));
   }
   if (!session) {
+    // Not connected yet. Someone who opened the bot by hand can paste the owner's link (or just its
+    // code) here instead of finding the link again.
+    const pasted = text.match(/[?&]start=([0-9a-f]{32})/i)?.[1];
+    if (pasted) return redeem(sb, api, chatId, pasted);
     return api.sendMessage(chatId, translators('bn').t('notConnected'));
   }
   const { t } = translators(session.locale);
-  if (text.startsWith('/')) return api.sendMessage(chatId, t('help'));
+  // An owner's chat also answers questions (sales, stock, leaks…); a purchaser's only records the bazar.
+  const owner = await isActiveOwner(sb, session.orgId, session.userId);
+  if (text.startsWith('/')) {
+    return owner ? sendOwnerMenu(api, chatId, session.locale) : api.sendMessage(chatId, t('help'));
+  }
 
   let extracted: ExtractedPurchase | undefined;
   // "3 din er bazar" on a line of its own: the days for every line that does not say its own.
@@ -245,7 +260,20 @@ export async function handleTelegramUpdate(update: TelegramUpdate, api: Telegram
     if (source !== 'photo') {
       if (!rawText) return api.sendMessage(chatId, t('help'));
       const typed = parseBazarText(rawText);
-      if (typed.lines.length > 0 && typed.unread.length === 0) {
+      const isList = typed.lines.length > 0 && typed.unread.length === 0;
+      if (owner && !isList) {
+        // Not a bazar list: the owner is asking something. A voice note shows what was heard first.
+        if (heard) await api.sendMessage(chatId, t('heard', { text: heard.slice(0, 500) }));
+        return answerOwnerQuestion({
+          sb,
+          api,
+          chatId,
+          orgId: session.orgId,
+          locale: session.locale,
+          question: rawText,
+        });
+      }
+      if (isList) {
         extracted = { supplier: '', date: '', notes: '', lines: typed.lines };
         listDays = typed.days;
       } else if (aiConfigured()) {
@@ -338,6 +366,16 @@ async function redeem(sb: Sb, api: TelegramApi, chatId: number, code: string) {
       .maybeSingle(),
   ]);
   const { t } = translators(session?.locale ?? 'bn');
+  if (session && (await isActiveOwner(sb, session.orgId, session.userId))) {
+    await api.sendMessage(
+      chatId,
+      t('welcome', {
+        org: (org?.name as string | undefined) ?? '',
+        branch: (branch?.name as string | undefined) ?? '',
+      }),
+    );
+    return sendOwnerMenu(api, chatId, session.locale);
+  }
   await api.sendMessage(
     chatId,
     [
@@ -360,6 +398,22 @@ async function handleButton(
   const pick = PICK_CALLBACK.exec(data);
   if (pick && message && message.chat.type === 'private') {
     return handlePick(sb, api, cq.id, message, pick[1]!, Number(pick[2]), pick[3]!);
+  }
+  const ask = ASK_CALLBACK.exec(data);
+  if (ask && message && message.chat.type === 'private') {
+    const session = await sessionFor(sb, String(message.chat.id));
+    await api.answerCallback(cq.id);
+    if (!session || !(await isActiveOwner(sb, session.orgId, session.userId))) return;
+    const question = topicQuestion(ask[1]!, session.locale);
+    if (!question) return;
+    return answerOwnerQuestion({
+      sb,
+      api,
+      chatId: message.chat.id,
+      orgId: session.orgId,
+      locale: session.locale,
+      question,
+    });
   }
   const days = DAYS_CALLBACK.exec(data);
   if (days && message && message.chat.type === 'private') {

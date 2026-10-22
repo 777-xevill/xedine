@@ -10,6 +10,7 @@ import {
   signInAction,
   signUpAction,
   acceptInvitationAction,
+  joinWithInviteAction,
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
 
@@ -26,6 +27,18 @@ export function SignInForm({ next }: { next?: string }) {
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next ?? ''} />
+      {next?.startsWith('/accept-invite') ? (
+        <Alert tone="info">
+          <p className="font-medium">{t('auth.inviteSignInTitle')}</p>
+          <p className="mt-1 text-sm">{t('auth.inviteSignInBody')}</p>
+          <Link
+            href={signUpHref}
+            className="mt-3 inline-flex min-h-10 items-center rounded-full bg-action px-4 text-sm font-semibold text-on-action"
+          >
+            {t('auth.inviteCreateAccount')}
+          </Link>
+        </Alert>
+      ) : null}
       <ErrorAlert error={state.error} />
       <div>
         <Label htmlFor="email">{t('common.email')}</Label>
@@ -168,6 +181,71 @@ export function OnboardingForm() {
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? t('common.loading') : t('onboarding.submit')}
       </Button>
+    </form>
+  );
+}
+
+/** For an invited person who has no account yet: name and password, one button. */
+export function JoinInviteForm({ token, email }: { token: string; email?: string }) {
+  const t = useTranslations();
+  const [state, action, pending] = useActionState(joinWithInviteAction, initialState);
+  const next = `/accept-invite?token=${token}${email ? `&email=${encodeURIComponent(email)}` : ''}`;
+  return (
+    <form action={action} className="space-y-4">
+      <input type="hidden" name="token" value={token} />
+      <ErrorAlert error={state.error} />
+      {state.error === 'emailTaken' ? (
+        <Link
+          href={`/sign-in?next=${encodeURIComponent(next)}`}
+          className="block text-center text-sm text-purple underline-offset-4 hover:underline"
+        >
+          {t('auth.joinHaveAccount')}
+        </Link>
+      ) : null}
+      {state.ok && state.message ? (
+        <Alert tone="success">{t(`auth.${state.message}`)}</Alert>
+      ) : null}
+      <div>
+        <Label htmlFor="join-name">{t('auth.joinName')}</Label>
+        <Input id="join-name" name="fullName" autoComplete="name" required />
+      </div>
+      <div>
+        <Label htmlFor="join-email">{t('common.email')}</Label>
+        <Input
+          id="join-email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          defaultValue={email ?? ''}
+          readOnly={Boolean(email)}
+        />
+        <Hint>{t('auth.inviteHint')}</Hint>
+      </div>
+      <div>
+        <Label htmlFor="join-password">{t('auth.joinPassword')}</Label>
+        <Input
+          id="join-password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+        />
+        <Hint>{t('auth.joinPasswordHint')}</Hint>
+      </div>
+      <Button type="submit" className="w-full" disabled={pending}>
+        {pending ? t('common.loading') : t('auth.joinButton')}
+      </Button>
+      <p className="text-center text-sm text-secondary">
+        {t('auth.haveAccount')}{' '}
+        <Link
+          href={`/sign-in?next=${encodeURIComponent(next)}`}
+          className="text-purple underline-offset-4 hover:underline"
+        >
+          {t('common.signIn')}
+        </Link>
+      </p>
     </form>
   );
 }

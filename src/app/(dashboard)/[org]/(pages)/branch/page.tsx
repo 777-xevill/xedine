@@ -131,8 +131,8 @@ export default async function BranchPage({
                       <input type="hidden" name="branchId" value={current.id} />
                       <input type="hidden" name="itemId" value={item.id} />
                       <input type="hidden" name="available" value={String(!available)} />
-                      <Button type="submit" variant={available ? 'danger' : 'secondary'} size="sm">
-                        {available ? t('eightySix') : t('bringBack')}
+                      <Button type="submit" variant="secondary" size="sm">
+                        {available ? t('markSoldOut') : t('bringBack')}
                       </Button>
                     </form>
                   </div>
@@ -146,6 +146,7 @@ export default async function BranchPage({
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardTitle>{t('tablesTitle')}</CardTitle>
+          <p className="-mt-2 mb-4 text-sm text-secondary">{t('tablesBody')}</p>
           <TableForm orgId={ctx.org.id} orgSlug={ctx.org.slug} branchId={current.id} />
           {(tables ?? []).length === 0 ? (
             <EmptyState className="mt-4" title={t('noTables')} />
@@ -170,7 +171,7 @@ export default async function BranchPage({
                       size="sm"
                       className="min-h-7 px-2 text-xs"
                     >
-                      {tb.is_active ? tc('remove') : t('bringBack')}
+                      {tb.is_active ? tc('remove') : t('restore')}
                     </Button>
                   </form>
                 </li>
@@ -181,6 +182,7 @@ export default async function BranchPage({
 
         <Card>
           <CardTitle>{t('stationsTitle')}</CardTitle>
+          <p className="-mt-2 mb-4 text-sm text-secondary">{t('stationsBody')}</p>
           <StationForm orgId={ctx.org.id} orgSlug={ctx.org.slug} branchId={current.id} />
           {(stations ?? []).length === 0 ? (
             <EmptyState className="mt-4" title={t('noStations')} />
@@ -202,7 +204,7 @@ export default async function BranchPage({
                       size="sm"
                       className="min-h-7 px-2 text-xs"
                     >
-                      {s.is_active ? tc('remove') : t('bringBack')}
+                      {s.is_active ? tc('remove') : t('restore')}
                     </Button>
                   </form>
                 </li>

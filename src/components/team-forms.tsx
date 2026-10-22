@@ -10,13 +10,51 @@ import { ErrorAlert } from '@/components/auth-forms';
 
 const INVITE_ROLES = ['manager', 'cashier', 'kitchen', 'purchaser', 'accountant'] as const;
 
+/** Remove a member or revoke an invitation, after a plain "are you sure" prompt naming the person. */
+export function ConfirmTeamButton({
+  action,
+  field,
+  id,
+  orgSlug,
+  name,
+  kind,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  field: 'membershipId' | 'invitationId';
+  id: string;
+  orgSlug: string;
+  name: string;
+  kind: 'remove' | 'revoke';
+}) {
+  const t = useTranslations('team');
+  const tc = useTranslations('common');
+  return (
+    <form
+      action={action}
+      onSubmit={(e) => {
+        const message =
+          kind === 'remove' ? t('confirmRemove', { name }) : t('confirmRevoke', { name });
+        if (!window.confirm(message)) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name={field} value={id} />
+      <input type="hidden" name="orgSlug" value={orgSlug} />
+      <Button type="submit" variant={kind === 'remove' ? 'danger' : 'secondary'} size="sm">
+        {kind === 'remove' ? tc('remove') : tc('revoke')}
+      </Button>
+    </form>
+  );
+}
+
 export function InviteForm({
   orgId,
   orgSlug,
+  orgName,
   branches,
 }: {
   orgId: string;
   orgSlug: string;
+  orgName: string;
   branches: { id: string; name: string }[];
 }) {
   const t = useTranslations();
@@ -24,16 +62,52 @@ export function InviteForm({
   const [role, setRole] = useState<(typeof INVITE_ROLES)[number]>('manager');
   const [copied, setCopied] = useState(false);
   const needsBranches = role !== 'accountant';
+  const link = state.ok ? state.data?.link : undefined;
+  // Xedine does not send email itself: the owner passes the link on by the app they already use.
+  const message = link
+    ? t('team.shareMessage', { org: orgName, link, role: t(`roles.${role}`) })
+    : '';
 
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="orgSlug" value={orgSlug} />
+      <ol className="list-decimal space-y-1 ps-5 text-sm text-secondary">
+        <li>{t('team.how1')}</li>
+        <li>{t('team.how2')}</li>
+        <li>{t('team.how3')}</li>
+      </ol>
       <ErrorAlert error={state.error} />
       {state.ok && state.data?.link ? (
         <Alert tone="success">
           <p>{t('team.inviteReady')}</p>
-          <div className="mt-2 flex gap-2">
+          <p className="mt-2 text-sm font-medium">{t('team.sendVia')}</p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(message)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-9 items-center rounded-full border border-line px-3 text-sm hover:bg-surface-elevated"
+            >
+              {t('team.viaWhatsapp')}
+            </a>
+            <a
+              href={`https://t.me/share/url?url=${encodeURIComponent(state.data.link)}&text=${encodeURIComponent(message)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-9 items-center rounded-full border border-line px-3 text-sm hover:bg-surface-elevated"
+            >
+              {t('team.viaTelegram')}
+            </a>
+            <a
+              href={`mailto:?subject=${encodeURIComponent(t('team.shareSubject', { org: orgName }))}&body=${encodeURIComponent(message)}`}
+              className="inline-flex min-h-9 items-center rounded-full border border-line px-3 text-sm hover:bg-surface-elevated"
+            >
+              {t('team.emailIt')}
+            </a>
+          </div>
+          <p className="mt-2 text-sm">{t('team.orCopy')}</p>
+          <div className="mt-1 flex gap-2">
             <Input
               readOnly
               value={state.data.link}
@@ -75,6 +149,7 @@ export function InviteForm({
           </Select>
         </div>
       </div>
+      {role === 'purchaser' ? <Alert tone="info">{t('team.purchaserNote')}</Alert> : null}
       {needsBranches ? (
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium">{t('team.inviteBranches')}</legend>

@@ -2,6 +2,7 @@ import 'server-only';
 import { createTranslator } from 'next-intl';
 import { z } from 'zod';
 import { createServiceRoleClient } from '@/lib/db/service-role';
+import { telegramApi } from '@/lib/messaging/telegram';
 import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
 import { aiConfigured, gateway, type PromptVersion } from '@/lib/llm-gateway';
 import { addDays, businessDate } from '@/lib/time/business-date';
@@ -224,28 +225,82 @@ export async function ownerRecipient(sb: Supabase, orgId: string) {
   return { phone: data.owner_whatsapp as string, locale: (data.brief_language as Locale) ?? 'bn' };
 }
 
-/** Compose and queue one org's brief; returns what happened for job_runs. */
+/**
+ * Telegram chats the owner has connected (Settings → Telegram). Telegram is free and needs no plan or
+ * template approval, so a connected owner always gets the brief there.
+ */
+async function ownerTelegramChats(sb: Supabase, orgId: string): Promise<number[]> {
+  const [{ data: links }, { data: owners }] = await Promise.all([
+    sb
+      .from('chat_links')
+      .select('user_id, external_id')
+      .eq('org_id', orgId)
+      .eq('channel', 'telegram')
+      .is('revoked_at', null)
+      .not('external_id', 'is', null),
+    sb
+      .from('memberships')
+      .select('user_id')
+      .eq('org_id', orgId)
+      .eq('role', 'owner')
+      .eq('status', 'active'),
+  ]);
+  const ownerIds = new Set((owners ?? []).map((o) => o.user_id as string));
+  const chats = (links ?? [])
+    .filter((l) => ownerIds.has(l.user_id as string))
+    .map((l) => Number(l.external_id))
+    .filter((id) => Number.isSafeInteger(id));
+  return [...new Set(chats)];
+}
+
+async function briefLocale(sb: Supabase, orgId: string): Promise<Locale> {
+  const { data } = await sb
+    .from('org_profile')
+    .select('brief_language')
+    .eq('org_id', orgId)
+    .maybeSingle();
+  return (data?.brief_language as Locale | null) ?? 'bn';
+}
+
+/** Compose one org's brief and deliver it: Telegram now, WhatsApp through the outbox. */
 export async function queueBrief(
   sb: Supabase,
   orgId: string,
   kind: BriefKind,
   at: Date,
 ): Promise<'queued' | 'no_recipient'> {
-  const to = await ownerRecipient(sb, orgId);
-  if (!to) return 'no_recipient';
-  const brief = await composeBrief({ sb, orgId, kind, at, locale: to.locale });
-  const { data: settings } = await sb
-    .from('org_settings')
-    .select('default_cutoff_minutes')
-    .eq('org_id', orgId)
-    .maybeSingle();
-  await queueMessage(sb, {
-    orgId,
-    toPhone: to.phone,
-    templateKey: `brief_${kind}`,
-    language: to.locale,
-    body: brief.text,
-    idempotencyKey: `brief_${kind}:${businessDate(at, settings?.default_cutoff_minutes ?? 240)}`,
-  });
-  return 'queued';
+  const [to, chats] = await Promise.all([ownerRecipient(sb, orgId), ownerTelegramChats(sb, orgId)]);
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const telegram = token && chats.length > 0 ? telegramApi(token) : null;
+  if (!to && !telegram) return 'no_recipient';
+  const locale = to?.locale ?? (await briefLocale(sb, orgId));
+  const brief = await composeBrief({ sb, orgId, kind, at, locale });
+  let delivered = false;
+  if (telegram) {
+    for (const chat of chats) {
+      try {
+        await telegram.sendMessage(chat, brief.text);
+        delivered = true;
+      } catch (e) {
+        console.error('brief telegram', e instanceof Error ? e.message.slice(0, 120) : 'error');
+      }
+    }
+  }
+  if (to) {
+    const { data: settings } = await sb
+      .from('org_settings')
+      .select('default_cutoff_minutes')
+      .eq('org_id', orgId)
+      .maybeSingle();
+    await queueMessage(sb, {
+      orgId,
+      toPhone: to.phone,
+      templateKey: `brief_${kind}`,
+      language: to.locale,
+      body: brief.text,
+      idempotencyKey: `brief_${kind}:${businessDate(at, settings?.default_cutoff_minutes ?? 240)}`,
+    });
+    delivered = true;
+  }
+  return delivered ? 'queued' : 'no_recipient';
 }

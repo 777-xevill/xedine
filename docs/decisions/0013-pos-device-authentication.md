@@ -27,3 +27,7 @@ Concretely:
 - Harder: the device's Supabase session must survive long unattended periods (a restaurant runs the till for a full shift, sometimes 12+ hours) without forcing a re-login mid-service — Supabase's refresh-token rotation handles this as long as the PWA stays open or the refresh token is persisted; if a manager's password changes or their session is revoked, **every device they signed into needs re-pairing**, which is a real operational cost worth surfacing at go-live.
 - **Every order-mutating RPC must call `verify_staff_session` before writing** — an RPC that skips this check would let anyone with till access act as any staff member on that branch, defeating the audit trail's purpose. A test enforces that a stale or wrong-device session is refused.
 - **Revisit** if a chain wants dedicated device logins independent of any one manager's account (e.g. a branch-level shared login) — that would need its own account per branch rather than per manager, a small extension of this same pattern.
+
+
+## Amendment (2026-10-21): any till or kitchen staff may pair a screen
+A cashier who opened POS in the browser was stopped at "ask the owner". `register_device` now allows owner, manager, cashier and kitchen for a branch they have access to (migration `20261021000001`). Pairing only registers an audited screen; working it still needs a staff PIN. Accountants and purchasers still cannot pair.

@@ -1,25 +1,16 @@
 import { Send } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { ActionForm } from '@/components/action-form';
 import { SettingsNav } from '@/components/settings-nav';
+import { TelegramLinkForm } from '@/components/telegram-link-form';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Alert,
-  Card,
-  CardTitle,
-  EmptyState,
-  Hint,
-  Label,
-  PageTitle,
-  Select,
-} from '@/components/ui/form';
+import { Alert, Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
 import { speechConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
-import { createChatLinkAction, revokeChatLinkAction } from '@/modules/purchasing/chat-actions';
+import { revokeChatLinkAction } from '@/modules/purchasing/chat-actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 /**
@@ -137,28 +128,12 @@ export default async function TelegramSettingsPage({
         {targets.length === 0 ? (
           <EmptyState title={t('noPurchasers')} className="py-6" />
         ) : (
-          <ActionForm
-            action={createChatLinkAction}
-            successKey="telegramPage.linkReady"
-            className="space-y-3"
-          >
-            <input type="hidden" name="orgId" value={ctx.org.id} />
-            <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-            <div>
-              <Label htmlFor="tg-target">{t('person')}</Label>
-              <Select id="tg-target" name="target" required>
-                {targets.map((x) => (
-                  <option key={x.value} value={x.value}>
-                    {x.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <Hint>{t('linkHint')}</Hint>
-            <Button type="submit" disabled={!ready}>
-              {t('makeLink')}
-            </Button>
-          </ActionForm>
+          <TelegramLinkForm
+            orgId={ctx.org.id}
+            orgSlug={ctx.org.slug}
+            targets={targets}
+            ready={ready}
+          />
         )}
       </Card>
 

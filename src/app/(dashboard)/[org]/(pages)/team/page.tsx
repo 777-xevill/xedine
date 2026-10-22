@@ -1,7 +1,7 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { InviteForm } from '@/components/team-forms';
-import { Button } from '@/components/ui/button';
+import { ConfirmTeamButton, InviteForm } from '@/components/team-forms';
 import { Card, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
@@ -14,9 +14,8 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
   const ctx = await getOrgContext(org);
   if (!ctx.isOwner) notFound();
 
-  const [t, tc, roles, locale] = await Promise.all([
+  const [t, roles, locale] = await Promise.all([
     getTranslations('team'),
-    getTranslations('common'),
     getTranslations('roles'),
     getLocale(),
   ]);
@@ -62,12 +61,31 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
       <Card className="mb-6">
-        <h2 className="mb-4 text-lg font-semibold">{t('inviteTitle')}</h2>
-        <InviteForm orgId={ctx.org.id} orgSlug={ctx.org.slug} branches={branches ?? []} />
+        <h2 className="mb-1 text-lg font-semibold">{t('tillStaffTitle')}</h2>
+        <p className="text-sm text-secondary">
+          {t('tillStaffBody')}{' '}
+          <Link
+            href={`/${ctx.org.slug}/staff`}
+            className="text-purple underline-offset-4 hover:underline"
+          >
+            {t('tillStaffLink')}
+          </Link>
+        </p>
       </Card>
 
       <Card className="mb-6">
-        <h2 className="mb-3 text-lg font-semibold">{t('pendingTitle')}</h2>
+        <h2 className="mb-4 text-lg font-semibold">{t('inviteTitle')}</h2>
+        <InviteForm
+          orgId={ctx.org.id}
+          orgSlug={ctx.org.slug}
+          orgName={ctx.org.name}
+          branches={branches ?? []}
+        />
+      </Card>
+
+      <Card className="mb-6">
+        <h2 className="mb-1 text-lg font-semibold">{t('pendingTitle')}</h2>
+        <p className="mb-3 text-sm text-secondary">{t('pendingHint')}</p>
         {(invitations ?? []).length === 0 ? (
           <p className="text-secondary">{t('noPending')}</p>
         ) : (
@@ -86,13 +104,14 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
                     })}
                   </p>
                 </div>
-                <form action={revokeInvitationAction}>
-                  <input type="hidden" name="invitationId" value={inv.id} />
-                  <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-                  <Button type="submit" variant="secondary" size="sm">
-                    {tc('revoke')}
-                  </Button>
-                </form>
+                <ConfirmTeamButton
+                  kind="revoke"
+                  action={revokeInvitationAction}
+                  field="invitationId"
+                  id={inv.id}
+                  orgSlug={ctx.org.slug}
+                  name={inv.email}
+                />
               </li>
             ))}
           </ul>
@@ -111,13 +130,14 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
                 </p>
               </div>
               {m.role !== 'owner' ? (
-                <form action={removeMemberAction}>
-                  <input type="hidden" name="membershipId" value={m.id} />
-                  <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-                  <Button type="submit" variant="danger" size="sm">
-                    {tc('remove')}
-                  </Button>
-                </form>
+                <ConfirmTeamButton
+                  kind="remove"
+                  action={removeMemberAction}
+                  field="membershipId"
+                  id={m.id}
+                  orgSlug={ctx.org.slug}
+                  name={nameOf.get(m.user_id) ?? roles(m.role)}
+                />
               ) : null}
             </li>
           ))}

@@ -1169,7 +1169,7 @@ describe('defaults for a new restaurant', () => {
     );
     // 10 till reasons (void, discount, refund) + 5 waste reasons from Phase 5 (ADR 0018) + staff food
     // (ADR 0029).
-    expect(counts).toEqual({ channels: 5, reasons: 16, stations: 2 });
+    expect(counts).toEqual({ channels: 5, reasons: 17, stations: 2 });
   });
 });
 

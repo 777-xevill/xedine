@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Hint, Input, Label, Select } from '@/components/ui/form';
 import {
   createChannelAction,
+  createBranchAction,
   createReasonCodeAction,
+  deleteReasonCodeAction,
   setChannelCommissionAction,
   updateReceiptSettingsAction,
 } from '@/modules/settings/actions';
@@ -67,6 +69,38 @@ export function ReceiptSettingsForm({
         </div>
       </div>
       <Button type="submit">{t('save')}</Button>
+    </ActionForm>
+  );
+}
+
+export function BranchForm({ orgId, orgSlug }: { orgId: string; orgSlug: string }) {
+  const t = useTranslations('settings');
+  return (
+    <ActionForm
+      action={createBranchAction}
+      successKey="settings.branchAdded"
+      className="mb-3 flex flex-wrap items-end gap-2"
+    >
+      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="orgSlug" value={orgSlug} />
+      <div>
+        <Label htmlFor="branch-name">{t('branchName')}</Label>
+        <Input
+          id="branch-name"
+          name="name"
+          required
+          maxLength={80}
+          autoComplete="off"
+          placeholder={t('branchNamePlaceholder')}
+          className="w-44"
+        />
+      </div>
+      <div>
+        <Label htmlFor="branch-area">{t('branchArea')}</Label>
+        <Input id="branch-area" name="area" maxLength={80} autoComplete="off" className="w-44" />
+      </div>
+      <Button type="submit">{t('addBranch')}</Button>
+      <Hint className="basis-full">{t('branchHint')}</Hint>
     </ActionForm>
   );
 }
@@ -132,6 +166,7 @@ export function CommissionForm({
       successKey="common.saved"
       className="glass-tile mt-2 grid gap-3 rounded-input p-3 sm:grid-cols-3"
     >
+      <p className="text-sm text-secondary sm:col-span-3">{t('commissionIntro')}</p>
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="orgSlug" value={orgSlug} />
       <input type="hidden" name="channelId" value={channelId} />
@@ -146,6 +181,7 @@ export function CommissionForm({
           step="0.01"
           defaultValue={current?.commissionPct ?? '0'}
         />
+        <Hint>{t('commissionHint')}</Hint>
       </div>
       <div>
         <Label htmlFor={`fee-${channelId}`}>{t('fixedFee')}</Label>
@@ -155,6 +191,7 @@ export function CommissionForm({
           inputMode="decimal"
           defaultValue={current?.fixedFee ?? ''}
         />
+        <Hint>{t('fixedFeeHint')}</Hint>
       </div>
       <div>
         <Label htmlFor={`pack-${channelId}`}>{t('packaging')}</Label>
@@ -164,11 +201,45 @@ export function CommissionForm({
           inputMode="decimal"
           defaultValue={current?.packaging ?? ''}
         />
+        <Hint>{t('packagingHint')}</Hint>
       </div>
-      <Button type="submit" size="sm" className="sm:col-span-3">
-        {t('save')}
-      </Button>
+      <div className="flex gap-2 sm:col-span-3">
+        <Button type="submit" size="sm" className="flex-1">
+          {t('save')}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          {t('closeCommission')}
+        </Button>
+      </div>
     </ActionForm>
+  );
+}
+
+/** Delete a reason after a plain "are you sure" prompt. Old records keep working without the label. */
+export function DeleteReasonButton({
+  orgSlug,
+  id,
+  className,
+}: {
+  orgSlug: string;
+  id: string;
+  className?: string;
+}) {
+  const t = useTranslations('settings');
+  return (
+    <form
+      action={deleteReasonCodeAction}
+      className={className}
+      onSubmit={(e) => {
+        if (!window.confirm(t('deleteReasonConfirm'))) e.preventDefault();
+      }}
+    >
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="orgSlug" value={orgSlug} />
+      <Button type="submit" variant="ghost" size="sm" className="text-danger">
+        {t('deleteReason')}
+      </Button>
+    </form>
   );
 }
 

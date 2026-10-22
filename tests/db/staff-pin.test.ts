@@ -142,11 +142,15 @@ describe('device registration', () => {
     expect(dev).toEqual({ status: 'active', pairing_code_hash: null });
   });
 
-  it('a cashier cannot register devices; a manager cannot register for a branch they do not have', async () => {
-    const asCashier = await asUser(cashierAccount, (s) =>
+  it('a cashier may pair a till for their own branch only; a manager cannot register for a branch they do not have', async () => {
+    const own = await asUser(cashierAccount, (s) =>
       s.attempt(`select public.register_device($1, $2, 'x')`, [org.id, org.branchIds[0]]),
     );
-    expect(asCashier.ok).toBe(false);
+    expect(own.ok).toBe(true);
+    const cashierOther = await asUser(cashierAccount, (s) =>
+      s.attempt(`select public.register_device($1, $2, 'x')`, [org.id, org.branchIds[1]]),
+    );
+    expect(cashierOther.ok).toBe(false);
     const otherBranch = await asUser(manager, (s) =>
       s.attempt(`select public.register_device($1, $2, 'x')`, [org.id, org.branchIds[1]]),
     );

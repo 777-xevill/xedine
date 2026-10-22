@@ -1,9 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { buildNavigation, FEATURE_KEYS, FEATURE_LINKS, parseFeatures } from './navigation';
+import {
+  buildNavigation,
+  FEATURE_KEYS,
+  FEATURE_LINKS,
+  groupNavigation,
+  parseFeatures,
+} from './navigation';
 
 const keys = (links: { key: string }[]) => links.map((l) => l.key);
 
 describe('navigation (ADR 0024)', () => {
+  it('groups the sidebar into plain sections and never drops a link', () => {
+    const nav = buildNavigation({ slug: 'd', roles: ['owner'], enabled: [...FEATURE_KEYS] });
+    const all = [...nav.core, ...nav.more];
+    const groups = groupNavigation(all);
+    expect(groups.map((g) => g.section)).toEqual([
+      'top',
+      'daily',
+      'money',
+      'customers',
+      'restaurant',
+    ]);
+    expect(keys(groups.flatMap((g) => g.links)).sort()).toEqual(keys(all).sort());
+    expect(keys(groups[1]!.links)).toEqual(['stock', 'purchases', 'plan', 'recipes']);
+  });
+
   it('an owner with nothing switched on sees only the core sections', () => {
     const nav = buildNavigation({ slug: 'demo', roles: ['owner'], enabled: [] });
     expect(keys(nav.core)).toEqual(['home', 'stock', 'sales', 'leaks', 'menu']);

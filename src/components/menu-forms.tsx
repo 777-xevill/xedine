@@ -131,13 +131,13 @@ export function VariantForm({
         />
       </div>
       <div>
-        <Label htmlFor={`vdelta-${itemId}`}>{t('priceDelta')}</Label>
+        <Label htmlFor={`vdelta-${itemId}`}>{t('sizePrice')}</Label>
         <Input
           id={`vdelta-${itemId}`}
-          name="delta"
+          name="price"
           inputMode="decimal"
           autoComplete="off"
-          placeholder="-50"
+          placeholder={t('sizePricePlaceholder')}
           aria-describedby={`vhint-${itemId}`}
           className="w-28"
         />
@@ -146,7 +146,7 @@ export function VariantForm({
         {t('addVariant')}
       </Button>
       <Hint id={`vhint-${itemId}`} className="basis-full">
-        {t('priceDeltaHint')}
+        {t('sizePriceHint')}
       </Hint>
     </ActionForm>
   );

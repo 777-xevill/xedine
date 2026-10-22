@@ -1,4 +1,4 @@
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, EyeOff } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import {
@@ -169,8 +169,15 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                 <input type="hidden" name="id" value={c.id} />
                 <input type="hidden" name="orgSlug" value={ctx.org.slug} />
                 <input type="hidden" name="active" value={String(c.is_active)} />
-                <Button type="submit" variant="ghost" size="sm" className="min-h-6 px-2 text-xs">
-                  {c.is_active ? t('deactivate') : t('activate')}
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-6 px-2 text-xs"
+                  aria-label={c.is_active ? t('deactivate') : t('activate')}
+                  title={c.is_active ? t('deactivate') : t('activate')}
+                >
+                  {c.is_active ? <EyeOff aria-hidden className="size-3.5" /> : t('activate')}
                 </Button>
               </form>
             </li>
@@ -249,8 +256,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                               key={v.id}
                               className={`glass-tile flex items-center gap-1.5 rounded-full py-1 ps-3 pe-1.5 text-sm ${v.is_active ? '' : 'text-muted line-through'}`}
                             >
-                              {v.name} ({v.price_delta_poisha >= 0 ? '+' : ''}
-                              {money(v.price_delta_poisha)})
+                              {v.name} · {money(item.base_price_poisha + v.price_delta_poisha)}
                               <form action={toggleVariantActiveAction}>
                                 <input type="hidden" name="id" value={v.id} />
                                 <input type="hidden" name="orgSlug" value={ctx.org.slug} />
@@ -260,8 +266,14 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                                   variant="ghost"
                                   size="sm"
                                   className="min-h-6 px-2 text-xs"
+                                  aria-label={v.is_active ? t('deactivate') : t('activate')}
+                                  title={v.is_active ? t('deactivate') : t('activate')}
                                 >
-                                  {v.is_active ? t('deactivate') : t('activate')}
+                                  {v.is_active ? (
+                                    <EyeOff aria-hidden className="size-3.5" />
+                                  ) : (
+                                    t('activate')
+                                  )}
                                 </Button>
                               </form>
                             </li>

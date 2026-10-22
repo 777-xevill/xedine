@@ -9,6 +9,7 @@ import { publicEnv } from '@/lib/env';
 import { isLocale } from '@/lib/i18n/format';
 import { LOCALE_COOKIE, resolveLocale } from '@/lib/i18n/request';
 import { mapDbError, safeNext, type FormState } from './form-state';
+import { createInvitedAccount } from './invite-account';
 
 const ROLES = ['manager', 'cashier', 'kitchen', 'purchaser', 'accountant'] as const;
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -40,10 +41,61 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
       error:
         error.code === 'user_already_exists' || /already/i.test(error.message)
           ? 'emailTaken'
-          : 'generic',
+          : error.code === 'over_email_send_rate_limit'
+            ? 'emailLimit'
+            : 'generic',
     };
   if (!data.session) return { ok: true, message: 'checkEmail' };
   redirect(safeNext(formData.get('next')) ?? '/onboarding');
+}
+
+/**
+ * The invited person's one step: name + password, then they are signed in and in the restaurant.
+ * The invitation itself still checks that the email matches (accept_invitation), so a changed email
+ * in the form only fails; it never lets anyone in.
+ */
+export async function joinWithInviteAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const token = z.string().min(20).max(200).safeParse(formData.get('token'));
+  if (!token.success) return { error: 'inviteInvalid' };
+  const parsed = credentials
+    .extend({ fullName: z.string().trim().min(1).max(120) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues.some((i) => i.path[0] === 'password')
+        ? 'weakPassword'
+        : 'invalidInput',
+    };
+  }
+  // The link proves the email, so the account is made already confirmed (no email is sent).
+  const created = await createInvitedAccount({
+    token: token.data,
+    email: parsed.data.email,
+    password: parsed.data.password,
+    fullName: parsed.data.fullName,
+  });
+  if (created === 'invalid') return { error: 'inviteInvalid' };
+  if (created === 'emailTaken') return { error: 'emailTaken' };
+  if (created === 'failed') return { error: 'generic' };
+  const supabase = await createClient();
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (signInError) return { error: 'generic' };
+  const { data: orgId, error: acceptError } = await supabase.rpc('accept_invitation', {
+    p_token: token.data,
+  });
+  if (acceptError) return { error: mapDbError(acceptError) };
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('slug')
+    .eq('id', orgId as string)
+    .single();
+  redirect(org ? `/${org.slug}` : '/');
 }
 
 export async function signInAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -129,7 +181,9 @@ export async function inviteMemberAction(_prev: FormState, formData: FormData): 
   revalidatePath(`/${parsed.data.orgSlug}/team`);
   return {
     ok: true,
-    data: { link: `${publicEnv().NEXT_PUBLIC_SITE_URL}/accept-invite?token=${token}` },
+    data: {
+      link: `${publicEnv().NEXT_PUBLIC_SITE_URL}/accept-invite?token=${token}&email=${encodeURIComponent(parsed.data.email)}`,
+    },
   };
 }
 
@@ -159,7 +213,11 @@ export async function acceptInvitationAction(
   if (!token.success) return { error: 'inviteInvalid' };
   const supabase = await createClient();
   const { data: orgId, error } = await supabase.rpc('accept_invitation', { p_token: token.data });
-  if (error) return { error: mapDbError(error) };
+  if (error) {
+    // Already a member (the link was used before): nothing to accept, just take them in.
+    if (mapDbError(error) === 'inviteAlreadyMember') redirect('/');
+    return { error: mapDbError(error) };
+  }
   const { data: org } = await supabase
     .from('organizations')
     .select('slug')

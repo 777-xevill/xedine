@@ -273,15 +273,14 @@ describe('recipe cost: sub-recipes, yields and prices by date', () => {
     ]);
   });
 
-  it('only the owner saves recipes', async () => {
-    for (const user of [fx.manager, fx.kitchen]) {
-      const r = await attempt(
-        user,
-        `select public.save_recipe($1, $2, null, 'x', 1, '[{"ingredient_id": "${beef}", "qty_base": 1}]'::jsonb)`,
-        [fx.org.id, tehari],
-      );
+  it('the owner and the manager save recipes; the kitchen and the accountant cannot (ADR 0037)', async () => {
+    const call = `select public.save_recipe($1, $2, null, 'x', 1, '[{"ingredient_id": "${beef}", "qty_base": 1}]'::jsonb)`;
+    for (const user of [fx.kitchen, fx.accountant]) {
+      const r = await attempt(user, call, [fx.org.id, tehari]);
       expect(r.ok).toBe(false);
     }
+    // Rolled back with the session: the manager's version does not stay.
+    expect((await attempt(fx.manager, call, [fx.org.id, tehari])).ok).toBe(true);
   });
 });
 

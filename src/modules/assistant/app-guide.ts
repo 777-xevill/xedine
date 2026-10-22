@@ -40,20 +40,21 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   stock: {
     name: 'Stock',
-    what: 'Three tabs. In stock: what is on the shelf and how many days it lasts. Loss: which ingredients were used more than the recipes need. Waste: food written down as waste. Also guided stock counts and Stock Guard alerts.',
+    what: 'Four tabs. In stock: what is on the shelf and how many days it lasts. Used: what the dishes ordered took out of stock on a day, per ingredient and dish (from Dish ingredients). Loss: which ingredients were used more than the dishes need. Waste: food written down as waste. Also guided stock counts and Stock Guard alerts.',
     words: [
       'stock',
       'inventory',
-      'ingredient',
       'shelf',
       'count',
       'waste',
       'loss',
       'lose',
       'running out',
+      'used today',
       'stok',
       'মজুত',
       'লস',
+      'খরচ হয়েছে',
     ],
   },
   sales: {
@@ -94,13 +95,26 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
     words: ['menu', 'dish', 'item', 'price', 'category', 'add item', 'মেনু', 'দাম'],
   },
   recipes: {
-    name: 'Recipes',
-    what: 'What goes into each dish so every plate has a cost. AI can draft a recipe; the owner approves it. Needs the Recipes feature switched on.',
-    words: ['recipe', 'portion', 'ingredient amount', 'food cost', 'রেসিপি'],
+    name: 'Dish ingredients',
+    what: 'What goes into one plate of each dish (Burger: bun 1 piece, chicken 150 g). Every dish ordered at the till then takes these out of stock by itself. Tap a dish, write or fix the list and Save; "Ask AI to fill this" writes a first list to check with the chef. Owner and manager edit (the manager writes it for the chef); one plate\'s cost and the Ingredient prices tab are owner and accountant only.',
+    words: [
+      'recipe',
+      'ingredient',
+      'dish ingredients',
+      'what goes in',
+      'portion',
+      'plate',
+      'food cost',
+      'chef',
+      'রেসিপি',
+      'উপকরণ',
+      'কী লাগে',
+      'প্লেট',
+    ],
   },
   menuProfit: {
     name: 'Menu profit',
-    what: 'Which dishes make money and which lose it (stars, plowhorses, puzzles, dogs), margins, and what a price or portion change would do. Owner and accountant only. Needs the Recipes feature.',
+    what: 'Which dishes make money and which lose it (stars, plowhorses, puzzles, dogs), margins, and what a price or portion change would do. Owner and accountant only. Needs the Menu profit feature switched on.',
     words: [
       'profit',
       'margin',
@@ -203,7 +217,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   features: {
     name: 'Settings → Features',
-    what: 'Switch optional sections on or off (Recipes, Purchasing, Planning, Customers, Reviews, Branches, Compliance, Staff records). Switched-on features appear in the sidebar. Owner only.',
+    what: 'Switch optional sections on or off (Menu profit, Purchasing, Planning, Customers, Reviews, Branches, Compliance, Staff records). Switched-on features appear in the sidebar. Owner only.',
     words: ['feature', 'switch on', 'turn on', 'enable', 'module', 'sidebar'],
   },
   assistantRules: {
@@ -228,8 +242,8 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   branchSetup: {
     name: 'Branch setup',
-    what: "This branch's own setup.",
-    words: ['branch setup', 'add branch', 'new branch', 'tables'],
+    what: "Where the owner asks for a new branch (Xedine approves it before it appears, because every branch is billed) and sets up each branch's tables. Prices are set only on the Menu page.",
+    words: ['branch setup', 'add branch', 'new branch', 'open a branch', 'tables'],
   },
   costs: {
     name: 'Costs',

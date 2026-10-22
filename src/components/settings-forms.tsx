@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Hint, Input, Label, Select } from '@/components/ui/form';
 import {
   createChannelAction,
-  createBranchAction,
   createReasonCodeAction,
   deleteReasonCodeAction,
   setChannelCommissionAction,
@@ -69,38 +68,6 @@ export function ReceiptSettingsForm({
         </div>
       </div>
       <Button type="submit">{t('save')}</Button>
-    </ActionForm>
-  );
-}
-
-export function BranchForm({ orgId, orgSlug }: { orgId: string; orgSlug: string }) {
-  const t = useTranslations('settings');
-  return (
-    <ActionForm
-      action={createBranchAction}
-      successKey="settings.branchAdded"
-      className="mb-3 flex flex-wrap items-end gap-2"
-    >
-      <input type="hidden" name="orgId" value={orgId} />
-      <input type="hidden" name="orgSlug" value={orgSlug} />
-      <div>
-        <Label htmlFor="branch-name">{t('branchName')}</Label>
-        <Input
-          id="branch-name"
-          name="name"
-          required
-          maxLength={80}
-          autoComplete="off"
-          placeholder={t('branchNamePlaceholder')}
-          className="w-44"
-        />
-      </div>
-      <div>
-        <Label htmlFor="branch-area">{t('branchArea')}</Label>
-        <Input id="branch-area" name="area" maxLength={80} autoComplete="off" className="w-44" />
-      </div>
-      <Button type="submit">{t('addBranch')}</Button>
-      <Hint className="basis-full">{t('branchHint')}</Hint>
     </ActionForm>
   );
 }

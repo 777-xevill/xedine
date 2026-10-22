@@ -22,12 +22,13 @@ describe('navigation (ADR 0024)', () => {
       'restaurant',
     ]);
     expect(keys(groups.flatMap((g) => g.links)).sort()).toEqual(keys(all).sort());
-    expect(keys(groups[1]!.links)).toEqual(['stock', 'purchases', 'plan', 'recipes']);
+    expect(keys(groups[1]!.links)).toEqual(['stock', 'recipes', 'purchases', 'plan']);
   });
 
   it('an owner with nothing switched on sees only the core sections', () => {
     const nav = buildNavigation({ slug: 'demo', roles: ['owner'], enabled: [] });
-    expect(keys(nav.core)).toEqual(['home', 'stock', 'sales', 'leaks', 'menu']);
+    // Dish ingredients is core (ADR 0037): stock goes down by what is written there.
+    expect(keys(nav.core)).toEqual(['home', 'stock', 'recipes', 'sales', 'leaks', 'menu']);
     expect(nav.more).toEqual([]);
     expect(keys(nav.apps)).toEqual(['pos', 'kds']);
     expect(nav.canChat).toBe(true);
@@ -40,10 +41,12 @@ describe('navigation (ADR 0024)', () => {
       roles: ['owner'],
       enabled: ['recipes', 'customers'],
     });
-    expect(keys(owner.more)).toEqual(['recipes', 'menuProfit', 'customers', 'campaigns', 'growth']);
-    // Menu profit shows money: a manager never gets the link, even with the feature on.
+    expect(keys(owner.more)).toEqual(['menuProfit', 'customers', 'campaigns', 'growth']);
+    // Menu profit shows money: a manager never gets the link, even with the feature on — but always
+    // has Dish ingredients, because the manager writes it for the chef.
     const manager = buildNavigation({ slug: 'd', roles: ['manager'], enabled: ['recipes'] });
-    expect(keys(manager.more)).toEqual(['recipes']);
+    expect(keys(manager.more)).toEqual([]);
+    expect(keys(manager.core)).toContain('recipes');
   });
 
   it('a module that is a role’s whole job stays in that role’s core list', () => {

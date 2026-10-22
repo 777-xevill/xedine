@@ -13,17 +13,13 @@ import {
   Select,
 } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, type Locale } from '@/lib/i18n/format';
+import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
-import {
-  addFixedCostAction,
-  endFixedCostAction,
-  setAssumedFoodCostAction,
-  setSalaryAction,
-} from '@/modules/costs/actions';
+import { addFixedCostAction, endFixedCostAction, setSalaryAction } from '@/modules/costs/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
+import { FoodCostForm } from './food-cost-form';
 
 const FIXED_KINDS = ['rent', 'utilities', 'gas', 'fuel', 'internet', 'other'] as const;
 
@@ -81,35 +77,20 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
       <Card className="mb-6">
         <CardTitle>{t('foodCostTitle')}</CardTitle>
         <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('foodCostBody')}</p>
-        <ActionForm
-          action={setAssumedFoodCostAction}
-          successKey="common.saved"
-          className="flex flex-wrap items-end gap-3"
-        >
-          {hidden}
-          <div>
-            <Label htmlFor="pct">{t('foodCostPct')}</Label>
-            <Input
-              id="pct"
-              name="pct"
-              type="number"
-              min={0}
-              max={100}
-              step="0.1"
-              required
-              defaultValue={
-                cost?.assumed_food_cost_bps != null ? cost.assumed_food_cost_bps / 100 : ''
-              }
-              className="w-32"
-            />
-          </div>
-          <Button type="submit">{t('save')}</Button>
-          {cost?.assumed_food_cost_bps != null ? (
-            <Hint className="basis-full">
-              {t('currentAssumption', { pct: formatBps(cost.assumed_food_cost_bps, loc) })}
-            </Hint>
-          ) : null}
-        </ActionForm>
+        <FoodCostForm
+          orgId={ctx.org.id}
+          orgSlug={ctx.org.slug}
+          currentPct={cost?.assumed_food_cost_bps != null ? cost.assumed_food_cost_bps / 100 : null}
+        />
+        {cost?.assumed_food_cost_bps != null ? (
+          <Hint className="mt-3">
+            {t('currentAssumption', {
+              amount: formatNumber(cost.assumed_food_cost_bps / 100, loc, {
+                fractionDigits: Number.isInteger(cost.assumed_food_cost_bps / 100) ? 0 : 1,
+              }),
+            })}
+          </Hint>
+        ) : null}
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -237,7 +218,8 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
                           id={`alw-${s.id}`}
                           name="allowances"
                           inputMode="decimal"
-                          className="w-28"
+                          placeholder={t('allowancesPlaceholder')}
+                          className="w-40"
                           defaultValue={
                             current
                               ? formatBDT(Number(current.allowances_poisha), 'en', {

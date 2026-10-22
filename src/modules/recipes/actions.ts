@@ -6,11 +6,23 @@ import { createClient } from '@/lib/db/supabase-server';
 import { aiErrorKey } from '@/lib/llm-gateway';
 import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
-import { draftRecipes, RECIPE_DRAFT_PROMPT } from './drafting';
+import {
+  dishLines,
+  DISH_UNITS,
+  editorAmount,
+  findIngredient,
+  MAX_DISH_ROWS,
+  unitsForRow,
+  type DishRow,
+  type KnownIngredient,
+} from './dish';
+import { DISH_SUGGEST_PROMPT, suggestDish } from './drafting';
+import { allIngredients } from './queries';
 
 /**
- * Recipes and ingredients (ROADMAP Phase 3). Saving and approving are owner RPCs in SQL; the chef
- * (kitchen) drafts and edits drafts; prices are owner-only rows (ADR 0007). RLS decides every write.
+ * Dish ingredients (ADR 0037). The owner or the manager writes what goes into one plate of each dish
+ * (save_recipe, an audited RPC); "Ask AI" only suggests a list for them to check. Prices are owner-only
+ * rows (ADR 0007). RLS and the RPCs decide every write.
  */
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -18,45 +30,27 @@ const base = z.object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG) });
 const refresh = (slug: string) => {
   revalidatePath(`/${slug}/recipes`);
   revalidatePath(`/${slug}/menu-profit`);
+  revalidatePath(`/${slug}/stock`);
 };
 const BASES = ['g', 'ml', 'pcs'] as const;
 
-/** Price per kg / litre / piece, as the owner thinks of it; stored per 1,000 g or ml, or per piece. */
-export async function addIngredientAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base
-    .extend({
-      name: z.string().trim().min(1).max(120),
-      base: z.enum(BASES),
-      price: z.string().trim(),
-    })
-    .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const price = parsed.data.price === '' ? null : parseTakaToPoisha(parsed.data.price);
-  if (price !== null && price < 0) return { error: 'invalidPrice' };
-  if (parsed.data.price !== '' && price === null) return { error: 'invalidPrice' };
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('ingredients')
-    .insert({ org_id: parsed.data.orgId, name: parsed.data.name, base: parsed.data.base })
-    .select('id')
-    .single();
-  if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
-  if (price !== null) {
-    const { error: costError } = await supabase.from('ingredient_costs').insert({
-      ingredient_id: data.id,
-      org_id: parsed.data.orgId,
-      manual_cost_poisha: price,
-      per_base_qty: parsed.data.base === 'pcs' ? 1 : 1000,
-    });
-    if (costError) return { error: mapDbError(costError) };
-  }
-  refresh(parsed.data.orgSlug);
-  return { ok: true };
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/** Only the owner and the manager write a dish's ingredients (save_recipe checks it again in SQL). */
+async function canWrite(supabase: Supabase, orgId: string): Promise<boolean> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+  const { data } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', auth.user.id)
+    .eq('status', 'active')
+    .in('role', ['owner', 'manager']);
+  return (data ?? []).length > 0;
 }
 
+/** Price per kg / litre / piece, as the owner thinks of it; stored per 1,000 g or ml, or per piece. */
 export async function setIngredientPriceAction(
   _prev: FormState,
   formData: FormData,
@@ -80,184 +74,135 @@ export async function setIngredientPriceAction(
   return { ok: true };
 }
 
-const LineSchema = z.object({
-  ingredient_id: z.uuid(),
-  qty_base: z.number().positive(),
-  yield_pct: z.number().gt(0).max(100),
+export type DishResult =
+  { ok: true } | { ok?: false; error: string; data?: Record<string, string> };
+
+const DishInput = base.extend({
+  itemId: z.uuid(),
+  /** How many plates the list makes: 1, or a whole deg / pot. */
+  plates: z.number().positive().max(1000),
+  rows: z
+    .array(
+      z.object({ name: z.string().max(200), qty: z.string().max(20), unit: z.enum(DISH_UNITS) }),
+    )
+    .max(MAX_DISH_ROWS),
+  /** The AI suggestion the list started from, if any: saving it is the person's approval. */
+  draftId: z.uuid().nullable(),
 });
 
-/** Rows named line-<i>-ingredient / -qty / -yield; blank rows are skipped. */
-function readLines(formData: FormData) {
-  const lines: z.infer<typeof LineSchema>[] = [];
-  for (let i = 0; i < 30; i++) {
-    const ingredient = String(formData.get(`line-${i}-ingredient`) ?? '');
-    const qty = String(formData.get(`line-${i}-qty`) ?? '').trim();
-    if (!ingredient || !qty) continue;
-    const yieldPct = String(formData.get(`line-${i}-yield`) ?? '').trim();
-    const parsed = LineSchema.safeParse({
-      ingredient_id: ingredient,
-      qty_base: Number(qty),
-      yield_pct: yieldPct === '' ? 100 : Number(yieldPct),
-    });
-    if (!parsed.success) return null;
-    lines.push(parsed.data);
-  }
-  return lines;
-}
-
-export async function saveRecipeAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = base
-    .extend({ itemId: z.uuid(), yieldPortions: z.coerce.number().positive().max(1000) })
-    .safeParse(Object.fromEntries(formData));
-  const lines = readLines(formData);
-  if (!parsed.success || !lines || lines.length === 0) return { error: 'recipeInvalid' };
+export async function saveDishAction(input: z.input<typeof DishInput>): Promise<DishResult> {
+  const parsed = DishInput.safeParse(input);
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { orgId, orgSlug, itemId, plates, rows, draftId } = parsed.data;
   const supabase = await createClient();
+  let known: KnownIngredient[];
+  try {
+    known = await allIngredients(supabase, orgId);
+  } catch (e) {
+    return { error: mapDbError(e as { code?: string }) };
+  }
+  const lines = dishLines(rows, known);
+  if ('error' in lines)
+    return { error: lines.error, ...('name' in lines ? { data: { name: lines.name } } : {}) };
   const { error } = await supabase.rpc('save_recipe', {
-    p_org: parsed.data.orgId,
-    p_item: parsed.data.itemId,
+    p_org: orgId,
+    p_item: itemId,
     p_variant: null,
     p_name: null,
-    p_yield: parsed.data.yieldPortions,
-    p_lines: lines,
+    p_yield: plates,
+    p_lines: lines.lines,
+    p_notes: null,
+    p_draft: draftId,
   });
-  if (error) return { error: mapDbError(error) };
-  refresh(parsed.data.orgSlug);
+  if (error) {
+    const unit = /ingredient "(.+)" is kept in another unit/.exec(error.message ?? '');
+    if (unit) return { error: 'dishUnit', data: { name: unit[1]! } };
+    if (error.message?.includes('AI suggestion')) return { error: 'suggestionUsed' };
+    return { error: mapDbError(error) };
+  }
+  refresh(orgSlug);
   return { ok: true };
 }
 
-// ---------------------------------------------------------------------------------------------
-// AI drafts
-// ---------------------------------------------------------------------------------------------
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export type SuggestResult =
+  { ok: true; draftId: string; note: string; rows: DishRow[] } | { ok?: false; error: string };
 
-export async function draftRecipesAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = base.extend({ menuText: z.string().max(8000).optional() }).safeParse({
-    orgId: formData.get('orgId'),
-    orgSlug: formData.get('orgSlug'),
-    menuText: formData.get('menuText') ?? undefined,
-  });
+const SuggestInput = base.extend({ itemId: z.uuid() });
+
+/**
+ * "Ask AI" for one dish: a suggested list, saved as a draft (who asked, which model and prompt) and
+ * handed to the editor. Nothing changes in stock or cost until the person checks it and saves.
+ */
+export async function suggestDishAction(
+  input: z.input<typeof SuggestInput>,
+): Promise<SuggestResult> {
+  const parsed = SuggestInput.safeParse(input);
   if (!parsed.success) return { error: 'invalidInput' };
-  const photo = formData.get('photo');
-  let image: { mediaType: (typeof IMAGE_TYPES)[number]; base64: string } | undefined;
-  if (photo instanceof File && photo.size > 0) {
-    if (!(IMAGE_TYPES as readonly string[]).includes(photo.type) || photo.size > MAX_IMAGE_BYTES)
-      return { error: 'photoInvalid' };
-    image = {
-      mediaType: photo.type as (typeof IMAGE_TYPES)[number],
-      base64: Buffer.from(await photo.arrayBuffer()).toString('base64'),
-    };
-  }
-  if (!image && !parsed.data.menuText?.trim()) return { error: 'menuRequired' };
-
+  const { orgId, orgSlug, itemId } = parsed.data;
   const supabase = await createClient();
-  // RLS shows an organization only to its members: check before spending that org's AI allowance.
-  const { data: member } = await supabase
-    .from('organizations')
-    .select('id')
-    .eq('id', parsed.data.orgId)
-    .maybeSingle();
-  if (!member) return { error: 'notAllowed' };
-  const { data: menu } = await supabase
+  // Checked before spending the org's AI allowance: the draft insert would refuse anyone else anyway.
+  if (!(await canWrite(supabase, orgId))) return { error: 'notAllowed' };
+  const { data: item } = await supabase
     .from('menu_items')
-    .select('id, name')
-    .eq('org_id', parsed.data.orgId);
-  let drafted;
+    .select('id, name, name_bn')
+    .eq('org_id', orgId)
+    .eq('id', itemId)
+    .maybeSingle();
+  if (!item) return { error: 'invalidInput' };
+  let known: KnownIngredient[];
   try {
-    drafted = await draftRecipes({
-      orgId: parsed.data.orgId,
-      menuText: parsed.data.menuText,
-      image,
+    known = await allIngredients(supabase, orgId);
+  } catch (e) {
+    return { error: mapDbError(e as { code?: string }) };
+  }
+  let suggested;
+  try {
+    suggested = await suggestDish({
+      orgId,
+      dish: item.name as string,
+      dishBn: (item.name_bn as string | null) ?? null,
+      known: known.map((k) => ({ name: k.name, base: k.base })),
     });
   } catch (e) {
     return { error: aiErrorKey(e) };
   }
-  const byName = new Map((menu ?? []).map((m) => [m.name.trim().toLowerCase(), m.id as string]));
-  const rows = drafted.recipes.map((r) => ({
-    org_id: parsed.data.orgId,
-    menu_item_id: byName.get(r.item_name.trim().toLowerCase()) ?? null,
-    item_name: r.item_name.trim(),
-    payload: { yield_portions: r.yield_portions, notes: r.notes, lines: r.lines },
-    model: drafted.model,
-    prompt_key: RECIPE_DRAFT_PROMPT.key,
-    prompt_version: drafted.promptVersion,
-  }));
-  if (rows.length > 0) {
-    const { error } = await supabase.from('recipe_drafts').insert(rows);
-    if (error) return { error: mapDbError(error) };
-  }
-  refresh(parsed.data.orgSlug);
-  return { ok: true, data: { count: String(rows.length) } };
-}
-
-/** The chef's edit of a draft: lines as ingredient names (new ones are created on approval). */
-export async function updateDraftAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = base
-    .extend({
-      draftId: z.uuid(),
-      menuItemId: z.union([z.uuid(), z.literal('')]),
-      yieldPortions: z.coerce.number().positive().max(1000),
-      notes: z.string().max(1000).optional(),
-    })
-    .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'recipeInvalid' };
-  const lines: { ingredient: string; base: string; qty_base: number; yield_pct: number }[] = [];
-  for (let i = 0; i < 30; i++) {
-    const name = String(formData.get(`line-${i}-name`) ?? '').trim();
-    const qty = Number(String(formData.get(`line-${i}-qty`) ?? '').trim());
-    if (!name) continue;
-    const baseUnit = String(formData.get(`line-${i}-base`) ?? 'g');
-    const yieldPct = Number(String(formData.get(`line-${i}-yield`) ?? '100').trim() || 100);
-    if (
-      !(qty > 0) ||
-      !(yieldPct > 0 && yieldPct <= 100) ||
-      !(BASES as readonly string[]).includes(baseUnit)
-    )
-      return { error: 'recipeInvalid' };
-    lines.push({
-      ingredient: name.slice(0, 120),
-      base: baseUnit,
-      qty_base: qty,
-      yield_pct: yieldPct,
-    });
-  }
-  if (lines.length === 0) return { error: 'recipeInvalid' };
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('recipe_drafts')
-    .update({
-      menu_item_id: parsed.data.menuItemId || null,
-      payload: { yield_portions: parsed.data.yieldPortions, notes: parsed.data.notes ?? '', lines },
-    })
-    .eq('id', parsed.data.draftId)
-    .eq('org_id', parsed.data.orgId)
-    .eq('status', 'pending_review');
-  if (error) return { error: mapDbError(error) };
-  refresh(parsed.data.orgSlug);
-  return { ok: true };
-}
-
-export async function approveDraftAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = base.extend({ draftId: z.uuid() }).safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc('approve_recipe_draft', { p_draft: parsed.data.draftId });
-  if (error)
-    return { error: error.message.includes('menu item') ? 'draftNeedsItem' : mapDbError(error) };
-  refresh(parsed.data.orgSlug);
-  return { ok: true };
-}
-
-export async function discardDraftAction(formData: FormData): Promise<void> {
-  const parsed = base.extend({ draftId: z.uuid() }).safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return;
-  const supabase = await createClient();
-  const { error } = await supabase
+  if (suggested.lines.length === 0) return { error: 'aiFailed' };
+  // One suggestion waits per dish: an older one nobody saved is set aside.
+  await supabase
     .from('recipe_drafts')
     .update({ status: 'discarded' })
-    .eq('id', parsed.data.draftId)
-    .eq('org_id', parsed.data.orgId)
+    .eq('org_id', orgId)
+    .eq('menu_item_id', itemId)
     .eq('status', 'pending_review');
-  if (error) console.error('draft discard', error.code);
-  refresh(parsed.data.orgSlug);
+  const { data: draft, error } = await supabase
+    .from('recipe_drafts')
+    .insert({
+      org_id: orgId,
+      menu_item_id: itemId,
+      item_name: item.name as string,
+      payload: {
+        yield_portions: 1,
+        notes: suggested.note,
+        lines: suggested.lines.map((l) => ({ ...l, yield_pct: 100 })),
+      },
+      model: suggested.model,
+      prompt_key: DISH_SUGGEST_PROMPT.key,
+      prompt_version: suggested.promptVersion,
+    })
+    .select('id')
+    .single();
+  if (error) return { error: mapDbError(error) };
+  revalidatePath(`/${orgSlug}/recipes`);
+  return {
+    ok: true,
+    draftId: draft.id as string,
+    note: suggested.note,
+    rows: suggested.lines.map((l) => {
+      const match = findIngredient(l.ingredient, known);
+      // A name the kitchen keeps in another unit (eggs in pieces, not grams): the person fills the amount.
+      if (match && match.base !== l.base)
+        return { name: match.name, qty: '', unit: unitsForRow(match)[0]! };
+      return { name: match?.name ?? l.ingredient, ...editorAmount(l.qty_base, l.base) };
+    }),
+  };
 }

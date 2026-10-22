@@ -84,19 +84,14 @@ const CORE: LinkRule[] = [
     roles: ['owner', 'manager', 'cashier', 'kitchen', 'purchaser', 'accountant'],
   },
   { key: 'stock', path: '/stock', roles: STOCK },
+  // Dish ingredients (ADR 0037): stock goes down by what is written here, so it is never switched off.
+  { key: 'recipes', path: '/recipes', roles: ['owner', 'manager', 'kitchen', 'accountant'] },
   { key: 'sales', path: '/sales', roles: LEADS },
   { key: 'leaks', path: '/leaks', roles: MONEY },
   { key: 'menu', path: '/menu', roles: ['owner'] },
 ];
 
 const OPTIONAL: LinkRule[] = [
-  {
-    key: 'recipes',
-    path: '/recipes',
-    roles: ['owner', 'manager', 'kitchen', 'accountant'],
-    feature: 'recipes',
-    coreFor: ['kitchen'],
-  },
   { key: 'menuProfit', path: '/menu-profit', roles: MONEY, feature: 'recipes' },
   {
     key: 'purchases',
@@ -164,9 +159,9 @@ export type NavSectionKey = 'top' | 'daily' | 'money' | 'customers' | 'restauran
 const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   home: 'top',
   stock: 'daily',
+  recipes: 'daily',
   purchases: 'daily',
   plan: 'daily',
-  recipes: 'daily',
   sales: 'money',
   leaks: 'money',
   menuProfit: 'money',

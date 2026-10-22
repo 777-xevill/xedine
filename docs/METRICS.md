@@ -19,7 +19,7 @@ Rules: money in poisha · quantities in base units · periods use `business_date
 `items.qty_sold(item, window)` — windows: last_2h (rolling now−2h), today (current business_date), yesterday, last_7d, week_to_date (config week start), month_to_date, last_30d, custom. Filters: branch, channel, daypart. Rankings: top/bottom N by qty and by contribution margin.
 
 ## Costing
-- `ingredient.unit_cost` — weighted average paid price, last 14 days (config: last price / weighted avg); falls back to manual price.
+- `ingredient.unit_cost` — weighted average paid price, last 14 days (config: last price / weighted avg); falls back to manual price. Today's value per kg / litre / piece, with its source (bazar or typed) and since when: `metric_ingredient_prices` (money-gated; ADR 0037).
 - `recipe.cost(item)` — Σ(line qty ÷ yield × unit_cost), sub-recipes included; snapshot stored on order_items at sale time.
 - `food_cost.theoretical` (TFC) — Σ(qty sold × recipe-cost snapshot).
 - `food_cost.theoretical_pct` — TFC ÷ sales.net of items with recipes.
@@ -27,7 +27,8 @@ Rules: money in poisha · quantities in base units · periods use `business_date
 - `item.contribution_margin` — price − recipe cost; `item.margin_pct` — CM ÷ price.
 
 ## Inventory
-- `usage.theoretical(ing, period)` = Σ(qty sold × recipe qty)
+- `usage.theoretical(ing, period)` = Σ(qty sold × recipe qty), where "sold" for stock is every **active line of an order that was placed and not cancelled** — paid or not yet — on its business day (ADR 0037: the food leaves the shelf when the order goes to the kitchen, not when the bill is paid). Voided lines and cancelled orders take nothing. Recipe qty = line qty ÷ yield ÷ portions (`private.recipe_explode`), from the sale-time snapshot's recipe, else the item's active recipe. One implementation: `private.m_sold_for_stock` → `private.m_stock_moves`. (Sales, food cost and TFC still count completed orders only.)
+- `stock.used_by_dish(period)` (ADR 0037, `metric_stock_used`): usage.theoretical per ingredient (its total) and per ingredient and dish (`dishes` = plates of that dish that took it), plus the dishes sold with no active recipe (they took nothing). Quantities; stock roles; at most 93 days
 - `stock.theoretical` = last count + purchases + transfers_in − transfers_out − usage.theoretical − waste.logged
 - `usage.actual(period between counts)` = opening count + purchases + transfers_in − transfers_out − closing count
 - `cogs.actual` = usage.actual × period weighted unit_cost

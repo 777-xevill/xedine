@@ -32,6 +32,10 @@ describe('tool selection', () => {
     expect(toolNamesFor('kothay loss hocche')).toContain('get_stock_loss');
     expect(toolNamesFor('আজ বিক্রি কত হলো?')).toContain('get_sales');
     expect(toolNamesFor('when does my trade licence expire')).toContain('get_compliance');
+    // Dish ingredients (ADR 0037).
+    expect(toolNamesFor('how much chicken was used today?')).toContain('get_stock_used');
+    expect(toolNamesFor('বার্গারে কী কী লাগে?')).toContain('get_recipe');
+    expect(toolNamesFor('help me write the burger recipe')).toContain('get_recipe');
   });
 
   it('adds the page the person is on, except Home', () => {

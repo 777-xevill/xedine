@@ -300,6 +300,36 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_recipe',
+    description:
+      "Dish ingredients: what goes into one plate of a dish (ingredient and amount) and one plate's cost (owner and accountant). No item: which dishes have nothing written.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Menu item, when the question names one.' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_stock_used',
+    description:
+      'What the dishes ordered took out of stock in a period, per ingredient with the dishes that took it, and dishes sold with nothing written (they took nothing).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        window: {
+          ...windowProp,
+          enum: ['today', 'yesterday', 'last_7d', 'week_to_date', 'month_to_date', 'last_30d'],
+        },
+        branch: branchProp,
+        ingredient: { type: 'string', description: 'Only this ingredient, when named.' },
+      },
+      required: ['window'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'get_compliance',
     description:
       'Licences and the VAT return: what each is, when it is due or expires, days left and status.',
@@ -354,6 +384,8 @@ export const TOOL_PAGES: Record<string, string> = {
   get_forecast: 'plan',
   get_menu_matrix: 'menuProfit',
   get_menu: 'menu',
+  get_recipe: 'recipes',
+  get_stock_used: 'stock',
   compare_branches: 'branches',
   get_benchmarks: 'benchmarks',
   get_customers_summary: 'customers',
@@ -375,8 +407,8 @@ const SETUP_STEPS: Record<string, { step: string; page: string }> = {
   channels: { step: 'Sales channels', page: 'Settings (General)' },
   staff_pins: { step: 'Staff PINs', page: 'Staff' },
   pos_device: { step: 'Pair the till', page: 'Staff' },
-  recipes: { step: 'Recipes', page: 'Recipes' },
-  ingredient_prices: { step: 'Ingredient prices', page: 'Recipes' },
+  recipes: { step: 'Dish ingredients', page: 'Dish ingredients' },
+  ingredient_prices: { step: 'Ingredient prices', page: 'Dish ingredients (Ingredient prices)' },
   fixed_costs: { step: 'Fixed costs', page: 'Costs' },
   salaries: { step: "This month's salaries", page: 'Costs' },
   opening_count: { step: 'Opening stock count', page: 'Stock' },
@@ -1191,6 +1223,116 @@ export async function runTool(
             has_recipe: withRecipe.has(i.id as string),
             food_cost_bps: bps.get(i.id as string) ?? null,
           })),
+        };
+      }
+      case 'get_recipe': {
+        const asked = typeof input.item === 'string' ? input.item.trim() : '';
+        if (!asked) {
+          const { data, error } = await ctx.sb
+            .from('recipes')
+            .select('menu_item_id')
+            .eq('org_id', ctx.orgId)
+            .eq('status', 'active')
+            .not('menu_item_id', 'is', null);
+          if (error) return fail(error);
+          const written = new Set((data ?? []).map((r) => r.menu_item_id as string));
+          const missing = ctx.menu.filter((m) => !written.has(m.id));
+          return {
+            metric_id: 'recipes.coverage',
+            filters: {},
+            as_of,
+            data: {
+              dishes: ctx.menu.length,
+              written: ctx.menu.length - missing.length,
+              not_written: missing.length,
+              not_written_dishes: missing.slice(0, 30).map((m) => m.name),
+            },
+          };
+        }
+        const item = matchItem(asked, ctx.menu);
+        if (!item) return { error: 'not_found', detail: { item: input.item } };
+        if (Array.isArray(item))
+          return { error: 'ambiguous', detail: { candidates: item.map((i) => i.name) } };
+        const [{ data, error }, costs] = await Promise.all([
+          ctx.sb.rpc('dish_recipe_lines', { p_org: ctx.orgId }).eq('menu_item_id', item.id),
+          ctx.sb.rpc('metric_recipe_costs', { p_org: ctx.orgId, p_now: ctx.nowIso }),
+        ]);
+        if (error) return fail(error);
+        const lines = (data ?? []) as Record<string, unknown>[];
+        // A money row: refused for a manager, so the cost stays null; also null while a price is missing.
+        const cost = ((costs.data ?? []) as Record<string, unknown>[]).find(
+          (c) => c.menu_item_id === item.id,
+        );
+        return {
+          metric_id: 'recipe.lines',
+          filters: { item: item.name },
+          as_of,
+          data: {
+            dish: item.name,
+            written: lines.length > 0,
+            list_makes_plates: lines[0] ? num(lines[0].plates) : null,
+            ingredients: lines.map((l) => ({
+              ingredient: l.name,
+              ingredient_bn: l.name_bn ?? null,
+              amount: qtyText(num(l.qty), l.base as BaseUnit),
+            })),
+            plate_cost_poisha: cost?.complete === true ? num(cost.unit_cost_poisha) : null,
+            some_prices_missing: cost ? cost.complete !== true : null,
+          },
+        };
+      }
+      case 'get_stock_used': {
+        const { from, to } = await windowDates(ctx, window);
+        const { data, error } = await ctx.sb.rpc('metric_stock_used', {
+          p_org: ctx.orgId,
+          p_branch: branch,
+          p_from: from,
+          p_to: to,
+        });
+        if (error) return fail(error);
+        const rows = (data ?? []) as Record<string, unknown>[];
+        const want =
+          typeof input.ingredient === 'string' ? input.ingredient.trim().toLowerCase() : '';
+        const totals = rows.filter(
+          (r) =>
+            r.ingredient_id &&
+            !r.menu_item_id &&
+            (!want ||
+              String(r.name).toLowerCase().includes(want) ||
+              String(r.name_bn ?? '')
+                .toLowerCase()
+                .includes(want)),
+        );
+        const unwritten = rows.filter((r) => !r.ingredient_id && r.menu_item_id);
+        return {
+          metric_id: 'stock.used_by_dish',
+          filters: {
+            window,
+            branch: input.branch ?? null,
+            from,
+            to,
+            ingredient: input.ingredient ?? null,
+          },
+          as_of,
+          summary: { ingredients: totals.length, listed: Math.min(totals.length, 20) },
+          data: {
+            used: totals.slice(0, 20).map((r) => ({
+              ingredient: r.name,
+              ingredient_bn: r.name_bn ?? null,
+              used: qtyText(num(r.qty), r.base as BaseUnit),
+              by_dish: rows
+                .filter((d) => d.ingredient_id === r.ingredient_id && d.menu_item_id)
+                .slice(0, 5)
+                .map((d) => ({
+                  dish: d.item_name,
+                  plates: num(d.dishes),
+                  took: qtyText(num(d.qty), d.base as BaseUnit),
+                })),
+            })),
+            dishes_sold_with_nothing_written: unwritten
+              .slice(0, 10)
+              .map((r) => ({ dish: r.item_name, plates: num(r.dishes) })),
+          },
         };
       }
       case 'get_compliance': {

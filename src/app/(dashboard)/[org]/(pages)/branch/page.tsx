@@ -1,17 +1,13 @@
 import { notFound } from 'next/navigation';
-import { getLocale, getTranslations } from 'next-intl/server';
-import { BranchPriceForm, StationForm, TableForm } from '@/components/branch-forms';
+import { getTranslations } from 'next-intl/server';
+import { BranchRequestForm, TableForm } from '@/components/branch-forms';
+import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
-import { StatusBadge } from '@/components/ui/badge';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
-import {
-  setAvailabilityAction,
-  toggleStationActiveAction,
-  toggleTableActiveAction,
-} from '@/modules/branch/actions';
+import { toggleTableActiveAction } from '@/modules/branch/actions';
+import { cancelBranchRequestAction } from '@/modules/settings/actions';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
 
@@ -28,46 +24,79 @@ export default async function BranchPage({
   const current = pickBranch(ctx, branch);
   if (!current) notFound();
 
-  const [t, tc, locale] = await Promise.all([
-    getTranslations('branch'),
-    getTranslations('common'),
-    getLocale(),
-  ]);
+  const [t, tc] = await Promise.all([getTranslations('branch'), getTranslations('common')]);
   const supabase = await createClient();
-  const [{ data: items }, { data: overrides }, { data: tables }, { data: stations }] =
-    await Promise.all([
-      supabase
-        .from('menu_items')
-        .select('id, name, base_price_poisha')
-        .eq('org_id', ctx.org.id)
-        .eq('is_active', true)
-        .order('name'),
-      supabase
-        .from('branch_item_prices')
-        .select('menu_item_id, price_poisha, is_available, has_price_override')
-        .eq('org_id', ctx.org.id)
-        .eq('branch_id', current.id)
-        .is('variant_id', null),
-      supabase
-        .from('dining_tables')
-        .select('id, name, seats, is_active')
-        .eq('org_id', ctx.org.id)
-        .eq('branch_id', current.id)
-        .order('name'),
-      supabase
-        .from('stations')
-        .select('id, name, is_active')
-        .eq('org_id', ctx.org.id)
-        .eq('branch_id', current.id)
-        .order('sort_order'),
-    ]);
-  const overrideByItem = new Map((overrides ?? []).map((o) => [o.menu_item_id, o]));
-  const money = (p: number) => formatBDT(p, locale as Locale);
+  const [{ data: tables }, { data: requests }] = await Promise.all([
+    supabase
+      .from('dining_tables')
+      .select('id, name, seats, is_active')
+      .eq('org_id', ctx.org.id)
+      .eq('branch_id', current.id)
+      .order('name'),
+    ctx.isOwner
+      ? supabase
+          .from('branch_requests')
+          .select('id, name, area, status, decision_note')
+          .eq('org_id', ctx.org.id)
+          .order('created_at', { ascending: false })
+          .limit(8)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const TONE = {
+    pending: 'warning',
+    approved: 'success',
+    declined: 'danger',
+    cancelled: 'neutral',
+  } as const;
 
   return (
     <>
       <SettingsNav ctx={ctx} current="branchSetup" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
+      {ctx.isOwner ? (
+        <Card className="mb-6 max-w-3xl">
+          <CardTitle>{t('requestTitle')}</CardTitle>
+          <p className="-mt-2 mb-4 text-sm text-secondary">{t('requestBody')}</p>
+          <BranchRequestForm orgId={ctx.org.id} orgSlug={ctx.org.slug} />
+          {(requests ?? []).length > 0 ? (
+            <div className="mt-5">
+              <p className="mb-1 text-sm font-medium">{t('requestsTitle')}</p>
+              <ul className="divide-y divide-line">
+                {(requests ?? []).map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {r.name}
+                        {r.area ? <span className="text-secondary"> · {r.area}</span> : null}
+                      </p>
+                      {r.decision_note ? (
+                        <p className="text-sm text-secondary">{r.decision_note}</p>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge tone={TONE[r.status as keyof typeof TONE] ?? 'neutral'}>
+                        {t(`requestStatus.${r.status as keyof typeof TONE}`)}
+                      </StatusBadge>
+                      {r.status === 'pending' ? (
+                        <form action={cancelBranchRequestAction}>
+                          <input type="hidden" name="requestId" value={r.id} />
+                          <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+                          <Button type="submit" variant="ghost" size="sm">
+                            {t('requestCancel')}
+                          </Button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
       {ctx.branches.length > 1 ? (
         <PillNav
           label={t('branchPicker')}
@@ -80,70 +109,7 @@ export default async function BranchPage({
         />
       ) : null}
 
-      <Card>
-        <CardTitle>{t('menuTitle', { branch: current.name })}</CardTitle>
-        <p className="-mt-2 mb-4 text-sm text-secondary">{t('menuBody')}</p>
-        {(items ?? []).length === 0 ? (
-          <EmptyState title={t('noItems')} />
-        ) : (
-          <ul className="divide-y divide-line">
-            {(items ?? []).map((item) => {
-              const override = overrideByItem.get(item.id);
-              const available = override ? override.is_available : true;
-              const price = override?.has_price_override
-                ? override.price_poisha
-                : item.base_price_poisha;
-              return (
-                <li
-                  key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3"
-                >
-                  <div>
-                    <p className="font-semibold">{item.name}</p>
-                    <p className="text-sm text-secondary">
-                      {money(price)}
-                      {override?.has_price_override ? ` · ${t('overridden')}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {available ? (
-                      <StatusBadge tone="success">{t('onMenu')}</StatusBadge>
-                    ) : (
-                      <StatusBadge tone="danger">{t('eightySix')}</StatusBadge>
-                    )}
-                    <BranchPriceForm
-                      orgId={ctx.org.id}
-                      orgSlug={ctx.org.slug}
-                      branchId={current.id}
-                      itemId={item.id}
-                      currentPrice={
-                        override?.has_price_override
-                          ? formatBDT(override.price_poisha, 'en', {
-                              symbol: false,
-                              poisha: 'auto',
-                            })
-                          : ''
-                      }
-                    />
-                    <form action={setAvailabilityAction}>
-                      <input type="hidden" name="orgId" value={ctx.org.id} />
-                      <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-                      <input type="hidden" name="branchId" value={current.id} />
-                      <input type="hidden" name="itemId" value={item.id} />
-                      <input type="hidden" name="available" value={String(!available)} />
-                      <Button type="submit" variant="secondary" size="sm">
-                        {available ? t('markSoldOut') : t('bringBack')}
-                      </Button>
-                    </form>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="max-w-3xl">
         <Card>
           <CardTitle>{t('tablesTitle')}</CardTitle>
           <p className="-mt-2 mb-4 text-sm text-secondary">{t('tablesBody')}</p>
@@ -172,39 +138,6 @@ export default async function BranchPage({
                       className="min-h-7 px-2 text-xs"
                     >
                       {tb.is_active ? tc('remove') : t('restore')}
-                    </Button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card>
-          <CardTitle>{t('stationsTitle')}</CardTitle>
-          <p className="-mt-2 mb-4 text-sm text-secondary">{t('stationsBody')}</p>
-          <StationForm orgId={ctx.org.id} orgSlug={ctx.org.slug} branchId={current.id} />
-          {(stations ?? []).length === 0 ? (
-            <EmptyState className="mt-4" title={t('noStations')} />
-          ) : (
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {(stations ?? []).map((s) => (
-                <li
-                  key={s.id}
-                  className="glass-tile flex items-center gap-1.5 rounded-full py-1 ps-3 pe-1.5"
-                >
-                  <span className={s.is_active ? '' : 'text-muted line-through'}>{s.name}</span>
-                  <form action={toggleStationActiveAction}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-                    <input type="hidden" name="active" value={String(s.is_active)} />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      className="min-h-7 px-2 text-xs"
-                    >
-                      {s.is_active ? tc('remove') : t('restore')}
                     </Button>
                   </form>
                 </li>

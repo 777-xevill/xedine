@@ -29,7 +29,7 @@ Owner · Branch manager · Cashier · Kitchen · Purchaser (bazar) · Accountant
 
 **M4 Item Velocity & Sales Explorer** — "How many kebabs sold in the last 2 hours / today / last week / this month?" by item, branch, channel, daypart; best/worst sellers; slow movers.
 
-**M5 Recipes & Menu Profit Intelligence** — ingredients, units & conversions, recipes & sub-recipes, yields; AI drafts recipes from a menu photo/list for the chef to correct; recipe cost auto-updates with purchase prices; menu engineering (Star / Plowhorse / Puzzle / Dog); margin alerts when ingredient prices jump; price & portion simulator.
+**M5 Recipes & Menu Profit Intelligence** — *Dish ingredients* (ADR 0037): the owner or manager writes what goes into one plate of each dish (ingredient · amount · g / kg / ml / litre / piece), and every order placed at the till takes it out of stock; "Ask AI to fill this" drafts one dish for them to check with the chef; ingredients, units & conversions, recipes & sub-recipes, yields; recipe cost auto-updates with purchase prices; menu engineering (Star / Plowhorse / Puzzle / Dog); margin alerts when ingredient prices jump; price & portion simulator.
 
 **M6 Purchasing (Bazar)** — suppliers; purchase entry by form, photo of chit/receipt, or voice note → AI draft lines → human confirm; price history; Purchase Price Watch (vs own history, vs other branches same day, vs reference prices).
 

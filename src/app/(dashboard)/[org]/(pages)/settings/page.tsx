@@ -1,9 +1,9 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import {
   ChannelForm,
   CommissionForm,
-  BranchForm,
   DeleteReasonButton,
   ReasonCodeForm,
   ReceiptSettingsForm,
@@ -274,7 +274,12 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
 
       <Card className="mt-6">
         <CardTitle>{t('branchesTitle')}</CardTitle>
-        <BranchForm orgId={ctx.org.id} orgSlug={ctx.org.slug} />
+        <p className="-mt-2 mb-3 text-sm text-secondary">
+          {t('branchesBody')}{' '}
+          <Link href={`/${ctx.org.slug}/branch`} className="font-medium text-primary underline">
+            {t('branchesLink')}
+          </Link>
+        </p>
         <ul className="divide-y divide-line">
           {ctx.branches.map((b) => (
             <li key={b.id} className="py-2">

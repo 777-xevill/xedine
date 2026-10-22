@@ -6,7 +6,7 @@ import { pageKeyFromPath } from '@/modules/tenancy/page-key';
 import { PageAgent } from './page-agent';
 
 /** Pages that carry their own, richer helper (or are the chat itself). */
-const OWN_HELPER = new Set(['sales', 'stock', 'chat']);
+const OWN_HELPER = new Set(['sales', 'stock', 'recipes', 'chat']);
 
 /**
  * The assistant on every dashboard page, one tap away. It lives in the layout, so an open

@@ -50,7 +50,11 @@ export async function updateReceiptSettingsAction(
   return { ok: true };
 }
 
-export async function createBranchAction(
+/**
+ * A new branch is a request, not an insert: a platform admin approves it (ADR 0036), because every branch
+ * is billed. Only the owner can ask; the database refuses anyone else and any direct insert.
+ */
+export async function requestBranchAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
@@ -59,16 +63,27 @@ export async function createBranchAction(
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
   const supabase = await createClient();
-  // Owner-only by RLS. The owner's own "all branches" access covers the new branch at once.
-  const { error } = await supabase.from('branches').insert({
-    org_id: parsed.data.orgId,
-    name: parsed.data.name,
-    area: parsed.data.area,
+  const { error } = await supabase.rpc('request_branch', {
+    p_org: parsed.data.orgId,
+    p_name: parsed.data.name,
+    p_area: parsed.data.area ?? undefined,
   });
   if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
-  // Every page's branch switcher reads the branch list.
-  revalidatePath(`/${parsed.data.orgSlug}`, 'layout');
+  revalidatePath(`/${parsed.data.orgSlug}/branch`);
   return { ok: true };
+}
+
+export async function cancelBranchRequestAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgSlug: z.string().regex(SLUG), requestId: z.uuid() })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('cancel_branch_request', {
+    p_request: parsed.data.requestId,
+  });
+  if (error) console.error('cancel branch request', error.code);
+  revalidatePath(`/${parsed.data.orgSlug}/branch`);
 }
 
 const CHANNEL_KINDS = [

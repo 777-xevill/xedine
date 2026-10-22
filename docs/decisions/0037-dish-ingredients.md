@@ -1,0 +1,33 @@
+# ADR 0037 — Dish ingredients: the manager writes it, stock goes down at Place Order
+
+- Date: 2026-10-23
+- Status: accepted (built at the founder's request — **§2, §4 and §6 are choices the founder should confirm**)
+
+## Context
+The founder asked for a section where the owner, or the manager, records what goes into each dish (a burger: bun 1 piece, chicken 150 g, cheese 1 slice, mayonnaise 20 g, ketchup 15 g, lettuce 15 g), so that each burger ordered at the till takes those amounts out of stock, and 10 burgers show as 1.5 kg of chicken used. In Bangladesh the chef does not use the dashboard, so the manager writes it for them. There is no separate screen for the chef. The founder also asked that people can get help from the AI agent.
+
+Most of this already existed as the Phase 3 *Recipes* page, but in a form owners could not use: it sat behind Settings → Features; only the owner could save; it asked for "yield %" and "portions"; ingredients had to be created on another tab first; and AI drafts came from a menu photo through a separate drafts tab. Stock already went down by the recipes (ADR 0018, 0030), but only for **completed** (fully paid) orders. A dine-in burger that was cooked and not yet paid took nothing from stock until the bill was settled.
+
+## Decision
+1. **The page is *Dish ingredients* (খাবারের উপকরণ) and is always in the sidebar** for owner, manager, kitchen (read only) and accountant (read only). The route stays `/recipes`. The *Recipes* feature switch now only adds *Menu profit*, and it is called that in Settings → Features.
+2. **Owner and manager write a dish; nobody else.** `save_recipe` accepts both roles; the kitchen keeps read access and nothing new. A recipe is org-wide, so a branch manager's change applies to every branch. Every save is a new audited version (the existing triggers). *Confirm:* a branch-scoped manager editing an org-wide dish.
+3. **One plate, in words.** Each dish lists rows of *ingredient · amount · unit* (g, kg, ml, litre, piece), with *+ Add another ingredient* and ✕ to remove a row. Ingredient names are suggested from the kitchen's list in English or Bangla. A name that is not on the list becomes a new item when saved, offering "did you mean…" first. An item already kept in pieces cannot be written in grams. Yield % and sub-recipes are no longer shown. An existing line is shown as what it takes from stock (`qty ÷ yield`, `dish_recipe_lines`), so re-saving it changes neither stock nor cost. One optional question remains: "Cooked in a big pot, like biryani? How many plates does this list make?" (`yield_portions`). Lines keep the order they were written in (`recipe_lines.line_no`), and a new version keeps the dish's deg size (`batch_portions`, `batch_unit`, which `write_recipe` used to drop).
+4. **Stock goes down at Place Order.** `usage.theoretical` counts every active line of an order that was placed and not cancelled, paid or not yet (`private.m_sold_for_stock`, used by `private.m_stock_moves`). Voided lines and cancelled orders take nothing. Sales, TFC and food cost still count completed orders only. *Confirm:* an order left open forever (a walk-out nobody cancels) now counts as food used.
+5. **Stock → Used** (a fourth tab, `metric_stock_used`). It shows what the orders took on a day, yesterday or over the last 7 days, per ingredient with the dishes that took it ("Chicken 1.8 kg: 12 × Burger"). Dishes sold with nothing written are listed apart, with a link to write them, because they took nothing.
+6. **AI helps in two places, and never changes data by itself (CLAUDE.md #4).**
+   - **Ask AI to fill this**, on a dish: `suggestDishAction` asks the model for one plate (prompt `dish_ingredients` v1). It stores the answer as a `recipe_drafts` row (the manager may now write drafts) and fills the editor with a "check it with your chef" note and *Put my list back*. Nothing changes until a person saves. That Save confirms the draft, marks the recipe `ai_draft` ("AI helped") and is audited as `recipe.approve_draft`. The draft keeps what the AI proposed, so it can be compared with what was saved. The menu-photo bulk drafting and the drafts tab are removed; `approve_recipe_draft` stays in SQL.
+   - **The assistant** gets `get_recipe` (a dish's lines and, for owner and accountant, one plate's cost; with no dish named, which dishes have nothing written) and `get_stock_used`. Prompt v6 says how to write a dish ("Dish ingredients → tap the dish → Ask AI → check with the chef → Save") and never to suggest amounts itself. The page has its own helper with dish questions, and the app guide knows the new name.
+   - *Confirm:* the model suggests the amounts (a guess, labelled as one), unlike every other AI feature, which only reads or drafts text.
+7. **Prices stay owner-only (ADR 0007).** The second tab, *Ingredient prices* (owner and accountant), shows today's price per kg, litre or piece and where it came from: the bazar, or typed by the owner (`metric_ingredient_prices`, the rule `private.ingredient_unit_cost` uses). Before this, a price that came from the bazar showed as "No price". A dish shows "One plate costs ৳78 to make", or "Some prices are missing", to the money roles only.
+
+## Alternatives considered
+- **Deduct stock at payment, as before:** consistent with sales, but a cooked, unpaid dish is invisible to stock for up to an hour, and the founder asked for Place Order.
+- **Write stock-ledger rows at Place Order:** the same numbers with more moving parts (offline sync, voids and cancellations would each need a reversing row). Computing from the order lines keeps one definition.
+- **A chef screen on the kitchen display:** the founder said chefs do not use the SaaS.
+- **Let the assistant chat write the recipe:** its numbers would fail the numeric validator, and it would change data. The per-dish button keeps the draft → approve rule.
+
+## Consequences
+- Stock, days of cover, the ≈ estimate, the bazar list's "used today" and the loss between counts now include orders still open or in the kitchen. The seed has only completed or cancelled orders, so golden checks do not move.
+- The leak detector's "which dishes use this ingredient" shares (`usage.unexplained` evidence) still read completed orders. Near a count date they can add up to slightly less than 100%.
+- A dish with more than 40 lines cannot be saved from the editor (the old form allowed 30).
+- New: `recipe_lines.line_no`, `private.m_sold_for_stock`, `public.metric_stock_used`, `public.dish_recipe_lines`, `public.metric_ingredient_prices`; `save_recipe` gains `p_draft`; `recipe_drafts` write roles add manager (migration `20261023000001_dish_ingredients.sql`).

@@ -35,3 +35,30 @@ export async function setSubscriptionAction(
   revalidatePath('/admin');
   return { ok: true };
 }
+
+/**
+ * Platform admin: approve or decline an owner's request for a new branch (ADR 0036). Approving creates the
+ * branch and its default Kitchen station inside the SQL function, which refuses non-admins and audits it.
+ */
+export async function decideBranchRequestAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = z
+    .object({
+      requestId: z.uuid(),
+      decision: z.enum(['approve', 'decline']),
+      note: z.string().trim().max(300),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('admin_decide_branch_request', {
+    p_request: parsed.data.requestId,
+    p_approve: parsed.data.decision === 'approve',
+    p_note: parsed.data.note || undefined,
+  });
+  if (error) return { error: mapDbError(error) };
+  revalidatePath('/admin');
+  return { ok: true };
+}

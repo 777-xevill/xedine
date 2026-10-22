@@ -1,17 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useActionState, useState } from 'react';
 import { ActionForm } from '@/components/action-form';
-import { ErrorAlert } from '@/components/auth-forms';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/form';
-import {
-  createStationAction,
-  createTableAction,
-  setBranchPriceAction,
-} from '@/modules/branch/actions';
-import { initialState } from '@/modules/tenancy/form-state';
+import { createTableAction } from '@/modules/branch/actions';
+import { requestBranchAction } from '@/modules/settings/actions';
 
 export function TableForm({
   orgId,
@@ -41,71 +35,34 @@ export function TableForm({
   );
 }
 
-export function StationForm({
-  orgId,
-  orgSlug,
-  branchId,
-}: {
-  orgId: string;
-  orgSlug: string;
-  branchId: string;
-}) {
+/** The owner asks for a new branch; a platform admin approves it before it exists (ADR 0036). */
+export function BranchRequestForm({ orgId, orgSlug }: { orgId: string; orgSlug: string }) {
   const t = useTranslations('branch');
   return (
-    <ActionForm action={createStationAction} className="flex flex-wrap items-end gap-2">
+    <ActionForm
+      action={requestBranchAction}
+      successKey="branch.requestSent"
+      className="flex flex-wrap items-end gap-2"
+    >
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="orgSlug" value={orgSlug} />
-      <input type="hidden" name="branchId" value={branchId} />
       <div>
-        <Label htmlFor="station-name">{t('stationName')}</Label>
-        <Input id="station-name" name="name" required maxLength={40} className="w-40" />
+        <Label htmlFor="branch-name">{t('requestName')}</Label>
+        <Input
+          id="branch-name"
+          name="name"
+          required
+          maxLength={80}
+          autoComplete="off"
+          placeholder={t('requestNamePlaceholder')}
+          className="w-44"
+        />
       </div>
-      <Button type="submit">{t('addStation')}</Button>
+      <div>
+        <Label htmlFor="branch-area">{t('requestArea')}</Label>
+        <Input id="branch-area" name="area" maxLength={80} autoComplete="off" className="w-44" />
+      </div>
+      <Button type="submit">{t('requestSend')}</Button>
     </ActionForm>
-  );
-}
-
-/** Inline branch-price override, editable in place; an empty value clears back to the base price. */
-export function BranchPriceForm({
-  orgId,
-  orgSlug,
-  branchId,
-  itemId,
-  currentPrice,
-}: {
-  orgId: string;
-  orgSlug: string;
-  branchId: string;
-  itemId: string;
-  currentPrice: string;
-}) {
-  const t = useTranslations('branch');
-  const [state, action, pending] = useActionState(setBranchPriceAction, initialState);
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        {t('overridePrice')}
-      </Button>
-    );
-  }
-  return (
-    <form action={action} className="flex items-center gap-1.5">
-      <input type="hidden" name="orgId" value={orgId} />
-      <input type="hidden" name="orgSlug" value={orgSlug} />
-      <input type="hidden" name="branchId" value={branchId} />
-      <input type="hidden" name="itemId" value={itemId} />
-      <Input
-        name="price"
-        inputMode="decimal"
-        defaultValue={currentPrice}
-        placeholder={t('useBasePrice')}
-        className="min-h-9 w-24"
-      />
-      <Button type="submit" size="sm" disabled={pending}>
-        {t('save')}
-      </Button>
-      {state.error ? <ErrorAlert error={state.error} /> : null}
-    </form>
   );
 }

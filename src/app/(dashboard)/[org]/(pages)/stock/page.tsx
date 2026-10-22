@@ -70,11 +70,13 @@ import { formatQuantity } from '@/modules/inventory/format';
 import {
   stockLots,
   stockStatus,
+  stockUsed,
   stockVariance,
   varianceBridge,
   wasteBoard,
   type LotRow,
   type StockRow,
+  type UsedRow,
   type VarianceRow,
 } from '@/modules/inventory/queries';
 import {
@@ -91,7 +93,8 @@ import type { BaseUnit, PurchaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 import { StockGuardCard } from '@/components/stock/guard-card';
 
-const TABS = ['status', 'variance', 'waste'] as const;
+const TABS = ['status', 'used', 'variance', 'waste'] as const;
+const USED_SPANS = ['today', 'yesterday', '7d'] as const;
 type Tab = (typeof TABS)[number];
 
 /**
@@ -111,6 +114,7 @@ export default async function StockPage({
     to?: string;
     days?: string;
     counted?: string;
+    used?: string;
   }>;
 }) {
   const [{ org }, sp] = await Promise.all([params, searchParams]);
@@ -320,6 +324,7 @@ export default async function StockPage({
         tabs={(
           [
             { key: 'status', icon: <Boxes />, tone: 'info' },
+            { key: 'used', icon: <Soup />, tone: 'success' },
             { key: 'variance', icon: <PackageSearch />, tone: 'warning' },
             { key: 'waste', icon: <Trash2 />, tone: 'danger' },
           ] satisfies { key: Tab; icon: React.ReactNode; tone: Tone }[]
@@ -517,6 +522,101 @@ export default async function StockPage({
                   </Card>
                 )}
                 {neverCounted ? null : howItWorks(false)}
+              </div>
+            );
+          })()
+        : null}
+
+      {tab === 'used'
+        ? await (async () => {
+            // ADR 0037: what the dishes ordered took out of stock, from Dish ingredients.
+            const span = (USED_SPANS as readonly string[]).includes(sp.used ?? '')
+              ? (sp.used as (typeof USED_SPANS)[number])
+              : 'today';
+            const yesterday = addDays(today, -1);
+            const from =
+              span === 'today' ? today : span === 'yesterday' ? yesterday : addDays(today, -6);
+            const to = span === 'yesterday' ? yesterday : today;
+            const rows = await stockUsed(ctx.org.id, branch.id, from, to);
+            const totals = rows.filter((r) => r.ingredient_id && !r.menu_item_id);
+            const dishesOf = new Map<string, UsedRow[]>();
+            for (const r of rows)
+              if (r.ingredient_id && r.menu_item_id)
+                dishesOf.set(r.ingredient_id, [...(dishesOf.get(r.ingredient_id) ?? []), r]);
+            const unwritten = rows.filter((r) => !r.ingredient_id && r.menu_item_id);
+            const dish = (r: UsedRow) => label(r.item_name ?? '', r.item_name_bn);
+            return (
+              <div className="space-y-5">
+                <PillNav
+                  label={t('used.period')}
+                  items={USED_SPANS.map((x) => ({
+                    href: href({ used: x }),
+                    label: t(`used.${x}`),
+                    active: x === span,
+                  }))}
+                />
+                <Banner
+                  tone="success"
+                  icon={<Soup />}
+                  title={t('used.title')}
+                  body={t('used.body')}
+                />
+                {unwritten.length > 0 ? (
+                  <Callout tone="warning" icon={<TriangleAlert />}>
+                    <p className="font-semibold">
+                      {t('used.unwrittenTitle', { count: unwritten.length })}
+                    </p>
+                    <p className="text-secondary">{t('used.unwrittenBody')}</p>
+                    <Chips
+                      items={unwritten.map(
+                        (r) => `${dish(r)} × ${formatNumber(r.dishes ?? 0, loc)}`,
+                      )}
+                    />
+                    {has('owner') || has('manager') ? (
+                      <Link
+                        href={`/${ctx.org.slug}/recipes`}
+                        className="mt-2.5 inline-block font-semibold text-purple hover:underline"
+                      >
+                        {t('used.write')}
+                      </Link>
+                    ) : null}
+                  </Callout>
+                ) : null}
+                {totals.length === 0 ? (
+                  <EmptyState title={t('used.none')} body={t('used.noneBody')} />
+                ) : (
+                  <Card className="p-4 sm:p-6">
+                    <CardTitle className="mb-1 text-lg">{t('used.listTitle')}</CardTitle>
+                    <Hint className="mb-4">{t('used.listHint')}</Hint>
+                    <ul className="space-y-2">
+                      {totals.map((r) => (
+                        <ItemRow
+                          key={r.ingredient_id}
+                          tone="success"
+                          icon={<ChefHat />}
+                          name={label(r.name ?? '', r.name_bn)}
+                          aside={qty(r.qty ?? 0, r.base ?? 'g')}
+                        >
+                          <ul className="space-y-1.5 text-sm">
+                            {(dishesOf.get(r.ingredient_id!) ?? []).map((d) => (
+                              <li key={d.menu_item_id} className="flex justify-between gap-3">
+                                <span>
+                                  {t('used.dishLine', {
+                                    count: formatNumber(d.dishes ?? 0, loc),
+                                    dish: dish(d),
+                                  })}
+                                </span>
+                                <span className="font-semibold tabular-nums">
+                                  {qty(d.qty ?? 0, d.base ?? 'g')}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </ItemRow>
+                      ))}
+                    </ul>
+                  </Card>
+                )}
               </div>
             );
           })()
@@ -1222,6 +1322,7 @@ export default async function StockPage({
             followUps={(
               {
                 status: ['lowFirst', 'buy', 'bought'],
+                used: ['usedChicken', 'usedUnwritten'],
                 variance: ['lossWhy', 'check'],
                 waste: ['wasteWhy', 'wasteCut'],
               } satisfies Record<Tab, string[]>

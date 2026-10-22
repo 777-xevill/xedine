@@ -32,6 +32,7 @@ export const GROUPS: Record<string, Group> = {
   stock: {
     tools: [
       'get_stock_status',
+      'get_stock_used',
       'get_stock_loss',
       'get_waste',
       'get_food_cost_gap',
@@ -39,13 +40,13 @@ export const GROUPS: Record<string, Group> = {
     ],
     pages: ['stock', 'purchases'],
     words:
-      /stock|ingredient|waste|los(s|e|ing)|buy|bought|purchase|bazar|bazaar|supplier|shelf|running (out|low)|inventory|count|food cost|মজুত|স্টক|ওয়েস্ট|লস|ক্ষতি|বাজার|কেনা|ফুরি|নষ্ট|কাঁচামাল/i,
+      /stock|ingredient|used|waste|los(s|e|ing)|buy|bought|purchase|bazar|bazaar|supplier|shelf|running (out|low)|inventory|count|food cost|মজুত|স্টক|ওয়েস্ট|লস|ক্ষতি|বাজার|কেনা|ফুরি|নষ্ট|কাঁচামাল|খরচ হ|উপকরণ/i,
   },
   menu: {
-    tools: ['get_menu', 'get_menu_matrix', 'get_forecast'],
+    tools: ['get_menu', 'get_recipe', 'get_menu_matrix', 'get_forecast'],
     pages: ['menu', 'recipes', 'menuProfit', 'plan'],
     words:
-      /menu|dish|recipe|price|margin|cost|forecast|tomorrow|plan|prep|মেনু|দাম|রেসিপি|খরচ|কাল|পরিকল্পনা|মার্জিন/i,
+      /menu|dish|recipe|ingredient|plate|price|margin|cost|forecast|tomorrow|plan|prep|মেনু|দাম|রেসিপি|উপকরণ|প্লেট|লাগে|খরচ|কাল|পরিকল্পনা|মার্জিন/i,
   },
   people: {
     tools: ['get_customers_summary', 'get_reviews_summary'],

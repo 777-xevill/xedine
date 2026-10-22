@@ -144,6 +144,51 @@ export async function stockVariance(
   }));
 }
 
+export interface UsedRow {
+  /** Null on a dish sold with nothing written for it (it took nothing). */
+  ingredient_id: string | null;
+  name: string | null;
+  name_bn: string | null;
+  base: BaseUnit | null;
+  /** Null on an ingredient's total row. */
+  menu_item_id: string | null;
+  item_name: string | null;
+  item_name_bn: string | null;
+  /** Plates of the dish that took the ingredient (or were sold with nothing written). */
+  dishes: number | null;
+  /** In the ingredient's base unit; null on a dish with nothing written. */
+  qty: number | null;
+}
+
+/**
+ * metric: stock.used_by_dish (ADR 0037) — what the dishes ordered took from stock between two business
+ * days: each ingredient's total, then its dishes, then the dishes sold with nothing written.
+ */
+export async function stockUsed(
+  orgId: string,
+  branchId: string | null,
+  from: string,
+  to: string,
+): Promise<UsedRow[]> {
+  const rows = await rpc('metric_stock_used', {
+    p_org: orgId,
+    p_branch: branchId,
+    p_from: from,
+    p_to: to,
+  });
+  return rows.map((r) => ({
+    ingredient_id: (r.ingredient_id as string | null) ?? null,
+    name: (r.name as string | null) ?? null,
+    name_bn: (r.name_bn as string | null) ?? null,
+    base: (r.base as BaseUnit | null) ?? null,
+    menu_item_id: (r.menu_item_id as string | null) ?? null,
+    item_name: (r.item_name as string | null) ?? null,
+    item_name_bn: (r.item_name_bn as string | null) ?? null,
+    dishes: numOrNull(r.dishes),
+    qty: numOrNull(r.qty),
+  }));
+}
+
 export type LotStatus = 'running' | 'ended';
 
 export interface LotRow {

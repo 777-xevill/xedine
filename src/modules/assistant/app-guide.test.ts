@@ -11,18 +11,20 @@ const owner = (enabled: Access['enabled'] = []): Access => ({
 
 describe('findPages', () => {
   it('finds the page for a topic, in English and Bangla', () => {
-    expect(findPages('where do I add a recipe', owner(['recipes']))[0]).toMatchObject({
+    // Dish ingredients is always on (ADR 0037).
+    expect(findPages('where do I add a recipe', owner())[0]).toMatchObject({
       key: 'recipes',
       status: 'open',
       path: '/demo/recipes',
     });
+    expect(findPages('বার্গারের উপকরণ', owner())[0]?.key).toBe('recipes');
     expect(findPages('আজকের বিক্রি', owner())[0]?.key).toBe('sales');
     expect(findPages('vat return due', owner(['compliance']))[0]?.key).toBe('compliance');
   });
 
   it('says how to get a page that is switched off or not for this role', () => {
-    const off = findPages('recipes', owner())[0];
-    expect(off).toMatchObject({ key: 'recipes', status: 'switched_off' });
+    const off = findPages('menu profit', owner())[0];
+    expect(off).toMatchObject({ key: 'menuProfit', status: 'switched_off' });
     expect(off?.how_to_get_it).toContain('Features');
     const manager: Access = { slug: 'demo', roles: ['manager'], enabled: [] };
     expect(findPages('money leaks', manager)[0]).toMatchObject({

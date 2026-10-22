@@ -81,7 +81,13 @@ export interface SectionTab {
 /** The sections as big tiles: an icon you can recognise before you read the word. No JavaScript. */
 export function SectionTabs({ tabs, label }: { tabs: SectionTab[]; label: string }) {
   return (
-    <nav aria-label={label} className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+    <nav
+      aria-label={label}
+      className={cn(
+        'mb-6 grid gap-2 sm:gap-3',
+        tabs.length === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-3',
+      )}
+    >
       {tabs.map((tab) => (
         <Link
           key={tab.key}

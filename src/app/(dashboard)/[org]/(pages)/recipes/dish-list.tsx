@@ -279,7 +279,8 @@ function DishEditor({
   const [asking, startAsk] = React.useTransition();
   const [saving, startSave] = React.useTransition();
   const busy = asking || saving;
-  const plateCount = parseQuantity(plates);
+  // Blank means one plate, as the hint says: only a real mistake (letters, 0) stops the save.
+  const plateCount = plates.trim() === '' ? 1 : parseQuantity(plates);
   const label = (k: KnownIngredient) => (loc === 'bn' && k.name_bn ? k.name_bn : k.name);
 
   const change = (key: number, patch: Partial<DishRow>) => {

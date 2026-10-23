@@ -18,10 +18,39 @@ describe('dish ingredients (ADR 0037)', () => {
   });
 
   it('offers only the units that fit an item the kitchen already keeps', () => {
-    expect(unitsForRow(known[1]!)).toEqual(['pcs']);
+    expect(unitsForRow(known[1]!)).toEqual(['pcs', 'slice', 'packet', 'bunch', 'dozen']);
     expect(unitsForRow(known[0]!)).toEqual(['g', 'kg']);
-    expect(unitsForRow(known[3]!)).toEqual(['ml', 'l']);
-    expect(unitsForRow(null)).toEqual(['g', 'kg', 'ml', 'l', 'pcs']);
+    expect(unitsForRow(known[3]!)).toEqual(['ml', 'l', 'tsp', 'tbsp', 'cup']);
+    // A new item may use any of them.
+    expect(unitsForRow(null)).toHaveLength(12);
+  });
+
+  it('reads kitchen words: slice, dozen, spoons and cups', () => {
+    expect(
+      dishLines(
+        [
+          { name: 'Burger bun', qty: '2', unit: 'dozen' },
+          { name: 'Cheese', qty: '1', unit: 'slice' },
+          { name: 'Soybean oil', qty: '2', unit: 'tbsp' },
+          { name: 'Lemon juice', qty: '1', unit: 'tsp' },
+          { name: 'Milk', qty: '0.5', unit: 'cup' },
+        ],
+        known,
+      ),
+    ).toEqual({
+      lines: [
+        { ingredient_id: 'bun', qty_base: 24 },
+        { ingredient: 'Cheese', base: 'pcs', qty_base: 1 },
+        { ingredient_id: 'oil', qty_base: 30 },
+        { ingredient: 'Lemon juice', base: 'ml', qty_base: 5 },
+        { ingredient: 'Milk', base: 'ml', qty_base: 120 },
+      ],
+    });
+    // A spoon of chicken: the chicken is kept in grams.
+    expect(dishLines([{ name: 'Chicken', qty: '1', unit: 'tbsp' }], known)).toEqual({
+      error: 'dishUnit',
+      name: 'Chicken',
+    });
   });
 
   it('turns the burger into lines in base units, new items by name, blank rows skipped', () => {

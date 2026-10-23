@@ -1,10 +1,4 @@
-import {
-  parseQuantity,
-  PURCHASE_UNITS,
-  splitQuantity,
-  toBase,
-  type BaseUnit,
-} from '@/modules/purchasing/lines';
+import { parseQuantity, splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
 
 /**
  * A dish's ingredients as people write them (ADR 0037): one row per ingredient, the amount that goes
@@ -12,8 +6,27 @@ import {
  * call it. Amounts go to the database in base units (g, ml, pieces), as stock keeps them.
  */
 
-export const DISH_UNITS = ['g', 'kg', 'ml', 'l', 'pcs'] as const;
-export type DishUnit = (typeof DISH_UNITS)[number];
+/**
+ * Every unit a row can use, with the base unit it is kept in and how many of that it is. Besides the
+ * metric ones there are the words a kitchen uses: dozen, slice, packet, bunch (counted as pieces, so one
+ * slice is one piece of stock) and spoon / cup measures (millilitres: 1 tsp = 5, 1 tbsp = 15, 1 cup = 240).
+ */
+export const DISH_UNIT_INFO = {
+  g: { base: 'g', factor: 1 },
+  kg: { base: 'g', factor: 1000 },
+  ml: { base: 'ml', factor: 1 },
+  l: { base: 'ml', factor: 1000 },
+  tsp: { base: 'ml', factor: 5 },
+  tbsp: { base: 'ml', factor: 15 },
+  cup: { base: 'ml', factor: 240 },
+  pcs: { base: 'pcs', factor: 1 },
+  slice: { base: 'pcs', factor: 1 },
+  packet: { base: 'pcs', factor: 1 },
+  bunch: { base: 'pcs', factor: 1 },
+  dozen: { base: 'pcs', factor: 12 },
+} as const satisfies Record<string, { base: BaseUnit; factor: number }>;
+export type DishUnit = keyof typeof DISH_UNIT_INFO;
+export const DISH_UNITS = Object.keys(DISH_UNIT_INFO) as [DishUnit, ...DishUnit[]];
 export const MAX_DISH_ROWS = 40;
 
 export interface DishRow {
@@ -59,7 +72,7 @@ export function findIngredient(name: string, list: KnownIngredient[]): KnownIngr
 /** The units a row may use: an existing ingredient's family (no grams of eggs), else all of them. */
 export function unitsForRow(known: KnownIngredient | null): DishUnit[] {
   if (!known) return [...DISH_UNITS];
-  return DISH_UNITS.filter((u) => PURCHASE_UNITS[u].base === known.base);
+  return DISH_UNITS.filter((u) => DISH_UNIT_INFO[u].base === known.base);
 }
 
 /** Rows → recipe lines in base units. Blank rows are skipped; the first problem is returned. */
@@ -74,12 +87,12 @@ export function dishLines(
     if (!name || name.length > 120) return { error: 'dishName' };
     const qty = parseQuantity(r.qty);
     if (qty === null || qty <= 0) return { error: 'dishAmount', name };
-    const unit = PURCHASE_UNITS[r.unit];
-    if (!unit || !(DISH_UNITS as readonly string[]).includes(r.unit))
-      return { error: 'dishUnit', name };
+    const unit = DISH_UNIT_INFO[r.unit] as { base: BaseUnit; factor: number } | undefined;
+    if (!unit) return { error: 'dishUnit', name };
     const known = findIngredient(name, list);
-    const qtyBase = toBase(qty, r.unit, known?.base ?? unit.base);
-    if (qtyBase === null) return { error: 'dishUnit', name };
+    if (known && known.base !== unit.base) return { error: 'dishUnit', name };
+    // Round to a thousandth of a base unit: 1.25 kg is 1250 g, never 1249.9999.
+    const qtyBase = Math.round(qty * unit.factor * 1000) / 1000;
     lines.push(
       known
         ? { ingredient_id: known.id, qty_base: qtyBase }
@@ -93,5 +106,5 @@ export function dishLines(
 export function editorAmount(qtyBase: number, base: BaseUnit): { qty: string; unit: DishUnit } {
   const { value, unit } = splitQuantity(qtyBase, base);
   const rounded = Math.round(value * 1000) / 1000;
-  return { qty: String(rounded), unit: unit === 'dozen' ? 'pcs' : unit };
+  return { qty: String(rounded), unit };
 }

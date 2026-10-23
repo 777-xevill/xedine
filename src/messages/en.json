@@ -1385,7 +1385,13 @@
     "l": "litre",
     "ml": "ml",
     "pcs": "pcs",
-    "dozen": "dozen"
+    "dozen": "dozen",
+    "tsp": "teaspoon",
+    "tbsp": "tablespoon",
+    "cup": "cup",
+    "slice": "slice",
+    "packet": "packet",
+    "bunch": "bunch"
   },
   "stock": {
     "title": "Stock",

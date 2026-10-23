@@ -54,6 +54,7 @@ import {
   setDevice,
   setStaffSession,
   setTillSnapshot,
+  staffSessionEnded,
   type DeviceState,
   type StaffSessionState,
 } from './device-storage';
@@ -81,14 +82,29 @@ import { TillContext, useTill, type TillContextValue } from './till-context';
 const uid = () => crypto.randomUUID();
 const nowIso = () => now().toISOString();
 
+/** The remembered sign-in, or none when its 12 hours are over (the server would refuse every order). */
+function loadStaffSession(): { session: StaffSessionState | null; ended: boolean } {
+  const session = getStaffSession();
+  if (session && staffSessionEnded(session, now())) {
+    clearStaffSession();
+    return { session: null, ended: true };
+  }
+  return { session, ended: false };
+}
+
+/** The database refused because this till's staff sign-in has ended (42501 "no active staff session"). */
+const sessionEnded = (error: string) => /no active staff session/i.test(error);
+
 export function PosApp() {
   const locale = useLocale() as Locale;
+  const t = useTranslations('pos');
   const sb = useMemo(() => createClient(), []);
   // Client-only mount, so reading localStorage in the initializer cannot mismatch a server render.
   const [device, setDeviceState] = useState<DeviceState | null>(() => getDevice());
-  const [staffSession, setStaffSessionState] = useState<StaffSessionState | null>(() =>
-    getStaffSession(),
-  );
+  const [loaded] = useState(loadStaffSession);
+  const [staffSession, setStaffSessionState] = useState<StaffSessionState | null>(loaded.session);
+  // Why the PIN screen is showing again: the 12-hour sign-in ended while the till was still open.
+  const [expired, setExpired] = useState(loaded.ended);
 
   useEffect(() => {
     // The service worker keeps /pos loadable with no network (public/sw.js). Best effort only.
@@ -112,9 +128,12 @@ export function PosApp() {
       <StaffGate
         sb={sb}
         device={device}
+        notice={expired ? t('sessionExpired') : null}
         onSignedIn={(s) => {
-          setStaffSession(s);
-          setStaffSessionState(s);
+          const signedIn = { ...s, signedAt: nowIso() };
+          setStaffSession(signedIn);
+          setStaffSessionState(signedIn);
+          setExpired(false);
         }}
         onReset={() => {
           clearStaffSession();
@@ -135,6 +154,11 @@ export function PosApp() {
         void endStaffSession(sb, staffSession.sessionId).catch(() => undefined);
         clearStaffSession();
         setStaffSessionState(null);
+      }}
+      onSessionExpired={() => {
+        clearStaffSession();
+        setStaffSessionState(null);
+        setExpired(true);
       }}
     />
   );
@@ -217,12 +241,15 @@ function Till({
   staffSession,
   locale,
   onSwitchStaff,
+  onSessionExpired,
 }: {
   sb: ReturnType<typeof createClient>;
   device: DeviceState;
   staffSession: StaffSessionState;
   locale: Locale;
   onSwitchStaff: () => void;
+  /** The database says this sign-in has ended: back to the PIN screen. */
+  onSessionExpired: () => void;
 }) {
   const t = useTranslations('pos');
   const tc = useTranslations('common');
@@ -501,7 +528,8 @@ function Till({
         },
       });
       if (outcome.state === 'refused') {
-        setError(t('orderRefused'));
+        if (sessionEnded(outcome.error)) onSessionExpired();
+        else setError(t('orderRefused'));
         return;
       }
       if (outcome.state === 'synced') {
@@ -565,7 +593,8 @@ function Till({
         },
       });
       if (outcome.state === 'refused') {
-        setError(t('actionRefused'));
+        if (sessionEnded(outcome.error)) onSessionExpired();
+        else setError(t('actionRefused'));
         return;
       }
       const stamp = nowIso();
@@ -614,7 +643,10 @@ function Till({
           staffId: staffSession.staffId,
         },
       });
-      if (outcome.state === 'refused') return t('paymentRefused');
+      if (outcome.state === 'refused') {
+        if (sessionEnded(outcome.error)) onSessionExpired();
+        return t('paymentRefused');
+      }
       setPaid(check.paidPoisha);
       setChange(check.changePoisha);
       if (outcome.state === 'synced') setOrder(outcome.result as OrderRow);

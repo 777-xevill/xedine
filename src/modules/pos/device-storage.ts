@@ -26,6 +26,18 @@ export interface StaffSessionState {
   sessionId: string;
   staffId: string;
   staffName: string;
+  /** When the PIN was entered here (ISO). The database ends a sign-in 12 hours after it starts. */
+  signedAt?: string;
+}
+
+/** The database ends a staff sign-in this long after the PIN was entered (start_staff_session). */
+export const STAFF_SESSION_MS = 12 * 60 * 60 * 1000;
+
+/** True when the remembered sign-in is older than the database keeps it (one without a time: unknown, so no). */
+export function staffSessionEnded(session: StaffSessionState, at: Date): boolean {
+  if (!session.signedAt) return false;
+  const signed = Date.parse(session.signedAt);
+  return Number.isFinite(signed) && at.getTime() - signed >= STAFF_SESSION_MS;
 }
 
 const DEVICE_KEY = 'xedine.pos.device';

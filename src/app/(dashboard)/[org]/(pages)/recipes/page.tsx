@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, Lightbulb, ReceiptText } from 'lucide-react';
+import { Boxes, ClipboardList, Lightbulb, Plus, ReceiptText } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -7,7 +7,7 @@ import { PageAgent } from '@/components/chat/page-agent';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { Disclosure, ToneIcon } from '@/components/stock/parts';
 import { StatusBadge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, EmptyState, Hint, Input, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
@@ -137,6 +137,22 @@ export default async function DishIngredientsPage({
   });
   const written = dishes.filter((d) => d.rows.length > 0).length;
 
+  // A new dish is made on the Menu page (owner only, it needs a price); this page only fills it in.
+  const addDish = ctx.isOwner ? (
+    <div className="flex flex-wrap items-center gap-3">
+      <Link
+        href={`/${ctx.org.slug}/menu`}
+        className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+      >
+        <Plus aria-hidden className="size-4" />
+        {t('addDish')}
+      </Link>
+      <p className="text-sm text-secondary">{t('addDishHint')}</p>
+    </div>
+  ) : canEdit ? (
+    <Hint>{t('askOwnerDish')}</Hint>
+  ) : null;
+
   return (
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} actions={<LocaleSwitcher />} />
@@ -188,7 +204,10 @@ export default async function DishIngredientsPage({
           </Card>
 
           {dishes.length === 0 ? (
-            <EmptyState title={t('noItems')} body={t('noItemsBody')} />
+            <>
+              <EmptyState title={t('noItems')} body={t('noItemsBody')} />
+              {addDish}
+            </>
           ) : (
             <>
               <div>
@@ -209,6 +228,7 @@ export default async function DishIngredientsPage({
                 </div>
                 {!canEdit ? <Hint>{t('readOnly')}</Hint> : null}
               </div>
+              {addDish}
               <DishList
                 orgId={ctx.org.id}
                 orgSlug={ctx.org.slug}

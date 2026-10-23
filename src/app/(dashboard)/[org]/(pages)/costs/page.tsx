@@ -2,24 +2,14 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardTitle,
-  EmptyState,
-  Hint,
-  Input,
-  Label,
-  PageTitle,
-  Select,
-} from '@/components/ui/form';
+import { Card, CardTitle, EmptyState, Input, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatBDT, type Locale } from '@/lib/i18n/format';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
 import { addFixedCostAction, endFixedCostAction, setSalaryAction } from '@/modules/costs/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
-import { FoodCostForm } from './food-cost-form';
 
 const FIXED_KINDS = ['rent', 'utilities', 'gas', 'fuel', 'internet', 'other'] as const;
 
@@ -35,12 +25,7 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
   const today = businessDate(now());
   const month = today.slice(0, 7);
   const supabase = await createClient();
-  const [{ data: cost }, { data: fixed }, { data: staff }, { data: salaries }] = await Promise.all([
-    supabase
-      .from('org_cost_settings')
-      .select('assumed_food_cost_bps')
-      .eq('org_id', ctx.org.id)
-      .maybeSingle(),
+  const [{ data: fixed }, { data: staff }, { data: salaries }] = await Promise.all([
     supabase
       .from('fixed_costs')
       .select('id, branch_id, kind, label, monthly_poisha, effective_from, effective_to')
@@ -73,25 +58,6 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
     <>
       <SettingsNav ctx={ctx} current="costs" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
-
-      <Card className="mb-6">
-        <CardTitle>{t('foodCostTitle')}</CardTitle>
-        <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('foodCostBody')}</p>
-        <FoodCostForm
-          orgId={ctx.org.id}
-          orgSlug={ctx.org.slug}
-          currentPct={cost?.assumed_food_cost_bps != null ? cost.assumed_food_cost_bps / 100 : null}
-        />
-        {cost?.assumed_food_cost_bps != null ? (
-          <Hint className="mt-3">
-            {t('currentAssumption', {
-              amount: formatNumber(cost.assumed_food_cost_bps / 100, loc, {
-                fractionDigits: Number.isInteger(cost.assumed_food_cost_bps / 100) ? 0 : 1,
-              }),
-            })}
-          </Hint>
-        ) : null}
-      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

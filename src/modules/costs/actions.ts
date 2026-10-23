@@ -9,8 +9,8 @@ import { now } from '@/lib/time/clock';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
- * Setup for the flash P&L (ROADMAP Phase 2): the assumed food cost until recipes exist, fixed costs and
- * salaries. All money-gated tables (ADR 0007): RLS lets only the owner write them.
+ * Setup for the flash P&L (ROADMAP Phase 2): fixed costs and salaries (the food cost comes from the dish ingredients
+ * and the bazar prices, ADR 0037). All money-gated tables (ADR 0007): RLS lets only the owner write them.
  */
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -27,24 +27,6 @@ const taka = z.string().transform((v, ctx) => {
   }
   return p;
 });
-
-export async function setAssumedFoodCostAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base
-    .extend({ pct: z.coerce.number().min(0).max(100) })
-    .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const supabase = await createClient();
-  const { error } = await supabase.from('org_cost_settings').upsert({
-    org_id: parsed.data.orgId,
-    assumed_food_cost_bps: Math.round(parsed.data.pct * 100),
-  });
-  if (error) return { error: mapDbError(error) };
-  refresh(parsed.data.orgSlug);
-  return { ok: true };
-}
 
 const FIXED_KINDS = ['rent', 'utilities', 'gas', 'fuel', 'internet', 'other'] as const;
 

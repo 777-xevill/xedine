@@ -18,11 +18,27 @@ describe('dish ingredients (ADR 0037)', () => {
   });
 
   it('offers only the units that fit an item the kitchen already keeps', () => {
-    expect(unitsForRow(known[1]!)).toEqual(['pcs', 'slice', 'packet', 'bunch', 'dozen']);
-    expect(unitsForRow(known[0]!)).toEqual(['g', 'kg']);
-    expect(unitsForRow(known[3]!)).toEqual(['ml', 'l', 'tsp', 'tbsp', 'cup']);
+    expect(unitsForRow(known[1]!)).toEqual(['pcs', 'slice', 'packet', 'bunch', 'dozen', 'other']);
+    expect(unitsForRow(known[0]!)).toEqual(['g', 'kg', 'other']);
+    expect(unitsForRow(known[3]!)).toEqual(['ml', 'l', 'tsp', 'tbsp', 'cup', 'other']);
     // A new item may use any of them.
-    expect(unitsForRow(null)).toHaveLength(12);
+    expect(unitsForRow(null)).toHaveLength(13);
+    expect(unitsForRow(null).at(-1)).toBe('other');
+  });
+
+  it('lets Other carry its own size: 1 bowl = 250 g', () => {
+    expect(dishLines([{ name: 'Chicken', qty: '2', unit: 'other', size: '250' }], known)).toEqual({
+      lines: [{ ingredient_id: 'chicken', qty_base: 500 }],
+    });
+    expect(dishLines([{ name: 'Rice', qty: '1', unit: 'other', size: '180' }], known)).toEqual({
+      lines: [{ ingredient: 'Rice', base: 'pcs', qty_base: 180 }],
+    });
+    // No size typed, or none above zero: asked for, not guessed.
+    for (const size of [undefined, '', '0', 'x'])
+      expect(dishLines([{ name: 'Chicken', qty: '1', unit: 'other', size }], known)).toEqual({
+        error: 'dishSize',
+        name: 'Chicken',
+      });
   });
 
   it('reads kitchen words: slice, dozen, spoons and cups', () => {

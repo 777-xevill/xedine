@@ -3,18 +3,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { UnitField } from '@/components/unit-field';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-  Alert,
-  Card,
-  CardTitle,
-  EmptyState,
-  Hint,
-  Input,
-  PageTitle,
-  Select,
-} from '@/components/ui/form';
+import { Alert, Card, CardTitle, EmptyState, Hint, Input, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
@@ -29,7 +21,7 @@ import {
 import { forecast, forecastAccuracy, prepPlan } from '@/modules/forecasting/queries';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
-import { splitQuantity, unitsFor, type BaseUnit } from '@/modules/purchasing/lines';
+import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
 const TABS = ['forecast', 'prep', 'bazar'] as const;
@@ -399,18 +391,14 @@ export default async function PlanPage({
                                         placeholder={String(Math.round(shown.value * 1000) / 1000)}
                                         className="min-h-9 w-20 text-end"
                                       />
-                                      <Select
+                                      <UnitField
                                         name={`unit-${l.id}`}
+                                        ariaLabel={t('unit')}
+                                        base={b}
                                         defaultValue={shown.unit}
-                                        aria-label={t('unit')}
-                                        className="min-h-9 w-20"
-                                      >
-                                        {unitsFor(b).map((u) => (
-                                          <option key={u} value={u}>
-                                            {tu(u)}
-                                          </option>
-                                        ))}
-                                      </Select>
+                                        className="w-24"
+                                        selectClassName="min-h-9 w-full"
+                                      />
                                     </div>
                                   ) : null}
                                 </td>

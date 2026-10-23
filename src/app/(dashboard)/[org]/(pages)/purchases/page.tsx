@@ -2,6 +2,7 @@ import { AlertTriangle, Sparkles } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { UnitField } from '@/components/unit-field';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,6 @@ import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
 const TABS = ['record', 'drafts', 'history', 'suppliers'] as const;
 type Tab = (typeof TABS)[number];
-const UNITS: PurchaseUnit[] = ['kg', 'g', 'l', 'ml', 'pcs', 'dozen'];
 const BLANK_ROWS = 6;
 
 /**
@@ -165,18 +165,12 @@ export default async function PurchasesPage({
           defaultValue={l?.qty ? String(l.qty) : ''}
           className={cn(l && flagged('qty') && warn)}
         />
-        <Select
+        <UnitField
           name={`line-${i}-unit`}
-          aria-label={t('unit')}
+          ariaLabel={t('unit')}
           defaultValue={unit}
-          className={cn(l && flagged('unit') && warn)}
-        >
-          {UNITS.map((u) => (
-            <option key={u} value={u}>
-              {tu(u)}
-            </option>
-          ))}
-        </Select>
+          selectClassName={cn(l && flagged('unit') && warn)}
+        />
         <Input
           name={`line-${i}-total`}
           inputMode="decimal"

@@ -1,4 +1,12 @@
-import { parseQuantity, splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
+import {
+  OTHER_UNIT,
+  parseQuantity,
+  PURCHASE_UNITS,
+  splitQuantity,
+  toBase,
+  type BaseUnit,
+  type PurchaseUnit,
+} from '@/modules/purchasing/lines';
 
 /**
  * A dish's ingredients as people write them (ADR 0037): one row per ingredient, the amount that goes
@@ -7,26 +15,26 @@ import { parseQuantity, splitQuantity, type BaseUnit } from '@/modules/purchasin
  */
 
 /**
- * Every unit a row can use, with the base unit it is kept in and how many of that it is. Besides the
- * metric ones there are the words a kitchen uses: dozen, slice, packet, bunch (counted as pieces, so one
- * slice is one piece of stock) and spoon / cup measures (millilitres: 1 tsp = 5, 1 tbsp = 15, 1 cup = 240).
+ * The units a row offers, grouped by what they measure (the table of what each is lives in
+ * PURCHASE_UNITS, shared with the bazar and stock forms), then "Other" for the rare thing the list
+ * does not name: the person types how many g / ml / pieces one of it is.
  */
-export const DISH_UNIT_INFO = {
-  g: { base: 'g', factor: 1 },
-  kg: { base: 'g', factor: 1000 },
-  ml: { base: 'ml', factor: 1 },
-  l: { base: 'ml', factor: 1000 },
-  tsp: { base: 'ml', factor: 5 },
-  tbsp: { base: 'ml', factor: 15 },
-  cup: { base: 'ml', factor: 240 },
-  pcs: { base: 'pcs', factor: 1 },
-  slice: { base: 'pcs', factor: 1 },
-  packet: { base: 'pcs', factor: 1 },
-  bunch: { base: 'pcs', factor: 1 },
-  dozen: { base: 'pcs', factor: 12 },
-} as const satisfies Record<string, { base: BaseUnit; factor: number }>;
-export type DishUnit = keyof typeof DISH_UNIT_INFO;
-export const DISH_UNITS = Object.keys(DISH_UNIT_INFO) as [DishUnit, ...DishUnit[]];
+export const DISH_UNITS = [
+  'g',
+  'kg',
+  'ml',
+  'l',
+  'tsp',
+  'tbsp',
+  'cup',
+  'pcs',
+  'slice',
+  'packet',
+  'bunch',
+  'dozen',
+  OTHER_UNIT,
+] as const satisfies readonly (PurchaseUnit | typeof OTHER_UNIT)[];
+export type DishUnit = (typeof DISH_UNITS)[number];
 export const MAX_DISH_ROWS = 40;
 
 export interface DishRow {
@@ -34,6 +42,8 @@ export interface DishRow {
   /** As typed: Latin or Bangla digits ("150", "১৫০", "1.5"). */
   qty: string;
   unit: DishUnit;
+  /** Only for "other": how many g / ml / pieces one of it is, as typed. */
+  size?: string;
 }
 
 export interface KnownIngredient {
@@ -51,7 +61,7 @@ export type RecipeLine =
 export type DishError =
   | { error: 'dishEmpty' }
   | { error: 'dishName' }
-  | { error: 'dishAmount' | 'dishUnit'; name: string };
+  | { error: 'dishAmount' | 'dishUnit' | 'dishSize'; name: string };
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -69,10 +79,10 @@ export function findIngredient(name: string, list: KnownIngredient[]): KnownIngr
   );
 }
 
-/** The units a row may use: an existing ingredient's family (no grams of eggs), else all of them. */
+/** The units a row may use: an existing ingredient's family (no grams of eggs), else all; "Other" last. */
 export function unitsForRow(known: KnownIngredient | null): DishUnit[] {
   if (!known) return [...DISH_UNITS];
-  return DISH_UNITS.filter((u) => DISH_UNIT_INFO[u].base === known.base);
+  return DISH_UNITS.filter((u) => u === OTHER_UNIT || PURCHASE_UNITS[u].base === known.base);
 }
 
 /** Rows → recipe lines in base units. Blank rows are skipped; the first problem is returned. */
@@ -87,16 +97,23 @@ export function dishLines(
     if (!name || name.length > 120) return { error: 'dishName' };
     const qty = parseQuantity(r.qty);
     if (qty === null || qty <= 0) return { error: 'dishAmount', name };
-    const unit = DISH_UNIT_INFO[r.unit] as { base: BaseUnit; factor: number } | undefined;
-    if (!unit) return { error: 'dishUnit', name };
+    if (!(DISH_UNITS as readonly string[]).includes(r.unit)) return { error: 'dishUnit', name };
     const known = findIngredient(name, list);
-    if (known && known.base !== unit.base) return { error: 'dishUnit', name };
-    // Round to a thousandth of a base unit: 1.25 kg is 1250 g, never 1249.9999.
-    const qtyBase = Math.round(qty * unit.factor * 1000) / 1000;
+    let base: BaseUnit;
+    if (r.unit === OTHER_UNIT) {
+      // A new item typed with "other" has no unit family yet: its size is taken as pieces.
+      base = known?.base ?? 'pcs';
+      const size = parseQuantity(r.size ?? '');
+      if (size === null || !(size > 0)) return { error: 'dishSize', name };
+    } else {
+      base = PURCHASE_UNITS[r.unit].base;
+    }
+    const qtyBase = toBase(qty, r.unit, known?.base ?? base, parseQuantity(r.size ?? ''));
+    if (qtyBase === null) return { error: 'dishUnit', name };
     lines.push(
       known
         ? { ingredient_id: known.id, qty_base: qtyBase }
-        : { ingredient: name, base: unit.base, qty_base: qtyBase },
+        : { ingredient: name, base, qty_base: qtyBase },
     );
   }
   return lines.length === 0 ? { error: 'dishEmpty' } : { lines };

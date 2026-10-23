@@ -5,16 +5,48 @@
  */
 
 export type BaseUnit = 'g' | 'ml' | 'pcs';
-export type PurchaseUnit = 'kg' | 'g' | 'l' | 'ml' | 'pcs' | 'dozen';
+export type PurchaseUnit =
+  'kg' | 'g' | 'l' | 'ml' | 'tsp' | 'tbsp' | 'cup' | 'pcs' | 'slice' | 'packet' | 'bunch' | 'dozen';
 
+/**
+ * Every unit a person can pick, in the order a dropdown shows them, with the base unit it is kept in
+ * and how many of that it is. Slice, packet and bunch count as pieces; a dozen is 12; spoons and the
+ * cup are millilitres (1 tsp = 5, 1 tbsp = 15, 1 cup = 240).
+ */
 export const PURCHASE_UNITS: Record<PurchaseUnit, { base: BaseUnit; factor: number }> = {
   kg: { base: 'g', factor: 1000 },
   g: { base: 'g', factor: 1 },
   l: { base: 'ml', factor: 1000 },
   ml: { base: 'ml', factor: 1 },
+  tsp: { base: 'ml', factor: 5 },
+  tbsp: { base: 'ml', factor: 15 },
+  cup: { base: 'ml', factor: 240 },
   pcs: { base: 'pcs', factor: 1 },
+  slice: { base: 'pcs', factor: 1 },
+  packet: { base: 'pcs', factor: 1 },
+  bunch: { base: 'pcs', factor: 1 },
   dozen: { base: 'pcs', factor: 12 },
 };
+
+/**
+ * "Other", always last: for the rare thing the list does not name (a bowl, a tray). The person types
+ * how much one of them is, in the item's base unit (1 bowl = 250 g), and stock takes that.
+ */
+export const OTHER_UNIT = 'other';
+export type UnitChoice = PurchaseUnit | typeof OTHER_UNIT;
+export const UNIT_CHOICES = [
+  ...(Object.keys(PURCHASE_UNITS) as PurchaseUnit[]),
+  OTHER_UNIT,
+] as const;
+
+export function isUnitChoice(unit: string): unit is UnitChoice {
+  return (UNIT_CHOICES as readonly string[]).includes(unit);
+}
+
+/** What a dropdown offers for an item kept in `base`: its units, then "Other". */
+export function unitChoices(base: BaseUnit): UnitChoice[] {
+  return [...unitsFor(base), OTHER_UNIT];
+}
 
 /** The units a person may enter for an ingredient kept in `base`. */
 export function unitsFor(base: BaseUnit): PurchaseUnit[] {
@@ -23,12 +55,28 @@ export function unitsFor(base: BaseUnit): PurchaseUnit[] {
   );
 }
 
-/** Quantity in base units, or null when the unit does not fit the ingredient (litres of eggs). */
-export function toBase(qty: number, unit: PurchaseUnit, base: BaseUnit): number | null {
-  const u = PURCHASE_UNITS[unit];
-  if (!u || u.base !== base || !(qty > 0)) return null;
+/**
+ * Quantity in base units, or null when the unit does not fit the ingredient (litres of eggs). For
+ * "other", `size` is how many base units one is; without a size above zero it is refused.
+ */
+export function toBase(
+  qty: number,
+  unit: UnitChoice,
+  base: BaseUnit,
+  size?: number | null,
+): number | null {
+  if (!(qty > 0)) return null;
+  let factor: number;
+  if (unit === OTHER_UNIT) {
+    if (size === null || size === undefined || !(size > 0)) return null;
+    factor = size;
+  } else {
+    const u = PURCHASE_UNITS[unit];
+    if (!u || u.base !== base) return null;
+    factor = u.factor;
+  }
   // Round to a thousandth of a base unit: 1.25 kg is 1250 g, never 1249.9999.
-  return Math.round(qty * u.factor * 1000) / 1000;
+  return Math.round(qty * factor * 1000) / 1000;
 }
 
 /** The friendliest unit to show a base quantity in (2,500 g → 2.5 kg). */
@@ -176,7 +224,13 @@ const UNIT_WORDS: [RegExp, PurchaseUnit][] = [
   [/^(l|ltr|liter|litre|লিটার)/i, 'l'],
   [/^(ml|মিলি)/i, 'ml'],
   [/^(dozen|doz|ডজন)/i, 'dozen'],
-  [/^(pcs|pc|piece|pieces|টি|টা|পিস|can|bottle|packet|পিছ)/i, 'pcs'],
+  [/^(tsp|teaspoon|চা[- ]?চামচ)/i, 'tsp'],
+  [/^(tbsp|tablespoon|টেবিল[- ]?চামচ)/i, 'tbsp'],
+  [/^(cup|কাপ)/i, 'cup'],
+  [/^(slice|স্লাইস)/i, 'slice'],
+  [/^(packet|pack|প্যাকেট)/i, 'packet'],
+  [/^(bunch|আঁটি|গোছা)/i, 'bunch'],
+  [/^(pcs|pc|piece|pieces|টি|টা|পিস|can|bottle|পিছ)/i, 'pcs'],
 ];
 
 export function parseUnit(unit: string): PurchaseUnit | null {

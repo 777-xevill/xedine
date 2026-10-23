@@ -2,15 +2,16 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { UnitField } from '@/components/unit-field';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, Hint, Input, PageTitle, Select } from '@/components/ui/form';
+import { Card, Hint, Input, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
 import { saveCountAction } from '@/modules/inventory/actions';
 import { formatQuantity } from '@/modules/inventory/format';
-import { splitQuantity, unitsFor, type BaseUnit } from '@/modules/purchasing/lines';
+import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 interface SheetRow {
@@ -79,20 +80,16 @@ export default async function CountPage({
             {current !== null ? (
               <input type="hidden" name={`touched-${r.ingredient_id}`} value="1" />
             ) : null}
-            <Select
+            <UnitField
               name={`unit-${r.ingredient_id}`}
-              aria-label={t('unit')}
+              ariaLabel={t('unit')}
+              base={r.base}
               defaultValue={
                 current?.unit ?? (r.base === 'g' ? 'kg' : r.base === 'ml' ? 'l' : 'pcs')
               }
-              className="w-24"
-            >
-              {unitsFor(r.base).map((u) => (
-                <option key={u} value={u}>
-                  {tu(u)}
-                </option>
-              ))}
-            </Select>
+              className="w-28"
+              selectClassName="w-full"
+            />
           </>
         ) : (
           <span className="tabular-nums">

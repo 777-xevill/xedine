@@ -57,7 +57,12 @@ const DishInput = base.extend({
   plates: z.number().positive().max(1000),
   rows: z
     .array(
-      z.object({ name: z.string().max(200), qty: z.string().max(20), unit: z.enum(DISH_UNITS) }),
+      z.object({
+        name: z.string().max(200),
+        qty: z.string().max(20),
+        unit: z.enum(DISH_UNITS),
+        size: z.string().max(20).optional(),
+      }),
     )
     .max(MAX_DISH_ROWS),
   /** The AI suggestion the list started from, if any: saving it is the person's approval. */

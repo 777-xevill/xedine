@@ -322,7 +322,7 @@ function DishEditor({
         orgSlug,
         itemId: dish.id,
         plates: plateCount,
-        rows: rows.map(({ name, qty, unit }) => ({ name, qty, unit })),
+        rows: rows.map(({ name, qty, unit, size }) => ({ name, qty, unit, size })),
         draftId,
       });
       if ('error' in res) {
@@ -416,6 +416,25 @@ function DishEditor({
                       </option>
                     ))}
                   </Select>
+                  {r.unit === 'other' ? (
+                    <Input
+                      value={r.size ?? ''}
+                      inputMode="decimal"
+                      maxLength={12}
+                      onChange={(e) => change(r.key, { size: e.target.value })}
+                      placeholder={tu(
+                        match?.base === 'g'
+                          ? 'otherSizeG'
+                          : match?.base === 'ml'
+                            ? 'otherSizeMl'
+                            : match?.base === 'pcs'
+                              ? 'otherSizePcs'
+                              : 'otherSizeAny',
+                      )}
+                      aria-label={tu('otherSizeAny')}
+                      className="w-full min-w-0 sm:w-56"
+                    />
+                  ) : null}
                   <Button
                     variant="ghost"
                     size="icon"

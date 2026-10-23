@@ -36,6 +36,13 @@ describe('units', () => {
     expect(toBase(2, 'dozen', 'pcs')).toBe(24);
     expect(toBase(1, 'l', 'pcs')).toBeNull();
     expect(toBase(0, 'kg', 'g')).toBeNull();
+    expect(toBase(2, 'tbsp', 'ml')).toBe(30);
+    expect(toBase(1, 'slice', 'pcs')).toBe(1);
+    expect(toBase(1, 'tbsp', 'g')).toBeNull();
+    // Other needs a size above zero, in the item's base unit.
+    expect(toBase(3, 'other', 'g', 250)).toBe(750);
+    expect(toBase(3, 'other', 'g')).toBeNull();
+    expect(toBase(3, 'other', 'g', 0)).toBeNull();
   });
 
   it('reads the units people write on a chit', () => {

@@ -52,6 +52,7 @@
     "dishName": "Each line with an amount needs an ingredient name too.",
     "dishAmount": "Check “{name}”: write how much goes into one plate as a number, like 150.",
     "dishUnit": "“{name}” is already kept in another unit. Pick one of the units shown for it.",
+    "dishSize": "“{name}”: you chose Other, so type how much one is, like 250.",
     "dishPlates": "Write how many plates as a number, like 1 or 40.",
     "suggestionUsed": "This AI suggestion was already used. Open the page again and try once more.",
     "photoInvalid": "Use a JPEG, PNG or WebP photo under 5 MB.",
@@ -1391,7 +1392,13 @@
     "cup": "cup",
     "slice": "slice",
     "packet": "packet",
-    "bunch": "bunch"
+    "bunch": "bunch",
+    "other": "Other",
+    "otherSizeG": "One is how many g?",
+    "otherSizeMl": "One is how many ml?",
+    "otherSizePcs": "One is how many pieces?",
+    "otherSizeAny": "One is how many g, ml or pcs?",
+    "otherAny": "g / ml / pcs"
   },
   "stock": {
     "title": "Stock",

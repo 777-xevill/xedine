@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { UnitField } from '@/components/unit-field';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import {
   Banner,
@@ -1205,13 +1206,13 @@ export default async function StockPage({
                         </div>
                         <div>
                           <Label htmlFor="w-unit">{t('unit')}</Label>
-                          <Select id="w-unit" name="unit" defaultValue="kg" className="w-28">
-                            {(['kg', 'g', 'l', 'ml', 'pcs', 'dozen'] as PurchaseUnit[]).map((u) => (
-                              <option key={u} value={u}>
-                                {tu(u)}
-                              </option>
-                            ))}
-                          </Select>
+                          <UnitField
+                            name="unit"
+                            ariaLabel={t('unit')}
+                            defaultValue="kg"
+                            className="w-32"
+                            selectClassName="w-full"
+                          />
                         </div>
                       </div>
                       <Hint className="-mt-1">{t('wasteUnitHint')}</Hint>

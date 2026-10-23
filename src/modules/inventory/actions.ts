@@ -4,12 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import {
-  parseQuantity,
-  toBase,
-  type BaseUnit,
-  type PurchaseUnit,
-} from '@/modules/purchasing/lines';
+import { isUnitChoice, parseQuantity, toBase, type BaseUnit } from '@/modules/purchasing/lines';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -20,7 +15,6 @@ import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 const base = z.object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG) });
-const UNITS = ['kg', 'g', 'l', 'ml', 'pcs', 'dozen'] as const;
 const refresh = (slug: string) => {
   revalidatePath(`/${slug}/stock`);
   revalidatePath(`/${slug}`);
@@ -32,12 +26,20 @@ async function ingredientBases(orgId: string): Promise<Map<string, BaseUnit>> {
   return new Map((data ?? []).map((i) => [i.id as string, i.base as BaseUnit]));
 }
 
-/** A typed quantity in a unit the ingredient accepts → base units; null if either does not fit. */
-function qtyBase(text: string, unit: string, baseUnit: BaseUnit | undefined): number | null {
+/**
+ * A typed quantity in a unit the ingredient accepts → base units; null if either does not fit. For
+ * "other", `sizeText` is how many base units one is.
+ */
+function qtyBase(
+  text: string,
+  unit: string,
+  baseUnit: BaseUnit | undefined,
+  sizeText = '',
+): number | null {
   const qty = parseQuantity(text);
-  if (qty === null || !baseUnit || !(UNITS as readonly string[]).includes(unit)) return null;
+  if (qty === null || !baseUnit || !isUnitChoice(unit)) return null;
   if (qty === 0) return 0;
-  return toBase(qty, unit as PurchaseUnit, baseUnit);
+  return toBase(qty, unit, baseUnit, parseQuantity(sizeText));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -83,7 +85,12 @@ export async function saveCountAction(_prev: FormState, formData: FormData): Pro
     const qty =
       text === ''
         ? null
-        : qtyBase(text, String(formData.get(`unit-${ingredient}`) ?? ''), bases.get(ingredient));
+        : qtyBase(
+            text,
+            String(formData.get(`unit-${ingredient}`) ?? ''),
+            bases.get(ingredient),
+            String(formData.get(`unit-${ingredient}-size`) ?? ''),
+          );
     if (text !== '' && qty === null) return { error: 'quantityInvalid' };
     const { error } = await supabase.rpc('save_count_line', {
       p_count: parsed.data.countId,
@@ -125,6 +132,7 @@ export async function logWasteAction(_prev: FormState, formData: FormData): Prom
       parsed.data.qty,
       parsed.data.unit,
       (await ingredientBases(parsed.data.orgId)).get(id),
+      String(formData.get('unit-size') ?? ''),
     );
   } else {
     qty = parseQuantity(parsed.data.qty);

@@ -8,13 +8,13 @@ import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { extractPurchase, PURCHASE_EXTRACT_PROMPT } from './extraction';
 import {
+  isUnitChoice,
   parseQuantity,
   parseReferenceCsv,
   reviewLines,
   toBase,
   type BaseUnit,
   type IngredientRef,
-  type PurchaseUnit,
 } from './lines';
 
 /**
@@ -30,7 +30,6 @@ const refresh = (slug: string) => {
   revalidatePath(`/${slug}/purchases`);
   revalidatePath(`/${slug}/stock`);
 };
-const UNITS = ['kg', 'g', 'l', 'ml', 'pcs', 'dozen'] as const;
 
 async function ingredientBases(orgId: string): Promise<Map<string, BaseUnit>> {
   const supabase = await createClient();
@@ -56,12 +55,13 @@ function readPurchaseLines(
     const qtyText = String(formData.get(`line-${i}-qty`) ?? '').trim();
     const totalText = String(formData.get(`line-${i}-total`) ?? '').trim();
     if (!ingredient && !qtyText && !totalText) continue;
-    const unit = String(formData.get(`line-${i}-unit`) ?? '') as PurchaseUnit;
+    const unit = String(formData.get(`line-${i}-unit`) ?? '');
+    const size = parseQuantity(String(formData.get(`line-${i}-unit-size`) ?? ''));
     const baseUnit = bases.get(ingredient);
     const qty = parseQuantity(qtyText);
     const total = parseTakaToPoisha(totalText);
-    if (!baseUnit || qty === null || !(UNITS as readonly string[]).includes(unit)) return null;
-    const qtyBase = toBase(qty, unit, baseUnit);
+    if (!baseUnit || qty === null || !isUnitChoice(unit)) return null;
+    const qtyBase = toBase(qty, unit, baseUnit, size);
     if (qtyBase === null || total === null || total < 0) return null;
     lines.push({ ingredient_id: ingredient, qty_base: qtyBase, line_total_poisha: total });
   }

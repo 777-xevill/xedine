@@ -31,7 +31,13 @@ const UNIT: Record<PurchaseUnit, string> = {
   g: 'g',
   l: 'litre',
   ml: 'ml',
+  tsp: 'teaspoon',
+  tbsp: 'tablespoon',
+  cup: 'cup',
   pcs: 'pcs',
+  slice: 'slice',
+  packet: 'packet',
+  bunch: 'bunch',
   dozen: 'dozen',
 };
 

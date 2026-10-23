@@ -7,12 +7,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { formatQuantity } from '@/modules/inventory/format';
-import {
-  parseQuantity,
-  toBase,
-  type BaseUnit,
-  type PurchaseUnit,
-} from '@/modules/purchasing/lines';
+import { isUnitChoice, parseQuantity, toBase, type BaseUnit } from '@/modules/purchasing/lines';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -143,8 +138,10 @@ export async function approveBazarAction(_prev: FormState, formData: FormData): 
     if (text === '') continue;
     const qty = parseQuantity(text);
     const b = (l.ingredients as unknown as { base: BaseUnit } | null)?.base ?? 'g';
-    const unit = String(formData.get(`unit-${l.id}`) ?? '') as PurchaseUnit;
-    const qtyBase = qty === 0 ? 0 : qty === null ? null : toBase(qty, unit, b);
+    const unit = String(formData.get(`unit-${l.id}`) ?? '');
+    const size = parseQuantity(String(formData.get(`unit-${l.id}-size`) ?? ''));
+    const qtyBase =
+      qty === 0 ? 0 : qty === null || !isUnitChoice(unit) ? null : toBase(qty, unit, b, size);
     if (qtyBase === null) return { error: 'quantityInvalid' };
     edits.push({ line_id: l.id as string, qty_base: qtyBase });
   }

@@ -53,8 +53,6 @@ export type DishResult =
 
 const DishInput = base.extend({
   itemId: z.uuid(),
-  /** How many plates the list makes: 1, or a whole deg / pot. */
-  plates: z.number().positive().max(1000),
   rows: z
     .array(
       z.object({
@@ -72,7 +70,7 @@ const DishInput = base.extend({
 export async function saveDishAction(input: z.input<typeof DishInput>): Promise<DishResult> {
   const parsed = DishInput.safeParse(input);
   if (!parsed.success) return { error: 'invalidInput' };
-  const { orgId, orgSlug, itemId, plates, rows, draftId } = parsed.data;
+  const { orgId, orgSlug, itemId, rows, draftId } = parsed.data;
   const supabase = await createClient();
   let known: KnownIngredient[];
   try {
@@ -88,7 +86,7 @@ export async function saveDishAction(input: z.input<typeof DishInput>): Promise<
     p_item: itemId,
     p_variant: null,
     p_name: null,
-    p_yield: plates,
+    p_yield: 1, // every list is one plate
     p_lines: lines.lines,
     p_notes: null,
     p_draft: draftId,

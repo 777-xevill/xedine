@@ -53,7 +53,6 @@
     "dishAmount": "Check “{name}”: write how much goes into one plate as a number, like 150.",
     "dishUnit": "“{name}” is already kept in another unit. Pick one of the units shown for it.",
     "dishSize": "“{name}”: you chose Other, so type how much one is, like 250.",
-    "dishPlates": "Write how many plates as a number, like 1 or 40.",
     "suggestionUsed": "This AI suggestion was already used. Open the page again and try once more.",
     "photoInvalid": "Use a JPEG, PNG or WebP photo under 5 MB.",
     "aiNotConfigured": "AI drafting is not switched on yet.",
@@ -1096,7 +1095,7 @@
     "aiCheckTitle": "AI's suggestion: check it before you save",
     "aiCheckBody": "These amounts are a guess. Ask your chef, fix anything that is wrong, then tap Save. Nothing changes until you save.",
     "undoAi": "Put my list back",
-    "listFor": "What goes into {count, plural, one {one plate} other {# plates}} of {dish}?",
+    "listFor": "What goes into one plate of {dish}?",
     "ingredient": "Ingredient",
     "ingredientPlaceholder": "e.g. Chicken",
     "amount": "Amount",
@@ -1106,9 +1105,6 @@
     "newIngredient": "New item: it will be added to your stock list.",
     "didYouMean": "Or did you mean:",
     "addLine": "Add another ingredient",
-    "bigPot": "Cooked in a big pot, like biryani?",
-    "plates": "How many plates does this list make?",
-    "platesHint": "Cooking a whole deg? Write everything that goes into the deg above, and here how many plates it gives. Otherwise leave 1.",
     "save": "Save",
     "saving": "Saving…",
     "savedDish": "Saved. From now on every {dish} ordered at the till takes these out of stock."
@@ -1278,7 +1274,6 @@
       "placeholder": "e.g. What goes into our burger?",
       "summary": "Which dishes still need their ingredients written, and how do I write one?",
       "how": "How do I write what goes into a dish?",
-      "pot": "How do I write biryani that is cooked in a big deg?",
       "used": "What did today's orders take out of stock?"
     },
     "stockAsk": {

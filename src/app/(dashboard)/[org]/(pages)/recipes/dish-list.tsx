@@ -15,9 +15,9 @@ import * as React from 'react';
 import { Callout, GroupHeading, ToneIcon } from '@/components/stock/parts';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, Hint, Input, Label, Select } from '@/components/ui/form';
+import { Alert, Hint, Input, Select } from '@/components/ui/form';
 import { formatNumber, type Locale } from '@/lib/i18n/format';
-import { parseQuantity, suggestIngredients } from '@/modules/purchasing/lines';
+import { suggestIngredients } from '@/modules/purchasing/lines';
 import { saveDishAction, suggestDishAction } from '@/modules/recipes/actions';
 import {
   findIngredient,
@@ -33,8 +33,6 @@ export interface DishView {
   name: string;
   /** What one list takes from stock, as rows ("Chicken", "150", "g"); empty when nothing is written. */
   rows: DishRow[];
-  /** How many plates the list makes: 1, or a whole deg / pot. */
-  plates: number;
   aiHelped: boolean;
   /** An AI suggestion nobody saved yet: it fills a dish that has nothing written. */
   draft: { id: string; note: string; rows: DishRow[] } | null;
@@ -270,7 +268,6 @@ function DishEditor({
   // MAX_DISH_ROWS.
   const nextKey = React.useRef(MAX_DISH_ROWS);
   const keyed = (list: DishRow[]): EditRow[] => list.map((r) => ({ ...r, key: ++nextKey.current }));
-  const [plates, setPlates] = React.useState(String(dish.plates));
   const [draftId, setDraftId] = React.useState<string | null>(fromDraft ? dish.draft!.id : null);
   const [note, setNote] = React.useState<string | null>(fromDraft ? dish.draft!.note : null);
   const [undo, setUndo] = React.useState<EditRow[] | null>(null);
@@ -279,8 +276,6 @@ function DishEditor({
   const [asking, startAsk] = React.useTransition();
   const [saving, startSave] = React.useTransition();
   const busy = asking || saving;
-  // Blank means one plate, as the hint says: only a real mistake (letters, 0) stops the save.
-  const plateCount = plates.trim() === '' ? 1 : parseQuantity(plates);
   const label = (k: KnownIngredient) => (loc === 'bn' && k.name_bn ? k.name_bn : k.name);
 
   const change = (key: number, patch: Partial<DishRow>) => {
@@ -314,15 +309,10 @@ function DishEditor({
   const save = () =>
     startSave(async () => {
       setError(null);
-      if (plateCount === null || plateCount <= 0) {
-        setError(te('dishPlates'));
-        return;
-      }
       const res = await saveDishAction({
         orgId,
         orgSlug,
         itemId: dish.id,
-        plates: plateCount,
         rows: rows.map(({ name, qty, unit, size }) => ({ name, qty, unit, size })),
         draftId,
       });
@@ -373,12 +363,7 @@ function DishEditor({
       ) : null}
 
       <div>
-        <p className="mb-2 text-sm font-semibold">
-          {t('listFor', {
-            count: plateCount !== null && plateCount > 0 ? plateCount : 1,
-            dish: dish.name,
-          })}
-        </p>
+        <p className="mb-2 text-sm font-semibold">{t('listFor', { dish: dish.name })}</p>
         <ul className="space-y-2">
           {rows.map((r) => {
             const match = findIngredient(r.name, known);
@@ -482,32 +467,6 @@ function DishEditor({
           {t('addLine')}
         </Button>
       </div>
-
-      {/* A named group: the dish card around it is a `group` too, and is always open here. */}
-      <details className="group/pot" open={dish.plates !== 1}>
-        <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-purple [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0 flex-1">{t('bigPot')}</span>
-          <ChevronDown
-            aria-hidden
-            className="size-4 shrink-0 transition-transform group-open/pot:rotate-180"
-          />
-        </summary>
-        <div className="mt-2 max-w-xs">
-          <Label htmlFor={`plates-${dish.id}`}>{t('plates')}</Label>
-          <Input
-            id={`plates-${dish.id}`}
-            value={plates}
-            inputMode="decimal"
-            maxLength={6}
-            onChange={(e) => {
-              setSaved(false);
-              setPlates(e.target.value);
-            }}
-            className="w-28"
-          />
-          <Hint>{t('platesHint')}</Hint>
-        </div>
-      </details>
 
       {error ? <Alert tone="danger">{error}</Alert> : null}
       {saved ? <Alert tone="success">{t('savedDish', { dish: dish.name })}</Alert> : null}

@@ -99,8 +99,11 @@ export default async function DishIngredientsPage({
     return {
       id: item.id as string,
       name: name(item.name as string, item.name_bn as string | null),
-      rows: own.map((l) => ({ name: name(l.name, l.name_bn), ...editorAmount(l.qty, l.base) })),
-      plates: own[0]?.plates ?? 1,
+      // A dish saved earlier as a whole pot (say 100 plates) is shown per plate: the same stock per sale.
+      rows: own.map((l) => ({
+        name: name(l.name, l.name_bn),
+        ...editorAmount(l.qty / (l.plates || 1), l.base),
+      })),
       aiHelped: own[0]?.source === 'ai_draft',
       draft: draft
         ? {
@@ -228,7 +231,7 @@ export default async function DishIngredientsPage({
               placeholder: ta('recipes.placeholder'),
             }}
             summaryQuestion={ta('recipes.summary')}
-            followUps={[ta('recipes.how'), ta('recipes.pot'), ta('recipes.used')]}
+            followUps={[ta('recipes.how'), ta('recipes.used')]}
           />
         </>
       ) : null}

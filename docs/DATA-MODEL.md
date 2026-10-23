@@ -40,7 +40,8 @@
 | `customers` | Customer by phone (+880), PII. | org | read: owner, manager, cashier; write: owner, manager, cashier (PII: accountants excluded) | PK id | customers · P8 |
 | `devices` | Registered POS/KDS/QR devices bound to a branch. | org + branch | read: owner, manager, cashier, kitchen; write: owner, manager (pairing via register_device()/claim_device()) | PK id · → branches | tenancy · P0 |
 | `dining_tables` | Tables per branch, optional QR token. | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner, manager | PK id · → branches | pos · P1 |
-| `discounts` | Order/line discounts with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, order_items, orders, reason_codes, staff | pos · P1 |
+| `discount_codes` | Secret discount codes the restaurant gives customers: percent off, optional limit and end date. | org | read: owner, manager; write: owner, manager (secret codes: a cashier uses one through apply_discount_code and never lists them (ADR 0038)) | PK id | pos · P11 |
+| `discounts` | Order/line discounts with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, discount_codes, order_items, orders, reason_codes, staff | pos · P1 |
 | `feature_flags` | Platform feature flags. | platform (no tenant data) | read: signed-in users; write: none | PK key | billing · P10 |
 | `feedback` | Post-meal rating 0-10 and comment via link. | org + branch | read: owner, manager; write: service role only (submitted through a public link by the service role) | PK id · → branches, customers, orders | customers · P8 |
 | `finding_evidence` | Evidence rows behind each finding. Money-gated. | org | read: owner, accountant; write: service role only (written by detectors) | PK id · → findings | leaks · P2 |
@@ -132,6 +133,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `admin_set_subscription` | `p_org uuid, p_plan text, p_status subscription_status, p_discount_bps integer, p_period_end date` |
 | `advance_order_status` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
 | `am_platform_admin` | `` |
+| `apply_discount_code` | `p_org uuid, p_branch uuid, p_order uuid, p_code text, p_device uuid, p_staff uuid` |
 | `apply_order_discount` | `p_org uuid, p_branch uuid, p_order uuid, p_percent_bps integer, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `approve_action` | `p_device uuid, p_approver_staff uuid, p_pin text, p_action approval_action` |
 | `approve_bazar_list` | `p_list uuid, p_lines jsonb DEFAULT '[]'::jsonb` |

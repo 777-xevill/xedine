@@ -10,11 +10,13 @@ import { computeLine, parseTakaToPoisha, sumLines, type VatConfig } from '@/lib/
 import { now } from '@/lib/time/clock';
 import {
   addOrderItems,
+  applyDiscountCode,
   applyOrderDiscount,
   attachCustomer,
   cancelOrder,
   closeShift,
   createClient,
+  discountCodeProblem,
   endStaffSession,
   fetchActiveStaff,
   fetchChannels,
@@ -712,6 +714,27 @@ function Till({
       );
     });
 
+  const doDiscountCode = (code: string) =>
+    online_(async () => {
+      if (!order) return;
+      try {
+        setOrder(
+          await applyDiscountCode(sb, {
+            orgId: device.orgId,
+            branchId: device.branchId,
+            orderId: order.id,
+            code,
+            deviceId: device.deviceId,
+            staffId: staffSession.staffId,
+          }),
+        );
+      } catch (e) {
+        const problem = discountCodeProblem(e);
+        if (!problem) throw e;
+        setError(t(`discountCodeProblem.${problem}`));
+      }
+    });
+
   const doCancel = (reasonId: string, approvalId?: string) =>
     online_(async () => {
       if (!order) return;
@@ -945,6 +968,7 @@ function Till({
             onSendKitchen={() => void sendKitchen()}
             onVoid={(l, r, a) => void doVoid(l, r, a)}
             onDiscount={(p, r, a) => void doDiscount(p, r, a)}
+            onDiscountCode={(c) => void doDiscountCode(c)}
             onCancel={(r, a) => void doCancel(r, a)}
             onAttachCustomer={(p, n, c) => void doAttachCustomer(p, n, c)}
             onAddRound={() => {

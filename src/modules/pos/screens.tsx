@@ -419,6 +419,7 @@ export function OrderScreen({
   onSendKitchen,
   onVoid,
   onDiscount,
+  onDiscountCode,
   onCancel,
   onAttachCustomer,
   onAddRound,
@@ -436,6 +437,7 @@ export function OrderScreen({
   onSendKitchen: () => void;
   onVoid: (line: OrderLine, reasonId: string, approvalId?: string) => void;
   onDiscount: (percentBps: number, reasonId: string, approvalId?: string) => void;
+  onDiscountCode: (code: string) => void;
   onCancel: (reasonId: string, approvalId?: string) => void;
   onAttachCustomer: (phone: string, name: string, consent: boolean) => void;
   onAddRound: () => void;
@@ -594,6 +596,10 @@ export function OrderScreen({
           onClose={() => setDiscountOpen(false)}
           onConfirm={(p, r, a) => {
             onDiscount(p, r, a);
+            setDiscountOpen(false);
+          }}
+          onCode={(code) => {
+            onDiscountCode(code);
             setDiscountOpen(false);
           }}
         />

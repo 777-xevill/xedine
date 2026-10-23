@@ -8,6 +8,7 @@ describe('pageKeyFromPath', () => {
     expect(pageKeyFromPath('demo', '/demo/menu-profit')).toBe('menuProfit');
     expect(pageKeyFromPath('demo', '/demo/assistant')).toBe('chat');
     expect(pageKeyFromPath('demo', '/demo/branch')).toBe('branchSetup');
+    expect(pageKeyFromPath('demo', '/demo/discount-codes')).toBe('discountCodes');
   });
 
   it('separates staff from staff records, and the settings pages from each other', () => {

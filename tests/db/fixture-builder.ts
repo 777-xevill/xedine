@@ -135,6 +135,10 @@ const OVERRIDES: Record<string, Override> = {
   recipe_lines: () => ({ sub_recipe_id: null }),
   // from_branch_id <> to_branch_id
   transfers: (ctx) => ({ from_branch_id: ctx.branchIds[0], to_branch_id: ctx.branchIds[1] }),
+  // capital letters and digits only
+  discount_codes: () => ({
+    code: `FIX${randomUUID().slice(0, 8).toUpperCase().replace(/-/g, '')}`,
+  }),
 };
 
 let counter = 0;

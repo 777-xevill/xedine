@@ -614,6 +614,44 @@ export async function applyOrderDiscount(
   return data as OrderRow;
 }
 
+/** A customer's secret code (ADR 0038): the server knows the percent, the limit and the end date. */
+export async function applyDiscountCode(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    code: string;
+    deviceId: string;
+    staffId: string;
+  },
+): Promise<OrderRow> {
+  const { data, error } = await sb
+    .rpc('apply_discount_code', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_code: args.code,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+    })
+    .single();
+  if (error) throw error;
+  return data as OrderRow;
+}
+
+/** Why a code was refused: the server's message when it is about the code itself, else null. */
+export function discountCodeProblem(error: unknown): 'notFound' | 'expired' | 'usedUp' | null {
+  const message =
+    typeof error === 'object' && error !== null
+      ? String((error as { message?: string }).message)
+      : '';
+  if (message.includes('code_not_found')) return 'notFound';
+  if (message.includes('code_expired')) return 'expired';
+  if (message.includes('code_used_up')) return 'usedUp';
+  return null;
+}
+
 export async function voidOrderItem(
   sb: SupabaseClient,
   args: {

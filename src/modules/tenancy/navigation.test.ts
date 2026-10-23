@@ -70,7 +70,7 @@ describe('navigation (ADR 0024)', () => {
 
   it('owner-only settings stay owner-only', () => {
     const manager = buildNavigation({ slug: 'd', roles: ['manager'], enabled: [] });
-    expect(keys(manager.settings)).toEqual(['staff', 'branchSetup']);
+    expect(keys(manager.settings)).toEqual(['staff', 'branchSetup', 'discountCodes']);
     const cashier = buildNavigation({ slug: 'd', roles: ['cashier'], enabled: [] });
     expect(cashier.settings).toEqual([]);
   });

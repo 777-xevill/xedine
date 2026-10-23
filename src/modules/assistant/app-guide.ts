@@ -245,6 +245,20 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
     what: "Where the owner asks for a new branch (Xedine approves it before it appears, because every branch is billed) and sets up each branch's tables. Prices are set only on the Menu page.",
     words: ['branch setup', 'add branch', 'new branch', 'open a branch', 'tables'],
   },
+  discountCodes: {
+    name: 'Discount codes',
+    what: 'Secret codes the owner or a manager gives a customer (for example EID10 for 10% off). The customer tells the code to the cashier, who types it in Apply discount at the till and the bill drops by that percent. A code can be limited to a number of bills and a last day, turned off, or deleted. Owner and managers only; the cashier never sees the list.',
+    words: [
+      'discount code',
+      'coupon',
+      'promo code',
+      'voucher',
+      'secret code',
+      'offer code',
+      'ডিসকাউন্ট কোড',
+      'কুপন',
+    ],
+  },
   costs: {
     name: 'Costs',
     what: 'What the restaurant spends outside food (rent, utilities, gas, internet, labour) so the daily profit estimate is real. Owner only.',

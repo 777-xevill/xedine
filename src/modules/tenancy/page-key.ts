@@ -21,6 +21,7 @@ const BY_SEGMENT: Record<string, IconKey> = {
   billing: 'billing',
   setup: 'setup',
   branch: 'branchSetup',
+  'discount-codes': 'discountCodes',
   assistant: 'chat',
 };
 

@@ -50,6 +50,7 @@ export type IconKey =
   | 'team'
   | 'staff'
   | 'branchSetup'
+  | 'discountCodes'
   | 'costs'
   | 'billing'
   | 'setup'
@@ -125,6 +126,7 @@ const SETTINGS: LinkRule[] = [
   { key: 'telegram', path: '/settings/telegram', roles: ['owner'] },
   { key: 'staff', path: '/staff', roles: ['owner', 'manager'] },
   { key: 'branchSetup', path: '/branch', roles: ['owner', 'manager'] },
+  { key: 'discountCodes', path: '/discount-codes', roles: ['owner', 'manager'] },
   { key: 'costs', path: '/costs', roles: ['owner'] },
   { key: 'billing', path: '/billing', roles: MONEY },
   { key: 'setup', path: '/setup', roles: ['owner'] },

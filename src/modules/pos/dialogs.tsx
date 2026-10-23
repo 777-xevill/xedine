@@ -211,12 +211,16 @@ export function DiscountDialog({
   reasons,
   onClose,
   onConfirm,
+  onCode,
 }: {
   reasons: ReasonCode[];
   onClose: () => void;
   onConfirm: (percentBps: number, reasonId: string, approvalId?: string) => void;
+  /** A customer's secret code (ADR 0038): the server knows what it is worth. */
+  onCode: (code: string) => void;
 }) {
   const t = useTranslations('pos');
+  const [code, setCode] = useState('');
   const [percent, setPercent] = useState('10');
   const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
   const [approving, setApproving] = useState(false);
@@ -232,6 +236,31 @@ export function DiscountDialog({
         />
       ) : (
         <>
+          <form
+            className="space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (code.trim().length >= 4) onCode(code);
+            }}
+          >
+            <Label htmlFor="dcode">{t('discountCode')}</Label>
+            <div className="flex gap-2">
+              <Input
+                id="dcode"
+                value={code}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={24}
+                placeholder={t('discountCodeHint')}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+              <Button type="submit" disabled={code.trim().length < 4}>
+                {t('useCode')}
+              </Button>
+            </div>
+          </form>
+          <p className="text-center text-xs text-secondary">{t('orDiscountYourself')}</p>
           <div>
             <Label htmlFor="pct">{t('discountPercent')}</Label>
             <Input

@@ -21,7 +21,7 @@ const HREF: Record<string, string> = {
   staff_pins: 'staff',
   pos_device: 'staff',
   recipes: 'recipes',
-  ingredient_prices: 'recipes',
+  ingredient_prices: 'purchases',
   fixed_costs: 'costs',
   salaries: 'costs',
   opening_count: 'stock',

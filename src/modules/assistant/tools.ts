@@ -408,7 +408,7 @@ const SETUP_STEPS: Record<string, { step: string; page: string }> = {
   staff_pins: { step: 'Staff PINs', page: 'Staff' },
   pos_device: { step: 'Pair the till', page: 'Staff' },
   recipes: { step: 'Dish ingredients', page: 'Dish ingredients' },
-  ingredient_prices: { step: 'Ingredient prices', page: 'Dish ingredients (Ingredient prices)' },
+  ingredient_prices: { step: 'Ingredient prices', page: 'Purchases (record the bazar)' },
   fixed_costs: { step: 'Fixed costs', page: 'Costs' },
   salaries: { step: "This month's salaries", page: 'Costs' },
   opening_count: { step: 'Opening stock count', page: 'Stock' },

@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
 import { aiErrorKey } from '@/lib/llm-gateway';
-import { parseTakaToPoisha } from '@/lib/money';
-import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+import { mapDbError } from '@/modules/tenancy/form-state';
 import {
   dishLines,
   DISH_UNITS,
@@ -21,8 +20,8 @@ import { allIngredients } from './queries';
 
 /**
  * Dish ingredients (ADR 0037). The owner or the manager writes what goes into one plate of each dish
- * (save_recipe, an audited RPC); "Ask AI" only suggests a list for them to check. Prices are owner-only
- * rows (ADR 0007). RLS and the RPCs decide every write.
+ * (save_recipe, an audited RPC); "Ask AI" only suggests a list for them to check.
+ * RLS and the RPCs decide every write.
  */
 
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -32,7 +31,6 @@ const refresh = (slug: string) => {
   revalidatePath(`/${slug}/menu-profit`);
   revalidatePath(`/${slug}/stock`);
 };
-const BASES = ['g', 'ml', 'pcs'] as const;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -48,30 +46,6 @@ async function canWrite(supabase: Supabase, orgId: string): Promise<boolean> {
     .eq('status', 'active')
     .in('role', ['owner', 'manager']);
   return (data ?? []).length > 0;
-}
-
-/** Price per kg / litre / piece, as the owner thinks of it; stored per 1,000 g or ml, or per piece. */
-export async function setIngredientPriceAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base
-    .extend({ ingredientId: z.uuid(), base: z.enum(BASES), price: z.string().trim().min(1) })
-    .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const price = parseTakaToPoisha(parsed.data.price);
-  if (price === null || price < 0) return { error: 'invalidPrice' };
-  const supabase = await createClient();
-  // The trigger on ingredient_costs writes today's row of price history.
-  const { error } = await supabase.from('ingredient_costs').upsert({
-    ingredient_id: parsed.data.ingredientId,
-    org_id: parsed.data.orgId,
-    manual_cost_poisha: price,
-    per_base_qty: parsed.data.base === 'pcs' ? 1 : 1000,
-  });
-  if (error) return { error: mapDbError(error) };
-  refresh(parsed.data.orgSlug);
-  return { ok: true };
 }
 
 export type DishResult =

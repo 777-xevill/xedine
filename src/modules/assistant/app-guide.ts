@@ -96,7 +96,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   recipes: {
     name: 'Dish ingredients',
-    what: 'What goes into one plate of each dish (Burger: bun 1 piece, chicken 150 g). Every dish ordered at the till then takes these out of stock by itself. Tap a dish, write or fix the list and Save; "Ask AI to fill this" writes a first list to check with the chef. Owner and manager edit (the manager writes it for the chef); one plate\'s cost and the Ingredient prices tab are owner and accountant only.',
+    what: 'What goes into one plate of each dish (Burger: bun 1 piece, chicken 150 g). Every dish ordered at the till then takes these out of stock by itself. Tap a dish, write or fix the list and Save; "Ask AI to fill this" writes a first list to check with the chef. Owner and manager edit (the manager writes it for the chef); one plate\'s cost is owner and accountant only. Ingredient prices come from the bazar by themselves (the latest price paid); there is no page to type them.',
     words: [
       'recipe',
       'ingredient',

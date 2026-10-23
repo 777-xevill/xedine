@@ -1,6 +1,5 @@
 import 'server-only';
 import { createClient } from '@/lib/db/supabase-server';
-import { now } from '@/lib/time/clock';
 import type { BaseUnit } from '@/modules/purchasing/lines';
 import type { KnownIngredient } from './dish';
 
@@ -72,34 +71,4 @@ export async function dishRecipeLines(supabase: Supabase, orgId: string): Promis
     );
     if (page.length < PAGE) return rows;
   }
-}
-
-export interface IngredientPrice {
-  /** Per kg, litre or piece, in poisha. */
-  price_poisha: number;
-  /** 'purchases' = from the bazar; 'manual' = typed. */
-  source: string;
-  since: string | null;
-}
-
-/** metric: today's price per kg / litre / piece of each priced ingredient (money roles only). */
-export async function ingredientPrices(
-  supabase: Supabase,
-  orgId: string,
-): Promise<Map<string, IngredientPrice>> {
-  const { data, error } = await supabase.rpc('metric_ingredient_prices', {
-    p_org: orgId,
-    p_now: now().toISOString(),
-  });
-  if (error) throw error;
-  return new Map(
-    ((data ?? []) as Record<string, unknown>[]).map((r) => [
-      r.ingredient_id as string,
-      {
-        price_poisha: Number(r.price_poisha),
-        source: String(r.source),
-        since: (r.since as string | null) ?? null,
-      },
-    ]),
-  );
 }

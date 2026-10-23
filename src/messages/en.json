@@ -1058,11 +1058,6 @@
   "recipes": {
     "title": "Dish ingredients",
     "subtitle": "What goes into one plate of each dish. Every dish sold then takes these out of your stock by itself.",
-    "sections": "Section",
-    "tabs": {
-      "dishes": "Dishes",
-      "prices": "Ingredient prices"
-    },
     "how": {
       "title": "How does this work?",
       "writeTitle": "Write one plate",
@@ -1090,7 +1085,7 @@
     "more": "+{count} more",
     "nothingYet": "Nothing written yet, so selling it takes nothing from stock.",
     "plateCost": "One plate costs {cost} to make",
-    "priceMissing": "Some prices are missing",
+    "priceMissing": "Some ingredients have no price yet: it comes when the purchaser buys them",
     "aiHelped": "AI helped",
     "aiWaiting": "AI suggestion waiting",
     "askOwner": "Nothing written yet. The owner or a manager can write it.",
@@ -1115,20 +1110,7 @@
     "platesHint": "Cooking a whole deg? Write everything that goes into the deg above, and here how many plates it gives. Otherwise leave 1.",
     "save": "Save",
     "saving": "Saving…",
-    "savedDish": "Saved. From now on every {dish} ordered at the till takes these out of stock.",
-    "pricesBody": "Prices come from your bazar by themselves. Type a price only for something you have not bought through Xedine yet: per kg, litre or piece.",
-    "noIngredients": "No ingredients yet. They appear here when you write your dishes or record a bazar.",
-    "noPrice": "No price yet",
-    "fromBazar": "From the bazar on {date}",
-    "typedPrice": "Typed by you",
-    "per": {
-      "g": "per kg",
-      "ml": "per litre",
-      "pcs": "per piece"
-    },
-    "pricePerUnit": "Price {unit}",
-    "savePrice": "Save",
-    "priceSaved": "Price saved."
+    "savedDish": "Saved. From now on every {dish} ordered at the till takes these out of stock."
   },
   "menuProfit": {
     "title": "Menu profit",
@@ -2238,7 +2220,7 @@
       },
       "ingredient_prices": {
         "title": "Ingredient prices",
-        "body": "A price for every ingredient in a recipe."
+        "body": "Record your bazar: each ingredient takes the price you last paid."
       },
       "fixed_costs": {
         "title": "Fixed costs",

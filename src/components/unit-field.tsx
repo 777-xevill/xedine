@@ -24,9 +24,12 @@ export function UnitField({
   ariaLabel,
   className,
   selectClassName,
+  noOther = false,
 }: {
   name: string;
   base?: BaseUnit;
+  /** Leave "Other" out (an item not in the list yet has no unit to count one of them in). */
+  noOther?: boolean;
   defaultValue: UnitChoice;
   ariaLabel: string;
   /** The wrapper: it is one cell in whatever grid or row the form uses. */
@@ -35,7 +38,8 @@ export function UnitField({
 }) {
   const tu = useTranslations('units');
   const [unit, setUnit] = React.useState<string>(defaultValue);
-  const choices: readonly UnitChoice[] = base ? unitChoices(base) : UNIT_CHOICES;
+  const all: readonly UnitChoice[] = base ? unitChoices(base) : UNIT_CHOICES;
+  const choices = noOther ? all.filter((u) => u !== OTHER_UNIT) : all;
   const sizeLabel = tu(
     base === 'g'
       ? 'otherSizeG'

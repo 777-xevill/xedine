@@ -10,7 +10,6 @@ import {
   Card,
   CardTitle,
   EmptyState,
-  Hint,
   Input,
   Label,
   PageTitle,
@@ -18,6 +17,7 @@ import {
   Textarea,
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
+import { PurchaseEntry } from '@/components/purchase-entry';
 import { VoiceTextarea } from '@/components/voice-textarea';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatBDT, type Locale } from '@/lib/i18n/format';
@@ -31,7 +31,6 @@ import {
   discardPurchaseDraftAction,
   draftPurchaseAction,
   importReferencePricesAction,
-  recordPurchaseAction,
   voidPurchaseAction,
 } from '@/modules/purchasing/actions';
 import type { BaseUnit, PurchaseUnit, ReviewLine } from '@/modules/purchasing/lines';
@@ -39,7 +38,6 @@ import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
 const TABS = ['record', 'drafts', 'history', 'suppliers'] as const;
 type Tab = (typeof TABS)[number];
-const BLANK_ROWS = 6;
 
 /**
  * Purchases (ROADMAP Phase 5): the bazar by form, by photo of the chit, or by voice. Prices are money —
@@ -72,7 +70,7 @@ export default async function PurchasesPage({
   const money = (p: number) => formatBDT(p, loc);
   const { date: today } = await businessToday(ctx.org.id);
   const supabase = await createClient();
-  const [{ data: ingredients }, { data: suppliers }] = await Promise.all([
+  const [{ data: ingredients }, { data: suppliers }, { data: aliases }] = await Promise.all([
     supabase
       .from('ingredients')
       .select('id, name, name_bn, base')
@@ -85,7 +83,17 @@ export default async function PurchasesPage({
       .eq('org_id', ctx.org.id)
       .eq('is_active', true)
       .order('name'),
+    // Spellings learnt from purchasers' picks (ADR 0028): typing one finds its item.
+    tab === 'record'
+      ? supabase.from('ingredient_aliases').select('ingredient_id, alias').eq('org_id', ctx.org.id)
+      : Promise.resolve({ data: [] as { ingredient_id: string; alias: string }[] }),
   ]);
+  const aliasesBy = new Map<string, string[]>();
+  for (const a of aliases ?? []) {
+    const list = aliasesBy.get(a.ingredient_id as string) ?? [];
+    list.push(a.alias as string);
+    aliasesBy.set(a.ingredient_id as string, list);
+  }
   const ingName = (i: { name: string; name_bn: string | null }) =>
     loc === 'bn' && i.name_bn ? i.name_bn : i.name;
   const ingredientBy = new Map((ingredients ?? []).map((i) => [i.id as string, i]));
@@ -201,44 +209,26 @@ export default async function PurchasesPage({
       {tab === 'record' && canBuy ? (
         <Card className="max-w-3xl">
           <CardTitle>{t('recordTitle')}</CardTitle>
-          <ActionForm
-            action={recordPurchaseAction}
-            successKey="purchases.recorded"
-            className="space-y-3"
-          >
-            {hidden}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {branchField('p-branch')}
-              <div>
-                <Label htmlFor="p-date">{t('date')}</Label>
-                <Input
-                  id="p-date"
-                  name="purchasedOn"
-                  type="date"
-                  max={today}
-                  defaultValue={today}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="p-days">{t('forDays')}</Label>
-                <Select id="p-days" name="forDays" defaultValue="">
-                  <option value="">{t('forDaysNone')}</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 10, 14, 30].map((d) => (
-                    <option key={d} value={d}>
-                      {t('daysOption', { count: d })}
-                    </option>
-                  ))}
-                </Select>
-                <Hint>{t('forDaysHint')}</Hint>
-              </div>
-              {supplierFields('p')}
-            </div>
-            <p className="pt-2 text-sm font-semibold">{t('lines')}</p>
-            {Array.from({ length: BLANK_ROWS }, (_, i) => lineRow(i))}
-            <Hint>{t('linesHint')}</Hint>
-            <Button type="submit">{t('record')}</Button>
-          </ActionForm>
+          <PurchaseEntry
+            orgId={ctx.org.id}
+            orgSlug={ctx.org.slug}
+            branches={ctx.branches.map((b) => ({ id: b.id, name: b.name }))}
+            defaultBranchId={branch?.id ?? ctx.branches[0]?.id ?? ''}
+            today={today}
+            suppliers={(suppliers ?? []).map((s) => ({
+              id: s.id as string,
+              name: s.name as string,
+            }))}
+            ingredients={(ingredients ?? []).map((i) => ({
+              id: i.id as string,
+              name: i.name as string,
+              nameBn: (i.name_bn as string | null) ?? null,
+              base: i.base as BaseUnit,
+              aliases: aliasesBy.get(i.id as string) ?? [],
+            }))}
+            days={[1, 2, 3, 4, 5, 6, 7, 10, 14, 30]}
+            lang={loc === 'bn' ? 'bn-BD' : 'en-US'}
+          />
         </Card>
       ) : null}
 

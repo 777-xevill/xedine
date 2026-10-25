@@ -3,18 +3,25 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { aiErrorKey } from '@/lib/llm-gateway';
+import { formatBDT } from '@/lib/i18n/format';
+import { aiConfigured, aiErrorKey } from '@/lib/llm-gateway';
 import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+import { parseBazarText } from './bazar-text';
 import { extractPurchase, PURCHASE_EXTRACT_PROMPT } from './extraction';
 import {
   isUnitChoice,
   parseQuantity,
   parseReferenceCsv,
+  PURCHASE_UNITS,
   reviewLines,
+  suggestIngredients,
   toBase,
+  validDays,
   type BaseUnit,
+  type ExtractedLine,
   type IngredientRef,
+  type PurchaseUnit,
 } from './lines';
 
 /**
@@ -38,31 +45,53 @@ async function ingredientBases(orgId: string): Promise<Map<string, BaseUnit>> {
 }
 
 type PurchaseLine = {
-  ingredient_id: string;
+  ingredient_id?: string;
+  /** ADR 0039: an item typed on the form that is not in the list yet; added with the purchase. */
+  new_ingredient?: { name: string; base: BaseUnit };
   qty_base: number;
   line_total_poisha: number;
   for_days?: number;
 };
 
-/** Rows named line-<i>-ingredient / -qty / -unit / -total; blank rows are skipped, bad ones refused. */
+/**
+ * Rows named line-<i>-ingredient / -qty / -unit / -total; blank rows are skipped, bad ones refused.
+ * With `allowNew`, a row with no ingredient id but a `line-<i>-newname` is a new item, kept in the
+ * base of the unit it was bought in (the Purchases form, ADR 0039).
+ */
 function readPurchaseLines(
   formData: FormData,
   bases: Map<string, BaseUnit>,
+  allowNew = false,
 ): PurchaseLine[] | null {
   const lines: PurchaseLine[] = [];
   for (let i = 0; i < 40; i++) {
     const ingredient = String(formData.get(`line-${i}-ingredient`) ?? '');
+    const newName = allowNew ? String(formData.get(`line-${i}-newname`) ?? '').trim() : '';
     const qtyText = String(formData.get(`line-${i}-qty`) ?? '').trim();
     const totalText = String(formData.get(`line-${i}-total`) ?? '').trim();
-    if (!ingredient && !qtyText && !totalText) continue;
+    if (!ingredient && !newName && !qtyText && !totalText) continue;
     const unit = String(formData.get(`line-${i}-unit`) ?? '');
     const size = parseQuantity(String(formData.get(`line-${i}-unit-size`) ?? ''));
-    const baseUnit = bases.get(ingredient);
     const qty = parseQuantity(qtyText);
     const total = parseTakaToPoisha(totalText);
-    if (!baseUnit || qty === null || !isUnitChoice(unit)) return null;
+    if (qty === null || !isUnitChoice(unit) || total === null || total < 0) return null;
+    if (!ingredient && newName) {
+      // "Other" has no base to keep a new item in: it must be bought in a unit the list names.
+      if (newName.length > 120 || unit === 'other') return null;
+      const newBase = PURCHASE_UNITS[unit].base;
+      const qtyBase = toBase(qty, unit, newBase);
+      if (qtyBase === null) return null;
+      lines.push({
+        new_ingredient: { name: newName, base: newBase },
+        qty_base: qtyBase,
+        line_total_poisha: total,
+      });
+      continue;
+    }
+    const baseUnit = bases.get(ingredient);
+    if (!baseUnit) return null;
     const qtyBase = toBase(qty, unit, baseUnit, size);
-    if (qtyBase === null || total === null || total < 0) return null;
+    if (qtyBase === null) return null;
     lines.push({ ingredient_id: ingredient, qty_base: qtyBase, line_total_poisha: total });
   }
   return lines;
@@ -91,12 +120,12 @@ export async function recordPurchaseAction(
     forDays: formData.get('forDays') ?? '',
   });
   if (!parsed.success) return { error: 'invalidInput' };
-  const read = readPurchaseLines(formData, await ingredientBases(parsed.data.orgId));
+  const read = readPurchaseLines(formData, await ingredientBases(parsed.data.orgId), true);
   if (!read || read.length === 0) return { error: 'purchaseLinesInvalid' };
   const forDays = parsed.data.forDays;
   const lines = forDays === '' ? read : read.map((l) => ({ ...l, for_days: forDays }));
   const supabase = await createClient();
-  const { error } = await supabase.rpc('record_purchase', {
+  const { error } = await supabase.rpc('record_purchase_with_new_items', {
     p_org: parsed.data.orgId,
     p_branch: parsed.data.branchId,
     p_supplier: parsed.data.supplierId || null,
@@ -107,6 +136,98 @@ export async function recordPurchaseAction(
   if (error) return { error: mapDbError(error) };
   refresh(parsed.data.orgSlug);
   return { ok: true };
+}
+
+/** One line of what the purchaser said, ready to drop into the form. */
+export interface SaidLine {
+  /** As the purchaser wrote it. */
+  name: string;
+  /** The matched item, or null: then `suggestions` are the close ones and the form asks "new item?". */
+  ingredientId: string | null;
+  suggestions: { id: string; name: string }[];
+  qty: string;
+  /** null when the unit was unclear: the form leaves it for the purchaser. */
+  unit: PurchaseUnit | null;
+  /** Taka as typed in the form ("1,800"); blank when the price was not said. */
+  total: string;
+  days: number | null;
+}
+
+export type SaidReply =
+  | { ok: true; lines: SaidLine[]; unread: string[]; days: number | null }
+  | { ok: false; error: string };
+
+/**
+ * "chicken 10 kg 1800, piyaj 5 kg 300, 3 din er bazar" said or typed like a person → form lines. Typed
+ * lists are read without AI; only what could not be read goes to the AI transcriber. Nothing is saved:
+ * the purchaser sees every line in the form and presses Save (CLAUDE.md #4).
+ */
+export async function sayBazarAction(input: {
+  orgId: string;
+  branchId: string;
+  text: string;
+}): Promise<SaidReply> {
+  const parsed = z
+    .object({ orgId: z.uuid(), branchId: z.uuid(), text: z.string().trim().min(1).max(4000) })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'purchaseInputRequired' };
+  const supabase = await createClient();
+  const { data: canBuy } = await supabase.rpc('can_record_purchase', {
+    p_org: parsed.data.orgId,
+    p_branch: parsed.data.branchId,
+  });
+  if (canBuy !== true) return { ok: false, error: 'notAllowed' };
+
+  const typed = parseBazarText(parsed.data.text);
+  const extracted: ExtractedLine[] = [...typed.lines];
+  let unread = typed.unread;
+  if (unread.length > 0 && aiConfigured()) {
+    try {
+      const ai = await extractPurchase({ orgId: parsed.data.orgId, text: unread.join('\n') });
+      extracted.push(...ai.extracted.lines);
+      unread = [];
+    } catch (e) {
+      if (extracted.length === 0) return { ok: false, error: aiErrorKey(e) };
+    }
+  }
+  const [{ data: ingredients }, { data: aliases }] = await Promise.all([
+    supabase.from('ingredients').select('id, name, name_bn, base').eq('org_id', parsed.data.orgId),
+    supabase
+      .from('ingredient_aliases')
+      .select('ingredient_id, alias')
+      .eq('org_id', parsed.data.orgId),
+  ]);
+  const aliasesBy = new Map<string, string[]>();
+  for (const a of aliases ?? []) {
+    const list = aliasesBy.get(a.ingredient_id as string) ?? [];
+    list.push(a.alias as string);
+    aliasesBy.set(a.ingredient_id as string, list);
+  }
+  const refs = ((ingredients ?? []) as IngredientRef[]).map((i) => ({
+    ...i,
+    aliases: aliasesBy.get(i.id) ?? [],
+  }));
+  const lines = reviewLines(extracted, refs).map<SaidLine>((l) => ({
+    name: l.name,
+    ingredientId: l.ingredient_id,
+    suggestions: l.ingredient_id
+      ? []
+      : suggestIngredients(l.name, refs, l.unit ? PURCHASE_UNITS[l.unit].base : null).map((i) => ({
+          id: i.id,
+          name: i.name,
+        })),
+    qty: String(l.qty),
+    unit: l.unit,
+    total:
+      l.line_total_poisha === null ? '' : formatBDT(l.line_total_poisha, 'en', { symbol: false }),
+    days: validDays(l.for_days) ? l.for_days : null,
+  }));
+  // The form has one "for how many days" for the whole purchase (ADR 0029): the list's own words, else
+  // the one value every line agrees on.
+  const shared = new Set(lines.map((l) => l.days));
+  const days =
+    typed.days !== undefined ? typed.days : shared.size === 1 ? ([...shared][0] ?? null) : null;
+  return { ok: true, lines, unread, days };
 }
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;

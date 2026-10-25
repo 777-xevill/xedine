@@ -4,8 +4,6 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import {
   ChannelForm,
   CommissionForm,
-  DeleteReasonButton,
-  ReasonCodeForm,
   ReceiptSettingsForm,
 } from '@/components/settings-forms';
 import { SettingsForm } from '@/components/team-forms';
@@ -19,7 +17,6 @@ import {
   ensureDefaultsAction,
   setOwnerWhatsappAction,
   toggleChannelActiveAction,
-  toggleReasonActiveAction,
 } from '@/modules/settings/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
@@ -40,7 +37,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
     { data: receipt },
     { data: channels },
     { data: commissions },
-    { data: reasons },
     { data: profile },
   ] = await Promise.all([
     supabase
@@ -65,12 +61,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
       .select('channel_id, commission_bps, fixed_fee_poisha, packaging_poisha, effective_from')
       .eq('org_id', ctx.org.id)
       .order('effective_from', { ascending: false }),
-    supabase
-      .from('reason_codes')
-      .select('id, kind, label, is_active, requires_manager_approval')
-      .eq('org_id', ctx.org.id)
-      .order('kind')
-      .order('label'),
     supabase
       .from('org_profile')
       .select('owner_whatsapp, brief_language, owner_whatsapp_opt_in_at')
@@ -191,41 +181,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
                 </li>
               );
             })}
-          </ul>
-        )}
-      </Card>
-
-      <Card className="mt-6">
-        <CardTitle>{t('reasonsTitle')}</CardTitle>
-        <ReasonCodeForm orgId={ctx.org.id} orgSlug={ctx.org.slug} />
-        {(reasons ?? []).length === 0 ? (
-          <EmptyState className="mt-4" title={t('noReasons')} />
-        ) : (
-          <ul className="mt-4 divide-y divide-line">
-            {(reasons ?? []).map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                <p>
-                  <span className="text-sm text-secondary">{t(`reasonKindOptions.${r.kind}`)}</span>{' '}
-                  <span className="font-medium">{r.label}</span>
-                  {r.requires_manager_approval ? (
-                    <StatusBadge tone="warning" className="ms-2">
-                      {t('requiresApproval')}
-                    </StatusBadge>
-                  ) : null}
-                </p>
-                <div className="flex items-center gap-1">
-                  <form action={toggleReasonActiveAction}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-                    <input type="hidden" name="active" value={String(r.is_active)} />
-                    <Button type="submit" variant="ghost" size="sm">
-                      {r.is_active ? t('deactivate') : t('activate')}
-                    </Button>
-                  </form>
-                  <DeleteReasonButton orgSlug={ctx.org.slug} id={r.id} />
-                </div>
-              </li>
-            ))}
           </ul>
         )}
       </Card>

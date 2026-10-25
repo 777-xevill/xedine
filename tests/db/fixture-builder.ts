@@ -139,6 +139,9 @@ const OVERRIDES: Record<string, Override> = {
   discount_codes: () => ({
     code: `FIX${randomUUID().slice(0, 8).toUpperCase().replace(/-/g, '')}`,
   }),
+  // one account per platform per org; Meta ids are digits (ADR 0040)
+  social_accounts: () => ({ platform: 'facebook', external_id: String(1_000_000 + next()) }),
+  social_posts: () => ({ source: 'owner', angle: 'own', format: 'image', own_text: null }),
 };
 
 let counter = 0;

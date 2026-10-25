@@ -4,4 +4,6 @@ allowBuilds:
   '@parcel/watcher': false
   '@swc/core': false
   esbuild: false
+  # Downloads the ffmpeg binary that renders the social autopilot's reels (ADR 0040).
+  ffmpeg-static: true
   unrs-resolver: false

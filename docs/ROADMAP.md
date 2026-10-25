@@ -236,6 +236,7 @@ Status: ◐ **built; local checks green; phase-reviewer pass done, findings fixe
 - [x] Licence tracker + reminders (60/30/7 days); VAT deadline reminders; sales-VAT summary export (TODO verify with an accountant) — `/[org]/compliance`, `metric_compliance`, `job_compliance_reminders`, `/api/export/[vat|orders]`
 - [x] Staff-lite: advances ledger, basic attendance, sales per staff — `/[org]/staff/records`
 - [x] Growth module (optional): data-grounded content ideas, hooks, shot list, captions bn/en, posting calendar — `/[org]/growth`; no auto-posting (PRODUCT.md M17)
+- [x] Social autopilot (ADR 0040): Settings → Social (connect Facebook/Instagram, time, days, colours, logo, never-post), posters and reels made from real dish photos, published every 10-minute tick; Growth shows coming and posted posts, own post, skip
 - [x] Onboarding wizard: menu import from photo/CSV, recipe drafts (Phase 3), fixed costs, channels — `/[org]/setup`, `metric_setup_progress` (12 steps, computed from real data); **timed < 2 h test not yet run**
 - [x] Plans, usage caps, subscription billing (provider TBD), admin console, data export — `metric_billing`, `org_ai_allowed`/`org_whatsapp_allowed` enforced in the gateways, `/admin` (platform admins only), `/api/export/[kind]`
 - [~] Security review (RLS audit, secrets, rate limits, headers), backups, monitoring, performance pass — see [SECURITY.md](../docs/SECURITY.md): RLS/isolation/search_path automated and green; headers added; **rate limiting, backups and monitoring are deliberately deferred to launch prep, not faked**

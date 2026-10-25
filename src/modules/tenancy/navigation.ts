@@ -55,7 +55,8 @@ export type IconKey =
   | 'billing'
   | 'setup'
   | 'assistantRules'
-  | 'telegram';
+  | 'telegram'
+  | 'social';
 
 export interface NavLink {
   /** Also the `nav.*` message key for the label. */
@@ -124,6 +125,7 @@ const SETTINGS: LinkRule[] = [
   { key: 'assistantRules', path: '/settings/assistant', roles: ['owner'] },
   { key: 'team', path: '/team', roles: ['owner'] },
   { key: 'telegram', path: '/settings/telegram', roles: ['owner'] },
+  { key: 'social', path: '/settings/social', roles: ['owner'] },
   { key: 'staff', path: '/staff', roles: ['owner', 'manager'] },
   { key: 'branchSetup', path: '/branch', roles: ['owner', 'manager'] },
   { key: 'discountCodes', path: '/discount-codes', roles: ['owner', 'manager'] },

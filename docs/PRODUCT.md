@@ -56,7 +56,7 @@ Owner · Branch manager · Cashier · Kitchen · Purchaser (bazar) · Accountant
 
 **M16 Staff (lite)** — staff list, monthly salary & allowances, advances ledger, basic attendance, sales per staff. No AI shift scheduling (monthly salaries make it low value).
 
-**M17 Growth / Social (optional)** — content ideas grounded in sales data (push Stars, fix weak dayparts), hooks, shot list & camera angles, captions (bn/en), posting calendar, Google Business Profile checklist. No auto-posting in MVP.
+**M17 Growth / Social (optional)** — the social autopilot (ADR 0040): every posting day Xedine picks a story from sales data (best seller, a quiet time to fill, a dish not shown for a while, or the owner's own line), checks the restaurant's real dish photo, has AI improve it, lays on the headline, Bangla/English text, logo and contact, and publishes a poster or an 8-second reel to the connected Facebook Page and Instagram by itself. The owner sets it up once (Settings → Social) and can skip any post or list dishes never to post.
 
 **M18 Platform** — onboarding wizard (target: live in < 2 hours), plans & usage caps, billing, admin console, data export.
 
@@ -76,7 +76,7 @@ Owner · Branch manager · Cashier · Kitchen · Purchaser (bazar) · Accountant
 RLS with server-side routes · order status separate from payment status · dark-mode two-tap KDS · oldest-first queue · deterministic rules engine for insights · synthetic Dhaka-pattern demo data. Reuse the patterns. Reuse code only if the founder owns it and explicitly asks.
 
 ## Out of scope for MVP
-AI shift scheduling · payroll tax filing · tip management · lending (lender partnership possible later) · auto-posting to social · delivery-platform API integrations (manual tagging/CSV first) · EFD/SDC device integration (design data so it can be added) · native apps (PWA first).
+AI shift scheduling · payroll tax filing · tip management · lending (lender partnership possible later) · delivery-platform API integrations (manual tagging/CSV first) · EFD/SDC device integration (design data so it can be added) · native apps (PWA first).
 
 ## Pilot success signals
 Owners act on ≥1 finding per week · findings worth ≥2× the subscription per month · branch input discipline ≥80% · onboarding <2 h · forecasts beat the naive baseline · weekly active owners.

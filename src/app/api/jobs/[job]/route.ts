@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { NextResponse, type NextRequest } from 'next/server';
+import { after, NextResponse, type NextRequest } from 'next/server';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
 import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/time/business-date';
@@ -7,6 +7,7 @@ import { queueBrief } from '@/modules/briefs/jobs/briefs';
 import { sendComplianceReminders } from '@/modules/compliance/jobs/reminders';
 import { runAutoCampaigns, sendFeedbackRequests } from '@/modules/customers/jobs/retention';
 import { runOutbox } from '@/modules/messaging/jobs/outbox';
+import { runSocialTick } from '@/modules/social/jobs/autopilot';
 
 /**
  * Scheduled-job entry point (ADR 0004). pg_cron calls this with a shared secret; the job is claimed in
@@ -23,7 +24,11 @@ const KNOWN_JOBS = new Set([
   'send_outbox',
   'feedback_requests',
   'benchmarks',
+  'social_tick',
 ]);
+
+// The social autopilot renders posters and reels in a headless browser: give it the plan's full 5 minutes.
+export const maxDuration = 300;
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.JOB_SECRET;
@@ -138,7 +143,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const at = now();
   // The dispatcher's own claim: one per 10-minute slot (refresh) or per business day (close).
   const period =
-    job === 'refresh_today'
+    job === 'refresh_today' || job === 'social_tick'
       ? at.toISOString().slice(0, 15)
       : job === 'send_outbox' || job === 'feedback_requests'
         ? at.toISOString().slice(0, 16)
@@ -152,6 +157,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
   if (error) return NextResponse.json({ error: 'could not claim run' }, { status: 500 });
   if (!runId) return NextResponse.json({ status: 'already_ran', period });
+
+  if (job === 'social_tick') {
+    // pg_net gives up after 30 s, so answer at once and do the work after the response (ADR 0040).
+    after(async () => {
+      try {
+        const done = await runSocialTick(supabase, at);
+        await supabase.rpc('job_run_finish', {
+          p_run: runId,
+          p_status: done.failed > 0 ? 'failed' : 'succeeded',
+          p_error: done.failed > 0 ? `${done.failed} post(s) failed` : null,
+        });
+      } catch (e) {
+        await supabase.rpc('job_run_finish', {
+          p_run: runId,
+          p_status: 'failed',
+          p_error: e instanceof Error ? e.message.slice(0, 500) : 'failed',
+        });
+      }
+    });
+    return NextResponse.json({ status: 'started', period }, { status: 202 });
+  }
 
   try {
     if (job === 'feedback_requests') {

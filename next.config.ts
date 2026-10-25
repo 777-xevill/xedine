@@ -8,6 +8,16 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Menu photos for AI recipe drafts are up to 5 MB (src/modules/recipes/actions.ts).
   experimental: { serverActions: { bodySizeLimit: '6mb' } },
+  // The social autopilot (ADR 0040) renders posters and reels with a headless Chromium and ffmpeg in the
+  // job route. They load their own binaries at run time, so they are not bundled, and their files are
+  // copied next to that route.
+  serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core', 'ffmpeg-static'],
+  outputFileTracingIncludes: {
+    '/api/jobs/*': [
+      './node_modules/@sparticuz/chromium/bin/**',
+      './node_modules/ffmpeg-static/ffmpeg',
+    ],
+  },
   async headers() {
     return [
       {

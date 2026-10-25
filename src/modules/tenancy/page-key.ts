@@ -36,6 +36,7 @@ export function pageKeyFromPath(slug: string, pathname: string): IconKey | null 
     if (second === 'features') return 'features';
     if (second === 'assistant') return 'assistantRules';
     if (second === 'telegram') return 'telegram';
+    if (second === 'social') return 'social';
     return 'general';
   }
   return BY_SEGMENT[first] ?? null;

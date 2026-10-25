@@ -87,12 +87,12 @@
     "menuImportInvalid": "Paste between 1 and 500 menu lines: category, name, Bangla name, price.",
     "menuImportBadLines": "These lines need a name and a price: {lines}. Fix them and import again.",
     "aiNotInPlan": "Your plan does not include AI. The owner can change the plan on the Billing page.",
-    "growthNoData": "Not enough sales yet to ground an idea.",
-    "growthInvalid": "Give the idea a title and a caption in Bangla or English.",
     "telegramNotSetUp": "The Telegram bot is not set up yet (see the steps on this page).",
     "lossLineInvalid": "Enter a percent between 0.1 and 20.",
     "itemStillInStock": "Some of this is still in stock, so it cannot be hidden. Count it, or log it as waste first.",
-    "itemStockUnknown": "This was never counted. Say whether any is left before hiding it."
+    "itemStockUnknown": "This was never counted. Say whether any is left before hiding it.",
+    "socialPickTime": "Pick a date and time that hasn't passed yet.",
+    "socialConnectExpired": "That took too long. Please connect Facebook again."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -189,7 +189,8 @@
     "closeMenu": "Close menu",
     "everyBranch": "All branches",
     "telegram": "Telegram",
-    "discountCodes": "Discount codes"
+    "discountCodes": "Discount codes",
+    "social": "Social"
   },
   "discountCodes": {
     "title": "Discount codes",
@@ -2379,42 +2380,11 @@
     "decisionNote": "Note to the owner (optional)",
     "approve": "Approve",
     "decline": "Decline",
-    "decisions": { "approved": "Approved", "declined": "Declined", "cancelled": "Cancelled" }
-  },
-  "growth": {
-    "title": "Growth",
-    "subtitle": "Content ideas grounded in your own sales data — you write or approve everything before it goes anywhere.",
-    "aiNotConfigured": "AI drafts are off until an AI key is added. You can still write ideas yourself.",
-    "pushItemTitle": "Push a strong seller",
-    "pushItemFact": "{item} sold {qty} times in the last 28 days.",
-    "fixDaypartTitle": "Fix a quiet time",
-    "fixDaypartFact": "{weak} is only {weakShare} of sales, against {strongShare} at {strong}, over the last 28 days.",
-    "noSalesYet": "Not enough sales yet",
-    "draftIdea": "Draft with AI",
-    "aiDraft": "AI Generated draft",
-    "calendarTitle": "Scheduled",
-    "markPosted": "Mark posted",
-    "writeOwnTitle": "Write your own idea",
-    "ideaTitle": "Title",
-    "hook": "Hook (one line)",
-    "shotList": "Shot list",
-    "captionBn": "Caption (Bangla)",
-    "captionEn": "Caption (English)",
-    "save": "Save",
-    "none": "No ideas yet",
-    "noneBody": "Draft one from a strong seller or a quiet time above, or write your own.",
-    "status": {
-      "draft": "Draft",
+    "decisions": {
       "approved": "Approved",
-      "posted": "Posted",
-      "discarded": "Discarded"
-    },
-    "targetDate": "Post on",
-    "approve": "Approve",
-    "discard": "Discard",
-    "drafted": "Idea drafted below — check it before approving.",
-    "approved": "Approved.",
-    "noAutoPost": "Xedine never posts anything by itself. Copy an approved caption to the platform yourself, then mark it posted."
+      "declined": "Declined",
+      "cancelled": "Cancelled"
+    }
   },
   "features": {
     "title": "Features",
@@ -2484,8 +2454,14 @@
   "chatBot": {
     "ownerHelp": "Ask me about your restaurant. Tap a topic below or just type your question, in Bangla or English. For example: \"How were sales today?\"\n\nTo record the bazar, send a list like:\nmurgi 10 kg 1800\npiyaj 5 kg 300\n\n/stop disconnects this chat.",
     "topics": {
-      "sales": { "label": "💰 Sales", "question": "How were my sales today and yesterday?" },
-      "profit": { "label": "📈 Profit", "question": "What is my estimated profit today?" },
+      "sales": {
+        "label": "💰 Sales",
+        "question": "How were my sales today and yesterday?"
+      },
+      "profit": {
+        "label": "📈 Profit",
+        "question": "What is my estimated profit today?"
+      },
       "stock": {
         "label": "📦 Stock",
         "question": "Which ingredients are running low or finished?"
@@ -2494,8 +2470,14 @@
         "label": "🚨 Money leaks",
         "question": "What are my biggest money leaks right now?"
       },
-      "top": { "label": "🍛 Best dishes", "question": "What are my top selling dishes this week?" },
-      "buy": { "label": "🛒 What to buy", "question": "What should I buy for tomorrow?" }
+      "top": {
+        "label": "🍛 Best dishes",
+        "question": "What are my top selling dishes this week?"
+      },
+      "buy": {
+        "label": "🛒 What to buy",
+        "question": "What should I buy for tomorrow?"
+      }
     },
     "heading": "🧾 {branch} · bazar of {date}",
     "flags": {
@@ -2577,6 +2559,158 @@
       "title": "{name}: is any left?",
       "body": "Last bought {date} and never counted. If none is left, hide it from the bazar list and counts. If some is left, count it first.",
       "action": "None left, hide it"
+    }
+  },
+  "social": {
+    "poster": {
+      "cta": "Visit us today",
+      "badgeStar": "Best seller",
+      "badgeDaypart": "Perfect for {daypart}",
+      "dayparts": {
+        "breakfast": "breakfast",
+        "lunch": "lunch",
+        "snacks": "snack time",
+        "dinner": "dinner",
+        "late": "late night"
+      }
+    },
+    "settings": {
+      "title": "Social",
+      "subtitle": "Connect your Facebook Page and Instagram once. Xedine then makes a poster or a short video from your own dish photos and posts it by itself, even if you don't open the app for a month.",
+      "notice": {
+        "connected": "Connected. Xedine can now post to this Page.",
+        "pick": "Facebook gave several Pages. Pick the one Xedine should post to.",
+        "cancelled": "Facebook connection was cancelled. Nothing changed.",
+        "no_pages": "Facebook didn't give any Page. Make sure you are an admin of the restaurant's Page and allow it when Facebook asks.",
+        "failed": "Facebook didn't accept the connection. Please try again.",
+        "wrong_user": "Please finish connecting in the same browser and account that started it.",
+        "not_owner": "Only the owner can connect Facebook.",
+        "not_configured": "Facebook connection is not set up on Xedine yet."
+      },
+      "connectTitle": "Facebook & Instagram",
+      "connectBody": "Your Instagram must be a Business account linked to your Facebook Page. Then one connect covers both.",
+      "connect": "Connect Facebook & Instagram",
+      "reconnect": "Change Page",
+      "disconnect": "Disconnect",
+      "connected": "Connected",
+      "facebookPage": "Facebook Page:",
+      "instagram": "Instagram:",
+      "noInstagram": "Not linked. Link your Instagram Business account to the Page, then connect again.",
+      "noInstagramShort": "no Instagram linked",
+      "pickPage": "Which Page should Xedine post to?",
+      "usePage": "Use this Page",
+      "metaNotConfigured": "Facebook connection is not switched on for Xedine yet. Xedine still makes your posters and videos; download them from Growth and post them yourself until then.",
+      "photosTitle": "Dish photos",
+      "photosCount": "{have} of {total} dishes have a photo.",
+      "photosLink": "Add photos in Menu",
+      "photosAiOn": "Xedine checks each photo really shows the dish, and AI makes it look like a studio shot before it goes on a poster.",
+      "photosAiOff": "Xedine puts your real photo on the poster. Clear, bright photos of one plate look best.",
+      "autopilotTitle": "Autopilot",
+      "autopilotOn": "Post by itself",
+      "autopilotOnHint": "Every posting day Xedine picks a dish (best seller, a quiet time to fill, or one that hasn't been shown for a while), writes the words and posts. Nobody needs to approve it.",
+      "postTime": "Post at",
+      "format": "What to post",
+      "formats": {
+        "mix": "Poster one day, video the next",
+        "image": "Posters only",
+        "video": "Short videos only"
+      },
+      "days": "Posting days",
+      "language": "Language",
+      "languages": {
+        "both": "Bangla + English",
+        "bn": "Bangla",
+        "en": "English"
+      },
+      "tone": "Style",
+      "tones": {
+        "friendly": "Warm and homely",
+        "premium": "Calm and premium",
+        "fun": "Fun and young"
+      },
+      "lookTitle": "How posts look",
+      "colorMain": "Main colour",
+      "colorAccent": "Second colour",
+      "displayName": "Restaurant name on posts",
+      "area": "Area (e.g. Dhanmondi, Dhaka)",
+      "phone": "Phone on posts",
+      "never": "Never post these dishes",
+      "save": "Save",
+      "logoTitle": "Logo",
+      "logoBody": "Printed on every poster and video. A PNG with a clear background looks best.",
+      "logoAdd": "Add logo",
+      "logoReplace": "Change logo",
+      "logoRemove": "Remove",
+      "logoWorking": "Uploading…",
+      "logoFailed": "The logo could not be saved. Please try another picture."
+    },
+    "growth": {
+      "title": "Growth",
+      "subtitle": "Your Facebook and Instagram, run by Xedine: posters and short videos made from your own dishes and sales, posted by themselves.",
+      "aiNotConfigured": "AI is off, so Xedine can't write posts yet.",
+      "autopilotOn": "Autopilot is on",
+      "autopilotOff": "Autopilot is off",
+      "autopilotOnBody": "A new post goes out on each posting day at {time}.",
+      "autopilotOffBody": "Switch it on in Settings → Social and Xedine posts by itself every day.",
+      "connectedTo": "Posting to {page} · Instagram {ig}",
+      "notConnected": "Facebook is not connected yet, so posts wait here to download.",
+      "photoCount": "{count} dishes have a photo Xedine can use.",
+      "setup": "Set up",
+      "makeTitle": "Make a post now",
+      "makeBody": "Pick a dish and, if you like, say what to tell people. Xedine makes the poster or video and posts it.",
+      "noPhotos": "No dish photos yet",
+      "noPhotosBody": "Add a photo to a dish on the Menu page. Posts are made only from your real dishes.",
+      "dish": "Dish",
+      "format": "Type",
+      "formats": {
+        "image": "Poster",
+        "video": "Short video"
+      },
+      "ownText": "What to tell people (optional)",
+      "ownTextExample": "e.g. New this week: Mutton Kacchi every Friday",
+      "when": "When",
+      "whenNow": "As soon as it's ready (about 10 minutes)",
+      "whenLater": "At a time I choose",
+      "date": "Date",
+      "time": "Time",
+      "make": "Make and post",
+      "makeHint": "It goes out without another check, so write only what is true.",
+      "requested": "Done. Xedine is making it now; it appears below when ready.",
+      "upcoming": "Coming up",
+      "noUpcoming": "Nothing planned",
+      "noUpcomingBody": "With autopilot on, the next two days' posts show here.",
+      "past": "Posted",
+      "noPast": "Nothing has gone out yet",
+      "yourPost": "Your post",
+      "caption": "Caption",
+      "seeOnFacebook": "See on Facebook",
+      "onInstagram": "On Instagram",
+      "download": "Download",
+      "skip": "Don't post",
+      "status": {
+        "planned": "Planned",
+        "ready": "Ready",
+        "publishing": "Posting…",
+        "posted": "Posted",
+        "failed": "Didn't go out",
+        "skipped": "Skipped"
+      },
+      "angles": {
+        "star": "Best seller",
+        "quiet_time": "Fill a quiet time",
+        "spotlight": "Dish spotlight",
+        "own": "Your idea"
+      },
+      "errors": {
+        "no_dish_photos": "No dish has a photo. Add photos on the Menu page.",
+        "photo_not_food": "The dish photo doesn't look like food (or is too blurry). Change the photo on the Menu page.",
+        "dish_photo_missing": "That dish has no photo any more.",
+        "not_connected": "Facebook was not connected, so it couldn't go out.",
+        "invented_number": "The AI wrote a number that isn't true, so Xedine stopped it.",
+        "no_settings": "Open Settings → Social once first.",
+        "other": "Facebook or the AI refused it. Xedine tried 3 times."
+      },
+      "footnote": "Checked {at}. Xedine checks every 10 minutes."
     }
   }
 }

@@ -148,14 +148,41 @@ export async function skipSocialPostAction(formData: FormData): Promise<void> {
   refresh(parsed.data.orgSlug);
 }
 
-/** Disconnect: the token rows go with the accounts (foreign key cascade). */
+/**
+ * Disconnect Facebook + Instagram (one connect covers both) or TikTok. The token rows go with the
+ * accounts (foreign key cascade).
+ */
 export async function disconnectSocialAction(formData: FormData): Promise<void> {
-  const parsed = base.safeParse(Object.fromEntries(formData));
+  const parsed = base
+    .extend({ platform: z.enum(['meta', 'tiktok']) })
+    .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const supabase = await createClient();
-  const { error } = await supabase.from('social_accounts').delete().eq('org_id', parsed.data.orgId);
+  const { error } = await supabase
+    .from('social_accounts')
+    .delete()
+    .eq('org_id', parsed.data.orgId)
+    .in('platform', parsed.data.platform === 'tiktok' ? ['tiktok'] : ['facebook', 'instagram']);
   if (error) console.error('disconnect social', error.code);
   refresh(parsed.data.orgSlug);
+}
+
+/** How TikTok gets the video: to the owner's inbox to post with one tap, or posted directly. */
+export async function saveTikTokModeAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ tiktokMode: z.enum(['draft', 'direct']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('social_settings')
+    .upsert({ org_id: parsed.data.orgId, tiktok_mode: parsed.data.tiktokMode });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
 }
 
 /** The owner picks which of their Facebook Pages Xedine posts to (when Facebook offered several). */

@@ -40,6 +40,7 @@ const KNOWN_ERRORS = new Set([
   'not_connected',
   'invented_number',
   'no_settings',
+  'tiktok_reconnect',
 ]);
 
 interface PostRow {
@@ -57,6 +58,7 @@ interface PostRow {
   video_path: string | null;
   fb_id: string | null;
   ig_id: string | null;
+  tiktok_id: string | null;
   error: string | null;
   media_cleared_at: string | null;
 }
@@ -97,7 +99,7 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     supabase
       .from('social_posts')
       .select(
-        'id, menu_item_id, source, angle, format, scheduled_at, status, headline, caption_bn, caption_en, poster_path, video_path, fb_id, ig_id, error, media_cleared_at',
+        'id, menu_item_id, source, angle, format, scheduled_at, status, headline, caption_bn, caption_en, poster_path, video_path, fb_id, ig_id, tiktok_id, error, media_cleared_at',
       )
       .eq('org_id', ctx.org.id)
       .in('status', ['planned', 'ready', 'publishing'])
@@ -106,7 +108,7 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     supabase
       .from('social_posts')
       .select(
-        'id, menu_item_id, source, angle, format, scheduled_at, status, headline, caption_bn, caption_en, poster_path, video_path, fb_id, ig_id, error, media_cleared_at',
+        'id, menu_item_id, source, angle, format, scheduled_at, status, headline, caption_bn, caption_en, poster_path, video_path, fb_id, ig_id, tiktok_id, error, media_cleared_at',
       )
       .eq('org_id', ctx.org.id)
       .in('status', ['posted', 'failed', 'skipped'])
@@ -129,7 +131,8 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
   const card = (p: PostRow, canSkip: boolean) => {
     const cleared = Boolean(p.media_cleared_at);
     const poster = cleared ? null : media(p.poster_path);
-    const video = cleared ? null : media(p.video_path);
+    // A poster day may carry a reel too, made only for TikTok (ADR 0041): show the poster there.
+    const video = cleared || p.format !== 'video' ? null : media(p.video_path);
     const file = video ?? poster;
     return (
       <Card key={p.id} className="p-4">
@@ -198,12 +201,13 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
                 </a>
               ) : null}
               {p.ig_id ? <Badge tone="success">{t('onInstagram')}</Badge> : null}
+              {p.tiktok_id ? (
+                <Badge tone="success">
+                  {p.tiktok_id.startsWith('inbox:') ? t('inTikTokInbox') : t('onTikTok')}
+                </Badge>
+              ) : null}
               {file ? (
-                <a
-                  href={file}
-                  download
-                  className="text-sm font-medium text-primary underline"
-                >
+                <a href={file} download className="text-sm font-medium text-primary underline">
                   {t('download')}
                 </a>
               ) : null}

@@ -107,6 +107,20 @@ export async function signInAction(_prev: FormState, formData: FormData): Promis
   redirect(safeNext(formData.get('next')) ?? '/');
 }
 
+/** Off to Facebook through Supabase Auth; /auth/callback finishes the sign-in (ADR 0041). */
+export async function signInWithFacebookAction(formData: FormData): Promise<void> {
+  const next = safeNext(formData.get('next'));
+  const callback = new URL('/auth/callback', publicEnv().NEXT_PUBLIC_SITE_URL);
+  if (next) callback.searchParams.set('next', next);
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'facebook',
+    options: { redirectTo: callback.toString(), scopes: 'email,public_profile' },
+  });
+  if (error || !data.url) redirect('/sign-in?error=facebookFailed');
+  redirect(data.url);
+}
+
 export async function signOutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();

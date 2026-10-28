@@ -16,6 +16,13 @@ import {
 } from '../meta';
 import { dataUrl, renderPoster, renderReel, shrinkPhoto, withBrowser } from '../render';
 import {
+  refreshTikTokToken,
+  startTikTokPost,
+  TikTokError,
+  tiktokPublishStatus,
+  type TikTokMode,
+} from '../tiktok';
+import {
   angleForDay,
   designForDay,
   formatForDay,
@@ -34,7 +41,8 @@ import { checkDishPhoto, SOCIAL_POST_PROMPT, writeSocialPost } from '../writer';
  *  1. plan     today's and tomorrow's autopilot post for every org with the switch on;
  *  2. make     posts due within 3 hours: pick the dish, check its photo, write the words, improve the
  *              picture, render the poster (and the reel) and store them;
- *  3. publish  posts whose time has come, to the connected Facebook Page and Instagram account;
+ *  3. publish  posts whose time has come, to the connected Facebook Page, Instagram and TikTok
+ *              (TikTok always gets the video; ADR 0041);
  *  4. clean    delete the media of posts that went out (or failed) 3+ days ago, so free storage never fills.
  *
  * Nothing waits for a person: the owner chose fully automatic posting. Every step is idempotent, so a
@@ -85,13 +93,15 @@ interface Post {
   fb_id: string | null;
   ig_id: string | null;
   ig_container_id: string | null;
+  tiktok_publish_id: string | null;
+  tiktok_id: string | null;
   attempts: number;
 }
 
 const SETTINGS_COLUMNS =
   'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids';
 const POST_COLUMNS =
-  'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, attempts';
+  'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
 
 export interface TickResult {
   planned: number;
@@ -226,11 +236,18 @@ async function fail(sb: Supabase, post: Post, message: string, final = false): P
 
 async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
   try {
-    const [{ data: settingsRow }, { data: org }, { data: profile }] = await Promise.all([
-      sb.from('social_settings').select(SETTINGS_COLUMNS).eq('org_id', post.org_id).maybeSingle(),
-      sb.from('organizations').select('name').eq('id', post.org_id).single(),
-      sb.from('org_profile').select('area, city').eq('org_id', post.org_id).maybeSingle(),
-    ]);
+    const [{ data: settingsRow }, { data: org }, { data: profile }, { data: tiktok }] =
+      await Promise.all([
+        sb.from('social_settings').select(SETTINGS_COLUMNS).eq('org_id', post.org_id).maybeSingle(),
+        sb.from('organizations').select('name').eq('id', post.org_id).single(),
+        sb.from('org_profile').select('area, city').eq('org_id', post.org_id).maybeSingle(),
+        sb
+          .from('social_accounts')
+          .select('id')
+          .eq('org_id', post.org_id)
+          .eq('platform', 'tiktok')
+          .maybeSingle(),
+      ]);
     // request_social_post creates the row for an owner's post; an autopilot post only exists with one.
     if (!settingsRow) return fail(sb, post, 'no_settings', true);
     const s = settingsRow as Settings;
@@ -407,7 +424,8 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       const posterPath = `${folder}/poster.jpg`;
       await upload(sb, posterPath, await renderPoster(browser, content), 'image/jpeg');
       let videoPath: string | null = null;
-      if (post.format === 'video') {
+      // TikTok takes only video, so a poster day still gets a reel when TikTok is connected.
+      if (post.format === 'video' || tiktok) {
         videoPath = `${folder}/reel.mp4`;
         await upload(sb, videoPath, await renderReel(browser, content), 'video/mp4');
       }
@@ -470,9 +488,18 @@ function publicUrl(sb: Supabase, path: string): string {
 
 interface Account {
   id: string;
-  platform: 'facebook' | 'instagram';
+  platform: 'facebook' | 'instagram' | 'tiktok';
   external_id: string;
   token: string;
+  refresh_token: string | null;
+  expires_at: string | null;
+}
+
+interface TokenRow {
+  account_id: string;
+  access_token: string;
+  refresh_token: string | null;
+  expires_at: string | null;
 }
 
 async function accountsFor(sb: Supabase, orgId: string): Promise<Account[]> {
@@ -483,17 +510,48 @@ async function accountsFor(sb: Supabase, orgId: string): Promise<Account[]> {
   if (!accounts?.length) return [];
   const { data: tokens } = await sb
     .from('social_tokens')
-    .select('account_id, access_token')
+    .select('account_id, access_token, refresh_token, expires_at')
     .eq('org_id', orgId);
-  const byId = new Map(
-    ((tokens ?? []) as { account_id: string; access_token: string }[]).map((t) => [
-      t.account_id,
-      t.access_token,
-    ]),
-  );
-  return (accounts as { id: string; platform: 'facebook' | 'instagram'; external_id: string }[])
+  const byId = new Map(((tokens ?? []) as TokenRow[]).map((t) => [t.account_id, t]));
+  return (accounts as { id: string; platform: Account['platform']; external_id: string }[])
     .filter((a) => byId.has(a.id))
-    .map((a) => ({ ...a, token: byId.get(a.id)! }));
+    .map((a) => {
+      const t = byId.get(a.id)!;
+      return {
+        ...a,
+        token: t.access_token,
+        refresh_token: t.refresh_token,
+        expires_at: t.expires_at,
+      };
+    });
+}
+
+/** TikTok access tokens live 24 hours: renew one that ends within 10 minutes, and keep the new pair. */
+async function freshTikTokToken(
+  sb: Supabase,
+  orgId: string,
+  account: Account,
+  at: Date,
+): Promise<string> {
+  if (account.expires_at && Date.parse(account.expires_at) - at.getTime() > 10 * 60_000)
+    return account.token;
+  if (!account.refresh_token) throw new TikTokError('tiktok_reconnect', null);
+  // A refused refresh (revoked, or unused for a year) only heals by connecting again: say so on Growth.
+  const tokens = await refreshTikTokToken(account.refresh_token, at).catch((e: unknown) => {
+    throw e instanceof TikTokError && e.code ? new TikTokError('tiktok_reconnect', e.code) : e;
+  });
+  const { error } = await sb
+    .from('social_tokens')
+    .update({
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      expires_at: tokens.expiresAt.toISOString(),
+      updated_at: at.toISOString(),
+    })
+    .eq('org_id', orgId)
+    .eq('account_id', account.id);
+  if (error) throw error;
+  return tokens.accessToken;
 }
 
 export function captionFor(
@@ -540,7 +598,7 @@ async function publishOne(
   }
   const { data: settings } = await sb
     .from('social_settings')
-    .select('language, autopilot')
+    .select('language, autopilot, tiktok_mode')
     .eq('org_id', post.org_id)
     .maybeSingle();
   if (post.source === 'autopilot' && !settings?.autopilot && post.status === 'ready') {
@@ -587,6 +645,30 @@ async function publishOne(
       } else if (status === 'ERROR' || status === 'EXPIRED') {
         throw new MetaError(`instagram ${status.toLowerCase()}`, null);
       } else waiting = true; // Instagram is still processing the reel: the next tick publishes it.
+    }
+    // TikTok takes the reel only; a post made before TikTok was connected has none and skips it.
+    const tk = accounts.find((a) => a.platform === 'tiktok');
+    if (tk && !post.tiktok_id && post.video_path) {
+      const token = await freshTikTokToken(sb, post.org_id, tk, at);
+      let publishId = post.tiktok_publish_id;
+      if (!publishId) {
+        const { data: blob } = await sb.storage.from(MEDIA_BUCKET).download(post.video_path);
+        if (!blob) throw new TikTokError('video_missing', null);
+        publishId = await startTikTokPost(
+          token,
+          (settings?.tiktok_mode as TikTokMode | undefined) ?? 'draft',
+          new Uint8Array(await blob.arrayBuffer()),
+          caption,
+        );
+        await sb.from('social_posts').update({ tiktok_publish_id: publishId }).eq('id', post.id);
+      }
+      const progress = await tiktokPublishStatus(token, publishId);
+      if (progress.state === 'done') patch.tiktok_id = progress.postId;
+      else if (progress.state === 'failed') {
+        // Start over on the next try rather than polling a dead upload.
+        await sb.from('social_posts').update({ tiktok_publish_id: null }).eq('id', post.id);
+        throw new TikTokError(`tiktok ${progress.reason}`, null);
+      } else waiting = true; // TikTok is still processing the video: the next tick checks again.
     }
     if (waiting) {
       await sb

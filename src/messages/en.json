@@ -92,7 +92,10 @@
     "itemStillInStock": "Some of this is still in stock, so it cannot be hidden. Count it, or log it as waste first.",
     "itemStockUnknown": "This was never counted. Say whether any is left before hiding it.",
     "socialPickTime": "Pick a date and time that hasn't passed yet.",
-    "socialConnectExpired": "That took too long. Please connect Facebook again."
+    "socialConnectExpired": "That took too long. Please connect Facebook again.",
+    "facebookNoEmail": "Your Facebook account has no email address, so it can't be used to sign in. Please create an account with your email instead.",
+    "facebookCancelled": "Facebook sign-in was cancelled. Nothing changed.",
+    "facebookFailed": "Facebook sign-in didn't work. Please try again, or sign in with email."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -114,7 +117,9 @@
     "inviteSignInBody": "First time on Xedine? Create your account below with the email you were invited on, then you will land on the invitation. Already have an account? Sign in here.",
     "inviteCreateAccount": "Create my account",
     "inviteTitle": "You have been invited",
-    "inviteBody": "Accept the invitation to join this restaurant's workspace. You must be signed in with the invited email address."
+    "inviteBody": "Accept the invitation to join this restaurant's workspace. You must be signed in with the invited email address.",
+    "continueWithFacebook": "Continue with Facebook",
+    "orWithEmail": "or with email"
   },
   "landing": {
     "eyebrow": "Profit intelligence for restaurants",
@@ -2668,7 +2673,30 @@
       "logoReplace": "Change logo",
       "logoRemove": "Remove",
       "logoWorking": "Uploading…",
-      "logoFailed": "The logo could not be saved. Please try another picture."
+      "logoFailed": "The logo could not be saved. Please try another picture.",
+      "tiktokNotice": {
+        "connected": "TikTok connected. Xedine now sends every post to TikTok as a short video.",
+        "cancelled": "TikTok connection was cancelled. Nothing changed.",
+        "failed": "TikTok didn't accept the connection. Please try again.",
+        "wrong_user": "Please finish connecting in the same browser and account that started it.",
+        "not_owner": "Only the owner can connect TikTok.",
+        "not_configured": "TikTok connection is not set up on Xedine yet."
+      },
+      "tiktokTitle": "TikTok",
+      "tiktokBody": "TikTok takes videos only, so every post goes there as a short video, even on poster days.",
+      "tiktokConnect": "Connect TikTok",
+      "tiktokReconnect": "Change account",
+      "tiktokAccount": "TikTok:",
+      "tiktokNotConfigured": "TikTok connection is not switched on for Xedine yet. Download the videos from Growth and post them yourself until then.",
+      "tiktokMode": "How should Xedine post to TikTok?",
+      "tiktokModes": {
+        "draft": "Send to my TikTok inbox",
+        "direct": "Post by itself"
+      },
+      "tiktokModeHints": {
+        "draft": "The video waits in your TikTok app. Tap it, check it and post with one tap. Posts are public.",
+        "direct": "Xedine posts with no tap. Until TikTok approves Xedine, these posts are private: only you can see them."
+      }
     },
     "growth": {
       "title": "Growth",
@@ -2734,9 +2762,12 @@
         "not_connected": "Facebook was not connected, so it couldn't go out.",
         "invented_number": "The AI wrote a number that isn't true, so Xedine stopped it.",
         "no_settings": "Open Settings → Social once first.",
-        "other": "Facebook or the AI refused it. Xedine tried 3 times."
+        "other": "Facebook, Instagram, TikTok or the AI refused it. Xedine tried 3 times.",
+        "tiktok_reconnect": "TikTok stopped accepting Xedine. Connect TikTok again in Settings → Social."
       },
-      "footnote": "Checked {at}. Xedine checks every 10 minutes."
+      "footnote": "Checked {at}. Xedine checks every 10 minutes.",
+      "onTikTok": "On TikTok",
+      "inTikTokInbox": "In your TikTok inbox"
     }
   }
 }

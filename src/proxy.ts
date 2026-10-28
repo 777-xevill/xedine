@@ -12,6 +12,8 @@ const PUBLIC_PREFIXES = [
   '/sign-up',
   // An invited person lands here first; the page itself offers sign-up or accept.
   '/accept-invite',
+  // Facebook sign-in returns here before there is a session (ADR 0041).
+  '/auth/callback',
   '/api/health',
   '/api/jobs',
   '/api/webhooks',

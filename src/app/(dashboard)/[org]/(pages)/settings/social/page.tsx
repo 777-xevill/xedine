@@ -1,4 +1,4 @@
-import { Camera, Share2 } from 'lucide-react';
+import { Camera, Clapperboard, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
@@ -22,10 +22,12 @@ import { pendingPageNames } from '@/modules/social/connect';
 import { imageAiConfigured } from '@/modules/social/image-ai';
 import { now } from '@/lib/time/clock';
 import { metaConfigured } from '@/modules/social/meta';
+import { tiktokConfigured } from '@/modules/social/tiktok';
 import {
   disconnectSocialAction,
   pickSocialPageAction,
   saveSocialSettingsAction,
+  saveTikTokModeAction,
 } from '@/modules/social/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 
@@ -40,9 +42,18 @@ const NOTICES = {
   not_configured: 'warning',
 } as const;
 type Notice = keyof typeof NOTICES;
+const TIKTOK_NOTICES = {
+  connected: 'success',
+  cancelled: 'warning',
+  failed: 'danger',
+  wrong_user: 'danger',
+  not_owner: 'danger',
+  not_configured: 'warning',
+} as const;
+type TikTokNotice = keyof typeof TIKTOK_NOTICES;
 
 /**
- * Settings → Social (ADR 0040): connect the Facebook Page and Instagram account, then set the autopilot
+ * Settings → Social (ADR 0040, 0041): connect the Facebook Page, Instagram and TikTok, then set the autopilot
  * once — when to post, the restaurant's colours and logo, and dishes never to post. After that Xedine
  * posts by itself every day, even when nobody opens the app.
  */
@@ -51,9 +62,9 @@ export default async function SocialSettingsPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ meta?: string }>;
+  searchParams: Promise<{ meta?: string; tiktok?: string }>;
 }) {
-  const [{ org }, { meta }] = await Promise.all([params, searchParams]);
+  const [{ org }, { meta, tiktok }] = await Promise.all([params, searchParams]);
   const ctx = await getOrgContext(org);
   if (!ctx.isOwner) notFound();
   const [t, tw] = await Promise.all([
@@ -62,7 +73,7 @@ export default async function SocialSettingsPage({
   ]);
   const supabase = await createClient();
   const columns =
-    'autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids';
+    'autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, tiktok_mode';
   // The first visit makes the row, so the form starts from the database defaults (colours included).
   const read = () =>
     supabase.from('social_settings').select(columns).eq('org_id', ctx.org.id).maybeSingle();
@@ -81,6 +92,7 @@ export default async function SocialSettingsPage({
       .order('name'),
   ]);
   const notice = meta && meta in NOTICES ? (meta as Notice) : null;
+  const tiktokNotice = tiktok && tiktok in TIKTOK_NOTICES ? (tiktok as TikTokNotice) : null;
 
   // Pages Facebook offered, by name only: the tokens stay server-side.
   let pages: { id: string; name: string; igName: string | null }[] = [];
@@ -88,6 +100,7 @@ export default async function SocialSettingsPage({
 
   const fb = (accounts ?? []).find((a) => a.platform === 'facebook');
   const ig = (accounts ?? []).find((a) => a.platform === 'instagram');
+  const tk = (accounts ?? []).find((a) => a.platform === 'tiktok');
   const dishes = items ?? [];
   const withPhoto = dishes.filter((d) => d.photo_path);
   const days: number[] = (s?.post_days as number[] | undefined) ?? [0, 1, 2, 3, 4, 5, 6];
@@ -106,6 +119,11 @@ export default async function SocialSettingsPage({
       {notice ? (
         <Alert tone={NOTICES[notice]} className="mb-6">
           {t(`notice.${notice}`)}
+        </Alert>
+      ) : null}
+      {tiktokNotice ? (
+        <Alert tone={TIKTOK_NOTICES[tiktokNotice]} className="mb-6">
+          {t(`tiktokNotice.${tiktokNotice}`)}
         </Alert>
       ) : null}
 
@@ -143,6 +161,7 @@ export default async function SocialSettingsPage({
               </a>
               <form action={disconnectSocialAction}>
                 {hidden}
+                <input type="hidden" name="platform" value="meta" />
                 <Button type="submit" variant="ghost" size="sm">
                   {t('disconnect')}
                 </Button>
@@ -188,6 +207,74 @@ export default async function SocialSettingsPage({
             </Button>
           </ActionForm>
         ) : null}
+      </Card>
+
+      <Card className="mt-6">
+        <CardTitle>{t('tiktokTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('tiktokBody')}</p>
+        {tk ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm">
+              <Clapperboard aria-hidden className="size-4" />
+              <span className="text-secondary">{t('tiktokAccount')}</span>
+              <span className="font-semibold">{tk.name}</span>
+              <StatusBadge tone="success">{t('connected')}</StatusBadge>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={`/api/social/tiktok/start?org=${ctx.org.slug}`}
+                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+              >
+                {t('tiktokReconnect')}
+              </a>
+              <form action={disconnectSocialAction}>
+                {hidden}
+                <input type="hidden" name="platform" value="tiktok" />
+                <Button type="submit" variant="ghost" size="sm">
+                  {t('disconnect')}
+                </Button>
+              </form>
+            </div>
+          </div>
+        ) : tiktokConfigured() ? (
+          <a
+            href={`/api/social/tiktok/start?org=${ctx.org.slug}`}
+            className={buttonVariants({ variant: 'primary' })}
+          >
+            <Clapperboard aria-hidden className="size-4" />
+            {t('tiktokConnect')}
+          </a>
+        ) : (
+          <Alert tone="warning">{t('tiktokNotConfigured')}</Alert>
+        )}
+        <ActionForm
+          action={saveTikTokModeAction}
+          successKey="common.saved"
+          className="mt-4 space-y-3 border-t border-line pt-4"
+        >
+          {hidden}
+          <fieldset className="space-y-2">
+            <legend className="mb-1 text-sm font-semibold">{t('tiktokMode')}</legend>
+            {(['draft', 'direct'] as const).map((m) => (
+              <label key={m} className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="tiktokMode"
+                  value={m}
+                  defaultChecked={(s?.tiktok_mode ?? 'draft') === m}
+                  className="mt-0.5 size-4 accent-purple"
+                />
+                <span>
+                  <span className="block font-semibold">{t(`tiktokModes.${m}`)}</span>
+                  <span className="text-secondary">{t(`tiktokModeHints.${m}`)}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <Button type="submit" size="sm">
+            {t('save')}
+          </Button>
+        </ActionForm>
       </Card>
 
       <Card className="mt-6">

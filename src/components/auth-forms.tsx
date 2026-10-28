@@ -11,6 +11,7 @@ import {
   signUpAction,
   acceptInvitationAction,
   joinWithInviteAction,
+  signInWithFacebookAction,
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
 
@@ -20,7 +21,25 @@ export function ErrorAlert({ error }: { error?: string }) {
   return <Alert tone="danger">{t(error)}</Alert>;
 }
 
-export function SignInForm({ next }: { next?: string }) {
+/** "Continue with Facebook" (ADR 0041): its own form, so it never submits the email fields. */
+export function FacebookSignIn({ next }: { next?: string }) {
+  const t = useTranslations('auth');
+  return (
+    <div className="mb-4 space-y-4">
+      <form action={signInWithFacebookAction}>
+        <input type="hidden" name="next" value={next ?? ''} />
+        <Button type="submit" variant="secondary" className="w-full">
+          {t('continueWithFacebook')}
+        </Button>
+      </form>
+      <p className="flex items-center gap-3 text-xs text-secondary before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line">
+        {t('orWithEmail')}
+      </p>
+    </div>
+  );
+}
+
+export function SignInForm({ next, urlError }: { next?: string; urlError?: string }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(signInAction, initialState);
   const signUpHref = next ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up';
@@ -39,7 +58,7 @@ export function SignInForm({ next }: { next?: string }) {
           </Link>
         </Alert>
       ) : null}
-      <ErrorAlert error={state.error} />
+      <ErrorAlert error={state.error ?? urlError} />
       <div>
         <Label htmlFor="email">{t('common.email')}</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />

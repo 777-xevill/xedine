@@ -122,14 +122,93 @@
     "orWithEmail": "or with email"
   },
   "landing": {
-    "eyebrow": "Profit intelligence for restaurants",
+    "eyebrow": "The restaurant app made for Bangladesh",
     "headline": "See where your money is leaking.",
-    "featureOfflineTitle": "Works on bad days",
-    "featureOfflineBody": "The till keeps taking orders through power cuts and dropped internet.",
-    "featureLeaksTitle": "Every leak, in BDT",
-    "featureLeaksBody": "Voids, discounts and commission drag, ranked by BDT impact — with proof.",
-    "featureLanguageTitle": "Bangla or English",
-    "featureLanguageBody": "Every screen works in Bangla and English, switchable any time."
+    "headlineAccent": "Fix it from one app.",
+    "heroBody": "Till, kitchen, stock, menu profit and social media in one place — in Bangla or English, even when the internet drops.",
+    "seeFeatures": "See what's inside",
+    "navFeatures": "Features",
+    "navSocial": "Social autopilot",
+    "navHow": "How it works",
+    "chipOffline": "Works offline",
+    "chipLanguage": "Bangla & English",
+    "chipBdt": "Every number in BDT",
+    "mockSales": "Today's sales",
+    "mockSalesValue": "৳ 48,920",
+    "mockSalesDelta": "+12% vs last Friday",
+    "mockLeakTitle": "Money leak found",
+    "mockLeakBody": "Voids this week: ৳ 3,450",
+    "mockOrderTitle": "Table 4 · 3 items",
+    "mockOrderBody": "Sent to the kitchen",
+    "mockSocialTitle": "Posted today",
+    "mockSocialBody": "Facebook · Instagram · TikTok",
+    "mockStockTitle": "Low stock",
+    "mockStockBody": "Chicken: 2 kg left",
+    "mockPosterTag": "Today's special",
+    "mockPosterDish": "Kacchi biryani",
+    "mockPosterPrice": "৳ 350",
+    "featuresEyebrow": "Everything in one place",
+    "featuresTitle": "One app runs the whole restaurant",
+    "featuresBody": "Switch on only what you use. Every screen works in Bangla and English.",
+    "features": {
+      "pos": {
+        "title": "POS till",
+        "body": "Fast billing that keeps taking orders through power cuts and dropped internet."
+      },
+      "kds": {
+        "title": "Kitchen screen",
+        "body": "Orders reach the kitchen the moment they're taken; cooks tap when a dish is ready."
+      },
+      "leaks": {
+        "title": "Money leaks, in BDT",
+        "body": "Voids, discounts and delivery commission, ranked by what they cost you — with proof."
+      },
+      "menuProfit": {
+        "title": "Menu profit",
+        "body": "Which dishes make money and which lose it, from what goes into each plate and its price."
+      },
+      "stock": {
+        "title": "Stock & purchases",
+        "body": "Record bazar and supplier bills from a photo or by voice, and hear about low stock first."
+      },
+      "plan": {
+        "title": "Forecast & shopping list",
+        "body": "What tomorrow will sell, what to cook and what to buy."
+      },
+      "social": {
+        "title": "Social autopilot",
+        "body": "Posters and reels made from your menu, posted to Facebook, Instagram and TikTok."
+      },
+      "assistant": {
+        "title": "AI assistant",
+        "body": "Ask “how were sales yesterday?” in Bangla or English, here or on Telegram."
+      },
+      "customers": {
+        "title": "Customers & reviews",
+        "body": "Regulars, win-back offers, feedback after every meal and drafted review replies."
+      },
+      "branches": {
+        "title": "Branches & team",
+        "body": "Compare branches, invite managers, keep staff records, licences and VAT in order."
+      }
+    },
+    "socialEyebrow": "Social autopilot",
+    "socialTitle": "Your restaurant posts itself",
+    "socialBody": "Connect your pages once. Xedine makes posters and reels from your own dishes and keeps your pages alive every day.",
+    "socialStep1": "Connect Facebook, Instagram and TikTok with one click each.",
+    "socialStep2": "Posters and reels are made from your own dishes and prices.",
+    "socialStep3": "Posts go out on schedule; TikTok can wait for your one-tap approval.",
+    "stepsEyebrow": "Start today",
+    "stepsTitle": "Up and running in three steps",
+    "step1Title": "Create your account",
+    "step1Body": "Sign up with your email in under a minute.",
+    "step2Title": "Add your menu",
+    "step2Body": "Dishes, prices, branches and your team.",
+    "step3Title": "Sell and see",
+    "step3Body": "Take orders on the till and watch sales, profit and leaks live.",
+    "ctaTitle": "Ready to stop the leaks?",
+    "ctaBody": "Create your account and set up your first branch today.",
+    "footer": "Made for restaurants in Bangladesh."
   },
   "onboarding": {
     "title": "Set up your restaurant",

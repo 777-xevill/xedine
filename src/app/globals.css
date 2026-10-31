@@ -591,3 +591,115 @@ body {
     font-size: 0.9em;
   }
 }
+
+/*
+ * Landing page 3D (src/app/page.tsx, src/components/landing): floating hero cards, the social platforms
+ * orbiting the phone (each tile turns back against the orbit so it always faces you), the tilt glare
+ * and the raised step blocks. Everything holds still for reduced motion.
+ */
+@keyframes landing-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+.landing-float {
+  animation: landing-float 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@keyframes landing-orbit {
+  from {
+    transform: rotateX(-8deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(-8deg) rotateY(360deg);
+  }
+}
+.landing-orbit {
+  transform-style: preserve-3d;
+  animation: landing-orbit 16s linear infinite;
+}
+@keyframes landing-face {
+  from {
+    transform: rotateY(calc(var(--a) * -1));
+  }
+  to {
+    transform: rotateY(calc(var(--a) * -1 - 360deg));
+  }
+}
+.landing-face {
+  animation: landing-face 16s linear infinite;
+}
+
+/* The phone in the middle rocks gently instead of spinning, so its poster always shows. */
+@keyframes landing-rock {
+  0%,
+  100% {
+    transform: rotateY(-16deg) rotateX(4deg);
+  }
+  50% {
+    transform: rotateY(16deg) rotateX(-2deg);
+  }
+}
+.landing-rock {
+  animation: landing-rock 9s ease-in-out infinite;
+}
+
+.landing-tilt {
+  position: relative;
+  transition:
+    transform 180ms ease-out,
+    box-shadow 180ms ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.landing-tilt:hover {
+  box-shadow: var(--shadow-lift);
+}
+.landing-tilt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    color-mix(in srgb, white 40%, transparent),
+    transparent 60%
+  );
+}
+.landing-tilt:hover::after {
+  opacity: 1;
+}
+
+.landing-block {
+  transform: rotateX(18deg) rotateZ(-8deg);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--accent-purple) 80%, var(--palette-navy)),
+    0 2px 0 color-mix(in srgb, var(--accent-purple) 76%, var(--palette-navy)),
+    0 3px 0 color-mix(in srgb, var(--accent-purple) 72%, var(--palette-navy)),
+    0 4px 0 color-mix(in srgb, var(--accent-purple) 68%, var(--palette-navy)),
+    0 5px 0 color-mix(in srgb, var(--accent-purple) 64%, var(--palette-navy)),
+    0 6px 0 color-mix(in srgb, var(--accent-purple) 60%, var(--palette-navy)),
+    0 7px 0 color-mix(in srgb, var(--accent-purple) 56%, var(--palette-navy)),
+    0 8px 0 color-mix(in srgb, var(--accent-purple) 52%, var(--palette-navy)),
+    0 22px 30px -8px color-mix(in srgb, var(--accent-purple) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-float,
+  .landing-orbit,
+  .landing-face,
+  .landing-rock {
+    animation: none;
+  }
+  .landing-tilt {
+    transform: none !important;
+  }
+}

@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (110)
+## Tables (113)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -63,6 +63,9 @@
 | `job_runs` | Idempotent scheduled-job ledger per (job, org, period). | org | custom — select: owner for their org; written only by the service role | PK id | jobs · P0 |
 | `job_schedules` | Expected job cadence; drives job_health(). | platform · service only | no client access | PK job | jobs · P0 |
 | `licences` | Licences with expiry reminders (60/30/7 days). | org + branch | read: owner, manager, accountant; write: owner | PK id · → branches | compliance · P10 |
+| `loyalty_points` | Every change to a customer's points: earned on a bill, used on a bill, or set by the owner. | org + branch | read: owner, manager; write: service role only (written by the earn trigger, redeem_points and adjust_points only) | PK id · → branches, customers, orders, staff | customers · P11 |
+| `loyalty_settings` | Member-card rules per restaurant: points earned and their worth, member discount. | org | read: owner, manager, cashier; write: owner (the owner sets the member-card rules; the till reads the discount and point value) | PK org_id | customers · P11 |
+| `member_cards` | Each customer's member-card link token (read-only page for the customer). | org | read: owner, manager, cashier; write: service role only (card links are made by member_card_link / reset_member_card) | PK id · → customers | customers · P11 |
 | `membership_branches` | Branch list for memberships with scope=list. | org + branch | custom — select: own membership or owner; writes only via RPCs | PK membership_id, branch_id · → branches, memberships | tenancy · P0 |
 | `memberships` | User role in an org; branch scope all or list. One role per row. | org | custom — select: own rows, or owner for the org; writes only via RPCs (audited) | PK id | tenancy · P0 |
 | `menu_categories` | Menu grouping. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | menu · P1 |
@@ -127,7 +130,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (140)
+## RPC functions (149)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -135,6 +138,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 |---|---|
 | `accept_invitation` | `p_token text` |
 | `add_order_items` | `p_org uuid, p_branch uuid, p_order uuid, p_batch_key text, p_device uuid, p_staff uuid, p_lines jsonb` |
+| `adjust_points` | `p_org uuid, p_customer uuid, p_points integer, p_note text` |
 | `admin_branch_requests` | `p_now timestamp with time zone` |
 | `admin_decide_branch_request` | `p_request uuid, p_approve boolean, p_note text DEFAULT NULL::text` |
 | `admin_orgs` | `p_now timestamp with time zone` |
@@ -150,6 +154,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `approve_recipe_draft` | `p_draft uuid, p_payload jsonb DEFAULT NULL::jsonb` |
 | `approve_review_reply` | `p_reply uuid, p_body text DEFAULT NULL::text` |
 | `attach_customer` | `p_org uuid, p_branch uuid, p_order uuid, p_phone text, p_name text, p_marketing_consent boolean, p_device uuid, p_staff uuid` |
+| `attach_member_card` | `p_org uuid, p_branch uuid, p_order uuid, p_token text, p_device uuid, p_staff uuid` |
 | `can_record_purchase` | `p_org uuid, p_branch uuid` |
 | `cancel_branch_request` | `p_request uuid` |
 | `cancel_order` | `p_org uuid, p_branch uuid, p_order uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
@@ -191,6 +196,10 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `mark_attendance` | `p_staff uuid, p_date date, p_status attendance_status` |
 | `mark_growth_posted` | `p_draft uuid` |
+| `member_card_link` | `p_org uuid, p_customer uuid` |
+| `member_card_view` | `p_token text` |
+| `member_for_till` | `p_org uuid, p_branch uuid, p_order uuid` |
+| `member_points` | `p_org uuid, p_search text DEFAULT NULL::text, p_limit integer DEFAULT 50` |
 | `metric_advance_balances` | `p_org uuid, p_branch uuid` |
 | `metric_attendance` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_benchmarks` | `p_org uuid, p_now timestamp with time zone` |
@@ -244,11 +253,14 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `record_opt_out` | `p_phone text` |
 | `record_payment` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reference text, p_idempotency_key text, p_device uuid, p_staff uuid` |
 | `record_purchase` | `p_org uuid, p_branch uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb, p_notes text DEFAULT NULL::text` |
+| `record_purchase_with_new_items` | `p_org uuid, p_branch uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb, p_notes text DEFAULT NULL::text` |
+| `redeem_points` | `p_org uuid, p_branch uuid, p_order uuid, p_points integer, p_device uuid, p_staff uuid` |
 | `refund_order` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reason_code uuid, p_reason_note text, p_idempotency_key text, p_device uuid, p_staff uuid, p_approval uuid` |
 | `register_device` | `p_org uuid, p_branch uuid, p_name text, p_kind device_kind DEFAULT 'pos'::device_kind` |
 | `remove_membership` | `p_membership uuid` |
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
 | `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date` |
+| `reset_member_card` | `p_org uuid, p_customer uuid` |
 | `revoke_chat_link` | `p_link uuid` |
 | `revoke_device` | `p_device uuid` |
 | `revoke_invitation` | `p_invitation uuid` |

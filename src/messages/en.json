@@ -93,6 +93,9 @@
     "itemStockUnknown": "This was never counted. Say whether any is left before hiding it.",
     "socialPickTime": "Pick a date and time that hasn't passed yet.",
     "socialConnectExpired": "That took too long. Please connect Facebook again.",
+    "facebookNoEmail": "Your Facebook account has no email address, so it can't be used to sign in. Please create an account with your email instead.",
+    "facebookCancelled": "Facebook sign-in was cancelled. Nothing changed.",
+    "facebookFailed": "Facebook sign-in didn't work. Please try again, or sign in with email.",
     "memberEarnRule": "Write the points as a whole number from 1 to 1000, and the taka as an amount from ৳1.",
     "memberPointValue": "Write what one point is worth, from ৳0.01 to ৳1,000.",
     "memberMinRedeem": "Write the fewest points a customer can use as a whole number, 1 or more.",
@@ -120,17 +123,98 @@
     "inviteSignInBody": "First time on Xedine? Create your account below with the email you were invited on, then you will land on the invitation. Already have an account? Sign in here.",
     "inviteCreateAccount": "Create my account",
     "inviteTitle": "You have been invited",
-    "inviteBody": "Accept the invitation to join this restaurant's workspace. You must be signed in with the invited email address."
+    "inviteBody": "Accept the invitation to join this restaurant's workspace. You must be signed in with the invited email address.",
+    "continueWithFacebook": "Continue with Facebook",
+    "orWithEmail": "or with email"
   },
   "landing": {
-    "eyebrow": "Profit intelligence for restaurants",
+    "eyebrow": "The restaurant app made for Bangladesh",
     "headline": "See where your money is leaking.",
-    "featureOfflineTitle": "Works on bad days",
-    "featureOfflineBody": "The till keeps taking orders through power cuts and dropped internet.",
-    "featureLeaksTitle": "Every leak, in BDT",
-    "featureLeaksBody": "Voids, discounts and commission drag, ranked by BDT impact — with proof.",
-    "featureLanguageTitle": "Bangla or English",
-    "featureLanguageBody": "Every screen works in Bangla and English, switchable any time."
+    "headlineAccent": "Fix it from one app.",
+    "heroBody": "Till, kitchen, stock, menu profit and social media in one place — in Bangla or English, even when the internet drops.",
+    "seeFeatures": "See what's inside",
+    "navFeatures": "Features",
+    "navSocial": "Social autopilot",
+    "navHow": "How it works",
+    "chipOffline": "Works offline",
+    "chipLanguage": "Bangla & English",
+    "chipBdt": "Every number in BDT",
+    "mockSales": "Today's sales",
+    "mockSalesValue": "৳ 48,920",
+    "mockSalesDelta": "+12% vs last Friday",
+    "mockLeakTitle": "Money leak found",
+    "mockLeakBody": "Voids this week: ৳ 3,450",
+    "mockOrderTitle": "Table 4 · 3 items",
+    "mockOrderBody": "Sent to the kitchen",
+    "mockSocialTitle": "Posted today",
+    "mockSocialBody": "Facebook · Instagram · TikTok",
+    "mockStockTitle": "Low stock",
+    "mockStockBody": "Chicken: 2 kg left",
+    "mockPosterTag": "Today's special",
+    "mockPosterDish": "Kacchi biryani",
+    "mockPosterPrice": "৳ 350",
+    "featuresEyebrow": "Everything in one place",
+    "featuresTitle": "One app runs the whole restaurant",
+    "featuresBody": "Switch on only what you use. Every screen works in Bangla and English.",
+    "features": {
+      "pos": {
+        "title": "POS till",
+        "body": "Fast billing that keeps taking orders through power cuts and dropped internet."
+      },
+      "kds": {
+        "title": "Kitchen screen",
+        "body": "Orders reach the kitchen the moment they're taken; cooks tap when a dish is ready."
+      },
+      "leaks": {
+        "title": "Money leaks, in BDT",
+        "body": "Voids, discounts and delivery commission, ranked by what they cost you — with proof."
+      },
+      "menuProfit": {
+        "title": "Menu profit",
+        "body": "Which dishes make money and which lose it, from what goes into each plate and its price."
+      },
+      "stock": {
+        "title": "Stock & purchases",
+        "body": "Record bazar and supplier bills from a photo or by voice, and hear about low stock first."
+      },
+      "plan": {
+        "title": "Forecast & shopping list",
+        "body": "What tomorrow will sell, what to cook and what to buy."
+      },
+      "social": {
+        "title": "Social autopilot",
+        "body": "Posters and reels made from your menu, posted to Facebook, Instagram and TikTok."
+      },
+      "assistant": {
+        "title": "AI assistant",
+        "body": "Ask “how were sales yesterday?” in Bangla or English, here or on Telegram."
+      },
+      "customers": {
+        "title": "Customers & reviews",
+        "body": "Regulars, win-back offers, feedback after every meal and drafted review replies."
+      },
+      "branches": {
+        "title": "Branches & team",
+        "body": "Compare branches, invite managers, keep staff records, licences and VAT in order."
+      }
+    },
+    "socialEyebrow": "Social autopilot",
+    "socialTitle": "Your restaurant posts itself",
+    "socialBody": "Connect your pages once. Xedine makes posters and reels from your own dishes and keeps your pages alive every day.",
+    "socialStep1": "Connect Facebook, Instagram and TikTok with one click each.",
+    "socialStep2": "Posters and reels are made from your own dishes and prices.",
+    "socialStep3": "Posts go out on schedule; TikTok can wait for your one-tap approval.",
+    "stepsEyebrow": "Start today",
+    "stepsTitle": "Up and running in three steps",
+    "step1Title": "Create your account",
+    "step1Body": "Sign up with your email in under a minute.",
+    "step2Title": "Add your menu",
+    "step2Body": "Dishes, prices, branches and your team.",
+    "step3Title": "Sell and see",
+    "step3Body": "Take orders on the till and watch sales, profit and leaks live.",
+    "ctaTitle": "Ready to stop the leaks?",
+    "ctaBody": "Create your account and set up your first branch today.",
+    "footer": "Made for restaurants in Bangladesh."
   },
   "onboarding": {
     "title": "Set up your restaurant",
@@ -2654,7 +2738,6 @@
       "connectTitle": "Facebook & Instagram",
       "connectBody": "Your Instagram must be a Business account linked to your Facebook Page. Then one connect covers both.",
       "connect": "Connect Facebook & Instagram",
-      "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password.",
       "reconnect": "Change Page",
       "disconnect": "Disconnect",
       "connected": "Connected",
@@ -2707,7 +2790,31 @@
       "logoReplace": "Change logo",
       "logoRemove": "Remove",
       "logoWorking": "Uploading…",
-      "logoFailed": "The logo could not be saved. Please try another picture."
+      "logoFailed": "The logo could not be saved. Please try another picture.",
+      "tiktokNotice": {
+        "connected": "TikTok connected. Xedine now sends every post to TikTok as a short video.",
+        "cancelled": "TikTok connection was cancelled. Nothing changed.",
+        "failed": "TikTok didn't accept the connection. Please try again.",
+        "wrong_user": "Please finish connecting in the same browser and account that started it.",
+        "not_owner": "Only the owner can connect TikTok.",
+        "not_configured": "TikTok connection is not set up on Xedine yet."
+      },
+      "tiktokTitle": "TikTok",
+      "tiktokBody": "TikTok takes videos only, so every post goes there as a short video, even on poster days.",
+      "tiktokConnect": "Connect TikTok",
+      "tiktokReconnect": "Change account",
+      "tiktokAccount": "TikTok:",
+      "tiktokNotConfigured": "TikTok connection is not switched on for Xedine yet. Download the videos from Growth and post them yourself until then.",
+      "tiktokMode": "How should Xedine post to TikTok?",
+      "tiktokModes": {
+        "draft": "Send to my TikTok inbox",
+        "direct": "Post by itself"
+      },
+      "tiktokModeHints": {
+        "draft": "The video waits in your TikTok app. Tap it, check it and post with one tap. Posts are public.",
+        "direct": "Xedine posts with no tap. Until TikTok approves Xedine, these posts are private: only you can see them."
+      },
+      "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password."
     },
     "growth": {
       "title": "Growth",
@@ -2773,9 +2880,12 @@
         "not_connected": "Facebook was not connected, so it couldn't go out.",
         "invented_number": "The AI wrote a number that isn't true, so Xedine stopped it.",
         "no_settings": "Open Settings → Social once first.",
-        "other": "Facebook or the AI refused it. Xedine tried 3 times."
+        "other": "Facebook, Instagram, TikTok or the AI refused it. Xedine tried 3 times.",
+        "tiktok_reconnect": "TikTok stopped accepting Xedine. Connect TikTok again in Settings → Social."
       },
-      "footnote": "Checked {at}. Xedine checks every 10 minutes."
+      "footnote": "Checked {at}. Xedine checks every 10 minutes.",
+      "onTikTok": "On TikTok",
+      "inTikTokInbox": "In your TikTok inbox"
     }
   },
   "memberSettings": {

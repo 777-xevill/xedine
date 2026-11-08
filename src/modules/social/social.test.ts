@@ -19,6 +19,15 @@ import {
 } from './templates';
 import { asciiDigits, inventedNumber, type SocialWords } from './writer';
 import { describeColour } from './image-ai';
+import {
+  makeTikTokState,
+  pickPrivacy,
+  readTikTokState,
+  refreshTikTokToken,
+  startTikTokPost,
+  tiktokPublishStatus,
+  tiktokTitle,
+} from './tiktok';
 
 describe('social autopilot schedule (ADR 0040)', () => {
   it('turns a Dhaka post time into the right UTC instant', () => {
@@ -161,5 +170,138 @@ describe('Facebook connect state', () => {
     expect(readState(state, t0 + 31 * 60_000)).toBeNull();
     expect(readState(state.replace('org-1', 'org-2'), t0 + 60_000)).toBeNull();
     expect(readState('garbage', t0)).toBeNull();
+  });
+});
+
+describe('TikTok (ADR 0041)', () => {
+  process.env.TIKTOK_CLIENT_KEY = 'test-key';
+  process.env.TIKTOK_CLIENT_SECRET = 'test-tiktok-secret';
+
+  /** A fake TikTok: answers each call from `replies` in order and records what was sent. */
+  function fakeTikTok(replies: { status?: number; body?: unknown }[]) {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const impl = (async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      const r = replies.shift() ?? {};
+      return new Response(JSON.stringify(r.body ?? {}), { status: r.status ?? 200 });
+    }) as typeof fetch;
+    return { calls, impl };
+  }
+  const ok = (data: unknown) => ({ body: { data, error: { code: 'ok' } } });
+  const video = new Uint8Array([1, 2, 3, 4, 5]);
+
+  it('signs its connect state apart from Facebook and expires it after 30 minutes', () => {
+    process.env.META_APP_SECRET = 'test-tiktok-secret';
+    const t0 = Date.parse('2026-10-29T07:00:00Z');
+    const state = makeTikTokState('org-1', 'user-1', t0);
+    expect(readTikTokState(state, t0 + 60_000)).toEqual({ orgId: 'org-1', userId: 'user-1' });
+    expect(readTikTokState(state, t0 + 31 * 60_000)).toBeNull();
+    expect(readTikTokState(state.replace('user-1', 'user-2'), t0)).toBeNull();
+    // Even with the same secret, a Facebook state is not a TikTok state.
+    expect(readTikTokState(makeState('org-1', 'user-1', t0), t0)).toBeNull();
+  });
+
+  it('posts publicly when TikTok allows it, otherwise privately', () => {
+    expect(pickPrivacy(['SELF_ONLY', 'PUBLIC_TO_EVERYONE'])).toBe('PUBLIC_TO_EVERYONE');
+    expect(pickPrivacy(['FOLLOWER_OF_CREATOR', 'SELF_ONLY'])).toBe('SELF_ONLY');
+    expect(pickPrivacy([])).toBe('SELF_ONLY');
+  });
+
+  it("keeps the title inside TikTok's limit", () => {
+    expect(tiktokTitle('Kacchi')).toBe('Kacchi');
+    expect(tiktokTitle('x'.repeat(3000))).toHaveLength(2200);
+  });
+
+  it('sends a draft to the inbox and uploads the whole video in one piece', async () => {
+    const { calls, impl } = fakeTikTok([
+      ok({ publish_id: 'p-1', upload_url: 'https://upload.example/u' }),
+      { status: 201 },
+    ]);
+    expect(await startTikTokPost('tok', 'draft', video, 'caption', impl)).toBe('p-1');
+    expect(calls[0]!.url).toContain('/post/publish/inbox/video/init/');
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({
+      source_info: { source: 'FILE_UPLOAD', video_size: 5, chunk_size: 5, total_chunk_count: 1 },
+    });
+    expect(calls[1]!.init.method).toBe('PUT');
+    expect((calls[1]!.init.headers as Record<string, string>)['Content-Range']).toBe('bytes 0-4/5');
+  });
+
+  it('posts directly, and falls back to private once while TikTok has not audited the app', async () => {
+    const { calls, impl } = fakeTikTok([
+      ok({ privacy_level_options: ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'] }),
+      {
+        status: 403,
+        body: { error: { code: 'unaudited_client_can_only_post_to_private_accounts' } },
+      },
+      ok({ publish_id: 'p-2', upload_url: 'https://upload.example/u' }),
+      { status: 200 },
+    ]);
+    expect(await startTikTokPost('tok', 'direct', video, 'Hello', impl)).toBe('p-2');
+    const privacy = (i: number) =>
+      (JSON.parse(String(calls[i]!.init.body)) as { post_info: { privacy_level: string } })
+        .post_info.privacy_level;
+    expect(calls[1]!.url).toContain('/post/publish/video/init/');
+    expect(privacy(1)).toBe('PUBLIC_TO_EVERYONE');
+    expect(privacy(2)).toBe('SELF_ONLY');
+  });
+
+  it('does not hide other TikTok errors behind the private fallback', async () => {
+    const { impl } = fakeTikTok([
+      ok({ privacy_level_options: ['PUBLIC_TO_EVERYONE'] }),
+      { status: 429, body: { error: { code: 'spam_risk_too_many_posts', message: 'too many' } } },
+    ]);
+    await expect(startTikTokPost('tok', 'direct', video, 'Hello', impl)).rejects.toThrow(
+      'too many',
+    );
+  });
+
+  it('reads where a post is: in the inbox, published, still processing or failed', async () => {
+    const status = async (data: unknown) =>
+      tiktokPublishStatus('tok', 'p-9', fakeTikTok([ok(data)]).impl);
+    expect(await status({ status: 'SEND_TO_USER_INBOX' })).toEqual({
+      state: 'done',
+      postId: 'inbox:p-9',
+    });
+    expect(
+      await status({ status: 'PUBLISH_COMPLETE', publicaly_available_post_id: [7123] }),
+    ).toEqual({ state: 'done', postId: '7123' });
+    expect(await status({ status: 'PUBLISH_COMPLETE' })).toEqual({
+      state: 'done',
+      postId: 'p-9',
+    });
+    expect(await status({ status: 'PROCESSING_UPLOAD' })).toEqual({ state: 'processing' });
+    expect(await status({ status: 'FAILED', fail_reason: 'file_format_check_failed' })).toEqual({
+      state: 'failed',
+      reason: 'file_format_check_failed',
+    });
+  });
+
+  it('refreshes the token and keeps the new refresh token and expiry', async () => {
+    const at = new Date('2026-10-29T07:00:00Z');
+    const { calls, impl } = fakeTikTok([
+      {
+        body: {
+          open_id: 'abc-123',
+          access_token: 'new-access',
+          refresh_token: 'new-refresh',
+          expires_in: 86_400,
+        },
+      },
+    ]);
+    const tokens = await refreshTikTokToken('old-refresh', at, impl);
+    expect(tokens).toEqual({
+      openId: 'abc-123',
+      accessToken: 'new-access',
+      refreshToken: 'new-refresh',
+      expiresAt: new Date('2026-10-30T07:00:00Z'),
+    });
+    expect(String(calls[0]!.init.body)).toContain('grant_type=refresh_token');
+    await expect(
+      refreshTikTokToken(
+        'bad',
+        at,
+        fakeTikTok([{ status: 400, body: { error: 'invalid_grant' } }]).impl,
+      ),
+    ).rejects.toThrow('invalid_grant');
   });
 });

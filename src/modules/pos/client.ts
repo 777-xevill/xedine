@@ -774,7 +774,7 @@ export async function attachCustomer(
   return data as string;
 }
 
-/** The cashier scanned a customer's member-card QR (ADR 0041): the server finds the customer by its token. */
+/** The cashier scanned a customer's member-card QR (ADR 0042): the server finds the customer by its token. */
 export async function attachMemberCard(
   sb: SupabaseClient,
   args: {
@@ -800,7 +800,7 @@ export async function attachMemberCard(
   return data as string;
 }
 
-/** Whether the owner switched the member card on: the till then offers "Scan card" (ADR 0041). */
+/** Whether the owner switched the member card on: the till then offers "Scan card" (ADR 0042). */
 export async function fetchMemberCardOn(sb: SupabaseClient, orgId: string): Promise<boolean> {
   const { data, error } = await sb
     .from('loyalty_settings')
@@ -811,7 +811,7 @@ export async function fetchMemberCardOn(sb: SupabaseClient, orgId: string): Prom
   return data?.is_on === true;
 }
 
-/** The member on a bill as the till shows them; every number is the server's (ADR 0041). */
+/** The member on a bill as the till shows them; every number is the server's (ADR 0042). */
 export interface TillMember {
   is_on: boolean;
   name: string | null;

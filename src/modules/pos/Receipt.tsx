@@ -29,7 +29,7 @@ export function Receipt({
   info: ReceiptInfo;
   tableName: string | null;
   locale: Locale;
-  /** The customer's member-card link: printed as a QR under the total (ADR 0041). */
+  /** The customer's member-card link: printed as a QR under the total (ADR 0042). */
   memberUrl?: string | null;
 }) {
   const t = useTranslations('pos');

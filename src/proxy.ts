@@ -12,12 +12,14 @@ const PUBLIC_PREFIXES = [
   '/sign-up',
   // An invited person lands here first; the page itself offers sign-up or accept.
   '/accept-invite',
+  // Facebook sign-in returns here before there is a session (ADR 0041).
+  '/auth/callback',
   '/api/health',
   '/api/jobs',
   '/api/webhooks',
   // The post-meal feedback page: a customer with a link, no account.
   '/f/',
-  // A customer's read-only member card (ADR 0041): the link token is the credential.
+  // A customer's read-only member card (ADR 0042): the link token is the credential.
   '/m/',
   '/t/',
 ];

@@ -139,7 +139,7 @@ const OVERRIDES: Record<string, Override> = {
   discount_codes: () => ({
     code: `FIX${randomUUID().slice(0, 8).toUpperCase().replace(/-/g, '')}`,
   }),
-  // a card link token is 24 URL-safe characters (ADR 0041)
+  // a card link token is 24 URL-safe characters (ADR 0042)
   member_cards: () => ({ token: randomUUID().replace(/-/g, '').slice(0, 24) }),
   // one account per platform per org; Meta ids are digits (ADR 0040)
   social_accounts: () => ({ platform: 'facebook', external_id: String(1_000_000 + next()) }),

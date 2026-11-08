@@ -22,7 +22,7 @@ interface MemberRow {
 }
 
 /**
- * Member card (ADR 0041): the owner switches the card on, sets how points are earned and what they are
+ * Member card (ADR 0042): the owner switches the card on, sets how points are earned and what they are
  * worth, and the member discount; finds a customer to fix their points or give them a new card link.
  */
 export default async function MemberCardSettingsPage({

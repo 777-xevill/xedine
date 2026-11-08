@@ -8,7 +8,7 @@ import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { parseTakaInRange, parseWhole } from './member-card';
 
 /**
- * Member card (ADR 0041): the owner's rules, hand changes to a customer's points, and a new card link.
+ * Member card (ADR 0042): the owner's rules, hand changes to a customer's points, and a new card link.
  * The database decides who may: loyalty_settings is written by the owner only (RLS); adjust_points
  * and reset_member_card check the role themselves and write the audit log.
  */

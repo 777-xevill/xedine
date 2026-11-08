@@ -444,7 +444,7 @@ export function OrderScreen({
   receipt: ReceiptInfo | null;
   voidReasons: ReasonCode[];
   discountReasons: ReasonCode[];
-  /** The owner switched the member card on (ADR 0041). */
+  /** The owner switched the member card on (ADR 0042). */
   memberCardOn: boolean;
   /** The member on this bill, as the server sees them; null while none. */
   member: TillMember | null;
@@ -828,7 +828,7 @@ export function ReceiptScreen({
   onNewOrder,
   onRefund,
 }: {
-  /** The member's card link token: the receipt prints its QR (ADR 0041). */
+  /** The member's card link token: the receipt prints its QR (ADR 0042). */
   memberToken: string | null;
   order: OrderRow;
   lines: OrderLine[];

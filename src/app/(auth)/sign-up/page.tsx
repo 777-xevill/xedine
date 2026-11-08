@@ -1,7 +1,8 @@
 import { getTranslations } from 'next-intl/server';
-import { SignUpForm } from '@/components/auth-forms';
+import { FacebookSignIn, SignUpForm } from '@/components/auth-forms';
 import { Card, PageTitle } from '@/components/ui/form';
 import { safeNext } from '@/modules/tenancy/form-state';
+import { facebookSignInEnabled } from '@/modules/tenancy/oauth';
 
 export default async function SignUpPage({
   searchParams,
@@ -9,10 +10,12 @@ export default async function SignUpPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const [t, { next }] = await Promise.all([getTranslations('auth'), searchParams]);
+  const safe = safeNext(next);
   return (
     <Card>
       <PageTitle title={t('signUpTitle')} subtitle={t('signUpSubtitle')} />
-      <SignUpForm next={safeNext(next)} />
+      {facebookSignInEnabled() ? <FacebookSignIn next={safe} /> : null}
+      <SignUpForm next={safe} />
     </Card>
   );
 }

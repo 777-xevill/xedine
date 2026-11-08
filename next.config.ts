@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
           // The microphone is used for voice entry (purchases, waste); the camera scans a customer's
-          // member-card QR at the till (ADR 0041); nothing else needs device access.
+          // member-card QR at the till (ADR 0042); nothing else needs device access.
           {
             key: 'Permissions-Policy',
             value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',

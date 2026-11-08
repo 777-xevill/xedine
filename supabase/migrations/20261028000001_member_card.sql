@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------------------------
--- Member card (ADR 0041). A customer known by phone at the till gets a card link (/m/<token>):
+-- Member card (ADR 0042). A customer known by phone at the till gets a card link (/m/<token>):
 -- their points, their past bills and the menu, read-only. The owner decides the rules:
 --
 --  * loyalty_settings: one row per restaurant. Card on/off; "N points for every ৳X on the bill";
@@ -633,11 +633,11 @@ grant execute on function public.reset_member_card(uuid, uuid) to authenticated,
 revoke execute on function public.member_card_view(text) from public, anon, authenticated;
 grant execute on function public.member_card_view(text) to service_role;
 
-comment on function public.attach_member_card is 'The cashier scans a customer''s member-card QR: the customer is put on the bill, member discount if on (ADR 0041).';
-comment on function public.member_for_till is 'The member on a bill for the till: name, points, point value, card link (ADR 0041).';
-comment on function public.redeem_points is 'Use a member''s points as money off an open bill; 0 takes them back (ADR 0041).';
-comment on function public.adjust_points is 'The owner adds or takes away a customer''s points by hand, with a reason; audited (ADR 0041).';
-comment on function public.member_points is 'The owner''s list of members with points, last visit and card link (ADR 0041).';
-comment on function public.member_card_link is 'A customer''s member-card link token, made if missing (ADR 0041).';
-comment on function public.reset_member_card is 'Replace a customer''s member-card link; the old one stops working (ADR 0041).';
-comment on function public.member_card_view is 'The customer''s read-only card page data, by link token; service role only (ADR 0041).';
+comment on function public.attach_member_card is 'The cashier scans a customer''s member-card QR: the customer is put on the bill, member discount if on (ADR 0042).';
+comment on function public.member_for_till is 'The member on a bill for the till: name, points, point value, card link (ADR 0042).';
+comment on function public.redeem_points is 'Use a member''s points as money off an open bill; 0 takes them back (ADR 0042).';
+comment on function public.adjust_points is 'The owner adds or takes away a customer''s points by hand, with a reason; audited (ADR 0042).';
+comment on function public.member_points is 'The owner''s list of members with points, last visit and card link (ADR 0042).';
+comment on function public.member_card_link is 'A customer''s member-card link token, made if missing (ADR 0042).';
+comment on function public.reset_member_card is 'Replace a customer''s member-card link; the old one stops working (ADR 0042).';
+comment on function public.member_card_view is 'The customer''s read-only card page data, by link token; service role only (ADR 0042).';

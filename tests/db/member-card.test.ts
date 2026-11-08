@@ -1,5 +1,5 @@
 /**
- * Member card (ADR 0041): member discount, points earned on a paid bill, points used at the till,
+ * Member card (ADR 0042): member discount, points earned on a paid bill, points used at the till,
  * the owner's hand adjustments and the customer's read-only card page.
  * One Kacchi is ৳300.00 = 30000 poisha gross, VAT 5% on top, no service charge.
  * Rules used: 10 points for every ৳100 of the bill, 1 point = ৳1, use from 10 points, 15% member discount.

@@ -91,7 +91,7 @@ export interface TillSnapshot {
   refundReasons: ReasonCode[];
   staff: StaffMember[];
   receipt: ReceiptInfo;
-  /** Absent in snapshots saved before the member card (ADR 0041). */
+  /** Absent in snapshots saved before the member card (ADR 0042). */
   memberCardOn?: boolean;
 }
 

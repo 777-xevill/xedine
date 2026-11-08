@@ -13,7 +13,7 @@ import { DialogShell } from './dialogs';
 import { useTill } from './till-context';
 
 /**
- * Member card at the till (ADR 0041): scan a customer's card QR, show a new member their card QR to
+ * Member card at the till (ADR 0042): scan a customer's card QR, show a new member their card QR to
  * open on their phone, and use points as money off the bill. Every number shown is the server's.
  */
 

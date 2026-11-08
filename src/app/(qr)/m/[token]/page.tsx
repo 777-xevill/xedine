@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 const TABS = ['bills', 'points', 'menu'] as const;
 
 /**
- * The customer's member card (ADR 0041): opened from the QR the till shows or the receipt prints. It
+ * The customer's member card (ADR 0042): opened from the QR the till shows or the receipt prints. It
  * only reads: points and what they are worth, the member discount, past bills, points history and the
  * menu. The QR on the card is what the cashier scans next time.
  */

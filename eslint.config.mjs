@@ -75,7 +75,7 @@ export default defineConfig([
       'src/modules/tenancy/invite-account.ts',
       // Meta Page tokens are written only here, after the owner is proven (ADR 0040).
       'src/modules/social/connect.ts',
-      // A customer's card page has no account: one card is read by its link token (ADR 0041).
+      // A customer's card page has no account: one card is read by its link token (ADR 0042).
       'src/modules/customers/member-card-view.ts',
       // ai_usage is written only by the LLM gateway (ARCHITECTURE.md "AI layer"), for an explicit org.
       'src/lib/llm-gateway/**',

@@ -3,7 +3,7 @@ import { createServiceRoleClient } from '@/lib/db/service-role';
 import { CARD_TOKEN } from './member-card';
 
 /**
- * The customer's own card page (ADR 0041) has no account: the link token is the only credential.
+ * The customer's own card page (ADR 0042) has no account: the link token is the only credential.
  * member_card_view is callable by the service role only and returns one card (masked phone, no costs,
  * nothing about other customers), or null for an unknown link or a card the restaurant switched off.
  */

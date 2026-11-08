@@ -1,4 +1,4 @@
-# ADR 0041 — Member card: points, a member discount and the customer's own card page
+# ADR 0042 — Member card: points, a member discount and the customer's own card page
 
 - Date: 2026-11-09
 - Status: accepted (built at the founder's request: "always use points", "the owner can edit the points",

@@ -1,7 +1,7 @@
 import { parseTakaToPoisha } from '@/lib/money';
 
 /**
- * Member card (ADR 0041): pure helpers shared by the till, the owner's settings page and the customer's
+ * Member card (ADR 0042): pure helpers shared by the till, the owner's settings page and the customer's
  * card page. The database decides every number (points earned, balance, money off); these only read
  * a scanned QR, build the card link and check what the owner typed.
  */

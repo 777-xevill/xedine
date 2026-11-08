@@ -298,7 +298,7 @@ function Till({
   const [notice, setNotice] = useState<string | null>(null);
   const [recent, setRecent] = useState<OrderRow[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
-  // The member on the open bill (ADR 0041), read again whenever the bill's customer or money changes.
+  // The member on the open bill (ADR 0042), read again whenever the bill's customer or money changes.
   const memberKey =
     order && order.customer_id && !local
       ? `${order.id}:${order.customer_id}:${order.discount_poisha}:${order.total_poisha}:${order.payment_status}`
@@ -801,7 +801,7 @@ function Till({
         deviceId: device.deviceId,
         staffId: staffSession.staffId,
       });
-      // The member discount (ADR 0041) may have changed the totals: read the bill again.
+      // The member discount (ADR 0042) may have changed the totals: read the bill again.
       const fresh = await fetchOrder(sb, device.orgId, order.id);
       setOrder((prev) => fresh ?? (prev ? { ...prev, customer_id: customerId } : prev));
       setNotice(t('customerAdded'));

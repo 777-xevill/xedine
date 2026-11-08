@@ -17,6 +17,8 @@ const PUBLIC_PREFIXES = [
   '/api/webhooks',
   // The post-meal feedback page: a customer with a link, no account.
   '/f/',
+  // A customer's read-only member card (ADR 0041): the link token is the credential.
+  '/m/',
   '/t/',
 ];
 

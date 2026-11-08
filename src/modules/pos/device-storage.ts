@@ -91,6 +91,8 @@ export interface TillSnapshot {
   refundReasons: ReasonCode[];
   staff: StaffMember[];
   receipt: ReceiptInfo;
+  /** Absent in snapshots saved before the member card (ADR 0041). */
+  memberCardOn?: boolean;
 }
 
 const snapshotKey = (deviceId: string) => `xedine.pos.snapshot.${deviceId}`;

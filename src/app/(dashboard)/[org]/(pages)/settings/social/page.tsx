@@ -150,13 +150,18 @@ export default async function SocialSettingsPage({
             </div>
           </div>
         ) : metaConfigured() ? (
-          <a
-            href={`/api/social/meta/start?org=${ctx.org.slug}`}
-            className={buttonVariants({ variant: 'primary' })}
-          >
-            <Share2 aria-hidden className="size-4" />
-            {t('connect')}
-          </a>
+          <>
+            <Alert tone="info" className="mb-4">
+              {t('earlyAccess')}
+            </Alert>
+            <a
+              href={`/api/social/meta/start?org=${ctx.org.slug}`}
+              className={buttonVariants({ variant: 'primary' })}
+            >
+              <Share2 aria-hidden className="size-4" />
+              {t('connect')}
+            </a>
+          </>
         ) : (
           <Alert tone="warning">{t('metaNotConfigured')}</Alert>
         )}

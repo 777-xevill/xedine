@@ -13,6 +13,7 @@ import {
   applyDiscountCode,
   applyOrderDiscount,
   attachCustomer,
+  attachMemberCard,
   cancelOrder,
   closeShift,
   createClient,
@@ -20,6 +21,7 @@ import {
   endStaffSession,
   fetchActiveStaff,
   fetchChannels,
+  fetchMemberCardOn,
   fetchMenu,
   fetchOpenShift,
   fetchOrder,
@@ -29,10 +31,13 @@ import {
   fetchReceiptInfo,
   fetchRecentOrders,
   fetchTables,
+  fetchTillMember,
   fetchVatConfig,
+  memberProblem,
   needsApproval,
   openShift,
   posTransport,
+  redeemPoints,
   refundOrder,
   voidOrderItem,
   type Channel,
@@ -45,6 +50,7 @@ import {
   type ReceiptInfo,
   type ShiftRow,
   type StaffMember,
+  type TillMember,
 } from './client';
 import {
   clearDevice,
@@ -192,6 +198,7 @@ interface TillData {
   refundReasons: ReasonCode[];
   staff: StaffMember[];
   receipt: ReceiptInfo;
+  memberCardOn: boolean;
 }
 
 async function loadTillData(
@@ -209,6 +216,7 @@ async function loadTillData(
     refundReasons,
     staff,
     receipt,
+    memberCardOn,
   ] = await Promise.all([
     fetchOpenShift(sb, device.orgId, device.branchId, device.deviceId),
     fetchVatConfig(sb, device.orgId),
@@ -220,6 +228,8 @@ async function loadTillData(
     fetchReasonCodes(sb, device.orgId, 'refund'),
     fetchActiveStaff(sb, device.orgId, device.branchId),
     fetchReceiptInfo(sb, device.orgId),
+    // A till that cannot read the setting simply does not offer Scan card.
+    fetchMemberCardOn(sb, device.orgId).catch(() => false),
   ]);
   return {
     shift,
@@ -232,6 +242,7 @@ async function loadTillData(
     refundReasons,
     staff,
     receipt,
+    memberCardOn,
   };
 }
 
@@ -287,6 +298,31 @@ function Till({
   const [notice, setNotice] = useState<string | null>(null);
   const [recent, setRecent] = useState<OrderRow[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  // The member on the open bill (ADR 0041), read again whenever the bill's customer or money changes.
+  const memberKey =
+    order && order.customer_id && !local
+      ? `${order.id}:${order.customer_id}:${order.discount_poisha}:${order.total_poisha}:${order.payment_status}`
+      : null;
+  const memberOrderId = memberKey ? (order?.id ?? null) : null;
+  // Kept with the key it was read for, so a stale answer for another bill is never shown.
+  const [memberRead, setMemberRead] = useState<{ key: string; member: TillMember | null } | null>(
+    null,
+  );
+  const member = memberRead && memberRead.key === memberKey ? memberRead.member : null;
+  useEffect(() => {
+    if (!memberKey || !memberOrderId) return;
+    let live = true;
+    fetchTillMember(sb, { orgId: device.orgId, branchId: device.branchId, orderId: memberOrderId })
+      .then((m) => {
+        if (live) setMemberRead({ key: memberKey, member: m });
+      })
+      .catch(() => {
+        if (live) setMemberRead({ key: memberKey, member: null });
+      });
+    return () => {
+      live = false;
+    };
+  }, [memberKey, memberOrderId, sb, device.orgId, device.branchId]);
 
   // Flushes run from timers and events; refs let them see the order on screen right now.
   const orderRef = useRef<OrderRow | null>(null);
@@ -312,7 +348,7 @@ function Till({
         if (cancelled) return;
         const snapshot = getTillSnapshot(device.deviceId);
         if (snapshot) {
-          setData(snapshot);
+          setData({ ...snapshot, memberCardOn: snapshot.memberCardOn ?? false });
           setFromCache(true);
           setReachable(false);
         } else setLoadFailed(true);
@@ -765,8 +801,54 @@ function Till({
         deviceId: device.deviceId,
         staffId: staffSession.staffId,
       });
-      setOrder((prev) => (prev ? { ...prev, customer_id: customerId } : prev));
+      // The member discount (ADR 0041) may have changed the totals: read the bill again.
+      const fresh = await fetchOrder(sb, device.orgId, order.id);
+      setOrder((prev) => fresh ?? (prev ? { ...prev, customer_id: customerId } : prev));
       setNotice(t('customerAdded'));
+    });
+
+  const doScanCard = (token: string) =>
+    online_(async () => {
+      if (!order) return;
+      try {
+        await attachMemberCard(sb, {
+          orgId: device.orgId,
+          branchId: device.branchId,
+          orderId: order.id,
+          token,
+          deviceId: device.deviceId,
+          staffId: staffSession.staffId,
+        });
+      } catch (e) {
+        const problem = memberProblem(e);
+        if (!problem) throw e;
+        setError(t(`memberProblem.${problem}`));
+        return;
+      }
+      const fresh = await fetchOrder(sb, device.orgId, order.id);
+      if (fresh) setOrder(fresh);
+      setNotice(t('memberAdded'));
+    });
+
+  const doUsePoints = (points: number) =>
+    online_(async () => {
+      if (!order) return;
+      try {
+        setOrder(
+          await redeemPoints(sb, {
+            orgId: device.orgId,
+            branchId: device.branchId,
+            orderId: order.id,
+            points,
+            deviceId: device.deviceId,
+            staffId: staffSession.staffId,
+          }),
+        );
+      } catch (e) {
+        const problem = memberProblem(e);
+        if (!problem) throw e;
+        setError(t(`memberProblem.${problem}`));
+      }
     });
 
   const doRefund = (amountPoisha: number, method: string, reasonId: string, approvalId: string) =>
@@ -971,6 +1053,10 @@ function Till({
             onDiscountCode={(c) => void doDiscountCode(c)}
             onCancel={(r, a) => void doCancel(r, a)}
             onAttachCustomer={(p, n, c) => void doAttachCustomer(p, n, c)}
+            memberCardOn={data.memberCardOn}
+            member={member}
+            onScanCard={(token) => void doScanCard(token)}
+            onUsePoints={(points) => void doUsePoints(points)}
             onAddRound={() => {
               setCart([]);
               setCartMode({ kind: 'round', orderLabel: orderLabel(order, t) });
@@ -1000,6 +1086,7 @@ function Till({
             tableName={tableName(order.table_id)}
             receipt={data.receipt}
             refundReasons={data.refundReasons}
+            memberToken={member?.is_on ? (member.token ?? null) : null}
             onNewOrder={newOrder}
             onRefund={(a, m, r, ap) => void doRefund(a, m, r, ap)}
           />

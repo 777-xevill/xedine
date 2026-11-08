@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { QrCode } from '@/components/qr-code';
 import { formatBDT, formatDhakaDateTime, type Locale } from '@/lib/i18n/format';
 import type { OrderLine, OrderRow, ReceiptInfo } from './client';
 import { useTill } from './till-context';
@@ -20,6 +21,7 @@ export function Receipt({
   info,
   tableName,
   locale,
+  memberUrl = null,
 }: {
   kind: 'receipt' | 'kot';
   order: OrderRow;
@@ -27,6 +29,8 @@ export function Receipt({
   info: ReceiptInfo;
   tableName: string | null;
   locale: Locale;
+  /** The customer's member-card link: printed as a QR under the total (ADR 0041). */
+  memberUrl?: string | null;
 }) {
   const t = useTranslations('pos');
   const { device } = useTill();
@@ -99,6 +103,14 @@ export function Receipt({
             {order.invoice_no ?? `${order.provisional_receipt_no ?? ''} (${t('provisional')})`}
           </p>
           {info.footer ? <p className="center">{info.footer}</p> : null}
+          {memberUrl ? (
+            <>
+              <div className="rule" />
+              <p className="center bold">{t('receiptMemberCard')}</p>
+              <QrCode value={memberUrl} label={t('memberCard')} className="mx-auto block w-32" />
+              <p className="center">{t('receiptMemberHint')}</p>
+            </>
+          ) : null}
         </>
       ) : null}
     </div>

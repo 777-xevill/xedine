@@ -73,5 +73,14 @@ headline, a short tagline, logo and contact.
 - **Meta access**: until Xedine passes Business Verification and App Review, the Meta app stays in
   Development mode and can post only to Pages whose admins hold a role on the app (the founder's demo
   Page). The founder has no trade licence (online-only business); DBID is the suggested route. *Open.*
+- **Early access, no verification (founder's choice, 2026-11-06)**: each early customer is added by hand
+  as a **Tester** on Xedine's Meta app (about 50 allowed on an app not linked to a verified business).
+  They accept the invite on Facebook, then use Settings → Social → Connect as normal; no password is ever
+  shared. Settings → Social shows an "Early access" note (`social.settings.earlyAccess`) while Meta keys are
+  set. Founder steps: (1) Meta developer dashboard → create the Xedine app, add the Facebook Login use
+  case, add the redirect URI used by `/api/social/meta/callback`; (2) put `META_APP_ID`/`META_APP_SECRET`
+  in Vercel; (3) App roles → Roles → Add People → Testers → enter the customer's Facebook name/email;
+  (4) customer accepts. Needs: the Page must be run by the account that was added as Tester. Limit: no
+  more than the tester cap; a real launch still needs Business Verification and App Review.
 - Gaps, not built: likes/reach insights on Growth; holiday/festival posts (Eid, Pohela Boishakh); music on
   reels; telling the owner on Telegram when a post fails or the Page token stops working.

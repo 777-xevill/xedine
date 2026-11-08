@@ -31,10 +31,11 @@ const nextConfig: NextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
-          // The microphone is used for voice entry (purchases, waste); nothing else needs device access.
+          // The microphone is used for voice entry (purchases, waste); the camera scans a customer's
+          // member-card QR at the till (ADR 0041); nothing else needs device access.
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
+            value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
           },
           // A narrow CSP that cannot break Next's inline scripts: no framing, no plugins, no base hijack,
           // forms post only to this site. A full script-src policy needs nonces (Run by hand, SECURITY.md).

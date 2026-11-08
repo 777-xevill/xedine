@@ -774,6 +774,126 @@ export async function attachCustomer(
   return data as string;
 }
 
+/** The cashier scanned a customer's member-card QR (ADR 0041): the server finds the customer by its token. */
+export async function attachMemberCard(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    token: string;
+    deviceId: string;
+    staffId: string;
+  },
+): Promise<string> {
+  const { data, error } = await sb
+    .rpc('attach_member_card', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_token: args.token,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+    })
+    .single();
+  if (error) throw error;
+  return data as string;
+}
+
+/** Whether the owner switched the member card on: the till then offers "Scan card" (ADR 0041). */
+export async function fetchMemberCardOn(sb: SupabaseClient, orgId: string): Promise<boolean> {
+  const { data, error } = await sb
+    .from('loyalty_settings')
+    .select('is_on')
+    .eq('org_id', orgId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.is_on === true;
+}
+
+/** The member on a bill as the till shows them; every number is the server's (ADR 0041). */
+export interface TillMember {
+  is_on: boolean;
+  name: string | null;
+  points?: number;
+  used_here?: number;
+  usable?: number;
+  usable_worth_poisha?: number;
+  used_worth_poisha?: number;
+  point_value_poisha?: number;
+  min_redeem_points?: number;
+  discount_on?: boolean;
+  discount_bps?: number;
+  token?: string;
+}
+
+export async function fetchTillMember(
+  sb: SupabaseClient,
+  args: { orgId: string; branchId: string; orderId: string },
+): Promise<TillMember | null> {
+  const { data, error } = await sb.rpc('member_for_till', {
+    p_org: args.orgId,
+    p_branch: args.branchId,
+    p_order: args.orderId,
+  });
+  if (error) throw error;
+  if (!data) return null;
+  const m = data as Record<string, unknown>;
+  const num = (v: unknown) => (v === undefined || v === null ? undefined : Number(v));
+  return {
+    ...(m as unknown as TillMember),
+    points: num(m.points),
+    used_here: num(m.used_here),
+    usable: num(m.usable),
+    usable_worth_poisha: num(m.usable_worth_poisha),
+    used_worth_poisha: num(m.used_worth_poisha),
+    point_value_poisha: num(m.point_value_poisha),
+    min_redeem_points: num(m.min_redeem_points),
+    discount_bps: num(m.discount_bps),
+  };
+}
+
+/** Use a member's points as money off this bill; 0 gives back points already used on it. */
+export async function redeemPoints(
+  sb: SupabaseClient,
+  args: {
+    orgId: string;
+    branchId: string;
+    orderId: string;
+    points: number;
+    deviceId: string;
+    staffId: string;
+  },
+): Promise<OrderRow> {
+  const { data, error } = await sb
+    .rpc('redeem_points', {
+      p_org: args.orgId,
+      p_branch: args.branchId,
+      p_order: args.orderId,
+      p_points: args.points,
+      p_device: args.deviceId,
+      p_staff: args.staffId,
+    })
+    .single();
+  if (error) throw error;
+  return toOrderRow(data as Record<string, unknown>);
+}
+
+/** Why the member step was refused, when the server said so in words the cashier can act on. */
+export function memberProblem(
+  error: unknown,
+): 'cardNotFound' | 'notEnough' | 'tooFew' | 'moreThanBill' | null {
+  const message =
+    typeof error === 'object' && error !== null
+      ? String((error as { message?: string }).message)
+      : '';
+  if (message.includes('card_not_found')) return 'cardNotFound';
+  if (message.includes('points_not_enough')) return 'notEnough';
+  if (message.includes('points_too_few')) return 'tooFew';
+  if (message.includes('points_more_than_bill')) return 'moreThanBill';
+  return null;
+}
+
 export async function fetchOrderItems(
   sb: SupabaseClient,
   orgId: string,

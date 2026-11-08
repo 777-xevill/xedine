@@ -287,6 +287,21 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
       'কুপন',
     ],
   },
+  memberCard: {
+    name: 'Member card',
+    what: "The owner switches on a member card for customers known by phone at the till. The customer gets a link (a QR on the till screen or the receipt) to their own read-only card: points, past bills and the menu. The owner sets how points are earned (for example 1 point for every ৳100 on the bill), what a point is worth when used, the fewest points that can be used, and a member discount of any percent that is switched on or off. The cashier scans the card's QR or types the phone at the till; the discount goes on by itself and points can be used as money off. The owner can find a customer to add or take away points with a reason, or give them a new card link. Owner only.",
+    words: [
+      'member card',
+      'membership',
+      'loyalty',
+      'points',
+      'reward',
+      'member discount',
+      'customer card',
+      'মেম্বার কার্ড',
+      'পয়েন্ট',
+    ],
+  },
   costs: {
     name: 'Costs',
     what: 'What the restaurant spends outside food (rent, utilities, gas, internet, labour) so the daily profit estimate is real. Owner only.',

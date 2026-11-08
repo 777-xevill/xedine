@@ -8,7 +8,10 @@ import {
   Minus,
   Plus,
   Printer,
+  QrCode as QrIcon,
   RefreshCw,
+  ScanLine,
+  Star,
   Type,
   UserPlus,
   Wifi,
@@ -19,8 +22,9 @@ import { StatusBadge, type BadgeTone } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label, Select } from '@/components/ui/form';
 import { Segmented } from '@/components/ui/segmented';
-import { formatBDT, formatDhakaDateTime } from '@/lib/i18n/format';
+import { formatBDT, formatBps, formatDhakaDateTime, formatNumber } from '@/lib/i18n/format';
 import { parseTakaToPoisha, type LineAmounts } from '@/lib/money';
+import { memberCardUrl } from '@/modules/customers/member-card';
 import type {
   Channel,
   DiningTable,
@@ -30,6 +34,7 @@ import type {
   OrderRow,
   ReasonCode,
   ReceiptInfo,
+  TillMember,
 } from './client';
 import {
   CancelOrderDialog,
@@ -47,6 +52,7 @@ import {
 import { CashierHelper } from './cashier-helper';
 import { getTillView, setTillView, type TillView } from './device-storage';
 import { ItemTile } from './item-tile';
+import { MemberCardDialog, ScanCardDialog, UsePointsDialog } from './member-dialogs';
 import type { OutboxEntry } from './outbox';
 import { Receipt } from './Receipt';
 import { useTill } from './till-context';
@@ -422,6 +428,10 @@ export function OrderScreen({
   onDiscountCode,
   onCancel,
   onAttachCustomer,
+  memberCardOn,
+  member,
+  onScanCard,
+  onUsePoints,
   onAddRound,
   onCheckout,
   onNewOrder,
@@ -434,6 +444,12 @@ export function OrderScreen({
   receipt: ReceiptInfo | null;
   voidReasons: ReasonCode[];
   discountReasons: ReasonCode[];
+  /** The owner switched the member card on (ADR 0041). */
+  memberCardOn: boolean;
+  /** The member on this bill, as the server sees them; null while none. */
+  member: TillMember | null;
+  onScanCard: (token: string) => void;
+  onUsePoints: (points: number) => void;
   onSendKitchen: () => void;
   onVoid: (line: OrderLine, reasonId: string, approvalId?: string) => void;
   onDiscount: (percentBps: number, reasonId: string, approvalId?: string) => void;
@@ -451,6 +467,14 @@ export function OrderScreen({
   const [discountOpen, setDiscountOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [pointsOpen, setPointsOpen] = useState(false);
+  const memberOn = member?.is_on === true;
+  const cardUrl =
+    memberOn && member.token && typeof window !== 'undefined'
+      ? memberCardUrl(window.location.origin, member.token)
+      : null;
 
   const closed = order.order_status === 'cancelled' || order.order_status === 'completed';
   const unpaid = order.payment_status === 'unpaid' || order.payment_status === 'partially_paid';
@@ -520,6 +544,46 @@ export function OrderScreen({
             totalPoisha: order.total_poisha,
           }}
         />
+        {memberOn ? (
+          <div className="rounded-input border border-line p-3 text-sm">
+            <p className="flex items-center gap-1.5 font-semibold">
+              <Star aria-hidden className="size-4 text-purple" />
+              {member.name ?? t('member')}
+            </p>
+            <p className="text-secondary">
+              {t('memberPoints', { points: formatNumber(member.points ?? 0, locale) })}
+              {member.discount_on && member.discount_bps
+                ? ` · ${t('memberDiscountOn', { percent: formatBps(member.discount_bps, locale) })}`
+                : ''}
+            </p>
+            {(member.used_here ?? 0) > 0 ? (
+              <p className="text-secondary">
+                {t('pointsUsedHere', {
+                  points: formatNumber(member.used_here ?? 0, locale),
+                  amount: formatBDT(member.used_worth_poisha ?? 0, locale),
+                })}
+              </p>
+            ) : null}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {!closed && order.payment_status === 'unpaid' ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy || !live}
+                  onClick={() => setPointsOpen(true)}
+                >
+                  {t('usePoints')}
+                </Button>
+              ) : null}
+              {cardUrl ? (
+                <Button variant="secondary" size="sm" onClick={() => setCardOpen(true)}>
+                  <QrIcon aria-hidden className="size-4" />
+                  {t('showCard')}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         {!live ? (
           <p className="flex items-center gap-1.5 text-xs text-secondary">
             <CloudOff aria-hidden className="size-3.5" />
@@ -562,6 +626,16 @@ export function OrderScreen({
                 <UserPlus aria-hidden className="size-4" />
                 {order.customer_id ? t('customerAdded') : t('addCustomer')}
               </Button>
+              {memberCardOn ? (
+                <Button
+                  variant="secondary"
+                  disabled={busy || !live}
+                  onClick={() => setScanOpen(true)}
+                >
+                  <ScanLine aria-hidden className="size-4" />
+                  {t('scanCard')}
+                </Button>
+              ) : null}
               {order.payment_status === 'unpaid' ? (
                 <Button
                   variant="danger"
@@ -621,6 +695,32 @@ export function OrderScreen({
           onConfirm={(phone, name, consent) => {
             onAttachCustomer(phone, name, consent);
             setCustomerOpen(false);
+          }}
+        />
+      ) : null}
+      {scanOpen ? (
+        <ScanCardDialog
+          onClose={() => setScanOpen(false)}
+          onToken={(token) => {
+            setScanOpen(false);
+            onScanCard(token);
+          }}
+        />
+      ) : null}
+      {cardOpen && cardUrl ? (
+        <MemberCardDialog
+          url={cardUrl}
+          name={member?.name ?? null}
+          onClose={() => setCardOpen(false)}
+        />
+      ) : null}
+      {pointsOpen && member ? (
+        <UsePointsDialog
+          member={member}
+          onClose={() => setPointsOpen(false)}
+          onConfirm={(points) => {
+            setPointsOpen(false);
+            onUsePoints(points);
           }}
         />
       ) : null}
@@ -724,9 +824,12 @@ export function ReceiptScreen({
   tableName,
   receipt,
   refundReasons,
+  memberToken,
   onNewOrder,
   onRefund,
 }: {
+  /** The member's card link token: the receipt prints its QR (ADR 0041). */
+  memberToken: string | null;
   order: OrderRow;
   lines: OrderLine[];
   local: boolean;
@@ -752,6 +855,11 @@ export function ReceiptScreen({
           info={receipt}
           tableName={tableName}
           locale={locale}
+          memberUrl={
+            memberToken && typeof window !== 'undefined'
+              ? memberCardUrl(window.location.origin, memberToken)
+              : null
+          }
         />
       ) : null}
       <div className="glass w-full rounded-card p-6">

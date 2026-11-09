@@ -135,7 +135,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (173)
+## RPC functions (176)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -174,6 +174,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `chat_usual_days` | `p_channel chat_channel, p_external_id text` |
 | `claim_device` | `p_device uuid, p_code text` |
 | `close_shift` | `p_org uuid, p_branch uuid, p_shift uuid, p_counted_cash bigint, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
+| `complaint_link` | `p_token text` |
 | `complete_incident_action` | `p_org uuid, p_action uuid` |
 | `confirm_purchase_draft` | `p_draft uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb` |
 | `create_chat_link` | `p_org uuid, p_user uuid, p_branch uuid, p_channel chat_channel` |
@@ -285,6 +286,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `reopen_incident` | `p_org uuid, p_incident uuid, p_reason text` |
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
 | `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date` |
+| `reset_complaint_link` | `p_org uuid, p_branch uuid` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |
 | `resolve_incident` | `p_org uuid, p_incident uuid, p_root_cause text, p_customer_resolution text` |
 | `revoke_chat_link` | `p_link uuid` |
@@ -306,6 +308,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `start_staff_session` | `p_device uuid, p_staff uuid, p_pin text` |
 | `start_stock_count` | `p_org uuid, p_branch uuid, p_kind stock_count_kind, p_date date DEFAULT NULL::date` |
 | `stock_count_sheet` | `p_count uuid` |
+| `submit_complaint` | `p_token text, p_topic text, p_text text, p_name text, p_phone text, p_now timestamp with time zone` |
 | `submit_feedback` | `p_token text, p_rating integer, p_comment text, p_now timestamp with time zone` |
 | `submit_order` | `p_org uuid, p_branch uuid, p_order_id uuid, p_idempotency_key text, p_device uuid, p_staff uuid, p_channel uuid, p_table uuid DEFAULT NULL::uuid, p_guests integer DEFAULT NULL::integer, p_placed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_lines jsonb DEFAULT '[]'::jsonb, p_provisional_receipt_no text DEFAULT NULL::text` |
 | `submit_stock_count` | `p_count uuid` |

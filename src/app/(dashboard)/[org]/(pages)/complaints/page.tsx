@@ -3,41 +3,33 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { QrCode } from '@/components/qr-code';
 import { Banner } from '@/components/stock/parts';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardTitle,
-  Hint,
-  Input,
-  Label,
-  PageTitle,
-  Select,
-  Textarea,
-} from '@/components/ui/form';
+import { Card, CardTitle, Hint, Input, PageTitle, Select, Textarea } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
+import { publicEnv } from '@/lib/env';
 import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { businessToday } from '@/modules/metrics/queries';
+import { complaintUrl } from '@/modules/reviews/complaint-link';
 import {
   addIncidentActionAction,
   completeIncidentActionAction,
-  openIncidentAction,
   reopenIncidentAction,
+  resetComplaintLinkAction,
   saveIncidentAction,
 } from '@/modules/reviews/incident-actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 
-const KINDS = ['complaint', 'food_safety', 'hygiene', 'injury', 'equipment', 'other'] as const;
 const SEVERITIES = ['low', 'medium', 'high'] as const;
-const SOURCES = ['in_person', 'phone', 'facebook', 'foodpanda', 'google', 'other'] as const;
 const SEVERITY_TONE = { low: 'info', medium: 'warning', high: 'danger' } as const;
 
 interface Incident {
   id: string;
   branch_id: string;
-  kind: (typeof KINDS)[number];
+  kind: 'complaint' | 'food_safety' | 'hygiene' | 'injury' | 'equipment' | 'other';
   severity: (typeof SEVERITIES)[number];
   status: 'open' | 'in_progress' | 'resolved';
   source: string;
@@ -58,6 +50,12 @@ interface Incident {
   overdue_actions: number;
 }
 
+interface BranchLink {
+  id: string;
+  name: string;
+  complaint_token: string;
+}
+
 interface Action {
   id: string;
   incident_id: string;
@@ -68,9 +66,9 @@ interface Action {
 }
 
 /**
- * Complaints (ADR 0043), phone first: saying what happened takes one line and one tap; each open case then
- * walks through three plain steps. A case closes only with its cause, what the customer got, and every
- * corrective action done.
+ * Complaints (ADR 0043), phone first: customers write them by scanning the branch's QR code, and they appear
+ * here. Each open case walks through three plain steps. A case closes only with its cause, what the customer
+ * got, and every corrective action done.
  */
 export default async function ComplaintsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
@@ -80,13 +78,13 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
   const loc = locale as Locale;
   const supabase = await createClient();
   const args = { p_org: ctx.org.id, p_branch: ctx.selectedBranchId, p_now: now().toISOString() };
-  const [{ date: today }, list, summary, ingredients] = await Promise.all([
+  const [{ date: today }, list, summary, branchRows] = await Promise.all([
     businessToday(ctx.org.id),
     supabase.rpc('metric_incidents', args),
     supabase.rpc('metric_incident_summary', args),
     supabase
-      .from('ingredients')
-      .select('id, name, name_bn')
+      .from('branches')
+      .select('id, name, complaint_token')
       .eq('org_id', ctx.org.id)
       .eq('is_active', true)
       .order('name'),
@@ -117,6 +115,10 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
   const closed = incidents.filter((x) => x.status === 'resolved');
   const overdue = Number(s.overdue_actions ?? 0);
   const median = s.median_hours_to_resolve;
+  const site = publicEnv().NEXT_PUBLIC_SITE_URL;
+  const links = ((branchRows.data ?? []) as BranchLink[]).filter((b) =>
+    ctx.selectedBranchId ? b.id === ctx.selectedBranchId : ctx.branches.some((c) => c.id === b.id),
+  );
   const hidden = (
     <>
       <input type="hidden" name="orgId" value={ctx.org.id} />
@@ -200,136 +202,6 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
         ) : (
           <Banner tone="success" icon={<CircleCheck />} title={t('summaryNone')} />
         )}
-
-        <Card className="p-4 sm:p-5">
-          <CardTitle>{t('openTitle')}</CardTitle>
-          <ActionForm action={openIncidentAction} successKey="common.saved" className="space-y-3">
-            {hidden}
-            <div>
-              <Label htmlFor="in-title">{t('whatHappened')}</Label>
-              <Input
-                id="in-title"
-                name="title"
-                required
-                maxLength={160}
-                placeholder={t('whatHappenedExample')}
-              />
-            </div>
-            <fieldset>
-              <legend className="mb-1.5 text-sm font-medium">{t('severity')}</legend>
-              <div className="grid grid-cols-3 gap-2">
-                {SEVERITIES.map((v) => (
-                  <label
-                    key={v}
-                    className="glass-tile flex min-h-11 items-center justify-center gap-1.5 rounded-input px-2 text-sm has-checked:border-purple"
-                  >
-                    <input type="radio" name="severity" value={v} defaultChecked={v === 'medium'} />
-                    {t(`severities.${v}`)}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            {showBranch ? (
-              <div>
-                <Label htmlFor="in-branch">{t('branch')}</Label>
-                <Select
-                  id="in-branch"
-                  name="branchId"
-                  defaultValue={ctx.selectedBranchId ?? ctx.branches[0]?.id ?? ''}
-                >
-                  {ctx.branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            ) : (
-              <input type="hidden" name="branchId" value={ctx.branches[0]?.id ?? ''} />
-            )}
-            <details>
-              <summary className="cursor-pointer text-sm text-secondary">{t('addMore')}</summary>
-              <div className="mt-3 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="in-kind">{t('kind')}</Label>
-                    <Select id="in-kind" name="kind" defaultValue="complaint">
-                      {KINDS.map((k) => (
-                        <option key={k} value={k}>
-                          {t(`kinds.${k}`)}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="in-src">{t('source')}</Label>
-                    <Select id="in-src" name="source" defaultValue="in_person">
-                      {SOURCES.map((v) => (
-                        <option key={v} value={v}>
-                          {t(`sources.${v}`)}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="in-on">{t('date')}</Label>
-                    <Input
-                      id="in-on"
-                      name="occurredOn"
-                      type="date"
-                      max={today}
-                      defaultValue={today}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="in-bill">{t('bill')}</Label>
-                    <Input id="in-bill" name="orderRef" maxLength={60} />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="in-details">{t('details')}</Label>
-                  <Textarea id="in-details" name="details" rows={3} maxLength={4000} />
-                </div>
-                <div>
-                  <Label htmlFor="in-ing">{t('foodRelated')}</Label>
-                  <Select id="in-ing" name="ingredientId" defaultValue="">
-                    <option value="">{t('noIngredient')}</option>
-                    {(ingredients.data ?? []).map((i) => (
-                      <option key={i.id as string} value={i.id as string}>
-                        {loc === 'bn' && i.name_bn ? (i.name_bn as string) : (i.name as string)}
-                      </option>
-                    ))}
-                  </Select>
-                  <label className="mt-2 flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="hold" />
-                    {t('holdToo')}
-                  </label>
-                </div>
-                <div>
-                  <Label htmlFor="in-cn">{t('customerName')}</Label>
-                  <Input id="in-cn" name="customerName" maxLength={120} autoComplete="off" />
-                </div>
-                <div>
-                  <Label htmlFor="in-cp">{t('customerPhone')}</Label>
-                  <Input
-                    id="in-cp"
-                    name="customerPhone"
-                    type="tel"
-                    maxLength={30}
-                    autoComplete="off"
-                  />
-                  <label className="mt-2 flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="contactOk" />
-                    {t('contactOk')}
-                  </label>
-                </div>
-              </div>
-            </details>
-            <Button type="submit" className="w-full sm:w-auto">
-              {t('open')}
-            </Button>
-          </ActionForm>
-        </Card>
 
         {open.map((x) => {
           const steps = actions.get(x.id) ?? [];
@@ -458,6 +330,49 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
             </Card>
           );
         })}
+
+        <Card className="p-4 sm:p-5">
+          <CardTitle>{t('linkTitle')}</CardTitle>
+          <Hint>{t('linkHint')}</Hint>
+          <ul className="mt-3 space-y-4">
+            {links.map((b) => {
+              const url = complaintUrl(site, b.complaint_token);
+              return (
+                <li key={b.id} className="flex flex-wrap items-start gap-4">
+                  <QrCode value={url} label={t('linkQr')} className="size-32 rounded-input" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    {showBranch ? <p className="font-semibold">{b.name}</p> : null}
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-purple underline"
+                    >
+                      {t('linkOpen')}
+                    </a>
+                    <details className="text-sm">
+                      <summary className="cursor-pointer text-xs text-secondary">
+                        {t('linkResetSummary')}
+                      </summary>
+                      <Hint className="mt-1">{t('linkResetHint')}</Hint>
+                      <ActionForm
+                        action={resetComplaintLinkAction}
+                        successKey="common.saved"
+                        className="mt-2"
+                      >
+                        {hidden}
+                        <input type="hidden" name="branchId" value={b.id} />
+                        <Button type="submit" size="sm" variant="secondary">
+                          {t('linkReset')}
+                        </Button>
+                      </ActionForm>
+                    </details>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
 
         {closed.length > 0 ? (
           <details className="glass-tile rounded-card p-4">

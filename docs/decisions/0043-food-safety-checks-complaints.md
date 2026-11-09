@@ -32,6 +32,14 @@ The founder saved the suggested days on the demo restaurant and saw 33 red "Stop
 - **A date stops a dish only for 7 days after it passes.** Past that, the item has been used up or the bazar is not being recorded, and stopping the dish protects nobody. It moves to one calm list, "No recent purchase recorded". A hold by staff always blocks, however old. *Trade-off:* out-of-date food really left on a shelf for over a week is no longer stopped by date alone; the Stock page and staff holds are what catch it.
 - **Red only for what someone reported as unsafe.** A date is a warning. One row per ingredient across branches, with the dishes and actions behind a tap.
 
+## Amendment (2026-11-09): the customer writes the complaint
+The founder saw the "write down a complaint" form on the owner's page and said it belongs on the customer side; the owner and manager only see the complaints. This replaces the form described in the first amendment.
+- **Each branch has one link, shown as a QR code** on the Complaints page to print for tables and the counter (`/c/{token}`, `branches.complaint_token`). No account: tap what it is about, say what happened, optionally a name and a phone. The steps to fix a case are unchanged and stay with the owner and manager.
+- **Leaving a phone number is the consent** to be called back; the form says it is only for that (CLAUDE.md #8).
+- **The customer does not choose how serious it is.** "I felt sick after eating" opens as serious and food safety, everything else as medium; the owner can change it.
+- **Anyone with the link can write,** so a branch takes at most 20 an hour, a double tap counts once, a hidden field catches simple bots, and the owner or manager can make a new link, which stops the old one. *Trade-off:* someone with the link could use up the hour's 20; a per-phone limit is not possible without an account.
+- **The owner's form is gone.** A complaint made in person or by phone is written by the customer on the QR page. `open_incident` stays in the database with no screen calling it, and so does its "stop this ingredient" step; stopping an ingredient is on the Food safety page.
+
 ## Alternatives considered
 - **Block on the estimated quantity left of an expired lot:** precise-sounding, but wrong whenever a dish has no recipe or usage is off, and too slow to run on every order.
 - **Ask the purchaser for a date on every line:** rejected by ADR 0029.

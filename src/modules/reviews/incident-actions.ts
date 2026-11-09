@@ -17,47 +17,20 @@ const done = (slug: string): FormState => {
   return { ok: true };
 };
 
-export async function openIncidentAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = base
-    .extend({
-      branchId: z.uuid(),
-      kind: z.enum(['complaint', 'food_safety', 'hygiene', 'injury', 'equipment', 'other']),
-      severity: SEVERITY,
-      source: z.enum(['in_person', 'phone', 'facebook', 'foodpanda', 'google', 'other']),
-      title: z.string().trim().min(1).max(160),
-      details: z.string().trim().max(4000).optional(),
-      occurredOn: z.union([z.string().regex(DATE), z.literal('')]).optional(),
-      orderRef: z.string().trim().max(60).optional(),
-      ingredientId: z.union([z.uuid(), z.literal('')]).optional(),
-      hold: z.literal('on').optional(),
-      customerName: z.string().trim().max(120).optional(),
-      customerPhone: z.string().trim().max(30).optional(),
-      contactOk: z.literal('on').optional(),
-    })
-    .safeParse(entries(formData));
-  if (!parsed.success) return { error: 'incidentNeedsTitle' };
-  const d = parsed.data;
-  if (d.hold === 'on' && !d.ingredientId) return { error: 'incidentPickIngredient' };
+/** A new customer link stops the old one, for a link someone is misusing. */
+export async function resetComplaintLinkAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base.extend({ branchId: z.uuid() }).safeParse(entries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
   const supabase = await createClient();
-  const { error } = await supabase.rpc('open_incident', {
-    p_org: d.orgId,
-    p_branch: d.branchId,
-    p_kind: d.kind,
-    p_severity: d.severity,
-    p_source: d.source,
-    p_title: d.title,
-    p_details: d.details || null,
-    p_occurred_on: d.occurredOn || null,
-    p_order_ref: d.orderRef || null,
-    p_ingredient: d.ingredientId || null,
-    p_hold: d.hold === 'on',
-    p_customer_name: d.customerName || null,
-    p_customer_phone: d.customerPhone || null,
-    p_contact_ok: d.contactOk === 'on',
+  const { error } = await supabase.rpc('reset_complaint_link', {
+    p_org: parsed.data.orgId,
+    p_branch: parsed.data.branchId,
   });
   if (error) return { error: mapDbError(error) };
-  if (d.hold === 'on') revalidatePath(`/${d.orgSlug}/food-safety`);
-  return done(d.orgSlug);
+  return done(parsed.data.orgSlug);
 }
 
 /** One form: Save keeps the case open, Resolve closes it (and is refused until the story is complete). */

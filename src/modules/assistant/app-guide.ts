@@ -227,7 +227,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   complaints: {
     name: 'Complaints',
-    what: 'Customer complaints and incidents: what happened, why, what the customer got and the corrective actions.',
+    what: 'Customers write complaints by scanning the QR code shown on this page; the owner or manager sees them here and records why it happened, what the customer got and the corrective actions.',
     words: [
       'complaint',
       'incident',

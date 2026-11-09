@@ -692,3 +692,111 @@ describe('complaints and incidents', () => {
     expect(res.ok ? 'ok' : res.code).toBe('42501');
   });
 });
+
+describe('complaints written by the customer', () => {
+  let k: Kitchen;
+  const token = async (branch: string) =>
+    (
+      await admin<{ t: string }>('select complaint_token as t from public.branches where id = $1', [
+        branch,
+      ])
+    )[0]!.t;
+  const send = async (
+    t: string,
+    text: string,
+    topic = 'food',
+    name: string | null = null,
+    phone: string | null = null,
+  ) => {
+    const [row] = await asService(
+      (s) =>
+        s.q<{ r: string }>('select public.submit_complaint($1, $2, $3, $4, $5, now()) as r', [
+          t,
+          topic,
+          text,
+          name,
+          phone,
+        ]),
+      { commit: true },
+    );
+    return row!.r;
+  };
+  beforeAll(async () => {
+    k = await setup();
+  }, 120_000);
+
+  it('reaches the manager, serious when someone felt sick, with no contact details in the audit log', async () => {
+    expect(
+      await send(
+        await token(k.main),
+        'Felt sick after the chicken',
+        'sick',
+        'Ayesha',
+        '+8801711000000',
+      ),
+    ).toBe('ok');
+    const [row] = await asUser(k.manager, (s) =>
+      s.q<Row>('select * from public.metric_incidents($1, null, now())', [k.org.id]),
+    );
+    expect([
+      row!.source,
+      row!.kind,
+      row!.severity,
+      row!.title,
+      row!.customer_name,
+      row!.contact_ok,
+    ]).toEqual(['customer', 'food_safety', 'high', 'Felt sick after the chicken', 'Ayesha', true]);
+    const audit = JSON.stringify(
+      await admin<Row>('select * from public.audit_log where org_id = $1 and entity_id = $2', [
+        k.org.id,
+        row!.id,
+      ]),
+    );
+    expect(audit).toContain('incident.open');
+    expect(audit).not.toContain('Ayesha');
+    expect(audit).not.toContain('1711000000');
+  });
+
+  it('counts a double tap once, and takes at most 20 an hour per branch', async () => {
+    const other = await setup();
+    const t = await token(other.main);
+    expect(await send(t, 'Cold soup')).toBe('ok');
+    expect(await send(t, 'Cold soup')).toBe('ok');
+    for (let i = 2; i <= 20; i++) expect(await send(t, `Complaint number ${i}`)).toBe('ok');
+    expect(await send(t, 'One too many')).toBe('busy');
+    const [{ n }] = (await admin<{ n: number }>(
+      'select count(*)::int as n from public.incidents where org_id = $1',
+      [other.org.id],
+    )) as [{ n: number }];
+    expect(n).toBe(20);
+  }, 60_000);
+
+  it('refuses an unknown link and blank text, and a new link stops the old one', async () => {
+    const old = await token(k.main);
+    expect(await send('0'.repeat(32), 'Cold soup')).toBe('gone');
+    expect(await send(old, '  ')).toBe('invalid');
+    await asUser(
+      k.manager,
+      (s) => s.q('select public.reset_complaint_link($1, $2)', [k.org.id, k.main]),
+      {
+        commit: true,
+      },
+    );
+    expect(await token(k.main)).not.toBe(old);
+    expect(await send(old, 'Cold soup')).toBe('gone');
+  });
+
+  it('only the service role can write, and a manager of another branch cannot change the link', async () => {
+    const t = await token(k.main);
+    const signedIn = await asUser(k.manager, (s) =>
+      s.attempt(`select public.submit_complaint($1, 'food', 'Cold soup', null, null, now())`, [t]),
+    );
+    expect(signedIn.ok ? 'ok' : signedIn.code).toBe('42501');
+    const chain = await createOrg({ branches: ['A', 'B'] });
+    const managerA = await addMember(chain, 'manager', [chain.branchIds[0]!]);
+    const res = await asUser(managerA, (s) =>
+      s.attempt('select public.reset_complaint_link($1, $2)', [chain.id, chain.branchIds[1]]),
+    );
+    expect(res.ok ? 'ok' : res.code).toBe('42501');
+  });
+});

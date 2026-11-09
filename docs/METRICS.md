@@ -119,8 +119,9 @@ Hiding (`set_ingredient_hidden`) is refused while `stock.theoretical` > 0 or any
 ## Food safety (ADR 0043)
 A lot is one arrival at a branch: a confirmed purchase line, or a received transfer line. "Today" is the branch's business date.
 - `lot.safe_until` = the date written on the lot, else arrival date + `ingredients.shelf_life_days`; null when neither exists (never blocked).
-- `food_safety.blocked` — an ingredient at a branch with an active hold, or whose newest lot (latest arrival; on a tie the latest date, and a lot with no date counts as safe) has `lot.safe_until` < today and the restaurant blocks on dates. A dish or variant is blocked when the recipe it really uses (`active_recipe`, walked through sub-recipes) contains a blocked ingredient.
-- `food_safety.lots` — lots with `lot.safe_until` − today ≤ 2. Status: `expired` (< 0), `today` (0), `soon` (1–2).
+- `food_safety.blocked` — an ingredient at a branch with an active hold, or whose newest lot (latest arrival; on a tie the latest date, and a lot with no date counts as safe) has `lot.safe_until` < today and ≥ today − 7, and the restaurant blocks on dates. A dish or variant is blocked when the recipe it really uses (`active_recipe`, walked through sub-recipes) contains a blocked ingredient.
+- `food_safety.stale` — items whose newest lot at a branch is more than 7 days past `lot.safe_until`: no recent purchase recorded. Listed, never blocked.
+- `food_safety.lots` — lots with `lot.safe_until` − today ≤ 2 and not more than 7 days past. Status: `expired` (< 0), `today` (0), `soon` (1–2), `fresh` (more than 2; only in the full list, `p_all`, which adds every lot with `food_safety.on_shelf` > 0 or that is the newest).
 - `food_safety.on_shelf` = what is probably left of a lot, oldest used first: lay the stock figure (`stock.theoretical`, or `stock.estimate` when never counted, marked estimated) over the lots newest first; a lot keeps `max(0, min(its qty, stock − the qty of all newer lots))`.
 - `food_safety.sold` — orders accepted while blocked because they waited offline, last 7 days.
 

@@ -309,6 +309,58 @@ describe('food safety', () => {
     expect(await blockedAtTill(other)).toHaveLength(1);
   });
 
+  it('an old purchase record is not expired food: only a date passed in the last week stops a dish', async () => {
+    const other = await setup();
+    await buy(other, other.chicken, addDays(today, -30));
+    expect(await blockedAtTill(other)).toEqual([]);
+    expect((await placeOrder(other, other.burger)).ok).toBe(true);
+    const seen = (fn: string) =>
+      asUser(other.manager, (s) =>
+        s.q<Row>(`select * from public.${fn}($1, null, now())`, [other.org.id]),
+      );
+    expect((await seen('metric_food_safety_stale')).map((r) => r.name)).toEqual(['Chicken']);
+    expect(await seen('metric_food_safety')).toEqual([]);
+    // Bought again and past its date by 3 days: that is real, so it stops, and is not "stale" any more.
+    await buy(other, other.chicken, addDays(today, -5));
+    expect((await blockedAtTill(other)).map((b) => b.reason)).toEqual(['expired']);
+    expect(await seen('metric_food_safety_stale')).toEqual([]);
+  });
+
+  it('a hold by staff blocks however old the purchase record is', async () => {
+    const other = await setup();
+    await buy(other, other.chicken, addDays(today, -60));
+    await asUser(
+      other.kitchen,
+      (s) =>
+        s.q(`select public.hold_ingredient($1, $2, $3, 'smells bad')`, [
+          other.org.id,
+          other.main,
+          other.chicken,
+        ]),
+      { commit: true },
+    );
+    expect((await blockedAtTill(other)).map((b) => b.reason)).toEqual(['held']);
+  });
+
+  it('each purchase keeps its own date, and the full list shows fresh ones too', async () => {
+    const other = await setup();
+    await admin('update public.ingredients set shelf_life_days = 10 where id = $1', [other.rice]);
+    const first = await buy(other, other.rice, addDays(today, -2), 1000);
+    const second = await buy(other, other.rice, today, 1000);
+    const list = (extra: string) =>
+      asUser(other.manager, (s) =>
+        s.q<Row>(
+          `select lot_id, expires_on::text as until, status from public.metric_food_safety($1, null, now()${extra})`,
+          [other.org.id],
+        ),
+      );
+    expect(await list('')).toEqual([]);
+    expect(await list(', true')).toEqual([
+      { lot_id: first, until: addDays(today, 8), status: 'fresh' },
+      { lot_id: second, until: addDays(today, 10), status: 'fresh' },
+    ]);
+  });
+
   it('another restaurant cannot read or change any of it', async () => {
     const stranger = await createOrg({ branches: ['Elsewhere'] });
     const read = await asUser(stranger.owner, (s) =>

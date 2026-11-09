@@ -3042,7 +3042,7 @@
     "tillHint": "Items stopped by staff are always blocked.",
     "save": "Save",
     "summaryBlocked": "{count, plural, one {{n} item must not be used} other {{n} items must not be used}}",
-    "summaryBlockedBody": "Dishes that need them are off the till.",
+    "summaryBlockedBody": "Tap one to see which dishes are off the till.",
     "summaryExpired": "{count, plural, one {{n} old lot is probably still on the shelf} other {{n} old lots are probably still on the shelf}}",
     "summaryExpiredBody": "Throw it away and tap the button below.",
     "summarySoon": "{count, plural, one {{n} lot is close to its date} other {{n} lots are close to their date}}",
@@ -3058,7 +3058,17 @@
       "look": "Looks or feels wrong",
       "fridge": "Fridge or freezer stopped",
       "recall": "Supplier said not to use it"
-    }
+    },
+    "pastDate": "Past its date",
+    "dishesCount": "{count, plural, one {{n} dish off the till} other {{n} dishes off the till}}",
+    "noDishesShort": "No dish uses it",
+    "summaryNothingStopped": "Nothing is stopped right now",
+    "summaryStale": "{count, plural, one {{n} item has no recent purchase recorded.} other {{n} items have no recent purchase recorded.}}",
+    "staleTitle": "No recent purchase recorded ({n})",
+    "staleHint": "Bought a while ago, so Xedine does not stop their dishes. If you still use these, record the bazar so their dates stay right.",
+    "staleLine": "Last bought {date}",
+    "datesTitle": "All dates ({n})",
+    "datesHint": "Soonest first. Each purchase has its own date. Items you have used up are not listed."
   },
   "dailyChecks": {
     "title": "Daily checks",

@@ -27,6 +27,11 @@ After seeing the live pages at phone width the founder asked to make them easier
 - **Daily checks:** an empty restaurant sees one button. *Done* is one tap (a reading box only where the check needs one), and *Something is wrong* opens on demand. There is deliberately no "mark all done": a record nobody checked is worse than a missing one.
 - **Complaints:** one line and how serious, then Save; everything else is optional behind *Add more*. An open case is three numbered steps: what will you change, why did it happen, what did the customer get. The rule in §8 is unchanged.
 
+## Amendment (2026-11-09): an old purchase record is not expired food
+The founder saved the suggested days on the demo restaurant and saw 33 red "Stopped" items. 32 of them were false: the newest recorded purchase was weeks old, because the demo's records stop in October. This changes §2.
+- **A date stops a dish only for 7 days after it passes.** Past that, the item has been used up or the bazar is not being recorded, and stopping the dish protects nobody. It moves to one calm list, "No recent purchase recorded". A hold by staff always blocks, however old. *Trade-off:* out-of-date food really left on a shelf for over a week is no longer stopped by date alone; the Stock page and staff holds are what catch it.
+- **Red only for what someone reported as unsafe.** A date is a warning. One row per ingredient across branches, with the dishes and actions behind a tap.
+
 ## Alternatives considered
 - **Block on the estimated quantity left of an expired lot:** precise-sounding, but wrong whenever a dish has no recipe or usage is off, and too slow to run on every order.
 - **Ask the purchaser for a date on every line:** rejected by ADR 0029.

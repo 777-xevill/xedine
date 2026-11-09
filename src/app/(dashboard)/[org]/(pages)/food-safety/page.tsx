@@ -63,10 +63,16 @@ interface Lot {
   days_left: number;
   on_shelf_qty: number;
   estimated: boolean;
-  status: 'expired' | 'today' | 'soon';
+  status: 'expired' | 'today' | 'soon' | 'fresh';
 }
 
-const LOT_TONE = { expired: 'danger', today: 'danger', soon: 'warning' } as const;
+// Red is kept for what someone reported as unsafe; a date is a warning.
+const LOT_TONE = {
+  expired: 'warning',
+  today: 'warning',
+  soon: 'warning',
+  fresh: 'success',
+} as const;
 
 /**
  * Food safety (ADR 0043), phone first: one sentence on top, then only what needs doing. The list of days is
@@ -87,10 +93,11 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
   const loc = locale as Locale;
   const supabase = await createClient();
   const args = { p_org: ctx.org.id, p_branch: ctx.selectedBranchId, p_now: now().toISOString() };
-  const [blocks, lots, sold, ingredients, settings] = await Promise.all([
+  const [blocks, lots, sold, stale, ingredients, settings] = await Promise.all([
     supabase.rpc('metric_food_safety_blocks', args),
-    supabase.rpc('metric_food_safety', args),
+    supabase.rpc('metric_food_safety', { ...args, p_all: true }),
     supabase.rpc('metric_food_safety_sold', args),
+    supabase.rpc('metric_food_safety_stale', args),
     supabase
       .from('ingredients')
       .select('id, name, name_bn, shelf_life_days')
@@ -104,11 +111,23 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
       .maybeSingle(),
   ]);
   const blockRows = (blocks.data ?? []) as Block[];
-  const lotRows = ((lots.data ?? []) as Lot[]).map((l) => ({
+  // One row per ingredient, however many branches it is stopped at.
+  const blockGroups = [...new Set(blockRows.map((b) => b.ingredient_id))].map((id) =>
+    blockRows.filter((b) => b.ingredient_id === id),
+  );
+  const anyHeld = blockRows.some((b) => b.reason === 'held');
+  const staleRows = (stale.data ?? []) as {
+    ingredient_id: string;
+    name: string;
+    name_bn: string | null;
+    last_received: string;
+  }[];
+  const allLots = ((lots.data ?? []) as Lot[]).map((l) => ({
     ...l,
     on_shelf_qty: Number(l.on_shelf_qty),
     days_left: Number(l.days_left),
   }));
+  const lotRows = allLots.filter((l) => l.status !== 'fresh');
   const soldRows = (sold.data ?? []) as {
     branch_id: string;
     order_id: string;
@@ -182,7 +201,7 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
           </div>
         ))}
       </div>
-      <div className="sticky bottom-2 mt-3">
+      <div className="sticky bottom-20 mt-3">
         <Button type="submit" className="w-full">
           {t('saveShelf')}
         </Button>
@@ -207,23 +226,23 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} actions={<LocaleSwitcher />} />
       <div className="mx-auto max-w-2xl space-y-5">
-        {blockRows.length > 0 ? (
+        {blockGroups.length > 0 ? (
           <Banner
-            tone="danger"
+            tone={anyHeld ? 'danger' : 'warning'}
             icon={<ShieldAlert />}
-            title={t('summaryBlocked', { count: blockRows.length, n: n(blockRows.length) })}
+            title={t('summaryBlocked', { count: blockGroups.length, n: n(blockGroups.length) })}
             body={t('summaryBlockedBody')}
           />
         ) : expiredLots > 0 ? (
           <Banner
-            tone="danger"
+            tone="warning"
             icon={<CircleAlert />}
             title={t('summaryExpired', { count: expiredLots, n: n(expiredLots) })}
             body={t('summaryExpiredBody')}
           />
         ) : soonLots > 0 ? (
           <Banner
-            tone="warning"
+            tone="info"
             icon={<CircleAlert />}
             title={t('summarySoon', { count: soonLots, n: n(soonLots) })}
           />
@@ -234,74 +253,110 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
             title={t('summarySetup')}
             body={t('summarySetupBody')}
           />
+        ) : staleRows.length > 0 ? (
+          <Banner
+            tone="neutral"
+            icon={<CircleCheck />}
+            title={t('summaryNothingStopped')}
+            body={t('summaryStale', { count: staleRows.length, n: n(staleRows.length) })}
+          />
         ) : (
           <Banner tone="success" icon={<CircleCheck />} title={t('summaryOk')} />
         )}
 
-        {blockRows.map((b) => (
-          <Card key={`${b.branch_id}-${b.ingredient_id}`} className="p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold">{label(b)}</p>
-                <p className="text-xs text-secondary">
-                  {showBranch ? `${branchName(b.branch_id)} · ` : ''}
-                  {b.reason === 'held'
-                    ? t('heldBecause', { reason: b.note ?? '' })
-                    : t('expiredOn', { date: b.expired_on ? day(b.expired_on) : '' })}
-                </p>
+        {blockGroups.map((group) => {
+          const first = group[0]!;
+          const held = group.some((b) => b.reason === 'held');
+          const dishes = first.dishes.length;
+          return (
+            <details key={first.ingredient_id} className="glass-tile rounded-card p-4">
+              <summary className="cursor-pointer">
+                <span className="inline-flex w-[calc(100%-1.25rem)] flex-wrap items-center justify-between gap-2 align-top">
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{label(first)}</span>
+                    <span className="block text-xs text-secondary">
+                      {showBranch
+                        ? `${group.map((b) => branchName(b.branch_id)).join(', ')} · `
+                        : ''}
+                      {dishes > 0
+                        ? t('dishesCount', { count: dishes, n: n(dishes) })
+                        : t('noDishesShort')}
+                    </span>
+                  </span>
+                  <StatusBadge tone={held ? 'danger' : 'warning'}>
+                    {held ? t('doNotUse') : t('pastDate')}
+                  </StatusBadge>
+                </span>
+              </summary>
+              <div className="mt-3 space-y-3">
+                {group.map((b) => (
+                  <div
+                    key={b.branch_id}
+                    className="border-t border-line pt-3 first:border-t-0 first:pt-0"
+                  >
+                    <p className="text-sm">
+                      {showBranch ? `${branchName(b.branch_id)}: ` : ''}
+                      {b.reason === 'held'
+                        ? t('heldBecause', { reason: b.note ?? '' })
+                        : t('expiredOn', { date: b.expired_on ? day(b.expired_on) : '' })}
+                    </p>
+                    <p className="mt-1 text-sm text-secondary">
+                      {b.dishes.length > 0
+                        ? t('dishesStopped', {
+                            dishes: (loc === 'bn' ? b.dishes_bn : b.dishes).join(', '),
+                          })
+                        : t('noDishesStopped')}
+                    </p>
+                    {canRelease && b.reason === 'held' && b.hold_id ? (
+                      <ActionForm
+                        action={releaseHoldAction}
+                        successKey="common.saved"
+                        className="mt-2 flex gap-2"
+                      >
+                        {hidden}
+                        <input type="hidden" name="holdId" value={b.hold_id} />
+                        <Input
+                          name="note"
+                          required
+                          maxLength={300}
+                          placeholder={t('releaseNote')}
+                          aria-label={t('releaseNote')}
+                          className="min-w-0 flex-1"
+                        />
+                        <Button type="submit" size="sm" variant="secondary">
+                          {t('release')}
+                        </Button>
+                      </ActionForm>
+                    ) : null}
+                    {canRelease && b.reason === 'expired' && b.lot_id && b.lot_kind ? (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-sm text-secondary">
+                          {t('stillSafe')}
+                        </summary>
+                        <ActionForm
+                          action={setLotExpiryAction}
+                          successKey="common.saved"
+                          className="mt-2 space-y-2"
+                        >
+                          {hidden}
+                          <input type="hidden" name="lotKind" value={b.lot_kind} />
+                          <input type="hidden" name="lotId" value={b.lot_id} />
+                          <Label htmlFor={`exp-${b.lot_id}`}>{t('safeUntil')}</Label>
+                          <Input id={`exp-${b.lot_id}`} name="expiresOn" type="date" required />
+                          <Label htmlFor={`why-${b.lot_id}`}>{t('whySafe')}</Label>
+                          <Input id={`why-${b.lot_id}`} name="note" required maxLength={300} />
+                          <Button type="submit" size="sm" variant="secondary">
+                            {t('saveDate')}
+                          </Button>
+                        </ActionForm>
+                      </details>
+                    ) : null}
+                  </div>
+                ))}
               </div>
-              <StatusBadge tone="danger">{t('doNotUse')}</StatusBadge>
-            </div>
-            <p className="mt-2 text-sm">
-              {b.dishes.length > 0
-                ? t('dishesStopped', {
-                    dishes: (loc === 'bn' ? b.dishes_bn : b.dishes).join(', '),
-                  })
-                : t('noDishesStopped')}
-            </p>
-            {canRelease && b.reason === 'held' && b.hold_id ? (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-secondary">{t('release')}</summary>
-                <ActionForm
-                  action={releaseHoldAction}
-                  successKey="common.saved"
-                  className="mt-2 space-y-2"
-                >
-                  {hidden}
-                  <input type="hidden" name="holdId" value={b.hold_id} />
-                  <Label htmlFor={`rel-${b.hold_id}`}>{t('releaseNote')}</Label>
-                  <Input id={`rel-${b.hold_id}`} name="note" required maxLength={300} />
-                  <Button type="submit" size="sm" variant="secondary">
-                    {t('release')}
-                  </Button>
-                </ActionForm>
-              </details>
-            ) : null}
-            {canRelease && b.reason === 'expired' && b.lot_id && b.lot_kind ? (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-sm text-secondary">
-                  {t('stillSafe')}
-                </summary>
-                <ActionForm
-                  action={setLotExpiryAction}
-                  successKey="common.saved"
-                  className="mt-2 space-y-2"
-                >
-                  {hidden}
-                  <input type="hidden" name="lotKind" value={b.lot_kind} />
-                  <input type="hidden" name="lotId" value={b.lot_id} />
-                  <Label htmlFor={`exp-${b.lot_id}`}>{t('safeUntil')}</Label>
-                  <Input id={`exp-${b.lot_id}`} name="expiresOn" type="date" required />
-                  <Label htmlFor={`why-${b.lot_id}`}>{t('whySafe')}</Label>
-                  <Input id={`why-${b.lot_id}`} name="note" required maxLength={300} />
-                  <Button type="submit" size="sm" variant="secondary">
-                    {t('saveDate')}
-                  </Button>
-                </ActionForm>
-              </details>
-            ) : null}
-          </Card>
-        ))}
+            </details>
+          );
+        })}
 
         {lotRows.map((l) => (
           <Card key={l.lot_id} className="p-4">
@@ -362,6 +417,48 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
             ) : null}
           </Card>
         ))}
+
+        {allLots.length > 0 ? (
+          <details open className="glass-tile rounded-card p-4">
+            <summary className="cursor-pointer font-semibold">
+              {t('datesTitle', { n: n(allLots.length) })}
+            </summary>
+            <ul className="mt-3 space-y-3">
+              {allLots.map((l) => (
+                <li key={l.lot_id} className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{label(l)}</p>
+                    <p className="text-xs text-secondary">
+                      {showBranch ? `${branchName(l.branch_id)} · ` : ''}
+                      {t('lotDates', { bought: day(l.received_on), until: day(l.expires_on) })}
+                    </p>
+                  </div>
+                  <StatusBadge tone={LOT_TONE[l.status]}>{lotBadge(l)}</StatusBadge>
+                </li>
+              ))}
+            </ul>
+            <Hint className="mt-3">{t('datesHint')}</Hint>
+          </details>
+        ) : null}
+
+        {staleRows.length > 0 ? (
+          <details className="glass-tile rounded-card p-4">
+            <summary className="cursor-pointer font-semibold">
+              {t('staleTitle', { n: n(staleRows.length) })}
+            </summary>
+            <p className="mt-2 text-sm text-secondary">{t('staleHint')}</p>
+            <ul className="mt-3 space-y-1 text-sm">
+              {staleRows.map((r) => (
+                <li key={r.ingredient_id} className="flex justify-between gap-3">
+                  <span>{label(r)}</span>
+                  <span className="text-secondary">
+                    {t('staleLine', { date: day(r.last_received) })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
 
         {soldRows.length > 0 ? (
           <Alert tone="danger">

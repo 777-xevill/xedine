@@ -135,7 +135,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (172)
+## RPC functions (173)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -230,9 +230,10 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_discipline` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_flash_pnl` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_food_cost` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
-| `metric_food_safety` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_food_safety` | `p_org uuid, p_branch uuid, p_now timestamp with time zone, p_all boolean DEFAULT false` |
 | `metric_food_safety_blocks` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_food_safety_sold` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_food_safety_stale` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_forecast` | `p_org uuid, p_branch uuid, p_date date, p_now timestamp with time zone` |
 | `metric_forecast_accuracy` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_growth_inputs` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |

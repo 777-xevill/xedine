@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (113)
+## Tables (118)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -37,6 +37,8 @@
 | `channel_commissions` | Money-gated commission and fee terms per channel. | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK id · → channels | pos · P2 |
 | `channels` | Sales channels: dine-in, takeaway, own delivery, foodpanda, Pathao Food, custom. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | pos · P1 |
 | `chat_links` | Which chat (Telegram) speaks for which purchaser, and the one-time link code that connects it. | org + branch | custom — select: the linked person or the owner; written only by the chat_* / *_chat_link RPCs (audited) | PK id · → branches | messaging · P11 |
+| `compliance_check_logs` | One record per branch, check and day/week/month: done or a problem, by whom, and when. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written by record_compliance_check only (audited)) | PK id · → branches, compliance_checks | compliance · P11 |
+| `compliance_checks` | What this restaurant checks and how often: hygiene tasks, inspection records, paperwork. | org | read: owner, manager, kitchen, accountant; write: owner, manager (the restaurant's own list; switched off, never deleted, so old records keep their meaning) | PK id | compliance · P11 |
 | `consents` | Consent history per channel and purpose. | org | read: owner, manager, cashier; write: owner, manager, cashier (append a row per change) | PK id · → customers, staff | customers · P8 |
 | `customers` | Customer by phone (+880), PII. | org | read: owner, manager, cashier; write: owner, manager, cashier (PII: accountants excluded) | PK id | customers · P8 |
 | `devices` | Registered POS/KDS/QR devices bound to a branch. | org + branch | read: owner, manager, cashier, kitchen; write: owner, manager (pairing via register_device()/claim_device()) | PK id · → branches | tenancy · P0 |
@@ -52,8 +54,11 @@
 | `forecasts` | Item x daypart x branch forecast per model version. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: service role only (written by forecasting jobs) | PK id · → branches, menu_items | forecasting · P7 |
 | `growth_content_drafts` | Content ideas grounded in sales data, approved before use. | org + branch | read: owner, manager; write: owner, manager | PK id · → branches | growth · P10 |
 | `holdouts` | Customers withheld to measure real lift. | org | read: owner, manager; write: service role only (written by messaging jobs) | PK id · → campaigns, customers | messaging · P8 |
+| `incident_actions` | Corrective actions and notes on an incident: what will be done, by when, and when it was done. | org + branch | read: owner, manager; write: service role only (written by add_incident_action and complete_incident_action) | PK id · → branches, incidents | reviews · P11 |
+| `incidents` | A customer complaint or something that went wrong, with its cause and how it was put right. | org + branch | read: owner, manager; write: service role only (holds a customer's name and phone: owner and branch manager only; written by the incident RPCs) | PK id · → branches, compliance_check_logs, feedback, ingredients, reviews | reviews · P11 |
 | `ingredient_aliases` | Other spellings of an ingredient ("murgi" → Chicken) learnt from purchasers' picks in the chat. | org | read: owner, manager, kitchen, purchaser, accountant; write: owner (names only, no cost; the chat adds them on ✅ (chat_confirm_purchase_draft), the owner may edit) | PK id · → ingredients | purchasing · P11 |
 | `ingredient_costs` | Manual ingredient cost until purchases exist. Money-gated. | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK ingredient_id · → ingredients | recipes · P3 |
+| `ingredient_holds` | An ingredient someone marked unsafe at a branch; its dishes cannot be sold until released. | org + branch | read: owner, manager, kitchen, purchaser, accountant; write: service role only (written by hold_ingredient and release_ingredient_hold only (audited)) | PK id · → branches, ingredients | inventory · P11 |
 | `ingredient_price_history` | What an ingredient cost from a business day on (manual; purchases from P5). Money-gated. | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK id · → ingredients | recipes · P3 |
 | `ingredients` | Ingredient catalogue in base units; stock and cover settings. | org | read: owner, manager, kitchen, purchaser, accountant; write: owner | PK id · → units | recipes · P3 |
 | `insight_feed` | Ranked proactive insights; max 3 per owner per day. | org | read: owner, accountant; write: owner | PK id · → findings | assistant · P4 |
@@ -130,14 +135,16 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (149)
+## RPC functions (172)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
 | Function | Arguments |
 |---|---|
 | `accept_invitation` | `p_token text` |
+| `add_incident_action` | `p_org uuid, p_incident uuid, p_kind text, p_body text, p_due_on date DEFAULT NULL::date` |
 | `add_order_items` | `p_org uuid, p_branch uuid, p_order uuid, p_batch_key text, p_device uuid, p_staff uuid, p_lines jsonb` |
+| `add_starter_compliance_checks` | `p_org uuid` |
 | `adjust_points` | `p_org uuid, p_customer uuid, p_points integer, p_note text` |
 | `admin_branch_requests` | `p_now timestamp with time zone` |
 | `admin_decide_branch_request` | `p_request uuid, p_approve boolean, p_note text DEFAULT NULL::text` |
@@ -167,6 +174,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `chat_usual_days` | `p_channel chat_channel, p_external_id text` |
 | `claim_device` | `p_device uuid, p_code text` |
 | `close_shift` | `p_org uuid, p_branch uuid, p_shift uuid, p_counted_cash bigint, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
+| `complete_incident_action` | `p_org uuid, p_action uuid` |
 | `confirm_purchase_draft` | `p_draft uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb` |
 | `create_chat_link` | `p_org uuid, p_user uuid, p_branch uuid, p_channel chat_channel` |
 | `create_invitation` | `p_org uuid, p_email text, p_role app_role, p_branch_ids uuid[] DEFAULT '{}'::uuid[]` |
@@ -178,9 +186,13 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `ensure_org_defaults` | `p_org uuid` |
 | `finding_events` | `p_finding uuid` |
 | `flag_day` | `p_org uuid, p_date date, p_kind calendar_kind, p_now timestamp with time zone` |
+| `food_safety_blocked_items` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `generate_bazar_list` | `p_org uuid, p_branch uuid, p_for date, p_now timestamp with time zone` |
+| `hold_ingredient` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_reason text` |
 | `import_menu` | `p_org uuid, p_rows jsonb` |
 | `import_reference_prices` | `p_org uuid, p_rows jsonb` |
+| `incident_from_feedback` | `p_org uuid, p_feedback uuid` |
+| `incident_from_review` | `p_org uuid, p_review uuid, p_branch uuid DEFAULT NULL::uuid` |
 | `insight_action` | `p_insight uuid, p_action text, p_reason text DEFAULT NULL::text, p_until date DEFAULT NULL::date` |
 | `job_backfill_item_costs` | `p_org uuid, p_from date, p_to date` |
 | `job_benchmark_snapshot` | `p_period date` |
@@ -192,6 +204,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `job_run_begin` | `p_job text, p_org uuid, p_period text` |
 | `job_run_detectors` | `p_org uuid, p_from date, p_to date, p_kinds text[]` |
 | `job_run_finish` | `p_run uuid, p_status job_status, p_error text DEFAULT NULL::text` |
+| `job_safety_summary` | `p_org uuid, p_now timestamp with time zone` |
 | `log_audit` | `p_org uuid, p_branch uuid, p_action text, p_entity text, p_entity_id text, p_before jsonb DEFAULT NULL::jsonb, p_after jsonb DEFAULT NULL::jsonb, p_reason text DEFAULT NULL::text, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `mark_attendance` | `p_staff uuid, p_date date, p_status attendance_status` |
@@ -212,12 +225,19 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_compliance` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_customer_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_customers` | `p_org uuid, p_branch uuid, p_now timestamp with time zone, p_segment text DEFAULT NULL::text, p_limit integer DEFAULT 100` |
+| `metric_daily_checks` | `p_org uuid, p_branch uuid, p_now timestamp with time zone, p_days integer DEFAULT 7` |
+| `metric_daily_checks_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone, p_days integer DEFAULT 7` |
 | `metric_discipline` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_flash_pnl` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_food_cost` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
+| `metric_food_safety` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_food_safety_blocks` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_food_safety_sold` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_forecast` | `p_org uuid, p_branch uuid, p_date date, p_now timestamp with time zone` |
 | `metric_forecast_accuracy` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_growth_inputs` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_incident_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
+| `metric_incidents` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_ingredient_prices` | `p_org uuid, p_now timestamp with time zone` |
 | `metric_item_qty` | `p_org uuid, p_branch uuid, p_window text, p_now timestamp with time zone, p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_item uuid DEFAULT NULL::uuid, p_channel uuid DEFAULT NULL::uuid, p_daypart text DEFAULT NULL::text` |
 | `metric_like_for_like` | `p_org uuid, p_from date, p_to date, p_limit integer DEFAULT 20` |
@@ -244,12 +264,14 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_vat_summary` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_waste_board` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
 | `metric_window` | `p_org uuid, p_window text, p_now timestamp with time zone` |
+| `open_incident` | `p_org uuid, p_branch uuid, p_kind text, p_severity text, p_source text, p_title text, p_details text DEFAULT NULL::text, p_occurred_on date DEFAULT NULL::date, p_order_ref text DEFAULT NULL::text, p_ingredient uuid DEFAULT NULL::uuid, p_hold boolean DEFAULT false, p_customer_name text DEFAULT NULL::text, p_customer_phone text DEFAULT NULL::text, p_contact_ok boolean DEFAULT false` |
 | `open_shift` | `p_org uuid, p_branch uuid, p_device uuid, p_staff uuid, p_opening_float bigint` |
 | `org_ai_allowed` | `p_org uuid, p_now timestamp with time zone` |
 | `org_whatsapp_allowed` | `p_org uuid, p_now timestamp with time zone` |
 | `receive_transfer` | `p_transfer uuid, p_lines jsonb DEFAULT '[]'::jsonb, p_note text DEFAULT NULL::text` |
 | `reconcile_bazar_list` | `p_list uuid` |
 | `record_ai_usage` | `p_org uuid, p_date date, p_model text, p_feature text, p_input bigint, p_output bigint, p_cache_read bigint, p_cache_write bigint, p_cost_usd_micros bigint` |
+| `record_compliance_check` | `p_org uuid, p_branch uuid, p_check uuid, p_status text, p_note text DEFAULT NULL::text, p_date date DEFAULT NULL::date` |
 | `record_opt_out` | `p_phone text` |
 | `record_payment` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reference text, p_idempotency_key text, p_device uuid, p_staff uuid` |
 | `record_purchase` | `p_org uuid, p_branch uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb, p_notes text DEFAULT NULL::text` |
@@ -257,10 +279,13 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `redeem_points` | `p_org uuid, p_branch uuid, p_order uuid, p_points integer, p_device uuid, p_staff uuid` |
 | `refund_order` | `p_org uuid, p_branch uuid, p_order uuid, p_method payment_method, p_amount bigint, p_reason_code uuid, p_reason_note text, p_idempotency_key text, p_device uuid, p_staff uuid, p_approval uuid` |
 | `register_device` | `p_org uuid, p_branch uuid, p_name text, p_kind device_kind DEFAULT 'pos'::device_kind` |
+| `release_ingredient_hold` | `p_org uuid, p_hold uuid, p_note text` |
 | `remove_membership` | `p_membership uuid` |
+| `reopen_incident` | `p_org uuid, p_incident uuid, p_reason text` |
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
 | `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |
+| `resolve_incident` | `p_org uuid, p_incident uuid, p_root_cause text, p_customer_resolution text` |
 | `revoke_chat_link` | `p_link uuid` |
 | `revoke_device` | `p_device uuid` |
 | `revoke_invitation` | `p_invitation uuid` |
@@ -273,6 +298,8 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `send_transfer` | `p_org uuid, p_from uuid, p_to uuid, p_lines jsonb, p_notes text DEFAULT NULL::text` |
 | `set_finding_status` | `p_finding uuid, p_status finding_status, p_reason text DEFAULT NULL::text, p_snooze_until date DEFAULT NULL::date` |
 | `set_ingredient_hidden` | `p_org uuid, p_ingredient uuid, p_hidden boolean, p_now timestamp with time zone, p_none_left boolean DEFAULT false` |
+| `set_lot_expiry` | `p_org uuid, p_kind text, p_lot uuid, p_expires date, p_note text DEFAULT NULL::text` |
+| `set_shelf_life` | `p_org uuid, p_ingredient uuid, p_days integer` |
 | `set_staff_pin` | `p_staff uuid, p_pin text` |
 | `skip_social_post` | `p_post uuid` |
 | `start_staff_session` | `p_device uuid, p_staff uuid, p_pin text` |
@@ -282,6 +309,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `submit_order` | `p_org uuid, p_branch uuid, p_order_id uuid, p_idempotency_key text, p_device uuid, p_staff uuid, p_channel uuid, p_table uuid DEFAULT NULL::uuid, p_guests integer DEFAULT NULL::integer, p_placed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_lines jsonb DEFAULT '[]'::jsonb, p_provisional_receipt_no text DEFAULT NULL::text` |
 | `submit_stock_count` | `p_count uuid` |
 | `transfer_destinations` | `p_org uuid` |
+| `update_incident` | `p_org uuid, p_incident uuid, p_status text, p_severity text, p_root_cause text DEFAULT NULL::text, p_customer_resolution text DEFAULT NULL::text` |
 | `update_membership` | `p_membership uuid, p_role app_role DEFAULT NULL::app_role, p_branch_ids uuid[] DEFAULT NULL::uuid[]` |
 | `void_order_item` | `p_org uuid, p_branch uuid, p_order_item uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `void_purchase` | `p_purchase uuid, p_reason text` |

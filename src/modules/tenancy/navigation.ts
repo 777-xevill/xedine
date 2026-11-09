@@ -19,6 +19,8 @@ export const FEATURE_KEYS = [
   'reviews',
   'branches',
   'compliance',
+  'foodSafety',
+  'complaints',
   'staffRecords',
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -41,6 +43,9 @@ export type IconKey =
   | 'branches'
   | 'benchmarks'
   | 'compliance'
+  | 'foodSafety'
+  | 'dailyChecks'
+  | 'complaints'
   | 'staffRecords'
   | 'pos'
   | 'kds'
@@ -117,6 +122,14 @@ const OPTIONAL: LinkRule[] = [
   { key: 'branches', path: '/branches', roles: LEADS, feature: 'branches' },
   { key: 'benchmarks', path: '/benchmarks', roles: MONEY, feature: 'branches' },
   { key: 'compliance', path: '/compliance', roles: LEADS, feature: 'compliance' },
+  { key: 'foodSafety', path: '/food-safety', roles: STOCK, feature: 'foodSafety' },
+  {
+    key: 'dailyChecks',
+    path: '/daily-checks',
+    roles: ['owner', 'manager', 'kitchen', 'accountant'],
+    feature: 'foodSafety',
+  },
+  { key: 'complaints', path: '/complaints', roles: ['owner', 'manager'], feature: 'complaints' },
   { key: 'staffRecords', path: '/staff/records', roles: LEADS, feature: 'staffRecords' },
 ];
 
@@ -176,10 +189,13 @@ const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   campaigns: 'customers',
   growth: 'customers',
   reviews: 'customers',
+  complaints: 'customers',
   menu: 'restaurant',
   branches: 'restaurant',
   staffRecords: 'restaurant',
   compliance: 'restaurant',
+  foodSafety: 'restaurant',
+  dailyChecks: 'restaurant',
 };
 
 const SECTION_ORDER: NavSectionKey[] = ['top', 'daily', 'money', 'customers', 'restaurant'];

@@ -340,6 +340,16 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_safety_status',
+    description:
+      'Food safety and daily checks now: ingredients stopped (and the dishes they take off the till), lots near or past their date, hygiene and inspection checks due or not recorded in the last 7 days, and open complaints as counts (owner and manager; never customer details).',
+    input_schema: {
+      type: 'object',
+      properties: { branch: branchProp },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'get_staff_exceptions',
     description:
       'Per person at the till: discounts, voids after the kitchen ticket or after payment, and refunds, in a period (owner and accountant only). These are things to check, never proof of wrongdoing.',
@@ -392,6 +402,7 @@ export const TOOL_PAGES: Record<string, string> = {
   get_reviews_summary: 'reviews',
   get_purchases: 'purchases',
   get_compliance: 'compliance',
+  get_safety_status: 'foodSafety',
   get_staff_exceptions: 'staffRecords',
 };
 
@@ -1358,6 +1369,63 @@ export async function runTool(
               days_left: r.days_left === null ? null : num(r.days_left),
               status: r.status,
             })),
+        };
+      }
+      case 'get_safety_status': {
+        const args = { p_org: ctx.orgId, p_branch: branch, p_now: ctx.nowIso };
+        // The caller's own permissions decide: a part this role may not read comes back null.
+        const [blocks, lots, checks, complaints] = await Promise.all([
+          ctx.sb.rpc('metric_food_safety_blocks', args),
+          ctx.sb.rpc('metric_food_safety', args),
+          ctx.sb.rpc('metric_daily_checks', { ...args, p_days: 7 }),
+          ctx.sb.rpc('metric_incident_summary', args),
+        ]);
+        const checkRows = (checks.data ?? []) as Record<string, unknown>[];
+        const complaintRow = ((complaints.data ?? []) as Record<string, unknown>[])[0];
+        return {
+          metric_id: 'food_safety.status',
+          filters: { branch: input.branch ?? null },
+          as_of,
+          data: {
+            stopped: blocks.error
+              ? null
+              : ((blocks.data ?? []) as Record<string, unknown>[])
+                  .slice(0, STOCK_ROWS)
+                  .map((r) => ({
+                    ingredient: r.name,
+                    branch: ctx.branches.find((b) => b.id === r.branch_id)?.name ?? null,
+                    why: r.reason,
+                    past_date_since: r.expired_on,
+                    dishes_off_the_till: r.dishes,
+                  })),
+            near_or_past_date: lots.error
+              ? null
+              : ((lots.data ?? []) as Record<string, unknown>[]).slice(0, STOCK_ROWS).map((r) => ({
+                  ingredient: r.name,
+                  safe_until: r.expires_on,
+                  days_left: num(r.days_left),
+                  status: r.status,
+                })),
+            checks: checks.error
+              ? null
+              : {
+                  due_now: checkRows.filter((r) => r.state === 'due').map((r) => r.name),
+                  not_recorded: checkRows
+                    .filter((r) => r.state === 'missing')
+                    .slice(0, STOCK_ROWS)
+                    .map((r) => ({ check: r.name, for_period: r.period_start })),
+                },
+            complaints:
+              complaints.error || !complaintRow
+                ? null
+                : {
+                    new: num(complaintRow.open_count),
+                    being_fixed: num(complaintRow.in_progress_count),
+                    serious_not_closed: num(complaintRow.high_unresolved),
+                    corrective_actions_overdue: num(complaintRow.overdue_actions),
+                    closed_last_30_days: num(complaintRow.resolved_30d),
+                  },
+          },
         };
       }
       case 'get_staff_exceptions': {

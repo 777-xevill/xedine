@@ -116,6 +116,24 @@ Star = high popularity, high margin · Plowhorse = high, low · Puzzle = low, hi
 
 Hiding (`set_ingredient_hidden`) is refused while `stock.theoretical` > 0 or anything is in transit in any branch, and needs the owner's "none left" where the item was bought but never counted. A hidden item drops out of `stock.theoretical`'s list, count sheets and the bazar list (it has no stock by then), keeps all its history in every period metric, and comes back on its next purchase.
 
+## Food safety (ADR 0043)
+A lot is one arrival at a branch: a confirmed purchase line, or a received transfer line. "Today" is the branch's business date.
+- `lot.safe_until` = the date written on the lot, else arrival date + `ingredients.shelf_life_days`; null when neither exists (never blocked).
+- `food_safety.blocked` — an ingredient at a branch with an active hold, or whose newest lot (latest arrival; on a tie the latest date, and a lot with no date counts as safe) has `lot.safe_until` < today and the restaurant blocks on dates. A dish or variant is blocked when the recipe it really uses (`active_recipe`, walked through sub-recipes) contains a blocked ingredient.
+- `food_safety.lots` — lots with `lot.safe_until` − today ≤ 2. Status: `expired` (< 0), `today` (0), `soon` (1–2).
+- `food_safety.on_shelf` = what is probably left of a lot, oldest used first: lay the stock figure (`stock.theoretical`, or `stock.estimate` when never counted, marked estimated) over the lots newest first; a lot keeps `max(0, min(its qty, stock − the qty of all newer lots))`.
+- `food_safety.sold` — orders accepted while blocked because they waited offline, last 7 days.
+
+## Daily checks (ADR 0043)
+- A period is the business day, the restaurant's week (from `org_settings.week_start`) or the calendar month.
+- `check.state` per branch, check and period: `done` or `problem` as recorded, else `due` while the period is running, `missing` once it has ended. Periods ending before the check's `starts_on` do not exist.
+- `check.score` = recorded (`done` + `problem`) ÷ all finished periods touching the window, in bps; null when none has finished. A problem honestly recorded counts as recorded; a late record counts, and is marked late.
+
+## Complaints (ADR 0043)
+- `incident.age_days` = business date resolved (or today) − business date opened.
+- `incident.overdue_actions` = corrective actions not done with `due_on` < today.
+- `incident.median_hours_to_resolve` = median of (resolved_at − opened_at) in hours, over cases resolved in the last 30 days.
+
 ## Discipline score (per branch per day, 0–100)
 Bazar entries recorded (25) · waste log touched (15) · cash close done (20) · scheduled count done (25) · recipe coverage ≥ 90% (15).
 

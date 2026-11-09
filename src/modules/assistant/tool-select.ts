@@ -64,6 +64,12 @@ export const GROUPS: Record<string, Group> = {
     pages: ['compliance'],
     words: /licen[cs]e|vat|tax|compliance|due|expire|mushak|renew|ভ্যাট|লাইসেন্স|ট্যাক্স/i,
   },
+  safety: {
+    tools: ['get_safety_status'],
+    pages: ['foodSafety', 'dailyChecks', 'complaints'],
+    words:
+      /safety|safe|expir|spoil|shelf life|hygiene|clean|inspection|checklist|daily check|complaint|incident|corrective|মেয়াদ|নষ্ট|পরিষ্কার|পরিদর্শন|অভিযোগ|নিরাপদ/i,
+  },
 };
 
 export function toolNamesFor(question: string, page?: string): string[] {

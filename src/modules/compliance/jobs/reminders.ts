@@ -56,5 +56,48 @@ export async function sendComplianceReminders(
       idempotencyKey: `compliance:${r.reminder_key}`,
     });
   }
-  return rows.length;
+  return rows.length + (await sendSafetySummary(sb, orgId, at, to, t));
+}
+
+/** One line a morning when something needs the owner (ADR 0043); nothing at all on a clean day. */
+async function sendSafetySummary(
+  sb: Supabase,
+  orgId: string,
+  at: Date,
+  to: NonNullable<Awaited<ReturnType<typeof ownerRecipient>>>,
+  t: ReturnType<typeof createTranslator<typeof en, 'compliance'>>,
+): Promise<number> {
+  const { data, error } = await sb.rpc('job_safety_summary', {
+    p_org: orgId,
+    p_now: at.toISOString(),
+  });
+  if (error) throw error;
+  const row = (data ?? [])[0] as
+    | {
+        business_date: string;
+        blocked_items: number;
+        missed_checks: number;
+        overdue_actions: number;
+      }
+    | undefined;
+  if (!row) return 0;
+  const [blocked, missed, overdue] = [
+    row.blocked_items,
+    row.missed_checks,
+    row.overdue_actions,
+  ].map(Number) as [number, number, number];
+  if (blocked + missed + overdue === 0) return 0;
+  await queueMessage(sb, {
+    orgId,
+    toPhone: to.phone,
+    templateKey: 'compliance_reminder',
+    language: to.locale,
+    body: t('reminderSafety', {
+      blocked: formatNumber(blocked, to.locale),
+      missed: formatNumber(missed, to.locale),
+      overdue: formatNumber(overdue, to.locale),
+    }),
+    idempotencyKey: `compliance:safety:${row.business_date}`,
+  });
+  return 1;
 }

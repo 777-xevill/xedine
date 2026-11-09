@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/db/supabase-browser';
 import type { VatConfig } from '@/lib/money';
+import type { BlockedItem } from './food-safety';
 import type { OutboxOp, Transport } from './outbox';
 
 /** Typed wrappers over the Phase 1 RPCs and reads the POS/KDS surfaces need (ADR 0013). */
@@ -429,6 +430,22 @@ export async function fetchMenu(
     name_bn: c.name_bn as string | null,
     items: itemsByCategory.get(c.id as string) ?? [],
   }));
+}
+
+/** Dishes that cannot be sold right now for food safety (ADR 0043). */
+export async function fetchBlockedItems(
+  sb: SupabaseClient,
+  orgId: string,
+  branchId: string,
+  atIso: string,
+): Promise<BlockedItem[]> {
+  const { data, error } = await sb.rpc('food_safety_blocked_items', {
+    p_org: orgId,
+    p_branch: branchId,
+    p_now: atIso,
+  });
+  if (error) throw error;
+  return (data ?? []) as BlockedItem[];
 }
 
 export interface CartLine {

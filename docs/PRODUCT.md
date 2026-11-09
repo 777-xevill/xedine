@@ -48,6 +48,8 @@ Owner · Branch manager · Cashier · Kitchen · Purchaser (bazar) · Accountant
 
 **M12 Reviews → Operations** — Google reviews (Business Profile API, needs access approval), own feedback, pasted Facebook/foodpanda reviews (Meta removed third-party Groups API access in April 2024); themes; AI reply drafts; joins complaints with KDS ticket times, staffing and items ("slow service" → Friday 20–22 tickets 2× slower).
 
+**Food safety, daily checks, complaints** (ADR 0043) — a shelf life per ingredient dates every lot with no extra work for the purchaser; an expired or held ingredient's dishes leave the till (a sale taken offline is accepted and flagged); the restaurant's own hygiene, inspection and paperwork list shows what is due and what nobody recorded; every complaint or incident is followed to its cause, what the customer got and the corrective actions done.
+
 **M13 Branch Intelligence** — league table, like-for-like comparisons, manager scorecards, transfer audit, "gap to best branch" in ৳.
 
 **M14 Industry Benchmarking** — opt-in, anonymised comparison of food cost %, labour %, GP %, sales per branch per day, AOV, rating, repeat rate, waste %, delivery share against peers by segment (cuisine, format, branch band, city/area, AOV band); percentiles only; minimum 5 restaurants per segment; "industry reference" ranges clearly labelled until enough peers exist.

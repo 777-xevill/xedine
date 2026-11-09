@@ -27,6 +27,7 @@ import {
   writeReplyAction,
 } from '@/modules/customers/actions';
 import { businessToday } from '@/modules/metrics/queries';
+import { caseFromFeedbackAction, caseFromReviewAction } from '@/modules/reviews/incident-actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 /**
@@ -191,6 +192,19 @@ export default async function ReviewsPage({ params }: { params: Promise<{ org: s
                     </div>
                     <p className="mt-1">{f.comment as string}</p>
                     <Themes themes={(f.themes as string[]) ?? []} label={(k) => t(`themes.${k}`)} />
+                    {Number(f.rating) <= 6 ? (
+                      <ActionForm
+                        action={caseFromFeedbackAction}
+                        successKey="reviews.caseOpened"
+                        className="mt-2"
+                      >
+                        {hidden}
+                        <input type="hidden" name="feedbackId" value={f.id as string} />
+                        <Button type="submit" size="sm" variant="ghost">
+                          {t('openCase')}
+                        </Button>
+                      </ActionForm>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -224,6 +238,24 @@ export default async function ReviewsPage({ params }: { params: Promise<{ org: s
                     <Themes themes={r.themes} label={(k) => t(`themes.${k}`)} />
                   </div>
                   <p className="mt-3 text-sm">{r.body}</p>
+                  {(r.rating ?? 10) <= 6 ? (
+                    <ActionForm
+                      action={caseFromReviewAction}
+                      successKey="reviews.caseOpened"
+                      className="mt-2"
+                    >
+                      {hidden}
+                      <input type="hidden" name="reviewId" value={r.id} />
+                      <input
+                        type="hidden"
+                        name="branchId"
+                        value={r.branch_id ?? ctx.selectedBranchId ?? ctx.branches[0]?.id ?? ''}
+                      />
+                      <Button type="submit" size="sm" variant="ghost">
+                        {t('openCase')}
+                      </Button>
+                    </ActionForm>
+                  ) : null}
                   {cx ? (
                     <p className="glass-tile mt-3 rounded-input p-3 text-xs text-secondary">
                       {t('context', {

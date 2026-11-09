@@ -22,6 +22,7 @@ import {
   fetchActiveStaff,
   fetchChannels,
   fetchMemberCardOn,
+  fetchBlockedItems,
   fetchMenu,
   fetchOpenShift,
   fetchOrder,
@@ -69,6 +70,12 @@ import {
 import { DialogShell, ManagerApprovalStep, type PaymentMethod, type PickedItem } from './dialogs';
 import { PairingScreen, StaffGate } from './gate';
 import { applyTender, buildLocalOrder, provisionalReceiptNo } from './local-order';
+import {
+  applyFoodBlocks,
+  blockedIngredients,
+  isFoodSafetyRefusal,
+  type BlockedItem,
+} from './food-safety';
 import { isNetworkError, Outbox, type FlushResult, type OutboxEntry } from './outbox';
 import { idbOutboxStore } from './outbox-idb';
 import {
@@ -296,6 +303,7 @@ function Till({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<BlockedItem[]>([]);
   const [recent, setRecent] = useState<OrderRow[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
   // The member on the open bill (ADR 0042), read again whenever the bill's customer or money changes.
@@ -421,6 +429,25 @@ function Till({
       setSyncing(false);
     }
   }, [outbox, reloadOrder]);
+
+  // What cannot be sold for food safety (ADR 0043). Refreshed while online; offline, the last list stands.
+  const refreshBlocked = useCallback(async () => {
+    try {
+      setBlocked(await fetchBlockedItems(sb, device.orgId, device.branchId, now().toISOString()));
+    } catch {
+      // The server still refuses a blocked dish; a failed refresh must not stop the till.
+    }
+  }, [sb, device.orgId, device.branchId]);
+
+  useEffect(() => {
+    if (!browserOnline) return;
+    const first = window.setTimeout(() => void refreshBlocked(), 0);
+    const timer = window.setInterval(() => void refreshBlocked(), 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
+  }, [browserOnline, refreshBlocked]);
 
   useEffect(() => {
     if (!browserOnline) return;
@@ -567,7 +594,10 @@ function Till({
       });
       if (outcome.state === 'refused') {
         if (sessionEnded(outcome.error)) onSessionExpired();
-        else setError(t('orderRefused'));
+        else if (isFoodSafetyRefusal(outcome.error)) {
+          setError(t('foodSafetyRefused'));
+          void refreshBlocked();
+        } else setError(t('orderRefused'));
         return;
       }
       if (outcome.state === 'synced') {
@@ -609,6 +639,11 @@ function Till({
       setCartMode({ kind: 'new' });
       setScreen('order');
     } catch (e) {
+      if (isFoodSafetyRefusal(e)) {
+        setError(t('foodSafetyRefused'));
+        void refreshBlocked();
+        return;
+      }
       setError(errorText(e));
     } finally {
       setBusy(false);
@@ -1012,10 +1047,15 @@ function Till({
         ) : null}
         {error ? <Alert tone="danger">{error}</Alert> : null}
         {notice ? <Alert tone="success">{notice}</Alert> : null}
+        {screen === 'cart' && blocked.length > 0 ? (
+          <Alert tone="warning">
+            {t('foodSafetyNotice', { items: blockedIngredients(blocked, locale).join(', ') })}
+          </Alert>
+        ) : null}
 
         {screen === 'cart' ? (
           <CartScreen
-            menu={data.menu}
+            menu={applyFoodBlocks(data.menu, blocked)}
             channels={data.channels}
             tables={data.tables}
             channelId={channelId}

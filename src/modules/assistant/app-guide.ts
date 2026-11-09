@@ -197,7 +197,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   foodSafety: {
     name: 'Food safety',
-    what: 'What cannot be cooked right now and why, what is near its date, how many days each ingredient stays safe, and stopping an ingredient. Dishes with a stopped ingredient leave the till. Needs the Food safety feature switched on.',
+    what: 'What cannot be cooked right now and why, what is near its date, how many days each ingredient stays safe, and stopping an ingredient. Dishes with a stopped ingredient leave the till.',
     words: [
       'food safety',
       'expired',
@@ -212,7 +212,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   dailyChecks: {
     name: 'Daily checks',
-    what: 'Hygiene tasks, inspection records and paperwork: what is due today, what nobody recorded, and the restaurant’s own list. Needs the Food safety feature switched on.',
+    what: 'Hygiene tasks, inspection records and paperwork: what is due today, what nobody recorded, and the restaurant’s own list.',
     words: [
       'daily check',
       'hygiene',
@@ -227,7 +227,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   complaints: {
     name: 'Complaints',
-    what: 'Customer complaints and incidents: what happened, why, what the customer got and the corrective actions. Needs the Complaints feature switched on.',
+    what: 'Customer complaints and incidents: what happened, why, what the customer got and the corrective actions.',
     words: [
       'complaint',
       'incident',

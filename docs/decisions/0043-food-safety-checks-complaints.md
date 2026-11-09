@@ -16,8 +16,16 @@ The founder asked for three things inventory did not do: stop expired or unsafe 
 7. **A problem becomes a case.** Recording a check as a problem opens a hygiene incident, once. A bad review or after-meal comment becomes a complaint with one tap, once.
 8. **A case closes only with its story complete:** why it happened, what the customer got, and at least one corrective action, all done. A closed case is locked until reopened with a reason. *Confirm:* this is strict for small complaints; a low-severity exemption would be one condition.
 9. **PII (CLAUDE.md #8).** A customer's name and phone are optional, live on `incidents`, and are readable by the owner and that branch's manager only. All writes go through functions, so the audit row never contains them. `get_safety_status` gives the assistant counts only.
-10. **Both pages are feature switches** (Settings → Features → *Food safety & daily checks*, *Complaints*), like every optional module (ADR 0024). The block itself depends only on the data, so switching the page off does not stop it.
+10. *(Replaced by the amendment below.)* Both pages were feature switches at first.
 11. **Numbers.** Everything shown comes from a metric function (METRICS.md "Food safety", "Daily checks", "Complaints"). No AI decides what is safe.
+
+## Amendment (2026-11-09): easier for every user
+After seeing the live pages at phone width the founder asked to make them easier. This replaces §10.
+- **Always in the sidebar**, for the owner, manager and kitchen (Complaints: owner and manager), like Dish ingredients (ADR 0037). The till blocks whether or not the page is visible, so hiding the page that explains why a dish vanished made no sense. The two feature switches are gone.
+- **Common days are filled in for the owner to check** (`suggestShelfLife`, a fixed word list in English, Banglish and Bangla, marked "suggested"). Nothing is saved until a person presses Save, and an item it does not know stays empty. Cautious rules of thumb for chilled or shelf storage, `TODO(verify)` with a food-safety adviser. *Confirm the table.*
+- **One sentence on top, only what needs doing below**, and the rest behind a tap, on all three pages. বাংলা | English on each, dates and digits in Bangla.
+- **Daily checks:** an empty restaurant sees one button. *Done* is one tap (a reading box only where the check needs one), and *Something is wrong* opens on demand. There is deliberately no "mark all done": a record nobody checked is worse than a missing one.
+- **Complaints:** one line and how serious, then Save; everything else is optional behind *Add more*. An open case is three numbered steps: what will you change, why did it happen, what did the customer get. The rule in §8 is unchanged.
 
 ## Alternatives considered
 - **Block on the estimated quantity left of an expired lot:** precise-sounding, but wrong whenever a dish has no recipe or usage is off, and too slow to run on every order.

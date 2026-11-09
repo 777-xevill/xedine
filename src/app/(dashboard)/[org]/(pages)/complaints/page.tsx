@@ -1,22 +1,23 @@
+import { CircleAlert, CircleCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { LocaleSwitcher } from '@/components/locale-switcher';
+import { Banner } from '@/components/stock/parts';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardTitle,
-  EmptyState,
   Hint,
   Input,
   Label,
   PageTitle,
   Select,
-  Stat,
   Textarea,
 } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { businessToday } from '@/modules/metrics/queries';
 import {
@@ -31,7 +32,6 @@ import { getOrgContext } from '@/modules/tenancy/context';
 const KINDS = ['complaint', 'food_safety', 'hygiene', 'injury', 'equipment', 'other'] as const;
 const SEVERITIES = ['low', 'medium', 'high'] as const;
 const SOURCES = ['in_person', 'phone', 'facebook', 'foodpanda', 'google', 'other'] as const;
-const STATUS_TONE = { open: 'danger', in_progress: 'warning', resolved: 'success' } as const;
 const SEVERITY_TONE = { low: 'info', medium: 'warning', high: 'danger' } as const;
 
 interface Incident {
@@ -39,7 +39,7 @@ interface Incident {
   branch_id: string;
   kind: (typeof KINDS)[number];
   severity: (typeof SEVERITIES)[number];
-  status: keyof typeof STATUS_TONE;
+  status: 'open' | 'in_progress' | 'resolved';
   source: string;
   title: string;
   details: string | null;
@@ -68,8 +68,9 @@ interface Action {
 }
 
 /**
- * Complaints (ADR 0043): one record from "the customer said" to "this is what we changed". A case closes
- * only with its cause, what the customer got, and every corrective action done.
+ * Complaints (ADR 0043), phone first: saying what happened takes one line and one tap; each open case then
+ * walks through three plain steps. A case closes only with its cause, what the customer got, and every
+ * corrective action done.
  */
 export default async function ComplaintsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
@@ -109,263 +110,98 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
     actions.set(a.incident_id, [...(actions.get(a.incident_id) ?? []), a]);
 
   const n = (v: unknown) => formatNumber(Number(v ?? 0), loc);
+  const day = (d: string) => formatDhakaDate(new Date(`${d}T06:00:00Z`), loc);
   const branchName = (id: string) => ctx.branches.find((b) => b.id === id)?.name ?? '';
   const showBranch = ctx.branches.length > 1;
+  const open = incidents.filter((x) => x.status !== 'resolved');
+  const closed = incidents.filter((x) => x.status === 'resolved');
+  const overdue = Number(s.overdue_actions ?? 0);
+  const median = s.median_hours_to_resolve;
   const hidden = (
     <>
       <input type="hidden" name="orgId" value={ctx.org.id} />
       <input type="hidden" name="orgSlug" value={ctx.org.slug} />
     </>
   );
-  const median = s.median_hours_to_resolve;
+
+  const header = (x: Incident) => (
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="font-semibold">{x.title}</p>
+        <p className="text-xs text-secondary">
+          {showBranch ? `${branchName(x.branch_id)} · ` : ''}
+          {t(`kinds.${x.kind}`)} · {day(x.occurred_on)}
+          {x.order_ref ? ` · ${x.order_ref}` : ''}
+        </p>
+      </div>
+      <StatusBadge tone={x.status === 'resolved' ? 'success' : SEVERITY_TONE[x.severity]}>
+        {x.status === 'resolved' ? t('statuses.resolved') : t(`severities.${x.severity}`)}
+      </StatusBadge>
+    </div>
+  );
+
+  const facts = (x: Incident) => {
+    const ingredient =
+      loc === 'bn' && x.ingredient_name_bn ? x.ingredient_name_bn : x.ingredient_name;
+    return (
+      <>
+        {x.details && x.details !== x.title ? (
+          <p className="mt-2 text-sm whitespace-pre-wrap">{x.details}</p>
+        ) : null}
+        <p className="mt-2 text-xs text-secondary">
+          {t('age', { count: x.age_days, n: n(x.age_days) })} · {t(`sources.${x.source}`)}
+          {ingredient ? ` · ${t('ingredient')}: ${ingredient}` : ''}
+          {Number(x.overdue_actions) > 0 ? ` · ${t('overdue', { n: n(x.overdue_actions) })}` : ''}
+        </p>
+        {x.customer_name || x.customer_phone ? (
+          <p className="mt-1 text-sm">
+            {x.customer_name ?? t('customer')}
+            {x.customer_phone && x.contact_ok ? (
+              <>
+                {' · '}
+                <a
+                  className="text-info underline-offset-4 hover:underline"
+                  href={`tel:${x.customer_phone}`}
+                >
+                  {x.customer_phone}
+                </a>
+              </>
+            ) : null}
+            {x.customer_phone && !x.contact_ok ? ` · ${t('noContact')}` : ''}
+          </p>
+        ) : null}
+      </>
+    );
+  };
+
+  const stepTitle = (step: number, text: string) => (
+    <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+      <span
+        aria-hidden
+        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-xs"
+      >
+        {n(step)}
+      </span>
+      {text}
+    </p>
+  );
 
   return (
     <>
-      <PageTitle title={t('title')} subtitle={t('subtitle')} />
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat
-          label={t('statOpen')}
-          value={n(Number(s.open_count ?? 0) + Number(s.in_progress_count ?? 0))}
-        />
-        <Stat label={t('statHigh')} value={n(s.high_unresolved)} />
-        <Stat label={t('statOverdue')} value={n(s.overdue_actions)} />
-        <Stat
-          label={t('statHours')}
-          value={median === null || median === undefined ? '—' : n(median)}
-        />
-      </div>
+      <PageTitle title={t('title')} subtitle={t('subtitle')} actions={<LocaleSwitcher />} />
+      <div className="mx-auto max-w-2xl space-y-5">
+        {open.length > 0 ? (
+          <Banner
+            tone={overdue > 0 ? 'danger' : 'warning'}
+            icon={<CircleAlert />}
+            title={t('summaryOpen', { count: open.length, n: n(open.length) })}
+            body={overdue > 0 ? t('summaryOverdue', { n: n(overdue) }) : undefined}
+          />
+        ) : (
+          <Banner tone="success" icon={<CircleCheck />} title={t('summaryNone')} />
+        )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          {incidents.length === 0 ? (
-            <Card>
-              <EmptyState title={t('none')} />
-            </Card>
-          ) : (
-            incidents.map((x) => {
-              const steps = actions.get(x.id) ?? [];
-              const closed = x.status === 'resolved';
-              const ingredient =
-                loc === 'bn' && x.ingredient_name_bn ? x.ingredient_name_bn : x.ingredient_name;
-              return (
-                <Card key={x.id} className="p-4 sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold">{x.title}</p>
-                      <p className="text-xs text-secondary">
-                        {showBranch ? `${branchName(x.branch_id)} · ` : ''}
-                        {t(`kinds.${x.kind}`)} · {t(`sources.${x.source}`)} · {x.occurred_on}
-                        {x.order_ref ? ` · ${x.order_ref}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      <StatusBadge tone={SEVERITY_TONE[x.severity]}>
-                        {t(`severities.${x.severity}`)}
-                      </StatusBadge>
-                      <StatusBadge tone={STATUS_TONE[x.status]}>
-                        {t(`statuses.${x.status}`)}
-                      </StatusBadge>
-                    </div>
-                  </div>
-                  {x.details ? (
-                    <p className="mt-2 text-sm whitespace-pre-wrap">{x.details}</p>
-                  ) : null}
-                  <p className="mt-2 text-xs text-secondary">
-                    {t('age', { count: x.age_days, n: n(x.age_days) })}
-                    {ingredient ? ` · ${t('ingredient')}: ${ingredient}` : ''}
-                    {Number(x.overdue_actions) > 0
-                      ? ` · ${t('overdue', { n: n(x.overdue_actions) })}`
-                      : ''}
-                  </p>
-                  {x.customer_name || x.customer_phone ? (
-                    <p className="mt-1 text-sm">
-                      {x.customer_name ?? t('customer')}
-                      {x.customer_phone && x.contact_ok ? (
-                        <>
-                          {' · '}
-                          <a
-                            className="text-info underline-offset-4 hover:underline"
-                            href={`tel:${x.customer_phone}`}
-                          >
-                            {x.customer_phone}
-                          </a>
-                        </>
-                      ) : null}
-                      {x.customer_phone && !x.contact_ok ? ` · ${t('noContact')}` : ''}
-                    </p>
-                  ) : null}
-
-                  <div className="mt-3 border-t border-line pt-3">
-                    <p className="mb-2 text-sm font-semibold">{t('actionsTitle')}</p>
-                    {steps.length === 0 ? (
-                      <p className="text-sm text-secondary">{t('noActions')}</p>
-                    ) : (
-                      <ul className="space-y-2 text-sm">
-                        {steps.map((a) => (
-                          <li
-                            key={a.id}
-                            className="flex flex-wrap items-center justify-between gap-2"
-                          >
-                            <span>
-                              {a.body}
-                              {a.due_on ? (
-                                <span className="ms-1 text-xs text-secondary">
-                                  · {t('dueBy', { date: a.due_on })}
-                                </span>
-                              ) : null}
-                            </span>
-                            {a.kind === 'note' ? (
-                              <StatusBadge tone="neutral">{t('note')}</StatusBadge>
-                            ) : a.done_at ? (
-                              <StatusBadge tone="success">{t('done')}</StatusBadge>
-                            ) : closed ? null : (
-                              <ActionForm action={completeIncidentActionAction}>
-                                {hidden}
-                                <input type="hidden" name="actionId" value={a.id} />
-                                <Button type="submit" size="sm" variant="secondary">
-                                  {t('markDone')}
-                                </Button>
-                              </ActionForm>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {!closed ? (
-                      <ActionForm
-                        action={addIncidentActionAction}
-                        successKey="common.saved"
-                        className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end"
-                      >
-                        {hidden}
-                        <input type="hidden" name="incidentId" value={x.id} />
-                        <div>
-                          <Label htmlFor={`ab-${x.id}`}>{t('newAction')}</Label>
-                          <Input
-                            id={`ab-${x.id}`}
-                            name="body"
-                            required
-                            maxLength={1000}
-                            placeholder={t('newActionExample')}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`ak-${x.id}`}>{t('actionKind')}</Label>
-                          <Select id={`ak-${x.id}`} name="kind" defaultValue="corrective">
-                            <option value="corrective">{t('corrective')}</option>
-                            <option value="note">{t('note')}</option>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor={`ad-${x.id}`}>{t('dueOn')}</Label>
-                          <Input id={`ad-${x.id}`} name="dueOn" type="date" min={today} />
-                        </div>
-                        <Button type="submit" size="sm" variant="secondary">
-                          {t('addAction')}
-                        </Button>
-                      </ActionForm>
-                    ) : null}
-                  </div>
-
-                  {closed ? (
-                    <div className="mt-3 space-y-2 border-t border-line pt-3 text-sm">
-                      <p>
-                        <span className="font-semibold">{`${t('rootCause')}: `}</span>
-                        {x.root_cause}
-                      </p>
-                      <p>
-                        <span className="font-semibold">{`${t('customerResolution')}: `}</span>
-                        {x.customer_resolution}
-                      </p>
-                      <details>
-                        <summary className="cursor-pointer text-secondary">{t('reopen')}</summary>
-                        <ActionForm
-                          action={reopenIncidentAction}
-                          successKey="common.saved"
-                          className="mt-2 flex flex-wrap items-end gap-2"
-                        >
-                          {hidden}
-                          <input type="hidden" name="incidentId" value={x.id} />
-                          <div className="min-w-48 flex-1">
-                            <Label htmlFor={`ro-${x.id}`}>{t('reopenReason')}</Label>
-                            <Input id={`ro-${x.id}`} name="reason" required maxLength={300} />
-                          </div>
-                          <Button type="submit" size="sm" variant="secondary">
-                            {t('reopen')}
-                          </Button>
-                        </ActionForm>
-                      </details>
-                    </div>
-                  ) : (
-                    <ActionForm
-                      action={saveIncidentAction}
-                      successKey="common.saved"
-                      className="mt-3 space-y-2 border-t border-line pt-3"
-                    >
-                      {hidden}
-                      <input type="hidden" name="incidentId" value={x.id} />
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label htmlFor={`st-${x.id}`}>{t('status')}</Label>
-                          <Select id={`st-${x.id}`} name="status" defaultValue={x.status}>
-                            <option value="open">{t('statuses.open')}</option>
-                            <option value="in_progress">{t('statuses.in_progress')}</option>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor={`sv-${x.id}`}>{t('severity')}</Label>
-                          <Select id={`sv-${x.id}`} name="severity" defaultValue={x.severity}>
-                            {SEVERITIES.map((v) => (
-                              <option key={v} value={v}>
-                                {t(`severities.${v}`)}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor={`rc-${x.id}`}>{t('rootCause')}</Label>
-                        <Textarea
-                          id={`rc-${x.id}`}
-                          name="rootCause"
-                          rows={2}
-                          maxLength={2000}
-                          defaultValue={x.root_cause ?? ''}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`cr-${x.id}`}>{t('customerResolution')}</Label>
-                        <Textarea
-                          id={`cr-${x.id}`}
-                          name="customerResolution"
-                          rows={2}
-                          maxLength={2000}
-                          defaultValue={x.customer_resolution ?? ''}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="submit"
-                          size="sm"
-                          variant="secondary"
-                          name="intent"
-                          value="save"
-                        >
-                          {t('save')}
-                        </Button>
-                        <Button type="submit" size="sm" name="intent" value="resolve">
-                          {t('resolve')}
-                        </Button>
-                      </div>
-                    </ActionForm>
-                  )}
-                </Card>
-              );
-            })
-          )}
-        </div>
-
-        <Card className="h-fit">
+        <Card className="p-4 sm:p-5">
           <CardTitle>{t('openTitle')}</CardTitle>
           <ActionForm action={openIncidentAction} successKey="common.saved" className="space-y-3">
             {hidden}
@@ -379,48 +215,21 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
                 placeholder={t('whatHappenedExample')}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="in-kind">{t('kind')}</Label>
-                <Select id="in-kind" name="kind" defaultValue="complaint">
-                  {KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {t(`kinds.${k}`)}
-                    </option>
-                  ))}
-                </Select>
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium">{t('severity')}</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {SEVERITIES.map((v) => (
+                  <label
+                    key={v}
+                    className="glass-tile flex min-h-11 items-center justify-center gap-1.5 rounded-input px-2 text-sm has-checked:border-purple"
+                  >
+                    <input type="radio" name="severity" value={v} defaultChecked={v === 'medium'} />
+                    {t(`severities.${v}`)}
+                  </label>
+                ))}
               </div>
-              <div>
-                <Label htmlFor="in-sev">{t('severity')}</Label>
-                <Select id="in-sev" name="severity" defaultValue="medium">
-                  {SEVERITIES.map((v) => (
-                    <option key={v} value={v}>
-                      {t(`severities.${v}`)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="in-src">{t('source')}</Label>
-                <Select id="in-src" name="source" defaultValue="in_person">
-                  {SOURCES.map((v) => (
-                    <option key={v} value={v}>
-                      {t(`sources.${v}`)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="in-on">{t('date')}</Label>
-                <Input
-                  id="in-on"
-                  name="occurredOn"
-                  type="date"
-                  max={today}
-                  defaultValue={today}
-                  required
-                />
-              </div>
+            </fieldset>
+            {showBranch ? (
               <div>
                 <Label htmlFor="in-branch">{t('branch')}</Label>
                 <Select
@@ -435,40 +244,67 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
                   ))}
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="in-bill">{t('bill')}</Label>
-                <Input id="in-bill" name="orderRef" maxLength={60} />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="in-details">{t('details')}</Label>
-              <Textarea id="in-details" name="details" rows={3} maxLength={4000} />
-            </div>
+            ) : (
+              <input type="hidden" name="branchId" value={ctx.branches[0]?.id ?? ''} />
+            )}
             <details>
-              <summary className="cursor-pointer text-sm text-secondary">
-                {t('foodRelated')}
-              </summary>
-              <div className="mt-2 space-y-2">
-                <Label htmlFor="in-ing">{t('ingredient')}</Label>
-                <Select id="in-ing" name="ingredientId" defaultValue="">
-                  <option value="">{t('noIngredient')}</option>
-                  {(ingredients.data ?? []).map((i) => (
-                    <option key={i.id as string} value={i.id as string}>
-                      {loc === 'bn' && i.name_bn ? (i.name_bn as string) : (i.name as string)}
-                    </option>
-                  ))}
-                </Select>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="hold" />
-                  {t('holdToo')}
-                </label>
-              </div>
-            </details>
-            <details>
-              <summary className="cursor-pointer text-sm text-secondary">
-                {t('customerDetails')}
-              </summary>
-              <div className="mt-2 space-y-2">
+              <summary className="cursor-pointer text-sm text-secondary">{t('addMore')}</summary>
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="in-kind">{t('kind')}</Label>
+                    <Select id="in-kind" name="kind" defaultValue="complaint">
+                      {KINDS.map((k) => (
+                        <option key={k} value={k}>
+                          {t(`kinds.${k}`)}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="in-src">{t('source')}</Label>
+                    <Select id="in-src" name="source" defaultValue="in_person">
+                      {SOURCES.map((v) => (
+                        <option key={v} value={v}>
+                          {t(`sources.${v}`)}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="in-on">{t('date')}</Label>
+                    <Input
+                      id="in-on"
+                      name="occurredOn"
+                      type="date"
+                      max={today}
+                      defaultValue={today}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="in-bill">{t('bill')}</Label>
+                    <Input id="in-bill" name="orderRef" maxLength={60} />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="in-details">{t('details')}</Label>
+                  <Textarea id="in-details" name="details" rows={3} maxLength={4000} />
+                </div>
+                <div>
+                  <Label htmlFor="in-ing">{t('foodRelated')}</Label>
+                  <Select id="in-ing" name="ingredientId" defaultValue="">
+                    <option value="">{t('noIngredient')}</option>
+                    {(ingredients.data ?? []).map((i) => (
+                      <option key={i.id as string} value={i.id as string}>
+                        {loc === 'bn' && i.name_bn ? (i.name_bn as string) : (i.name as string)}
+                      </option>
+                    ))}
+                  </Select>
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="hold" />
+                    {t('holdToo')}
+                  </label>
+                </div>
                 <div>
                   <Label htmlFor="in-cn">{t('customerName')}</Label>
                   <Input id="in-cn" name="customerName" maxLength={120} autoComplete="off" />
@@ -482,17 +318,202 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
                     maxLength={30}
                     autoComplete="off"
                   />
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="contactOk" />
+                    {t('contactOk')}
+                  </label>
                 </div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="contactOk" />
-                  {t('contactOk')}
-                </label>
               </div>
             </details>
-            <Button type="submit">{t('open')}</Button>
+            <Button type="submit" className="w-full sm:w-auto">
+              {t('open')}
+            </Button>
           </ActionForm>
-          <Hint className="mt-2">{t('openHint')}</Hint>
         </Card>
+
+        {open.map((x) => {
+          const steps = actions.get(x.id) ?? [];
+          return (
+            <Card key={x.id} className="p-4 sm:p-5">
+              {header(x)}
+              {facts(x)}
+
+              <div className="mt-4 border-t border-line pt-3">
+                {stepTitle(1, t('stepChange'))}
+                {steps.length > 0 ? (
+                  <ul className="mb-3 space-y-2 text-sm">
+                    {steps.map((a) => (
+                      <li key={a.id} className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="min-w-0">
+                          {a.body}
+                          {a.due_on ? (
+                            <span className="ms-1 text-xs text-secondary">
+                              · {t('dueBy', { date: day(a.due_on) })}
+                            </span>
+                          ) : null}
+                        </span>
+                        {a.kind === 'note' ? (
+                          <StatusBadge tone="neutral">{t('note')}</StatusBadge>
+                        ) : a.done_at ? (
+                          <StatusBadge tone="success">{t('done')}</StatusBadge>
+                        ) : (
+                          <ActionForm action={completeIncidentActionAction}>
+                            {hidden}
+                            <input type="hidden" name="actionId" value={a.id} />
+                            <Button type="submit" size="sm" variant="secondary">
+                              {t('markDone')}
+                            </Button>
+                          </ActionForm>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <ActionForm action={addIncidentActionAction} successKey="common.saved">
+                  {hidden}
+                  <input type="hidden" name="incidentId" value={x.id} />
+                  <input type="hidden" name="kind" value="corrective" />
+                  <div className="flex gap-2">
+                    <Input
+                      name="body"
+                      required
+                      maxLength={1000}
+                      placeholder={t('newActionExample')}
+                      aria-label={t('stepChange')}
+                      className="min-w-0 flex-1"
+                    />
+                    <Button type="submit" size="sm" variant="secondary">
+                      {t('addAction')}
+                    </Button>
+                  </div>
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-xs text-secondary">
+                      {t('addDate')}
+                    </summary>
+                    <Input
+                      name="dueOn"
+                      type="date"
+                      min={today}
+                      aria-label={t('dueOn')}
+                      className="mt-1 w-44"
+                    />
+                  </details>
+                </ActionForm>
+              </div>
+
+              <ActionForm
+                action={saveIncidentAction}
+                successKey="common.saved"
+                className="mt-4 space-y-4 border-t border-line pt-3"
+              >
+                {hidden}
+                <input type="hidden" name="incidentId" value={x.id} />
+                <input type="hidden" name="status" value={x.status} />
+                <div>
+                  {stepTitle(2, t('rootCause'))}
+                  <Textarea
+                    name="rootCause"
+                    rows={2}
+                    maxLength={2000}
+                    defaultValue={x.root_cause ?? ''}
+                    aria-label={t('rootCause')}
+                  />
+                </div>
+                <div>
+                  {stepTitle(3, t('customerResolution'))}
+                  <Textarea
+                    name="customerResolution"
+                    rows={2}
+                    maxLength={2000}
+                    defaultValue={x.customer_resolution ?? ''}
+                    aria-label={t('customerResolution')}
+                  />
+                </div>
+                <details>
+                  <summary className="cursor-pointer text-xs text-secondary">
+                    {t('changeSeverity')}
+                  </summary>
+                  <Select
+                    name="severity"
+                    defaultValue={x.severity}
+                    aria-label={t('severity')}
+                    className="mt-1"
+                  >
+                    {SEVERITIES.map((v) => (
+                      <option key={v} value={v}>
+                        {t(`severities.${v}`)}
+                      </option>
+                    ))}
+                  </Select>
+                </details>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" size="sm" name="intent" value="resolve">
+                    {t('resolve')}
+                  </Button>
+                  <Button type="submit" size="sm" variant="ghost" name="intent" value="save">
+                    {t('save')}
+                  </Button>
+                </div>
+              </ActionForm>
+            </Card>
+          );
+        })}
+
+        {closed.length > 0 ? (
+          <details className="glass-tile rounded-card p-4">
+            <summary className="cursor-pointer font-semibold">
+              {t('closedTitle', { n: n(closed.length) })}
+            </summary>
+            <ul className="mt-3 space-y-4">
+              {closed.map((x) => (
+                <li key={x.id} className="border-t border-line pt-3 first:border-t-0 first:pt-0">
+                  {header(x)}
+                  <details className="mt-1 text-sm">
+                    <summary className="cursor-pointer text-xs text-secondary">
+                      {t('seeWhatWasDone')}
+                    </summary>
+                    {facts(x)}
+                    <ul className="mt-2 space-y-1">
+                      {(actions.get(x.id) ?? []).map((a) => (
+                        <li key={a.id}>{a.body}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-2">
+                      <span className="font-semibold">{`${t('rootCause')}: `}</span>
+                      {x.root_cause}
+                    </p>
+                    <p className="mt-1">
+                      <span className="font-semibold">{`${t('customerResolution')}: `}</span>
+                      {x.customer_resolution}
+                    </p>
+                    <ActionForm
+                      action={reopenIncidentAction}
+                      successKey="common.saved"
+                      className="mt-2 flex gap-2"
+                    >
+                      {hidden}
+                      <input type="hidden" name="incidentId" value={x.id} />
+                      <Input
+                        name="reason"
+                        required
+                        maxLength={300}
+                        placeholder={t('reopenReason')}
+                        aria-label={t('reopenReason')}
+                        className="min-w-0 flex-1"
+                      />
+                      <Button type="submit" size="sm" variant="secondary">
+                        {t('reopen')}
+                      </Button>
+                    </ActionForm>
+                  </details>
+                </li>
+              ))}
+            </ul>
+            {median === null || median === undefined ? null : (
+              <Hint className="mt-3">{t('usualHours', { n: n(median) })}</Hint>
+            )}
+          </details>
+        ) : null}
       </div>
     </>
   );

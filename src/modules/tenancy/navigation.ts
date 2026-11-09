@@ -19,8 +19,6 @@ export const FEATURE_KEYS = [
   'reviews',
   'branches',
   'compliance',
-  'foodSafety',
-  'complaints',
   'staffRecords',
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -84,6 +82,7 @@ interface LinkRule {
 const MONEY: Role[] = ['owner', 'accountant'];
 const LEADS: Role[] = ['owner', 'manager', 'accountant'];
 const STOCK: Role[] = ['owner', 'manager', 'kitchen', 'purchaser', 'accountant'];
+const KITCHEN_LEADS: Role[] = ['owner', 'manager', 'kitchen'];
 
 const CORE: LinkRule[] = [
   {
@@ -94,9 +93,14 @@ const CORE: LinkRule[] = [
   { key: 'stock', path: '/stock', roles: STOCK },
   // Dish ingredients (ADR 0037): stock goes down by what is written here, so it is never switched off.
   { key: 'recipes', path: '/recipes', roles: ['owner', 'manager', 'kitchen', 'accountant'] },
+  // Never switched off (ADR 0043): a stopped ingredient takes dishes off the till whether or not anyone can
+  // see this page, so the people who run the kitchen always need to find out why.
+  { key: 'foodSafety', path: '/food-safety', roles: KITCHEN_LEADS },
+  { key: 'dailyChecks', path: '/daily-checks', roles: KITCHEN_LEADS },
   { key: 'sales', path: '/sales', roles: LEADS },
   { key: 'leaks', path: '/leaks', roles: MONEY },
   { key: 'menu', path: '/menu', roles: ['owner'] },
+  { key: 'complaints', path: '/complaints', roles: ['owner', 'manager'] },
 ];
 
 const OPTIONAL: LinkRule[] = [
@@ -122,14 +126,6 @@ const OPTIONAL: LinkRule[] = [
   { key: 'branches', path: '/branches', roles: LEADS, feature: 'branches' },
   { key: 'benchmarks', path: '/benchmarks', roles: MONEY, feature: 'branches' },
   { key: 'compliance', path: '/compliance', roles: LEADS, feature: 'compliance' },
-  { key: 'foodSafety', path: '/food-safety', roles: STOCK, feature: 'foodSafety' },
-  {
-    key: 'dailyChecks',
-    path: '/daily-checks',
-    roles: ['owner', 'manager', 'kitchen', 'accountant'],
-    feature: 'foodSafety',
-  },
-  { key: 'complaints', path: '/complaints', roles: ['owner', 'manager'], feature: 'complaints' },
   { key: 'staffRecords', path: '/staff/records', roles: LEADS, feature: 'staffRecords' },
 ];
 
@@ -179,6 +175,8 @@ const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   home: 'top',
   stock: 'daily',
   recipes: 'daily',
+  foodSafety: 'daily',
+  dailyChecks: 'daily',
   purchases: 'daily',
   plan: 'daily',
   sales: 'money',
@@ -194,8 +192,6 @@ const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   branches: 'restaurant',
   staffRecords: 'restaurant',
   compliance: 'restaurant',
-  foodSafety: 'restaurant',
-  dailyChecks: 'restaurant',
 };
 
 const SECTION_ORDER: NavSectionKey[] = ['top', 'daily', 'money', 'customers', 'restaurant'];

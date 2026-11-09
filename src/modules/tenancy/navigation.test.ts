@@ -22,13 +22,31 @@ describe('navigation (ADR 0024)', () => {
       'restaurant',
     ]);
     expect(keys(groups.flatMap((g) => g.links)).sort()).toEqual(keys(all).sort());
-    expect(keys(groups[1]!.links)).toEqual(['stock', 'recipes', 'purchases', 'plan']);
+    expect(keys(groups[1]!.links)).toEqual([
+      'stock',
+      'recipes',
+      'foodSafety',
+      'dailyChecks',
+      'purchases',
+      'plan',
+    ]);
   });
 
   it('an owner with nothing switched on sees only the core sections', () => {
     const nav = buildNavigation({ slug: 'demo', roles: ['owner'], enabled: [] });
-    // Dish ingredients is core (ADR 0037): stock goes down by what is written there.
-    expect(keys(nav.core)).toEqual(['home', 'stock', 'recipes', 'sales', 'leaks', 'menu']);
+    // Dish ingredients is core (ADR 0037): stock goes down by what is written there. Food safety, daily
+    // checks and complaints too (ADR 0043): a stopped ingredient takes dishes off the till either way.
+    expect(keys(nav.core)).toEqual([
+      'home',
+      'stock',
+      'recipes',
+      'foodSafety',
+      'dailyChecks',
+      'sales',
+      'leaks',
+      'menu',
+      'complaints',
+    ]);
     expect(nav.more).toEqual([]);
     expect(keys(nav.apps)).toEqual(['pos', 'kds']);
     expect(nav.canChat).toBe(true);
@@ -55,7 +73,14 @@ describe('navigation (ADR 0024)', () => {
     expect(purchaser.canChat).toBe(false);
     expect(purchaser.apps).toEqual([]);
     const kitchen = buildNavigation({ slug: 'd', roles: ['kitchen'], enabled: ['planning'] });
-    expect(keys(kitchen.core)).toEqual(['home', 'stock', 'recipes', 'plan']);
+    expect(keys(kitchen.core)).toEqual([
+      'home',
+      'stock',
+      'recipes',
+      'foodSafety',
+      'dailyChecks',
+      'plan',
+    ]);
     expect(kitchen.more).toEqual([]);
   });
 

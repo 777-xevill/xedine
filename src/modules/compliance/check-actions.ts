@@ -44,7 +44,7 @@ export async function addCheckAction(_prev: FormState, formData: FormData): Prom
   const parsed = base
     .extend({
       name: z.string().trim().min(1).max(120),
-      category: z.enum(['hygiene', 'inspection', 'document']),
+      category: z.enum(['hygiene', 'inspection', 'document']).default('hygiene'),
       frequency: z.enum(['daily', 'weekly', 'monthly']),
       needsNote: z.literal('on').optional(),
     })

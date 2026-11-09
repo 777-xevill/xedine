@@ -28,7 +28,11 @@ export async function holdIngredientAction(
       ingredientId: z.uuid(),
       reason: z.string().trim().min(3).max(300),
     })
-    .safeParse(entries(formData));
+    // A typed reason wins over a tapped one.
+    .safeParse({
+      ...entries(formData),
+      reason: String(formData.get('reason') ?? '').trim() || formData.get('reasonPick') || '',
+    });
   if (!parsed.success) return { error: 'foodSafetyReasonNeeded' };
   const supabase = await createClient();
   const { error } = await supabase.rpc('hold_ingredient', {

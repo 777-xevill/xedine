@@ -96,12 +96,12 @@ export function Mascot({
         {mood === 'sad' ? (
           <>
             <path
-              d="M37 66 L51 70"
+              d="M37 70 L51 65"
               className="stroke-foreground stroke-[3]"
               strokeLinecap="round"
             />
             <path
-              d="M83 66 L69 70"
+              d="M83 70 L69 65"
               className="stroke-foreground stroke-[3]"
               strokeLinecap="round"
             />

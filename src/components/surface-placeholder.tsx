@@ -6,8 +6,8 @@ export async function SurfacePlaceholder({
   titleKey,
   bodyKey,
 }: {
-  titleKey: 'qrTitle' | 'adminTitle';
-  bodyKey: 'adminBody' | 'qrBody';
+  titleKey: 'adminTitle';
+  bodyKey: 'adminBody';
 }) {
   const t = await getTranslations('surfaces');
   return (

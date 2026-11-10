@@ -17,22 +17,6 @@ const done = (slug: string): FormState => {
   return { ok: true };
 };
 
-/** A new customer link stops the old one, for a link someone is misusing. */
-export async function resetComplaintLinkAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base.extend({ branchId: z.uuid() }).safeParse(entries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc('reset_complaint_link', {
-    p_org: parsed.data.orgId,
-    p_branch: parsed.data.branchId,
-  });
-  if (error) return { error: mapDbError(error) };
-  return done(parsed.data.orgSlug);
-}
-
 /** One form: Save keeps the case open, Resolve closes it (and is refused until the story is complete). */
 export async function saveIncidentAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = incident

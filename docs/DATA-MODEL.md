@@ -70,7 +70,7 @@
 | `licences` | Licences with expiry reminders (60/30/7 days). | org + branch | read: owner, manager, accountant; write: owner | PK id · → branches | compliance · P10 |
 | `loyalty_points` | Every change to a customer's points: earned on a bill, used on a bill, or set by the owner. | org + branch | read: owner, manager; write: service role only (written by the earn trigger, redeem_points and adjust_points only) | PK id · → branches, customers, orders, staff | customers · P11 |
 | `loyalty_settings` | Member-card rules per restaurant: points earned and their worth, member discount. | org | read: owner, manager, cashier; write: owner (the owner sets the member-card rules; the till reads the discount and point value) | PK org_id | customers · P11 |
-| `member_cards` | Each customer's member-card link token (read-only page for the customer). | org | read: owner, manager, cashier; write: service role only (card links are made by member_card_link / reset_member_card) | PK id · → customers | customers · P11 |
+| `member_cards` | Each customer's member-card link token (read-only page for the customer). | org | read: owner, manager, cashier; write: service role only (card links are made by member_card_link / reset_member_card) | PK id · → customers, dining_tables | customers · P11 |
 | `membership_branches` | Branch list for memberships with scope=list. | org + branch | custom — select: own membership or owner; writes only via RPCs | PK membership_id, branch_id · → branches, memberships | tenancy · P0 |
 | `memberships` | User role in an org; branch scope all or list. One role per row. | org | custom — select: own rows, or owner for the org; writes only via RPCs (audited) | PK id | tenancy · P0 |
 | `menu_categories` | Menu grouping. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | menu · P1 |
@@ -135,7 +135,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (176)
+## RPC functions (180)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -206,6 +206,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `job_run_detectors` | `p_org uuid, p_from date, p_to date, p_kinds text[]` |
 | `job_run_finish` | `p_run uuid, p_status job_status, p_error text DEFAULT NULL::text` |
 | `job_safety_summary` | `p_org uuid, p_now timestamp with time zone` |
+| `join_member_at_table` | `p_token text, p_phone text, p_name text, p_offers boolean, p_now timestamp with time zone` |
 | `log_audit` | `p_org uuid, p_branch uuid, p_action text, p_entity text, p_entity_id text, p_before jsonb DEFAULT NULL::jsonb, p_after jsonb DEFAULT NULL::jsonb, p_reason text DEFAULT NULL::text, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `mark_attendance` | `p_staff uuid, p_date date, p_status attendance_status` |
@@ -288,6 +289,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date` |
 | `reset_complaint_link` | `p_org uuid, p_branch uuid` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |
+| `reset_table_link` | `p_org uuid, p_table uuid` |
 | `resolve_incident` | `p_org uuid, p_incident uuid, p_root_cause text, p_customer_resolution text` |
 | `revoke_chat_link` | `p_link uuid` |
 | `revoke_device` | `p_device uuid` |
@@ -300,6 +302,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
 | `send_transfer` | `p_org uuid, p_from uuid, p_to uuid, p_lines jsonb, p_notes text DEFAULT NULL::text` |
 | `set_finding_status` | `p_finding uuid, p_status finding_status, p_reason text DEFAULT NULL::text, p_snooze_until date DEFAULT NULL::date` |
+| `set_google_review_url` | `p_org uuid, p_branch uuid, p_url text` |
 | `set_ingredient_hidden` | `p_org uuid, p_ingredient uuid, p_hidden boolean, p_now timestamp with time zone, p_none_left boolean DEFAULT false` |
 | `set_lot_expiry` | `p_org uuid, p_kind text, p_lot uuid, p_expires date, p_note text DEFAULT NULL::text` |
 | `set_shelf_life` | `p_org uuid, p_ingredient uuid, p_days integer` |
@@ -312,6 +315,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `submit_feedback` | `p_token text, p_rating integer, p_comment text, p_now timestamp with time zone` |
 | `submit_order` | `p_org uuid, p_branch uuid, p_order_id uuid, p_idempotency_key text, p_device uuid, p_staff uuid, p_channel uuid, p_table uuid DEFAULT NULL::uuid, p_guests integer DEFAULT NULL::integer, p_placed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_lines jsonb DEFAULT '[]'::jsonb, p_provisional_receipt_no text DEFAULT NULL::text` |
 | `submit_stock_count` | `p_count uuid` |
+| `table_page` | `p_token text, p_now timestamp with time zone` |
 | `transfer_destinations` | `p_org uuid` |
 | `update_incident` | `p_org uuid, p_incident uuid, p_status text, p_severity text, p_root_cause text DEFAULT NULL::text, p_customer_resolution text DEFAULT NULL::text` |
 | `update_membership` | `p_membership uuid, p_role app_role DEFAULT NULL::app_role, p_branch_ids uuid[] DEFAULT NULL::uuid[]` |

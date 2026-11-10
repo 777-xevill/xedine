@@ -45,6 +45,7 @@ describe('navigation (ADR 0024)', () => {
       'sales',
       'leaks',
       'menu',
+      'tableQr',
       'complaints',
     ]);
     expect(nav.more).toEqual([]);

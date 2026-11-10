@@ -18,6 +18,7 @@ const BY_SEGMENT: Record<string, IconKey> = {
   compliance: 'compliance',
   'food-safety': 'foodSafety',
   'daily-checks': 'dailyChecks',
+  'table-qr': 'tableQr',
   complaints: 'complaints',
   team: 'team',
   costs: 'costs',

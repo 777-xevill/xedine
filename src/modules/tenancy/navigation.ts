@@ -43,6 +43,7 @@ export type IconKey =
   | 'compliance'
   | 'foodSafety'
   | 'dailyChecks'
+  | 'tableQr'
   | 'complaints'
   | 'staffRecords'
   | 'pos'
@@ -100,6 +101,8 @@ const CORE: LinkRule[] = [
   { key: 'sales', path: '/sales', roles: LEADS },
   { key: 'leaks', path: '/leaks', roles: MONEY },
   { key: 'menu', path: '/menu', roles: ['owner'] },
+  // Table QR (ADR 0045): the QR code on every table, so it is never switched off.
+  { key: 'tableQr', path: '/table-qr', roles: ['owner', 'manager'] },
   { key: 'complaints', path: '/complaints', roles: ['owner', 'manager'] },
 ];
 
@@ -187,6 +190,7 @@ const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   campaigns: 'customers',
   growth: 'customers',
   reviews: 'customers',
+  tableQr: 'customers',
   complaints: 'customers',
   menu: 'restaurant',
   branches: 'restaurant',

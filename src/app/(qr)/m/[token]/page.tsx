@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { DishMenu } from '@/components/dish-menu';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { QrCode } from '@/components/qr-code';
 import { PillNav } from '@/components/ui/pill-nav';
@@ -13,7 +13,7 @@ import {
   type Locale,
 } from '@/lib/i18n/format';
 import { memberCardUrl } from '@/modules/customers/member-card';
-import { dishPhotoUrl, readMemberCard } from '@/modules/customers/member-card-view';
+import { readMemberCard } from '@/modules/customers/member-card-view';
 
 // A personal page: never in search results, never cached between customers.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -31,7 +31,7 @@ export default async function MemberCardPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; welcome?: string }>;
 }) {
   const [{ token }, sp] = await Promise.all([params, searchParams]);
   const [t, locale] = await Promise.all([getTranslations('memberCard'), getLocale()]);
@@ -58,7 +58,6 @@ export default async function MemberCardPage({
   const money = (p: number) => formatBDT(p, loc);
   const date = (iso: string) => formatDhakaDate(new Date(iso), loc);
   const link = memberCardUrl(publicEnv().NEXT_PUBLIC_SITE_URL, token);
-  const categories = [...new Set(card.menu.map((m) => m.cat))];
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 px-4 py-6">
@@ -66,6 +65,15 @@ export default async function MemberCardPage({
         <p className="truncate text-lg font-bold">{card.restaurant}</p>
         <LocaleSwitcher />
       </header>
+
+      {sp.welcome === '1' ? (
+        <p
+          role="status"
+          className="rounded-input border border-success/40 bg-success/10 px-4 py-3 text-sm font-semibold"
+        >
+          {t('welcome')}
+        </p>
+      ) : null}
 
       <section className="glass rounded-sheet p-5 sm:p-6" aria-labelledby="mc-title">
         <p id="mc-title" className="text-xs font-semibold tracking-wider text-secondary uppercase">
@@ -169,48 +177,7 @@ export default async function MemberCardPage({
 
       {tab === 'menu' ? (
         <section className="space-y-4">
-          {categories.map((cat) => {
-            const items = card.menu.filter((m) => m.cat === cat);
-            const first = items[0]!;
-            const title = loc === 'bn' && first.cat_bn ? first.cat_bn : cat || t('otherDishes');
-            return (
-              <div key={cat} className="glass rounded-sheet p-4 sm:p-5">
-                <h2 className="mb-2 text-lg font-bold">{title}</h2>
-                <ul className="divide-y divide-line">
-                  {items.map((m) => (
-                    <li
-                      key={`${m.name}-${m.price_poisha}`}
-                      className="flex items-center gap-3 py-2.5"
-                    >
-                      {m.photo_path ? (
-                        <span className="relative size-14 shrink-0 overflow-hidden rounded-input">
-                          <Image
-                            src={dishPhotoUrl(m.photo_path)}
-                            alt=""
-                            fill
-                            unoptimized
-                            sizes="56px"
-                            className="object-cover"
-                          />
-                        </span>
-                      ) : null}
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">
-                          {loc === 'bn' && m.name_bn ? m.name_bn : m.name}
-                        </span>
-                        {m.description ? (
-                          <span className="block truncate text-xs text-secondary">
-                            {m.description}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="font-semibold tabular-nums">{money(m.price_poisha)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+          <DishMenu dishes={card.menu} locale={loc} otherLabel={t('otherDishes')} />
           <p className="text-xs text-secondary">{t('menuNote')}</p>
         </section>
       ) : null}

@@ -1,24 +1,21 @@
-import { CircleAlert, CircleCheck } from 'lucide-react';
+import { CircleAlert, CircleCheck, QrCode } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
 import { LocaleSwitcher } from '@/components/locale-switcher';
-import { QrCode } from '@/components/qr-code';
 import { Banner } from '@/components/stock/parts';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle, Hint, Input, PageTitle, Select, Textarea } from '@/components/ui/form';
+import { Card, Hint, Input, PageTitle, Select, Textarea } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { publicEnv } from '@/lib/env';
 import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { businessToday } from '@/modules/metrics/queries';
-import { complaintUrl } from '@/modules/reviews/complaint-link';
 import {
   addIncidentActionAction,
   completeIncidentActionAction,
   reopenIncidentAction,
-  resetComplaintLinkAction,
   saveIncidentAction,
 } from '@/modules/reviews/incident-actions';
 import { getOrgContext } from '@/modules/tenancy/context';
@@ -50,12 +47,6 @@ interface Incident {
   overdue_actions: number;
 }
 
-interface BranchLink {
-  id: string;
-  name: string;
-  complaint_token: string;
-}
-
 interface Action {
   id: string;
   incident_id: string;
@@ -78,16 +69,10 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
   const loc = locale as Locale;
   const supabase = await createClient();
   const args = { p_org: ctx.org.id, p_branch: ctx.selectedBranchId, p_now: now().toISOString() };
-  const [{ date: today }, list, summary, branchRows] = await Promise.all([
+  const [{ date: today }, list, summary] = await Promise.all([
     businessToday(ctx.org.id),
     supabase.rpc('metric_incidents', args),
     supabase.rpc('metric_incident_summary', args),
-    supabase
-      .from('branches')
-      .select('id, name, complaint_token')
-      .eq('org_id', ctx.org.id)
-      .eq('is_active', true)
-      .order('name'),
   ]);
   const incidents = (list.data ?? []) as Incident[];
   const s = ((summary.data ?? []) as Record<string, unknown>[])[0] ?? {};
@@ -115,10 +100,6 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
   const closed = incidents.filter((x) => x.status === 'resolved');
   const overdue = Number(s.overdue_actions ?? 0);
   const median = s.median_hours_to_resolve;
-  const site = publicEnv().NEXT_PUBLIC_SITE_URL;
-  const links = ((branchRows.data ?? []) as BranchLink[]).filter((b) =>
-    ctx.selectedBranchId ? b.id === ctx.selectedBranchId : ctx.branches.some((c) => c.id === b.id),
-  );
   const hidden = (
     <>
       <input type="hidden" name="orgId" value={ctx.org.id} />
@@ -331,48 +312,16 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
           );
         })}
 
-        <Card className="p-4 sm:p-5">
-          <CardTitle>{t('linkTitle')}</CardTitle>
-          <Hint>{t('linkHint')}</Hint>
-          <ul className="mt-3 space-y-4">
-            {links.map((b) => {
-              const url = complaintUrl(site, b.complaint_token);
-              return (
-                <li key={b.id} className="flex flex-wrap items-start gap-4">
-                  <QrCode value={url} label={t('linkQr')} className="size-32 rounded-input" />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    {showBranch ? <p className="font-semibold">{b.name}</p> : null}
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-medium text-purple underline"
-                    >
-                      {t('linkOpen')}
-                    </a>
-                    <details className="text-sm">
-                      <summary className="cursor-pointer text-xs text-secondary">
-                        {t('linkResetSummary')}
-                      </summary>
-                      <Hint className="mt-1">{t('linkResetHint')}</Hint>
-                      <ActionForm
-                        action={resetComplaintLinkAction}
-                        successKey="common.saved"
-                        className="mt-2"
-                      >
-                        {hidden}
-                        <input type="hidden" name="branchId" value={b.id} />
-                        <Button type="submit" size="sm" variant="secondary">
-                          {t('linkReset')}
-                        </Button>
-                      </ActionForm>
-                    </details>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+        <Link
+          href={`/${ctx.org.slug}/table-qr`}
+          className="glass-tile flex items-center justify-between gap-3 rounded-card p-4 text-sm"
+        >
+          <span>
+            <span className="block font-semibold">{t('qrMovedTitle')}</span>
+            <span className="block text-secondary">{t('qrMovedBody')}</span>
+          </span>
+          <QrCode aria-hidden className="size-6 shrink-0 text-purple" />
+        </Link>
 
         {closed.length > 0 ? (
           <details className="glass-tile rounded-card p-4">

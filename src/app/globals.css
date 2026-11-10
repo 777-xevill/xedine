@@ -590,6 +590,29 @@ body {
   .print-sheet .muted-note {
     font-size: 0.9em;
   }
+  /* Table QR cards (ADR 0045): two to a row on A4, each kept whole, cut along the dashed line. */
+  .print-cards,
+  .print-cards * {
+    visibility: visible;
+  }
+  .print-cards {
+    position: absolute;
+    inset: 0 0 auto 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6mm;
+    padding: 6mm;
+    background: white;
+    color: black;
+  }
+  .print-cards .print-card {
+    break-inside: avoid;
+    border: 1px dashed black;
+    border-radius: 4mm;
+    background: white;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
 }
 
 /*

@@ -29,15 +29,18 @@ export interface MemberCardView {
   }[];
   history: { kind: 'earn' | 'redeem' | 'adjust'; points: number; created_at: string }[];
   branches: { name: string; address: string | null; area: string | null }[];
-  menu: {
-    name: string;
-    name_bn: string | null;
-    description: string | null;
-    price_poisha: number;
-    photo_path: string | null;
-    cat: string;
-    cat_bn: string | null;
-  }[];
+  menu: MenuDish[];
+}
+
+/** One dish on a customer's menu (card page and table page). */
+export interface MenuDish {
+  name: string;
+  name_bn: string | null;
+  description: string | null;
+  price_poisha: number;
+  photo_path: string | null;
+  cat: string;
+  cat_bn: string | null;
 }
 
 export async function readMemberCard(token: string): Promise<MemberCardView | null> {

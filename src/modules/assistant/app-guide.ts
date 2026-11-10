@@ -225,9 +225,23 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
       'পরিদর্শন',
     ],
   },
+  tableQr: {
+    name: 'Table QR',
+    what: 'One QR code per table, printed and put on the table. The owner or manager types how many tables the branch has and prints the codes. A customer scans one with the phone camera, with no app and no account, and gets one page: become a member of the member card by phone (a number the restaurant already knows is told to ask at the counter), the menu with photos at this branch’s prices, a button to review on Google (the owner pastes the Google review link here), and the private complaint box. A phone that joined shows its card and points on the next scan.',
+    words: [
+      'table qr',
+      'qr code',
+      'table card',
+      'scan',
+      'google review',
+      'join member',
+      'টেবিল কিউআর',
+      'কিউআর কোড',
+    ],
+  },
   complaints: {
     name: 'Complaints',
-    what: 'Customers write complaints by scanning the QR code shown on this page; the owner or manager sees them here and records why it happened, what the customer got and the corrective actions.',
+    what: 'Customers write complaints through the table QR code (Table QR page) or the complaint link; the owner or manager sees them here and records why it happened, what the customer got and the corrective actions.',
     words: [
       'complaint',
       'incident',

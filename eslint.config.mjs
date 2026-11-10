@@ -79,6 +79,8 @@ export default defineConfig([
       'src/modules/customers/member-card-view.ts',
       // A customer's complaint page has no account: two names are read by the branch's link token (ADR 0043).
       'src/modules/reviews/complaint-link-view.ts',
+      // A customer's table page has no account: one table is read by its QR link token (ADR 0045).
+      'src/modules/customers/table-page-view.ts',
       // ai_usage is written only by the LLM gateway (ARCHITECTURE.md "AI layer"), for an explicit org.
       'src/lib/llm-gateway/**',
       '**/*.test.{ts,tsx}',

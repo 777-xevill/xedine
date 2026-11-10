@@ -246,4 +246,39 @@ describe('table QR', () => {
     );
     expect(audit.length).toBe(1);
   });
+  it('games are on by default; only the owner switches them and renames them (ADR 0046)', async () => {
+    const fresh = await admin<{ qr_token: string }>(
+      'select qr_token from public.dining_tables where id = $1',
+      [tableId],
+    ).then((r) => r[0]!.qr_token);
+    let v = (await page(fresh))!;
+    expect(v.games_on).toBe(true);
+    expect(v.game_names).toEqual({});
+    const names = { quiz: 'Kacchi Bhai Quiz', host: 'Kacchi Bhai' };
+    const byManager = await asUser(manager, (s) =>
+      s.q('update public.org_settings set games_on = false where org_id = $1 returning org_id', [
+        org.id,
+      ]),
+    );
+    expect(byManager).toEqual([]);
+    await asUser(
+      org.owner,
+      (s) =>
+        s.q('update public.org_settings set games_on = false, game_names = $2 where org_id = $1', [
+          org.id,
+          JSON.stringify(names),
+        ]),
+      commit,
+    );
+    v = (await page(fresh))!;
+    expect(v.games_on).toBe(false);
+    expect(v.game_names).toEqual(names);
+    const bad = await asUser(org.owner, (s) =>
+      s.attempt('update public.org_settings set game_names = $2 where org_id = $1', [
+        org.id,
+        '["quiz"]',
+      ]),
+    );
+    expect(bad.ok).toBe(false);
+  });
 });

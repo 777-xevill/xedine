@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+import { MAX_NAME, NAME_KEYS, parseGameNames } from '@/modules/games/catalog';
 import { MAX_TABLES, missingTableNumbers, parseGoogleReviewUrl } from './table-qr';
 
 /**
@@ -108,4 +109,36 @@ export async function resetComplaintBoxAction(
   });
   if (error) return { error: mapDbError(error) };
   return done(parsed.data.orgSlug);
+}
+
+/**
+ * Games on the table page (ADR 0046), owner only through org_settings' RLS: on or off, and the owner's own
+ * name for each game and for the host character. An empty name keeps the default.
+ */
+export async function saveGamesAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = z
+    .object({
+      orgId: z.uuid(),
+      orgSlug: z.string().regex(SLUG),
+      on: z.enum(['on']).optional(),
+      ...Object.fromEntries(
+        NAME_KEYS.map((k) => [`name_${k}`, z.string().max(MAX_NAME).optional()]),
+      ),
+    })
+    .safeParse(entries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const data = parsed.data as Record<string, string | undefined>;
+  const names = parseGameNames(
+    Object.fromEntries(NAME_KEYS.map((k) => [k, data[`name_${k}`] ?? ''])),
+  );
+  const supabase = await createClient();
+  const { data: updated, error } = await supabase
+    .from('org_settings')
+    .update({ games_on: parsed.data.on === 'on', game_names: names })
+    .eq('org_id', parsed.data.orgId)
+    .select('org_id');
+  if (error) return { error: mapDbError(error) };
+  if (!updated?.length) return { error: 'notAllowed' };
+  revalidatePath(`/${parsed.data.orgSlug}/table-qr`);
+  return { ok: true };
 }

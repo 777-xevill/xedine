@@ -22,6 +22,8 @@ export interface TablePageView {
   discount_bps: number | null;
   google_review_url: string | null;
   complaint_token: string;
+  games_on: boolean;
+  game_names: unknown;
   menu: MenuDish[];
 }
 

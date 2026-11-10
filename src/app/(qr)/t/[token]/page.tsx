@@ -1,8 +1,9 @@
-import { IdCard, MessageSquareWarning, Star, UtensilsCrossed } from 'lucide-react';
+import { Gamepad2, IdCard, MessageSquareWarning, Star, UtensilsCrossed } from 'lucide-react';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { DishMenu } from '@/components/dish-menu';
+import { Mascot } from '@/components/games/mascot';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { OnceForm } from '@/components/once-form';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/form
 import { memberCardPath } from '@/modules/customers/member-card';
 import { readMemberCard } from '@/modules/customers/member-card-view';
 import { cardCookieName, isNumberedTable } from '@/modules/customers/table-qr';
+import { parseGameNames } from '@/modules/games/catalog';
 import { readTablePage } from '@/modules/customers/table-page-view';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -65,7 +67,10 @@ export default async function TablePage({
     : page.table;
   const complaintHref = `/c/${page.complaint_token}`;
 
+  const gamesHref = `/t/${token}/games`;
+  const hostName = parseGameNames(page.game_names).host ?? t('hostName');
   const shortcuts = [
+    ...(page.games_on ? [{ href: gamesHref, icon: Gamepad2, label: t('goGames') }] : []),
     { href: '#menu', icon: UtensilsCrossed, label: t('goMenu') },
     ...(page.member_on ? [{ href: '#join', icon: IdCard, label: t('goMember') }] : []),
     ...(page.google_review_url ? [{ href: '#review', icon: Star, label: t('goReview') }] : []),
@@ -102,6 +107,21 @@ export default async function TablePage({
           ))}
         </nav>
       </section>
+
+      {page.games_on ? (
+        <a href={gamesHref} className="glass flex items-center gap-4 rounded-sheet p-4 sm:p-5">
+          <Mascot mood="cheer" className="size-20 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xl font-bold">{t('gamesTitle')}</span>
+            <span className="block text-sm text-secondary">
+              {t('gamesBody', { host: hostName })}
+            </span>
+            <span className="mt-2 inline-flex min-h-10 items-center rounded-full bg-action px-4 text-sm font-semibold text-on-action">
+              {t('gamesPlay')}
+            </span>
+          </span>
+        </a>
+      ) : null}
 
       {page.member_on ? (
         <section id="join" className="glass scroll-mt-4 rounded-sheet p-5 sm:p-6">

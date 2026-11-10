@@ -1,4 +1,4 @@
-import { IdCard, MessageSquareWarning, Star, UtensilsCrossed } from 'lucide-react';
+import { Gamepad2, IdCard, MessageSquareWarning, Star, UtensilsCrossed } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -19,8 +19,10 @@ import {
   makeTablesAction,
   resetComplaintBoxAction,
   resetTableLinkAction,
+  saveGamesAction,
   saveGoogleReviewAction,
 } from '@/modules/customers/table-qr-actions';
+import { MAX_NAME, NAME_KEYS, parseGameNames } from '@/modules/games/catalog';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
 interface TableRow {
@@ -48,21 +50,29 @@ export default async function TableQrPage({
   const [t, locale] = await Promise.all([getTranslations('tableQr'), getLocale()]);
   const loc = locale as Locale;
   const supabase = await createClient();
-  const [{ data: tableRows }, { data: branchRow }, { data: loyalty }] = await Promise.all([
-    supabase
-      .from('dining_tables')
-      .select('id, name, qr_token')
-      .eq('org_id', ctx.org.id)
-      .eq('branch_id', current.id)
-      .eq('is_active', true),
-    supabase
-      .from('branches')
-      .select('google_review_url, complaint_token')
-      .eq('org_id', ctx.org.id)
-      .eq('id', current.id)
-      .maybeSingle(),
-    supabase.from('loyalty_settings').select('is_on').eq('org_id', ctx.org.id).maybeSingle(),
-  ]);
+  const [tg, { data: tableRows }, { data: branchRow }, { data: loyalty }, { data: games }] =
+    await Promise.all([
+      getTranslations('games'),
+      supabase
+        .from('dining_tables')
+        .select('id, name, qr_token')
+        .eq('org_id', ctx.org.id)
+        .eq('branch_id', current.id)
+        .eq('is_active', true),
+      supabase
+        .from('branches')
+        .select('google_review_url, complaint_token')
+        .eq('org_id', ctx.org.id)
+        .eq('id', current.id)
+        .maybeSingle(),
+      supabase.from('loyalty_settings').select('is_on').eq('org_id', ctx.org.id).maybeSingle(),
+      supabase
+        .from('org_settings')
+        .select('games_on, game_names')
+        .eq('org_id', ctx.org.id)
+        .maybeSingle(),
+    ]);
+  const gameNames = parseGameNames(games?.game_names);
   // Numbered tables in number order, then the named ones.
   const tables = ((tableRows ?? []) as TableRow[]).sort((a, b) => {
     const na = isNumberedTable(a.name) ? Number(a.name) : Infinity;
@@ -85,6 +95,7 @@ export default async function TableQrPage({
     { icon: IdCard, text: t('offerMember') },
     { icon: Star, text: t('offerReview') },
     { icon: MessageSquareWarning, text: t('offerComplaint') },
+    { icon: Gamepad2, text: t('offerGames') },
   ];
 
   return (
@@ -182,6 +193,43 @@ export default async function TableQrPage({
           </ActionForm>
         </Card>
 
+        <Card className="p-4 sm:p-5">
+          <CardTitle>{t('gamesTitle')}</CardTitle>
+          <Hint className="-mt-2 mb-3">{t('gamesHint')}</Hint>
+          {ctx.isOwner ? (
+            <ActionForm action={saveGamesAction} successKey="common.saved" className="space-y-3">
+              <input type="hidden" name="orgId" value={ctx.org.id} />
+              <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" name="on" defaultChecked={games?.games_on !== false} />
+                {t('gamesOn')}
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {NAME_KEYS.map((k) => (
+                  <div key={k}>
+                    <Label htmlFor={`gn-${k}`}>{t(`gameLabel.${k}`)}</Label>
+                    <Input
+                      id={`gn-${k}`}
+                      name={`name_${k}`}
+                      maxLength={MAX_NAME}
+                      defaultValue={gameNames[k] ?? ''}
+                      placeholder={tg(`names.${k}`)}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Hint>{t('gamesNameHint', { restaurant: ctx.org.name })}</Hint>
+              <Button type="submit" variant="secondary">
+                {t('save')}
+              </Button>
+            </ActionForm>
+          ) : (
+            <p className="text-sm text-secondary">
+              {games?.games_on === false ? t('gamesOffManager') : t('gamesOnManager')}
+            </p>
+          )}
+        </Card>
+
         {tables.length > 0 ? (
           <Card className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -207,7 +255,9 @@ export default async function TableQrPage({
                       className="size-40 rounded-input"
                     />
                     <p className="text-sm font-semibold">{t('cardScan')}</p>
-                    <p className="text-xs">{t('cardOffers')}</p>
+                    <p className="text-xs">
+                      {games?.games_on === false ? t('cardOffers') : t('cardOffersGames')}
+                    </p>
                     <div className="mt-1 flex flex-col items-center gap-1 print:hidden">
                       <a
                         href={url}

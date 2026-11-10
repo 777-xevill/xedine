@@ -227,7 +227,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   tableQr: {
     name: 'Table QR',
-    what: 'One QR code per table, printed and put on the table. The owner or manager types how many tables the branch has and prints the codes. A customer scans one with the phone camera, with no app and no account, and gets one page: become a member of the member card by phone (a number the restaurant already knows is told to ask at the counter), the menu with photos at this branch’s prices, a button to review on Google (the owner pastes the Google review link here), and the private complaint box. A phone that joined shows its card and points on the next scan.',
+    what: 'One QR code per table, printed and put on the table. The owner or manager types how many tables the branch has and prints the codes. A customer scans one with the phone camera, with no app and no account, and gets one page: become a member of the member card by phone (a number the restaurant already knows is told to ask at the counter), the menu with photos at this branch’s prices, a button to review on Google (the owner pastes the Google review link here), and the private complaint box. A phone that joined shows its card and points on the next scan. The table page also has six games while the food cooks (Chef Catch, Dish Memory, Food Quiz with questions from the real menu, Tap Race, Dish Duel, Love Match for couples), alone or with 2–4 friends, on one phone or each on their own phone; no prizes. The owner can switch games off and give each game and the host character the restaurant’s own name (for example “Kacchi Bhai Quiz”).',
     words: [
       'table qr',
       'qr code',

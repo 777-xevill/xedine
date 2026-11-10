@@ -3228,7 +3228,515 @@
     "menuEmpty": "The menu will show here soon.",
     "otherDishes": "More dishes",
     "menuNote": "Prices can change. The restaurant's bill is final.",
-    "footer": "No app needed. Scan the table QR any time."
+    "footer": "No app needed. Scan the table QR any time.",
+    "goGames": "Games",
+    "gamesTitle": "Play while you wait",
+    "gamesBody": "{host} has six games for you, alone, with friends or as a couple. No app.",
+    "gamesPlay": "Play now",
+    "hostName": "Mishti"
+  },
+  "games": {
+    "names": {
+      "catch": "Chef Catch",
+      "memory": "Dish Memory",
+      "quiz": "Food Quiz",
+      "race": "Tap Race",
+      "duel": "Dish Duel",
+      "love": "Love Match",
+      "host": "Mishti"
+    },
+    "about": {
+      "catch": "Catch the falling dishes, dodge the burnt ones",
+      "memory": "Find the pairs of our dishes",
+      "quiz": "Food questions and our own menu",
+      "race": "Fastest finger on the right dish",
+      "duel": "Three in a row with dishes",
+      "love": "How well do you match?"
+    },
+    "intro": {
+      "catch": "Move me left and right with your finger and catch the dishes on my plate!",
+      "memory": "Turn over two cards. Same dish? They are yours. Remember where they hide!",
+      "quiz": "Quick questions about food and about this menu. Fifteen seconds each!",
+      "race": "Put the phone in the middle. Tap your corner only when the target dish shows!",
+      "duel": "Get three of your dish in a row. Alone? Play against me!",
+      "love": "Answer the same little questions without peeking. Then see your love score!"
+    },
+    "hello": "Hi! I am {host}. Your food at {restaurant} is on its way. Want to play while you wait?",
+    "openGames": "Games at your table",
+    "openGame": "{host} is starting {game}",
+    "couple": "Couple",
+    "playersN": "{n} players",
+    "playersRange": "{min}–{max} players",
+    "howMany": "How many are playing?",
+    "solo": "alone",
+    "players": "players",
+    "howPlay": "How do you want to play?",
+    "onePhone": "On this phone",
+    "onePhoneHint": "Pass it round or share the screen",
+    "ownPhones": "Each on own phone",
+    "ownPhonesHint": "Friends scan the table QR and join",
+    "playerN": "Player {n}",
+    "partnerN": "Partner {n}",
+    "you": "You",
+    "yourName": "Your name",
+    "createGame": "Make the game",
+    "start": "Start",
+    "join": "Join",
+    "back": "Back",
+    "again": "Play again",
+    "otherGames": "Other games",
+    "waitHostAgain": "The host can start a new round.",
+    "waitHostStart": "Waiting for the host to start…",
+    "waitFriends": "Your {game} is ready. Tell your friends to scan the table QR, tap Games and join you!",
+    "howFriendsJoin": "Up to {max} can play. Friends open the table QR on their phone, tap Games, and your game is at the top.",
+    "startWith": "Start with {n}",
+    "hostTag": "host",
+    "hostLeft": "The host left the game.",
+    "alreadyStarted": "This game already started without you. Make a new one!",
+    "tie": "It is a tie! Everyone wins a smile.",
+    "wins": "{name} wins!",
+    "yourTurn": "Your turn!",
+    "turnOf": "{name}’s turn",
+    "lines": {
+      "right": {
+        "1": "Yes! Brilliant!",
+        "2": "Correct! You know your food!",
+        "3": "Wah! Spot on!",
+        "4": "Right answer, chef!"
+      },
+      "wrong": {
+        "1": "Oh no! Next one is yours.",
+        "2": "Close! Keep going.",
+        "3": "Not this time!",
+        "4": "Hmm, tricky one!"
+      },
+      "end": {
+        "1": "What a game!",
+        "2": "Chef’s kiss!",
+        "3": "Legend!",
+        "4": "Champion of the table!"
+      },
+      "duel": {
+        "1": "Your move. I am watching!",
+        "2": "Think carefully…",
+        "3": "Can you beat a chef?",
+        "4": "I smell a trap!"
+      }
+    },
+    "memory": {
+      "soloHint": "Moves: {moves}. Find all the pairs!",
+      "soloGreat": "Wow, only {moves} moves! Memory of a master chef!",
+      "soloDone": "All pairs found in {moves} moves. Can you do it in fewer?",
+      "card": "Card {n}",
+      "cardOpen": "Open card"
+    },
+    "quiz": {
+      "question": "Question {n} of {total}",
+      "waiting": "Waiting for the others…",
+      "onMenu": "Which of these is on the {restaurant} menu?",
+      "price": "Which dish costs {price} here?",
+      "soloDone": "You got {right} out of {total} right!",
+      "bank": {
+        "1": {
+          "q": "What does “kacchi” mean in kacchi biryani?",
+          "a": "Raw: the meat goes in raw with the rice",
+          "w": {
+            "1": "Spicy",
+            "2": "Royal",
+            "3": "Smoked"
+          }
+        },
+        "2": {
+          "q": "Kacchi biryani in Dhaka is usually made with which meat?",
+          "a": "Mutton",
+          "w": {
+            "1": "Fish",
+            "2": "Duck",
+            "3": "Prawn"
+          }
+        },
+        "3": {
+          "q": "Borhani is made mainly from…",
+          "a": "Yogurt",
+          "w": {
+            "1": "Milk tea",
+            "2": "Coconut water",
+            "3": "Sugarcane juice"
+          }
+        },
+        "4": {
+          "q": "What is the national fish of Bangladesh?",
+          "a": "Hilsa (ilish)",
+          "w": {
+            "1": "Rui",
+            "2": "Pangas",
+            "3": "Koi"
+          }
+        },
+        "5": {
+          "q": "What is the national fruit of Bangladesh?",
+          "a": "Jackfruit",
+          "w": {
+            "1": "Mango",
+            "2": "Lychee",
+            "3": "Banana"
+          }
+        },
+        "6": {
+          "q": "Fuchka is eaten with which sour water?",
+          "a": "Tamarind water",
+          "w": {
+            "1": "Lemon soda",
+            "2": "Vinegar",
+            "3": "Coconut water"
+          }
+        },
+        "7": {
+          "q": "Which district is famous for mishti doi?",
+          "a": "Bogura",
+          "w": {
+            "1": "Sylhet",
+            "2": "Cox’s Bazar",
+            "3": "Rangpur"
+          }
+        },
+        "8": {
+          "q": "Which district is famous for roshomalai?",
+          "a": "Cumilla",
+          "w": {
+            "1": "Khulna",
+            "2": "Barishal",
+            "3": "Dinajpur"
+          }
+        },
+        "9": {
+          "q": "In Bangladesh, haleem is most popular during…",
+          "a": "Ramadan",
+          "w": {
+            "1": "Pohela Boishakh",
+            "2": "Christmas",
+            "3": "Durga Puja"
+          }
+        },
+        "10": {
+          "q": "On Pohela Boishakh, panta bhat is traditionally eaten with…",
+          "a": "Fried hilsa",
+          "w": {
+            "1": "Beef curry",
+            "2": "Pizza",
+            "3": "Noodles"
+          }
+        },
+        "11": {
+          "q": "Pitha is made most in which season?",
+          "a": "Winter",
+          "w": {
+            "1": "Summer",
+            "2": "Monsoon",
+            "3": "Spring"
+          }
+        },
+        "12": {
+          "q": "Most of Bangladesh’s tea gardens are in…",
+          "a": "Sylhet",
+          "w": {
+            "1": "Khulna",
+            "2": "Rajshahi",
+            "3": "Barishal"
+          }
+        },
+        "13": {
+          "q": "Which spice gives kacchi its golden colour and smell?",
+          "a": "Saffron",
+          "w": {
+            "1": "Cumin",
+            "2": "Black pepper",
+            "3": "Cinnamon"
+          }
+        },
+        "14": {
+          "q": "Naan is baked in a…",
+          "a": "Tandoor (clay oven)",
+          "w": {
+            "1": "Frying pan",
+            "2": "Steamer",
+            "3": "Pressure cooker"
+          }
+        },
+        "15": {
+          "q": "Paneer is a kind of…",
+          "a": "Cheese",
+          "w": {
+            "1": "Bread",
+            "2": "Rice",
+            "3": "Sweet"
+          }
+        },
+        "16": {
+          "q": "Pizza first came from which country?",
+          "a": "Italy",
+          "w": {
+            "1": "USA",
+            "2": "France",
+            "3": "Greece"
+          }
+        },
+        "17": {
+          "q": "Sushi comes from which country?",
+          "a": "Japan",
+          "w": {
+            "1": "China",
+            "2": "Korea",
+            "3": "Thailand"
+          }
+        },
+        "18": {
+          "q": "Tacos are famous food from…",
+          "a": "Mexico",
+          "w": {
+            "1": "Spain",
+            "2": "Brazil",
+            "3": "India"
+          }
+        },
+        "19": {
+          "q": "Momo dumplings are a famous food of…",
+          "a": "Nepal",
+          "w": {
+            "1": "Egypt",
+            "2": "Italy",
+            "3": "Kenya"
+          }
+        },
+        "20": {
+          "q": "Chocolate is made from the beans of the…",
+          "a": "Cacao tree",
+          "w": {
+            "1": "Coffee plant",
+            "2": "Vanilla plant",
+            "3": "Coconut tree"
+          }
+        },
+        "21": {
+          "q": "Marzipan is made from which nut?",
+          "a": "Almond",
+          "w": {
+            "1": "Cashew",
+            "2": "Peanut",
+            "3": "Walnut"
+          }
+        },
+        "22": {
+          "q": "Guacamole is made mainly from…",
+          "a": "Avocado",
+          "w": {
+            "1": "Green peas",
+            "2": "Cucumber",
+            "3": "Green apple"
+          }
+        },
+        "23": {
+          "q": "Which vegetable can make you cry when you cut it?",
+          "a": "Onion",
+          "w": {
+            "1": "Potato",
+            "2": "Carrot",
+            "3": "Tomato"
+          }
+        },
+        "24": {
+          "q": "Popcorn is made from…",
+          "a": "Corn",
+          "w": {
+            "1": "Rice",
+            "2": "Wheat",
+            "3": "Barley"
+          }
+        },
+        "25": {
+          "q": "Which bird lays the biggest egg?",
+          "a": "Ostrich",
+          "w": {
+            "1": "Duck",
+            "2": "Goose",
+            "3": "Turkey"
+          }
+        },
+        "26": {
+          "q": "Honey is made by…",
+          "a": "Bees",
+          "w": {
+            "1": "Ants",
+            "2": "Butterflies",
+            "3": "Wasps"
+          }
+        },
+        "27": {
+          "q": "Which of these is a fruit, not a vegetable, for a scientist?",
+          "a": "Tomato",
+          "w": {
+            "1": "Potato",
+            "2": "Onion",
+            "3": "Carrot"
+          }
+        },
+        "28": {
+          "q": "Jilapi is soaked in…",
+          "a": "Sugar syrup",
+          "w": {
+            "1": "Milk",
+            "2": "Salt water",
+            "3": "Tea"
+          }
+        }
+      },
+      "decoys": {
+        "1": "Pasta Carbonara",
+        "2": "Sushi Roll",
+        "3": "Beef Tacos",
+        "4": "Ramen",
+        "5": "Fish and Chips",
+        "6": "Croissant",
+        "7": "Paella",
+        "8": "Falafel",
+        "9": "Pad Thai",
+        "10": "Lasagna",
+        "11": "Dim Sum",
+        "12": "Burrito"
+      }
+    },
+    "race": {
+      "rules": "Watch the middle. Tap only for the target dish: first tap wins a point, a wrong tap loses one. {n} targets!",
+      "target": "This is the target dish",
+      "only": "Tap only for this",
+      "tap": "TAP!",
+      "got": "Got it!",
+      "oops": "Oops!"
+    },
+    "duel": {
+      "round": "Round {n}: {name}, your move",
+      "roundTo": "{name} takes the round!",
+      "draw": "A draw! Next round.",
+      "hostThinking": "Hmm, let me think…",
+      "youBeatHost": "You beat me! You are the real chef today.",
+      "hostWon": "I won this time. Try again?",
+      "cell": "Square {n}"
+    },
+    "love": {
+      "secret": "Answer for yourself. No peeking!",
+      "share": "Which dish would you share tonight?",
+      "pass": "Done! Now give the phone to {name}. No peeking at the answers!",
+      "ready": "I am {name}, I am ready",
+      "waitPartner": "Done! Waiting for {name}…",
+      "matches": "{n} of {total} answers match",
+      "tier": {
+        "top": "Made for each other! Order a dessert to share.",
+        "mid": "A sweet match, with a little spice!",
+        "low": "Opposites attract! You have lots to talk about."
+      },
+      "bank": {
+        "1": {
+          "q": "Tea or coffee?",
+          "o": {
+            "1": "Tea",
+            "2": "Coffee"
+          }
+        },
+        "2": {
+          "q": "Sea or hills?",
+          "o": {
+            "1": "Sea",
+            "2": "Hills"
+          }
+        },
+        "3": {
+          "q": "Sunrise or sunset?",
+          "o": {
+            "1": "Sunrise",
+            "2": "Sunset"
+          }
+        },
+        "4": {
+          "q": "A rainy day: khichuri at home or a long drive?",
+          "o": {
+            "1": "Khichuri at home",
+            "2": "A long drive"
+          }
+        },
+        "5": {
+          "q": "Movie night or a walk outside?",
+          "o": {
+            "1": "Movie night",
+            "2": "A walk outside"
+          }
+        },
+        "6": {
+          "q": "Sweet or spicy?",
+          "o": {
+            "1": "Sweet",
+            "2": "Spicy"
+          }
+        },
+        "7": {
+          "q": "Morning person or night owl?",
+          "o": {
+            "1": "Morning person",
+            "2": "Night owl"
+          }
+        },
+        "8": {
+          "q": "Fuchka or chotpoti?",
+          "o": {
+            "1": "Fuchka",
+            "2": "Chotpoti"
+          }
+        },
+        "9": {
+          "q": "Plan everything or see what happens?",
+          "o": {
+            "1": "Plan everything",
+            "2": "See what happens"
+          }
+        },
+        "10": {
+          "q": "Call or text?",
+          "o": {
+            "1": "Call",
+            "2": "Text"
+          }
+        },
+        "11": {
+          "q": "Rickshaw ride or car ride?",
+          "o": {
+            "1": "Rickshaw",
+            "2": "Car"
+          }
+        },
+        "12": {
+          "q": "Dessert first or the main dish first?",
+          "o": {
+            "1": "Dessert first",
+            "2": "Main dish first"
+          }
+        }
+      },
+      "score": "{n}% match",
+      "answered": "{a} said {x} · {b} said {y}"
+    },
+    "catch": {
+      "rules": "{seconds} seconds and {lives} lives. Catch dishes, grab the gold stars, and dodge the burnt ones!",
+      "turn": "{name}, it is your turn! Ready?",
+      "dish": "Dish +{n}",
+      "gold": "Gold star +{n}",
+      "burnt": "Burnt: lose a life",
+      "how": "Slide your finger on the box to move.",
+      "area": "Game area: slide to move the chef",
+      "burntOut": "Burnt out!",
+      "timeUp": "Time up!",
+      "soloDone": "You caught {score} points! Can you beat it?",
+      "waitOthers": "Great round! Waiting for the others to finish…",
+      "secondsLeft": "{n}s"
+    }
   },
   "tableQr": {
     "title": "Table QR",
@@ -3265,7 +3773,24 @@
     "complaintBoxTitle": "Complaint box link",
     "complaintBoxHint": "Every table page has a button to the complaint box. Complaint QR codes you printed before still work.",
     "complaintBoxOpen": "See the complaint box",
-    "complaintBoxReset": "New complaint link (the old one stops)"
+    "complaintBoxReset": "New complaint link (the old one stops)",
+    "offerGames": "Games while they wait: alone, with friends or as a couple",
+    "gamesTitle": "Games",
+    "gamesHint": "Customers play on the table page while the food is cooking: on one phone or each on their own phone. No prizes, just fun.",
+    "gamesOn": "Show games on the table page",
+    "gamesNameHint": "Leave a box empty to keep the name shown in grey. For example: “{restaurant} Quiz”, or call the host character “Kacchi Bhai”.",
+    "gamesOnManager": "Games are on. The owner can rename them here.",
+    "gamesOffManager": "Games are off. The owner can switch them on here.",
+    "cardOffersGames": "Menu · Member card · Games · Review",
+    "gameLabel": {
+      "catch": "Catch game",
+      "memory": "Memory game",
+      "quiz": "Quiz",
+      "race": "Tap race",
+      "duel": "Three in a row",
+      "love": "Couple game",
+      "host": "The host character’s name"
+    }
   },
   "complaintForm": {
     "title": "Tell us what went wrong",

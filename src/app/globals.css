@@ -726,3 +726,107 @@ body {
     transform: none !important;
   }
 }
+
+/*
+ * Table games (ADR 0046): the host character bobs and reacts, cards flip, hits pop, the love heart beats,
+ * the quiz clock runs down. Everything holds still for reduced motion.
+ */
+@keyframes game-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-6%) rotate(2deg);
+  }
+}
+@keyframes game-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes game-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.18);
+  }
+  30% {
+    transform: scale(0.96);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+}
+@keyframes game-clock {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes game-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+.game-bob {
+  animation: game-bob 2.4s ease-in-out infinite;
+}
+.game-pop {
+  animation: game-pop 0.35s ease-out both;
+}
+.game-beat {
+  animation: game-beat 1.4s ease-in-out infinite;
+}
+.game-clock {
+  transform-origin: left;
+  animation-name: game-clock;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.game-shake {
+  animation: game-shake 0.3s ease-in-out 2;
+}
+.game-card {
+  transform-style: preserve-3d;
+  transition: transform 0.35s ease;
+}
+.game-card[data-open='true'] {
+  transform: rotateY(180deg);
+}
+.game-card > * {
+  backface-visibility: hidden;
+}
+.game-card > .game-card-front {
+  transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-bob,
+  .game-pop,
+  .game-beat,
+  .game-shake {
+    animation: none;
+  }
+  .game-card {
+    transition: none;
+  }
+}

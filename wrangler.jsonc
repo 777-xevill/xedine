@@ -5,6 +5,11 @@
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  // The Worker serves the apex and www once xedine.org is a Cloudflare zone (ADR 0044).
+  "routes": [
+    { "pattern": "xedine.org", "custom_domain": true },
+    { "pattern": "www.xedine.org", "custom_domain": true },
+  ],
   "observability": { "enabled": true },
   // Closest placement to Supabase (the old vercel.json pinned sin1). Secrets are set with `wrangler secret`.
   "placement": { "mode": "smart" },

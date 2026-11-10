@@ -31,7 +31,7 @@
     "manifest:validate": "tsx scripts/validate-manifest.ts",
     "metrics:validate": "tsx scripts/validate-metrics.ts",
     "ai:evals": "vitest run --project ai-evals",
-    "social:tick": "tsx --require ./scripts/stub-server-only.cjs --env-file-if-exists=.env.local scripts/social-tick.ts",
+    "social:tick": "tsx --import ./scripts/stub-server-only.mjs --env-file-if-exists=.env.local scripts/social-tick.ts",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",

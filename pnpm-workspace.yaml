@@ -7,3 +7,5 @@ allowBuilds:
   # Downloads the ffmpeg binary that renders the social autopilot's reels (ADR 0040).
   ffmpeg-static: true
   unrs-resolver: false
+  # Platform binary ships as an optionalDependency; the script only re-verifies it (Cloudflare move).
+  workerd: false

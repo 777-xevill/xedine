@@ -6,7 +6,7 @@
  *   pnpm social:tick        needs SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL (+ the AI and
  *                           Meta/TikTok keys the autopilot already uses) in the environment or .env.local.
  *
- * Run with `--conditions=react-server` so the `server-only` marker import is a no-op outside Next.
+ * Runs with scripts/stub-server-only.cjs so the `server-only` marker import is a no-op outside Next.
  */
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';

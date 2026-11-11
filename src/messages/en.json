@@ -123,7 +123,8 @@
     "signInCodeMissing": "There is no live code for this number. Open Telegram, share your number with the bot, and use the new code.",
     "signInCodeWrong": "That code is not right. Check the number and the code, and try again.",
     "signInCodeLocked": "Too many wrong tries. Get a new code from the Telegram bot.",
-    "confirmFailed": "This confirmation link has expired or was already used. Sign in with your email and password; if that fails, create the account again."
+    "confirmFailed": "This confirmation link has expired or was already used. Sign in with your email and password; if that fails, create the account again.",
+    "resendWait": "Please wait one minute, then tap Send again."
   },
   "auth": {
     "signInTitle": "Welcome back",

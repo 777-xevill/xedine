@@ -68,13 +68,16 @@ export async function resendSignUpEmailAction(): Promise<FormState> {
   if (!email || !z.email().safeParse(email).success) return { error: 'generic' };
   const supabase = await createClient();
   const { error } = await supabase.auth.resend({ type: 'signup', email });
-  if (error)
+  if (error) {
+    // Supabase allows one resend a minute per address ("...only request this after 42 seconds").
+    if (/after \d+ seconds?/i.test(error.message)) return { error: 'resendWait' };
     return {
       error:
         error.code === 'over_email_send_rate_limit' || error.status === 429
           ? 'emailLimit'
           : 'generic',
     };
+  }
   return { ok: true, message: 'emailResent' };
 }
 

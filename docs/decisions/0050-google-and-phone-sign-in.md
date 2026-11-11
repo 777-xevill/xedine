@@ -49,3 +49,6 @@ authentication templates (billed per conversation, Business verification first).
   Google Cloud OAuth client (free), redirect `https://<project>.supabase.co/auth/v1/callback`.
 - **External approvals (ADR 0010):** Google's OAuth consent screen works in "Testing" for up to 100
   listed users; publishing it for everyone needs Google's brand verification (free, takes days).
+- **2026-11-12:** published "In production" after adding public `/privacy` and `/terms` pages. With
+  only email/profile scopes and no logo, Google asked for no review and set no user cap. `www.` now
+  redirects to the main address, because a sign-in started on www lost its cookie on the way back.

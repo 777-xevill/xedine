@@ -779,10 +779,8 @@
       "send_to_kitchen": "Send to kitchen",
       "record_payment": "Payment"
     },
-    "noStaffTitle": "No cashier has been added yet",
-    "noStaffBody": "The till for {branch} needs at least one person with a PIN. Add a cashier on the Staff page, then come back and reload.",
-    "noStaffAction": "Add a cashier",
-    "noStaffReload": "I have added one – reload",
+    "noStaffTitle": "Add your first cashier",
+    "noStaffAction": "Add cashier and open the till",
     "tillFor": "This till: {org}, {branch}",
     "resetTill": "Set up this till again",
     "otherTitle": "This till belongs to another restaurant",
@@ -824,7 +822,11 @@
     "receiptMemberCard": "Your member card",
     "receiptMemberHint": "Scan to see your points and bills.",
     "foodSafetyNotice": "Not for sale now, for food safety: dishes with {items}.",
-    "foodSafetyRefused": "This order has a dish that was just stopped for food safety. Remove it and try again."
+    "foodSafetyRefused": "This order has a dish that was just stopped for food safety. Remove it and try again.",
+    "newCashierName": "Cashier's name",
+    "newCashierPin": "PIN (4 to 6 numbers)",
+    "newCashierPinHint": "The cashier types this PIN to open the till. They are added to your Staff page too.",
+    "newCashierSaving": "Adding…"
   },
   "kds": {
     "allStations": "All stations",

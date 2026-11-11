@@ -16,6 +16,7 @@ import {
 } from './client';
 import { getTillSnapshot, type DeviceState } from './device-storage';
 import { isNetworkError } from './outbox';
+import { createStaffAction } from '@/modules/staff/actions';
 
 // -------------------------------------------------------------------------------------------
 // Pairing: the manager/owner currently signed into this browser (ADR 0013) registers the device.
@@ -106,6 +107,104 @@ export function PairingScreen({
         {busy ? t('pairing') : t('pairButton')}
       </Button>
     </div>
+  );
+}
+
+// -------------------------------------------------------------------------------------------
+// A branch with no cashier yet: add one right here (name + PIN). It is the same staff row the
+// Staff page creates, so it shows there too; then the new cashier is signed straight into the till.
+// -------------------------------------------------------------------------------------------
+function FirstCashierForm({
+  sb,
+  device,
+  onSignedIn,
+  onAdded,
+}: {
+  sb: ReturnType<typeof createClient>;
+  device: DeviceState;
+  onSignedIn: (s: { sessionId: string; staffId: string; staffName: string }) => void;
+  onAdded: (staff: StaffMember[]) => void;
+}) {
+  const t = useTranslations('pos');
+  const te = useTranslations('errors');
+  const [name, setName] = useState('');
+  const [pin, setPin] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ready = name.trim().length > 0 && /^\d{4,6}$/.test(pin);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ready || busy) return;
+    setBusy(true);
+    setError(null);
+    const fd = new FormData();
+    fd.set('orgId', device.orgId);
+    fd.set('orgSlug', device.orgSlug);
+    fd.set('branchId', device.branchId);
+    fd.set('displayName', name.trim());
+    fd.set('role', 'cashier');
+    fd.set('pin', pin);
+    try {
+      const res = await createStaffAction({}, fd);
+      if (res.error) {
+        setError(te.has(res.error) ? te(res.error) : te('generic'));
+        return;
+      }
+      const list = await fetchActiveStaff(sb, device.orgId, device.branchId);
+      const added = list.filter((s) => s.display_name === name.trim()).at(-1);
+      if (added) {
+        const session = await startStaffSession(sb, device.deviceId, added.id, pin);
+        if (session.ok) {
+          onSignedIn({
+            sessionId: session.session_id,
+            staffId: added.id,
+            staffName: added.display_name,
+          });
+          return;
+        }
+      }
+      // Could not sign in by itself: show the normal "who's on till" list with the new name.
+      onAdded(list);
+    } catch (err) {
+      setError(isNetworkError(err) ? t('needsInternet') : te('generic'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="space-y-4">
+      {error ? <Alert tone="danger">{error}</Alert> : null}
+      <div>
+        <Label htmlFor="first-cashier-name">{t('newCashierName')}</Label>
+        <Input
+          id="first-cashier-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={120}
+          autoComplete="off"
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="first-cashier-pin">{t('newCashierPin')}</Label>
+        <Input
+          id="first-cashier-pin"
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          inputMode="numeric"
+          pattern="[0-9]{4,6}"
+          maxLength={6}
+          autoComplete="off"
+          required
+        />
+        <p className="mt-1 text-xs text-secondary">{t('newCashierPinHint')}</p>
+      </div>
+      <Button type="submit" className="w-full" disabled={!ready || busy}>
+        {busy ? t('newCashierSaving') : t('noStaffAction')}
+      </Button>
+    </form>
   );
 }
 
@@ -222,23 +321,11 @@ export function StaffGate({
   if (!picked) {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
-        <h1 className="text-2xl font-semibold">{t('chooseStaff')}</h1>
+        <h1 className="text-2xl font-semibold">
+          {staff && staff.length === 0 ? t('noStaffTitle') : t('chooseStaff')}
+        </h1>
         {staff && staff.length === 0 ? (
-          <div className="space-y-3">
-            <Alert tone="warning">
-              <p className="font-semibold">{t('noStaffTitle')}</p>
-              <p className="mt-1">{t('noStaffBody', { branch: device.branchName })}</p>
-            </Alert>
-            <Link
-              href={`/${device.orgSlug}/staff?branch=${device.branchId}`}
-              className={`${buttonVariants()} w-full`}
-            >
-              {t('noStaffAction')}
-            </Link>
-            <Button variant="ghost" className="w-full" onClick={() => window.location.reload()}>
-              {t('noStaffReload')}
-            </Button>
-          </div>
+          <FirstCashierForm sb={sb} device={device} onSignedIn={onSignedIn} onAdded={setStaff} />
         ) : null}
         <div className="grid grid-cols-2 gap-3">
           {(staff ?? []).map((s) => (

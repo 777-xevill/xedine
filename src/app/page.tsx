@@ -74,7 +74,11 @@ export default async function HomePage() {
     redirect(first ? `/${first.slug}` : '/onboarding');
   }
 
-  const [t, tl] = await Promise.all([getTranslations('common'), getTranslations('landing')]);
+  const [t, tl, tlegal] = await Promise.all([
+    getTranslations('common'),
+    getTranslations('landing'),
+    getTranslations('legal'),
+  ]);
 
   const platforms = [
     {
@@ -419,6 +423,14 @@ export default async function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-muted sm:flex-row sm:px-6">
           <BrandMark name={t('appName')} size="sm" />
           <p>{tl('footer')}</p>
+          <nav className="flex gap-4">
+            <Link href="/privacy" className="hover:underline">
+              {tlegal('privacyLink')}
+            </Link>
+            <Link href="/terms" className="hover:underline">
+              {tlegal('termsLink')}
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

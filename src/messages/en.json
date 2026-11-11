@@ -4139,5 +4139,86 @@
       "tooMany": "Too many codes for this number in the last hour. Please wait a little and try again.",
       "code": "Your Xedine sign-in code: {code}\n\nOn the sign-in page, type your number {phone} and this code. It works for 10 minutes.\n\nNever give this code to anyone, not even someone who says they are from Xedine."
     }
+  },
+  "legal": {
+    "privacyLink": "Privacy policy",
+    "termsLink": "Terms",
+    "updated": "Last updated: 12 November 2026",
+    "privacy": {
+      "title": "Privacy policy",
+      "intro": "Xedine is a restaurant app for Bangladesh. This page says, in plain words, what we keep about you and why.",
+      "collect": {
+        "title": "What we keep",
+        "body": "Your account: your name, email address and, if you sign in with a phone, your phone number. Your restaurant's records that you or your staff enter: menu, orders, stock, purchases, staff and settings. Customer names and phone numbers only when the restaurant adds them; offers reach a customer only after they agree."
+      },
+      "signIn": {
+        "title": "Signing in with Google or Facebook",
+        "body": "If you choose Google or Facebook, we receive only your name, email address and profile picture, to create and open your Xedine account. We do not read your email, contacts, files or posts. Signing in does not let us post as you; posting to your restaurant's Facebook Page happens only if you connect it separately in Settings."
+      },
+      "use": {
+        "title": "How we use it",
+        "body": "Only to run Xedine for your restaurant: show your numbers, keep your stock and send the messages you approve. AI helpers read your restaurant's records to answer your questions and draft text; customer phone numbers are left out unless the task needs them."
+      },
+      "share": {
+        "title": "Who else sees it",
+        "body": "We do not sell your data and we show no ads. The services that run Xedine store or process it for us: Supabase (database and sign-in), Cloudflare (hosting), AI providers (answering questions), and Telegram, WhatsApp or Facebook only when you use those features. Inside a restaurant, the owner decides who sees what; cost and profit are for the owner and accountant only."
+      },
+      "safety": {
+        "title": "Keeping it safe",
+        "body": "Every restaurant's data is kept apart from every other restaurant's, connections are encrypted, and passwords are never stored in plain text."
+      },
+      "keep": {
+        "title": "Keeping and deleting",
+        "body": "We keep your data while your account is open. Ask us to delete your account and we delete it and your personal data within 30 days, except records the law requires a business to keep."
+      },
+      "contact": {
+        "title": "Questions",
+        "body": "Write to {email} to ask about your data, get a copy of it or have it deleted."
+      }
+    },
+    "terms": {
+      "title": "Terms of use",
+      "intro": "By using Xedine you agree to these simple terms.",
+      "service": {
+        "title": "What Xedine is",
+        "body": "A tool to run a restaurant: till, kitchen, stock, menu, customers and reports. Features may change as we improve the app."
+      },
+      "account": {
+        "title": "Your account",
+        "body": "Give true details and keep your password and sign-in safe. You are responsible for what is done from your account and by the staff you invite."
+      },
+      "data": {
+        "title": "Your restaurant's data",
+        "body": "Your records belong to you. You let us store and process them only to run Xedine for you, as the privacy policy explains."
+      },
+      "fair": {
+        "title": "Fair use",
+        "body": "Don't use Xedine for anything illegal, to message people who did not agree, or to try to reach another restaurant's data."
+      },
+      "ai": {
+        "title": "Numbers and AI",
+        "body": "Numbers come from your own records. Text the AI writes is a suggestion: check it before you act. Anything that reaches people needs your approval, except the social autopilot, which posts by itself only after you switch it on."
+      },
+      "price": {
+        "title": "Price",
+        "body": "A paid plan shows its price before you pay. We tell you before any price changes."
+      },
+      "warranty": {
+        "title": "No guarantee",
+        "body": "We work hard to keep Xedine running and correct, but it is provided as it is. We are not responsible for indirect losses, such as lost profit, from using it."
+      },
+      "stop": {
+        "title": "Stopping",
+        "body": "You can stop at any time and ask us to delete your account. We may close an account that breaks these terms."
+      },
+      "law": {
+        "title": "Law",
+        "body": "These terms follow the laws of Bangladesh."
+      },
+      "contact": {
+        "title": "Questions",
+        "body": "Write to {email}."
+      }
+    }
   }
 }

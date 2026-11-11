@@ -24,6 +24,9 @@ const PUBLIC_PREFIXES = [
   // A customer's read-only member card (ADR 0042): the link token is the credential.
   '/m/',
   '/t/',
+  // Privacy policy and terms: Google requires them to be public (ADR 0050).
+  '/privacy',
+  '/terms',
 ];
 
 export async function proxy(request: NextRequest) {

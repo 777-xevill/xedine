@@ -28,6 +28,7 @@ const PUBLIC_PREFIXES = [
   '/t/',
   // Privacy policy and terms: Google requires them to be public (ADR 0050).
   '/privacy',
+  '/data-deletion',
   '/terms',
 ];
 

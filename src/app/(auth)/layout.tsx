@@ -21,6 +21,9 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         <Link href="/terms" className="hover:underline">
           {tl('termsLink')}
         </Link>
+        <Link href="/data-deletion" className="hover:underline">
+          {tl('dataDeletionLink')}
+        </Link>
       </footer>
     </div>
   );

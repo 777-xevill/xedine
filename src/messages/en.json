@@ -4238,6 +4238,27 @@
         "title": "Questions",
         "body": "Write to {email}."
       }
+    },
+    "dataDeletionLink": "Delete my data",
+    "dataDeletion": {
+      "title": "Delete your data",
+      "intro": "You can have your Xedine account and the personal data we keep about you deleted at any time.",
+      "how": {
+        "title": "How to ask",
+        "body": "Email {email} from the address you sign in with, and write \"Delete my account\". If you signed in with Facebook or a phone number, tell us the name on your account so we can find it."
+      },
+      "facebook": {
+        "title": "If you signed in with Facebook",
+        "body": "You can also remove Xedine from Facebook yourself: Facebook → Settings & privacy → Settings → Apps and websites → Xedine → Remove. Then email us as above to delete what Xedine kept."
+      },
+      "what": {
+        "title": "What we delete",
+        "body": "Your account, name, email address, phone number and profile picture, and your sign-in links to Google or Facebook. If you own a restaurant on Xedine, its records are deleted too, unless the law requires a business to keep them."
+      },
+      "when": {
+        "title": "When",
+        "body": "Within 30 days. We email you when it is done."
+      }
     }
   }
 }

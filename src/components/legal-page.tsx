@@ -26,12 +26,15 @@ export const TERMS_SECTIONS = [
   'contact',
 ] as const;
 
-/** The privacy policy and terms (needed to publish Google sign-in to everyone, ADR 0050). */
+/** How to have your data deleted (Meta asks for this page before Facebook sign-in goes live). */
+export const DATA_DELETION_SECTIONS = ['how', 'facebook', 'what', 'when'] as const;
+
+/** The privacy policy, terms and data deletion (needed to publish Google/Facebook sign-in, ADR 0050). */
 export async function LegalPage({
   doc,
   sections,
 }: {
-  doc: 'privacy' | 'terms';
+  doc: 'privacy' | 'terms' | 'dataDeletion';
   sections: readonly string[];
 }) {
   const t = await getTranslations('legal');

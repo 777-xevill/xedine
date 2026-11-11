@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { Card, PageTitle } from '@/components/ui/form';
 
 /** Where people write about their data (also the support address on Google's sign-in screen). */
-export const LEGAL_CONTACT = 'rifatpro100@gmail.com';
+export const LEGAL_CONTACT = 'support@xedine.org';
 
 export const PRIVACY_SECTIONS = [
   'collect',

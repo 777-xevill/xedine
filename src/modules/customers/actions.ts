@@ -7,6 +7,7 @@ import { aiErrorKey } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { draftReviewReply, REVIEW_REPLY_PROMPT } from '@/modules/reviews/replies';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
+import { pushCampaignAfterRun } from './jobs/push';
 
 /**
  * Campaigns and reviews (ROADMAP Phase 8). Sends go through run_campaign (consent, caps, holdout, the
@@ -75,11 +76,14 @@ export async function runCampaignAction(_prev: FormState, formData: FormData): P
   const parsed = base.extend({ campaignId: z.uuid() }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
   const supabase = await createClient();
+  const at = now();
   const { data, error } = await supabase.rpc('run_campaign', {
     p_campaign: parsed.data.campaignId,
-    p_now: now().toISOString(),
+    p_now: at.toISOString(),
   });
   if (error) return { error: mapDbError(error) };
+  // The same offer also rings the phones of customers who asked for notifications (ADR 0048).
+  await pushCampaignAfterRun(parsed.data.campaignId, at);
   refresh(parsed.data.orgSlug);
   const r = (data ?? {}) as Record<string, number>;
   return {

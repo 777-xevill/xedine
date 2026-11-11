@@ -5,10 +5,12 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { DishMenu } from '@/components/dish-menu';
 import { Mascot } from '@/components/games/mascot';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { NotifyOffersField } from '@/components/notify-offers-field';
 import { OnceForm } from '@/components/once-form';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/form';
 import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { vapidPublicKey } from '@/modules/customers/jobs/push';
 import { memberCardPath } from '@/modules/customers/member-card';
 import { readMemberCard } from '@/modules/customers/member-card-view';
 import { cardCookieName, isNumberedTable } from '@/modules/customers/table-qr';
@@ -59,6 +61,8 @@ export default async function TablePage({
   // The card this phone joined with before (a cookie per restaurant); a reset or switched-off card is ignored.
   const saved = jar.get(cardCookieName(page.org_id))?.value;
   const card = page.member_on && saved ? await readMemberCard(saved) : null;
+  // Only a visitor who can still join needs the key that lets their phone get offer notifications (ADR 0048).
+  const pushKey = page.member_on && !card ? await vapidPublicKey() : null;
   const join = (JOIN_MESSAGES as readonly string[]).includes(sp.join ?? '')
     ? (sp.join as JoinMessage)
     : null;
@@ -200,10 +204,7 @@ export default async function TablePage({
                   <Label htmlFor="j-name">{t('name')}</Label>
                   <Input id="j-name" name="name" maxLength={120} autoComplete="name" />
                 </div>
-                <label className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" name="offers" className="mt-1" />
-                  {t('offers')}
-                </label>
+                <NotifyOffersField publicKey={pushKey} />
                 <Button type="submit" className="w-full">
                   {t('joinButton')}
                 </Button>

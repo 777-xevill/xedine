@@ -2,6 +2,7 @@ import 'server-only';
 import type { createServiceRoleClient } from '@/lib/db/service-role';
 import { publicEnv } from '@/lib/env';
 import { queueMessage } from '@/modules/messaging/jobs/outbox';
+import { pushCampaign } from './push';
 
 /**
  * Retention jobs (ROADMAP Phase 8), as the service role for one explicit org at a time:
@@ -50,6 +51,10 @@ export async function runAutoCampaigns(sb: Supabase, orgId: string, at: Date): P
       p_now: at.toISOString(),
     });
     if (runError) throw runError;
+    // Also ring the phones of customers who asked for notifications (ADR 0048); a failure never undoes the run.
+    await pushCampaign(sb, c.id as string, at).catch((e: unknown) =>
+      console.error('campaign push', e instanceof Error ? e.message : 'failed'),
+    );
   }
   return (campaigns ?? []).length;
 }

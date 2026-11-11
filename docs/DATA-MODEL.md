@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (118)
+## Tables (119)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -102,6 +102,7 @@
 | `purchase_drafts` | AI-extracted chit/voice drafts awaiting human confirmation. | org + branch | read: owner, purchaser, accountant; write: owner, purchaser | PK id · → branches, purchases | purchasing · P5 |
 | `purchase_lines` | Purchase lines: qty in base units and line total. | org + branch | read: owner, purchaser, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, purchases | purchasing · P5 |
 | `purchases` | A bazar purchase; money-bearing so managers cannot read it. | org + branch | read: owner, purchaser, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, suppliers | purchasing · P5 |
+| `push_subscriptions` | A customer's phone that agreed to offer notifications (endpoint and keys); service role only. | org · service only | no client access | PK id · → customers | customers · P11 |
 | `reason_codes` | Reason codes for discounts, voids, refunds, waste, adjustments. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | pos · P1 |
 | `recipe_drafts` | AI or pasted recipe drafts awaiting a person's approval. | org | read: owner, manager, kitchen; write: owner, manager, kitchen (AI suggestions only; a person's Save (save_recipe) or the owner's approval turns one into a recipe) | PK id · → menu_items, recipes | recipes · P3 |
 | `recipe_lines` | Recipe lines: ingredient or sub-recipe, qty in base units, yield %. | org | read: owner, manager, kitchen, accountant; write: owner | PK id · → ingredients, recipes | recipes · P3 |
@@ -135,7 +136,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (180)
+## RPC functions (183)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -296,6 +297,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `revoke_invitation` | `p_invitation uuid` |
 | `run_campaign` | `p_campaign uuid, p_now timestamp with time zone` |
 | `save_count_line` | `p_count uuid, p_ingredient uuid, p_qty numeric, p_note text DEFAULT NULL::text` |
+| `save_push_subscription` | `p_card_token text, p_endpoint text, p_p256dh text, p_auth text` |
 | `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text, p_draft uuid DEFAULT NULL::uuid` |
 | `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
 | `send_bazar_list` | `p_list uuid, p_messages jsonb` |
@@ -319,5 +321,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `transfer_destinations` | `p_org uuid` |
 | `update_incident` | `p_org uuid, p_incident uuid, p_status text, p_severity text, p_root_cause text DEFAULT NULL::text, p_customer_resolution text DEFAULT NULL::text` |
 | `update_membership` | `p_membership uuid, p_role app_role DEFAULT NULL::app_role, p_branch_ids uuid[] DEFAULT NULL::uuid[]` |
+| `web_push_keys_get` |  |
+| `web_push_keys_put` | `p_public text, p_private_jwk text` |
 | `void_order_item` | `p_org uuid, p_branch uuid, p_order_item uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `void_purchase` | `p_purchase uuid, p_reason text` |

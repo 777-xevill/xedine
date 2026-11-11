@@ -3209,7 +3209,11 @@
     "joinNoApp": "No app. Your card opens right here on your phone.",
     "phone": "Mobile number",
     "name": "Your name (optional)",
-    "offers": "Send me offers on WhatsApp or SMS",
+    "offers": "Get notified when you get a personal offer",
+    "offersHint": "Offers reach you as a notification on this phone, and on WhatsApp or SMS.",
+    "offersOn": "Notifications are on for this phone.",
+    "offersBlocked": "Notifications are blocked in this browser. You will still get offers on WhatsApp or SMS.",
+    "offersFailed": "Could not turn on notifications here. You will still get offers on WhatsApp or SMS.",
     "joinButton": "Join now",
     "joinPrivacy": "Your number is only for your card and stays with this restaurant.",
     "join": {

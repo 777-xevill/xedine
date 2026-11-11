@@ -1,5 +1,5 @@
 /*
- * Xedine till service worker (ARCHITECTURE.md "Offline POS"). One job: a till or kitchen screen that
+ * Xedine service worker. Two jobs. (1) The till (ARCHITECTURE.md "Offline POS"): a till or kitchen screen that
  * is reloaded, or reopened after a crash, while the internet is down still opens. Orders themselves
  * are queued in IndexedDB by the app (src/modules/pos/outbox.ts), not here.
  *
@@ -46,6 +46,43 @@ async function cacheFirst(request) {
   if (response.ok) await cache.put(request, response.clone());
   return response;
 }
+
+/*
+ * Offer notifications (ADR 0048). The server sends {title, body, url, tag} encrypted; show it, and open the
+ * customer's member card when they tap it. A message that cannot be read still shows something, because
+ * the browser requires every push to show a notification.
+ */
+self.addEventListener('push', (event) => {
+  let note = {};
+  try {
+    note = event.data ? event.data.json() : {};
+  } catch {
+    note = {};
+  }
+  const title = typeof note.title === 'string' && note.title ? note.title : 'Xedine';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: typeof note.body === 'string' ? note.body : '',
+      icon: '/brand/logo-192.png',
+      badge: '/brand/logo-64.png',
+      tag: typeof note.tag === 'string' ? note.tag : undefined,
+      data: { url: typeof note.url === 'string' ? note.url : '/' },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url ?? '/', self.location.origin);
+  // Only a link on this site: a push never sends the phone somewhere else.
+  const target = url.origin === self.location.origin ? url.href : self.location.origin;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((all) => {
+      const open = all.find((c) => c.url === target && 'focus' in c);
+      return open ? open.focus() : self.clients.openWindow(target);
+    }),
+  );
+});
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;

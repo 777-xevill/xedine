@@ -144,6 +144,12 @@ const OVERRIDES: Record<string, Override> = {
   // one account per platform per org; Meta ids are digits (ADR 0040)
   social_accounts: () => ({ platform: 'facebook', external_id: String(1_000_000 + next()) }),
   social_posts: () => ({ source: 'owner', angle: 'own', format: 'image', own_text: null }),
+  // an https endpoint, the phone's 65-byte key and 16-byte secret as URL-safe base64 (ADR 0048)
+  push_subscriptions: () => ({
+    endpoint: `https://push.example/${randomUUID()}`,
+    p256dh: `B${'A'.repeat(86)}`,
+    auth: 'A'.repeat(22),
+  }),
 };
 
 let counter = 0;

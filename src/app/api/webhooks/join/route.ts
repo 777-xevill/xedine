@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
+import { savePushSubscription } from '@/modules/customers/jobs/push';
 import { memberCardPath } from '@/modules/customers/member-card';
 import { cardCookieName, TABLE_TOKEN } from '@/modules/customers/table-qr';
 
@@ -16,7 +17,32 @@ const Body = z.object({
   phone: z.string().trim().min(6).max(30),
   name: z.string().trim().max(120).optional(),
   offers: z.literal('on').optional(),
+  push: z
+    .object({
+      endpoint: z.string().max(1000),
+      p256dh: z.string().max(100),
+      auth: z.string().max(30),
+    })
+    .optional(),
 });
+
+/** The browser's subscription as the form sends it (JSON in a hidden field); anything odd is ignored. */
+function parsePush(text: string | undefined): unknown {
+  if (!text || text.length > 2000) return undefined;
+  try {
+    const v = JSON.parse(text) as {
+      endpoint?: unknown;
+      keys?: { p256dh?: unknown; auth?: unknown };
+    };
+    const { endpoint } = v;
+    const { p256dh, auth } = v.keys ?? {};
+    return typeof endpoint === 'string' && typeof p256dh === 'string' && typeof auth === 'string'
+      ? { endpoint, p256dh, auth }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const Result = z.object({
   status: z.enum(['new', 'known', 'off', 'gone', 'busy', 'invalid']),
@@ -45,9 +71,11 @@ export async function POST(request: NextRequest) {
     phone: field('phone'),
     name: field('name') || undefined,
     offers: field('offers'),
+    push: parsePush(field('push')),
   });
   if (!parsed.success) return back('invalid');
-  const { data, error } = await createServiceRoleClient().rpc('join_member_at_table', {
+  const sb = createServiceRoleClient();
+  const { data, error } = await sb.rpc('join_member_at_table', {
     p_token: parsed.data.token,
     p_phone: parsed.data.phone,
     p_name: parsed.data.name ?? null,
@@ -62,6 +90,12 @@ export async function POST(request: NextRequest) {
   if (!result.success) return back('failed');
   const { status, token, org_id } = result.data;
   if (status !== 'new' || !token || !org_id) return back(status);
+
+  // The phone's notification subscription, when the customer allowed it in the browser (ADR 0048). It is
+  // saved only for a customer who ticked offers; a bad or missing one never stops the join.
+  if (parsed.data.offers === 'on' && parsed.data.push) {
+    await savePushSubscription(sb, token, parsed.data.push);
+  }
 
   const response = NextResponse.redirect(
     new URL(`${memberCardPath(token)}?welcome=1`, request.url),

@@ -13,7 +13,7 @@ import {
   type LoveState,
 } from '@/modules/games/love';
 import { HostSays } from './mascot';
-import { dishName, FaceView, Results, type GameProps } from './parts';
+import { Results, type GameProps } from './parts';
 
 interface LoveQuestion {
   q: string;
@@ -22,19 +22,13 @@ interface LoveQuestion {
 
 /** Love Match (ADR 0046): a couple answers the same questions; how many match is the love score. */
 export function LoveView(props: GameProps<LoveState>) {
-  const { state: s, dispatch, me, players, dishes, locale, hostName } = props;
+  const { state: s, dispatch, me, players, locale, hostName } = props;
   const t = useTranslations('games');
   const bank = Object.values(t.raw('love.bank') as Record<string, LoveQuestion>);
   const total = loveTotal(s);
-  const question = (k: number): { q: string; options: { label: string; dish?: number }[] } => {
-    if (k < s.questions.length) {
-      const b = bank[s.questions[k]!] ?? { q: '', o: {} };
-      return { q: b.q, options: Object.values(b.o).map((label) => ({ label })) };
-    }
-    return {
-      q: t('love.share'),
-      options: s.shareDishes.map((d) => ({ label: dishName(dishes[d], locale), dish: d })),
-    };
+  const question = (k: number): { q: string; options: string[] } => {
+    const b = bank[s.questions[k]!] ?? { q: '', o: {} };
+    return { q: b.q, options: Object.values(b.o) };
   };
 
   if (s.revealed) {
@@ -77,9 +71,9 @@ export function LoveView(props: GameProps<LoveState>) {
                   <span>
                     {t('love.answered', {
                       a: players[0]?.name ?? '',
-                      x: q.options[a]?.label ?? '',
+                      x: q.options[a] ?? '',
                       b: players[1]?.name ?? '',
-                      y: q.options[b]?.label ?? '',
+                      y: q.options[b] ?? '',
                     })}
                   </span>
                 </p>
@@ -140,12 +134,7 @@ export function LoveView(props: GameProps<LoveState>) {
             onClick={() => dispatch({ type: 'answer', option: i }, who)}
             className="game-pop flex min-h-24 flex-col items-center justify-center gap-2 rounded-card border-2 border-line bg-surface p-3 text-center font-bold shadow-soft hover:border-pink active:scale-95"
           >
-            {o.dish !== undefined ? (
-              <span className="size-16 overflow-hidden rounded-input">
-                <FaceView face={{ kind: 'dish', i: o.dish }} dishes={dishes} locale={locale} />
-              </span>
-            ) : null}
-            <span>{o.label}</span>
+            <span>{o}</span>
           </button>
         ))}
       </div>

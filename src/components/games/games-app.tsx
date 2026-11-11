@@ -4,8 +4,11 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
   ArrowLeft,
   Brain,
+  Dices,
+  Eye,
   Grid3x3,
   Heart,
+  Scale,
   Smartphone,
   Sparkles,
   Users,
@@ -25,7 +28,6 @@ import {
   GAME_KEYS,
   isGameKey,
   PLAYERS,
-  type GameDish,
   type GameKey,
   type NameKey,
   type Player,
@@ -38,19 +40,26 @@ import {
   type GameAction,
   type GameState,
 } from '@/modules/games/game';
+import { initGuess } from '@/modules/games/guess';
 import { initLove } from '@/modules/games/love';
-import { initMemory, type Face } from '@/modules/games/memory';
+import { initMemory } from '@/modules/games/memory';
+import { themeFaces, THEMES } from '@/modules/games/pictures';
 import { initQuiz } from '@/modules/games/quiz';
 import { initRace } from '@/modules/games/race';
-import { rng, shuffle } from '@/modules/games/random';
+import { initRather } from '@/modules/games/rather';
+import { pick as pickNumber, rng, shuffle } from '@/modules/games/random';
+import { initWheel } from '@/modules/games/wheel';
 import { CatchView } from './catch-view';
 import { DuelView } from './duel-view';
+import { GuessView } from './guess-view';
 import { LoveView } from './love-view';
 import { HostSays, Mascot } from './mascot';
 import { MemoryView } from './memory-view';
 import { PLAYER_BG } from './parts';
 import { QuizView } from './quiz-view';
 import { RaceView } from './race-view';
+import { RatherView } from './rather-view';
+import { WheelView } from './wheel-view';
 
 /**
  * The games shell on the table page (ADR 0046). Pick a game, how many play and how: everyone on this one
@@ -62,15 +71,17 @@ export interface GamesAppProps {
   token: string;
   restaurant: string;
   names: Partial<Record<NameKey, string>>;
-  dishes: GameDish[];
 }
 
 const ICONS: Record<GameKey, LucideIcon> = {
   catch: Sparkles,
-  memory: Brain,
   quiz: Zap,
+  guess: Eye,
+  memory: Brain,
   race: Users,
   duel: Grid3x3,
+  rather: Scale,
+  wheel: Dices,
   love: Heart,
 };
 
@@ -136,62 +147,54 @@ const cleanName = (v: string, fallback: string) =>
   v.replace(/\s+/g, ' ').trim().slice(0, 24) || fallback;
 const roomId = () => Math.random().toString(36).slice(2, 10).padEnd(8, '0');
 
+/** What the games need to know from the message files: how many questions and topics there are. */
+interface Banks {
+  quiz: number;
+  love: number;
+  rather: number;
+  topics: number;
+}
+
 /** A new game, set up by the phone that runs it. */
-function newGame(
-  game: GameKey,
-  players: Player[],
-  local: boolean,
-  dishes: GameDish[],
-  ctx: {
-    quizBank: number;
-    loveBank: number;
-    decoys: number[];
-  },
-): GameState {
+function newGame(game: GameKey, players: Player[], local: boolean, banks: Banks): GameState {
   const seed = Math.floor(Math.random() * 2 ** 31);
   const next = rng(seed);
   const n = players.length;
-  const photos = dishes.flatMap((d, i) => (d.photo ? [i] : []));
-  const faces = (count: number): Face[] => {
-    const fromDishes = shuffle(photos, next)
-      .slice(0, count)
-      .map((i): Face => ({ kind: 'dish', i }));
-    const icons = shuffle(
-      Array.from({ length: 10 }, (_, i) => i),
-      next,
-    )
-      .slice(0, count - fromDishes.length)
-      .map((i): Face => ({ kind: 'icon', i }));
-    return [...fromDishes, ...icons];
-  };
+  // Tap Race and Three in a Row use pictures of one theme.
+  const themed = (count: number): number[] =>
+    shuffle(themeFaces(pickNumber(THEMES.length, next)), next).slice(0, count);
   switch (game) {
     case 'catch':
       return initCatch(n, local);
     case 'memory':
-      return initMemory(n, photos, seed);
+      return initMemory(n, seed);
     case 'quiz':
       return initQuiz({
         mode: n === 1 ? 'solo' : local ? 'turns' : 'together',
         players: n,
-        bankSize: ctx.quizBank,
-        prices: dishes.map((d) => d.price_poisha),
-        decoys: ctx.decoys,
+        bankSize: banks.quiz,
         seed,
       });
+    case 'guess':
+      return initGuess(n === 1 ? 'solo' : local ? 'turns' : 'together', n, seed);
     case 'race': {
-      const f = faces(5);
+      const f = themed(5);
       return initRace(n, f, Math.floor(next() * f.length));
     }
     case 'duel': {
-      const [a, b] = faces(2);
+      const [a, b] = themed(2);
       return initDuel(n === 1, [a!, b!]);
     }
+    case 'rather':
+      return initRather(n, banks.rather, seed);
+    case 'wheel':
+      return initWheel(n, banks.topics, seed);
     case 'love':
-      return initLove(local, ctx.loveBank, dishes.length, seed);
+      return initLove(local, banks.love, seed);
   }
 }
 
-export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
+export function GamesApp({ token, restaurant, names }: GamesAppProps) {
   const t = useTranslations('games');
   const locale = useLocale() as Locale;
   const sb = useMemo(() => createClient(), []);
@@ -207,17 +210,15 @@ export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
 
   const hostName = names.host ?? t('names.host');
   const gameName = (g: GameKey) => names[g] ?? t(`names.${g}`);
-  const ctx = useMemo(() => {
-    const menu = new Set(
-      dishes.flatMap((d) => [d.name, d.name_bn ?? ''].map((n) => n.toLowerCase())),
-    );
-    const decoyNames = Object.values(t.raw('quiz.decoys') as Record<string, string>);
-    return {
-      quizBank: Object.keys(t.raw('quiz.bank') as object).length,
-      loveBank: Object.keys(t.raw('love.bank') as object).length,
-      decoys: decoyNames.flatMap((n, i) => (menu.has(n.toLowerCase()) ? [] : [i])),
-    };
-  }, [dishes, t]);
+  const banks = useMemo<Banks>(
+    () => ({
+      quiz: Object.keys(t.raw('quiz.bank') as object).length,
+      love: Object.keys(t.raw('love.bank') as object).length,
+      rather: Object.keys(t.raw('rather.bank') as object).length,
+      topics: Object.keys(t.raw('wheel.topics') as object).length,
+    }),
+    [t],
+  );
 
   // The table's lobby: hosts announce their open game; everyone at the table sees it.
   useEffect(() => {
@@ -394,7 +395,7 @@ export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
       game,
       players,
       status: 'playing',
-      state: newGame(game, players, true, dishes, ctx),
+      state: newGame(game, players, true, banks),
       v: 1,
     });
   };
@@ -422,7 +423,7 @@ export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
         ? {
             ...r,
             status: 'playing',
-            state: newGame(r.game, r.players, session.role === 'local', dishes, ctx),
+            state: newGame(r.game, r.players, session.role === 'local', banks),
             v: r.v + 1,
           }
         : r,
@@ -450,9 +451,7 @@ export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
       me,
       runner: session.role !== 'guest',
       players,
-      dishes,
       hostName,
-      restaurant,
       locale,
       onAgain: again,
       onExit: leave,
@@ -463,6 +462,9 @@ export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
         {s.game === 'catch' ? <CatchView {...common} state={s} /> : null}
         {s.game === 'memory' ? <MemoryView {...common} state={s} /> : null}
         {s.game === 'quiz' ? <QuizView {...common} state={s} /> : null}
+        {s.game === 'guess' ? <GuessView {...common} state={s} /> : null}
+        {s.game === 'rather' ? <RatherView {...common} state={s} /> : null}
+        {s.game === 'wheel' ? <WheelView {...common} state={s} /> : null}
         {s.game === 'race' ? <RaceView {...common} state={s} /> : null}
         {s.game === 'duel' ? <DuelView {...common} state={s} /> : null}
         {s.game === 'love' ? <LoveView {...common} state={s} /> : null}
@@ -508,7 +510,7 @@ export function GamesApp({ token, restaurant, names, dishes }: GamesAppProps) {
                     ? {
                         ...r,
                         status: 'playing',
-                        state: newGame(r.game, r.players, false, dishes, ctx),
+                        state: newGame(r.game, r.players, false, banks),
                         v: r.v + 1,
                       }
                     : r,

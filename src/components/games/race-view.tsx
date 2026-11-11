@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { nextFace, RACE_TARGETS, type RaceState } from '@/modules/games/race';
 import { HostSays } from './mascot';
 import {
-  FaceView,
+  Pic,
   PLAYER_BG,
   PLAYER_SOFT,
   PlayerChips,
@@ -21,7 +21,7 @@ import {
  * theirs the right way up). Separate phones: each phone is a big buzzer.
  */
 export function RaceView(props: GameProps<RaceState>) {
-  const { state: s, dispatch, me, runner, players, dishes, locale, hostName } = props;
+  const { state: s, dispatch, me, runner, players, locale, hostName } = props;
   const t = useTranslations('games');
   // The next show comes after a short, varied wait; the last target gets a moment before the end.
   const shown = s.showing?.n ?? 0;
@@ -54,7 +54,7 @@ export function RaceView(props: GameProps<RaceState>) {
           {t('race.rules', { n: formatNumber(RACE_TARGETS, locale) })}
         </HostSays>
         <div className="mx-auto size-40 overflow-hidden rounded-card border-4 border-purple shadow-soft">
-          <FaceView face={target} dishes={dishes} locale={locale} />
+          <Pic face={target} />
         </div>
         <p className="text-sm font-semibold">{t('race.target')}</p>
         {runner ? (
@@ -76,7 +76,7 @@ export function RaceView(props: GameProps<RaceState>) {
         s.claimed ? 'border-success' : 'border-line',
       )}
     >
-      <FaceView face={s.faces[s.showing.face]!} dishes={dishes} locale={locale} />
+      <Pic face={s.faces[s.showing.face]!} />
     </div>
   ) : (
     <div className="size-32 rounded-card border-4 border-dashed border-line sm:size-40" />
@@ -84,7 +84,7 @@ export function RaceView(props: GameProps<RaceState>) {
   const hint = (
     <div className="flex items-center gap-2 text-xs font-semibold">
       <span className="size-8 overflow-hidden rounded-input">
-        <FaceView face={target} dishes={dishes} locale={locale} />
+        <Pic face={target} />
       </span>
       {t('race.only')}
     </div>

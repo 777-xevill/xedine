@@ -3231,35 +3231,43 @@
     "footer": "No app needed. Scan the table QR any time.",
     "goGames": "Games",
     "gamesTitle": "Play while you wait",
-    "gamesBody": "{host} has six games for you, alone, with friends or as a couple. No app.",
+    "gamesBody": "{host} has nine games for you: alone, with friends or as a couple. No app.",
     "gamesPlay": "Play now",
     "hostName": "Mishti"
   },
   "games": {
     "names": {
-      "catch": "Chef Catch",
-      "memory": "Dish Memory",
-      "quiz": "Food Quiz",
+      "catch": "Catch It!",
+      "memory": "Match Pairs",
+      "quiz": "Brain Quiz",
       "race": "Tap Race",
-      "duel": "Dish Duel",
+      "duel": "Three in a Row",
       "love": "Love Match",
-      "host": "Mishti"
+      "host": "Mishti",
+      "guess": "Blur Guess",
+      "rather": "Would You Rather",
+      "wheel": "Spin the Wheel"
     },
     "about": {
-      "catch": "Catch the falling dishes, dodge the burnt ones",
-      "memory": "Find the pairs of our dishes",
-      "quiz": "Food questions and our own menu",
-      "race": "Fastest finger on the right dish",
-      "duel": "Three in a row with dishes",
-      "love": "How well do you match?"
+      "catch": "Catch the falling things, dodge the fireballs",
+      "memory": "Find the matching pairs",
+      "quiz": "Quick questions on animals, Bangladesh, sports and space",
+      "race": "Fastest finger on the right picture",
+      "duel": "Three in a row with pictures",
+      "love": "How well do you match?",
+      "guess": "A blurry picture slowly clears. Name it fast!",
+      "rather": "Pick one. Who thinks like you?",
+      "wheel": "Spin to pick who pays, who sings…"
     },
     "intro": {
-      "catch": "Move me left and right with your finger and catch the dishes on my plate!",
-      "memory": "Turn over two cards. Same dish? They are yours. Remember where they hide!",
-      "quiz": "Quick questions about food and about this menu. Fifteen seconds each!",
-      "race": "Put the phone in the middle. Tap your corner only when the target dish shows!",
-      "duel": "Get three of your dish in a row. Alone? Play against me!",
-      "love": "Answer the same little questions without peeking. Then see your love score!"
+      "catch": "Move me left and right with your finger and catch the falling things on my plate. Watch out for fireballs!",
+      "memory": "Turn over two cards. Same picture? They are yours. Remember where they hide!",
+      "quiz": "Quick questions on animals, Bangladesh, sports and space. Fifteen seconds each!",
+      "race": "Put the phone in the middle. Tap your corner only when the target picture shows!",
+      "duel": "Get three of your picture in a row. Alone? Play against me!",
+      "guess": "A big blurry picture slowly gets clear. Pick what it is before it is sharp: the sooner, the more points!",
+      "rather": "Two choices and everyone picks one. Pick what most of the table picks and you get a point!",
+      "wheel": "Choose what the wheel decides, then spin. No money moves. It is just for fun!"
     },
     "hello": "Hi! I am {host}. Your food at {restaurant} is on its way. Want to play while you wait?",
     "openGames": "Games at your table",
@@ -3300,7 +3308,7 @@
     "lines": {
       "right": {
         "1": "Yes! Brilliant!",
-        "2": "Correct! You know your food!",
+        "2": "Correct! You know it!",
         "3": "Wah! Spot on!",
         "4": "Right answer, chef!"
       },
@@ -3324,290 +3332,329 @@
       }
     },
     "memory": {
-      "soloHint": "Moves: {moves}. Find all the pairs!",
-      "soloGreat": "Wow, only {moves} moves! Memory of a master chef!",
+      "soloHint": "Theme: {theme}. Moves: {moves}. Find all the pairs!",
+      "soloGreat": "Wow, only {moves} moves! A memory like a master!",
       "soloDone": "All pairs found in {moves} moves. Can you do it in fewer?",
       "card": "Card {n}",
-      "cardOpen": "Open card"
+      "cardOpen": "Open card",
+      "theme": "Theme: {theme}"
     },
     "quiz": {
       "question": "Question {n} of {total}",
       "waiting": "Waiting for the others…",
-      "onMenu": "Which of these is on the {restaurant} menu?",
-      "price": "Which dish costs {price} here?",
       "soloDone": "You got {right} out of {total} right!",
       "bank": {
         "1": {
-          "q": "What does “kacchi” mean in kacchi biryani?",
-          "a": "Raw: the meat goes in raw with the rice",
+          "q": "What is the national animal of Bangladesh?",
+          "a": "Royal Bengal Tiger",
           "w": {
-            "1": "Spicy",
-            "2": "Royal",
-            "3": "Smoked"
+            "1": "Elephant",
+            "2": "Lion",
+            "3": "Deer"
           }
         },
         "2": {
-          "q": "Kacchi biryani in Dhaka is usually made with which meat?",
-          "a": "Mutton",
+          "q": "What is the national flower of Bangladesh?",
+          "a": "Water lily (Shapla)",
           "w": {
-            "1": "Fish",
-            "2": "Duck",
-            "3": "Prawn"
+            "1": "Rose",
+            "2": "Sunflower",
+            "3": "Jasmine"
           }
         },
         "3": {
-          "q": "Borhani is made mainly from…",
-          "a": "Yogurt",
+          "q": "What is the national bird of Bangladesh?",
+          "a": "Doel (magpie-robin)",
           "w": {
-            "1": "Milk tea",
-            "2": "Coconut water",
-            "3": "Sugarcane juice"
+            "1": "Crow",
+            "2": "Peacock",
+            "3": "Owl"
           }
         },
         "4": {
-          "q": "What is the national fish of Bangladesh?",
-          "a": "Hilsa (ilish)",
-          "w": {
-            "1": "Rui",
-            "2": "Pangas",
-            "3": "Koi"
-          }
-        },
-        "5": {
           "q": "What is the national fruit of Bangladesh?",
           "a": "Jackfruit",
           "w": {
             "1": "Mango",
-            "2": "Lychee",
-            "3": "Banana"
+            "2": "Banana",
+            "3": "Lychee"
+          }
+        },
+        "5": {
+          "q": "What is the national sport of Bangladesh?",
+          "a": "Kabaddi (Hadudu)",
+          "w": {
+            "1": "Cricket",
+            "2": "Football",
+            "3": "Hockey"
           }
         },
         "6": {
-          "q": "Fuchka is eaten with which sour water?",
-          "a": "Tamarind water",
+          "q": "Which beach is famous as the longest unbroken sea beach in the world?",
+          "a": "Cox’s Bazar",
           "w": {
-            "1": "Lemon soda",
-            "2": "Vinegar",
-            "3": "Coconut water"
+            "1": "Kuakata",
+            "2": "Patenga",
+            "3": "Saint Martin’s"
           }
         },
         "7": {
-          "q": "Which district is famous for mishti doi?",
-          "a": "Bogura",
+          "q": "International Mother Language Day is on which date?",
+          "a": "21 February",
           "w": {
-            "1": "Sylhet",
-            "2": "Cox’s Bazar",
-            "3": "Rangpur"
+            "1": "26 March",
+            "2": "16 December",
+            "3": "14 April"
           }
         },
         "8": {
-          "q": "Which district is famous for roshomalai?",
-          "a": "Cumilla",
+          "q": "Victory Day of Bangladesh is on which date?",
+          "a": "16 December",
           "w": {
-            "1": "Khulna",
-            "2": "Barishal",
-            "3": "Dinajpur"
+            "1": "26 March",
+            "2": "21 February",
+            "3": "1 May"
           }
         },
         "9": {
-          "q": "In Bangladesh, haleem is most popular during…",
-          "a": "Ramadan",
+          "q": "The Sundarbans is the world’s largest forest of which kind?",
+          "a": "Mangrove",
           "w": {
-            "1": "Pohela Boishakh",
-            "2": "Christmas",
-            "3": "Durga Puja"
+            "1": "Pine",
+            "2": "Rain forest",
+            "3": "Bamboo"
           }
         },
         "10": {
-          "q": "On Pohela Boishakh, panta bhat is traditionally eaten with…",
-          "a": "Fried hilsa",
+          "q": "Dhaka stands on the bank of which river?",
+          "a": "Buriganga",
           "w": {
-            "1": "Beef curry",
-            "2": "Pizza",
-            "3": "Noodles"
+            "1": "Teesta",
+            "2": "Karnaphuli",
+            "3": "Surma"
           }
         },
         "11": {
-          "q": "Pitha is made most in which season?",
-          "a": "Winter",
+          "q": "How many divisions does Bangladesh have?",
+          "a": "8",
           "w": {
-            "1": "Summer",
-            "2": "Monsoon",
-            "3": "Spring"
+            "1": "6",
+            "2": "7",
+            "3": "9"
           }
         },
         "12": {
-          "q": "Most of Bangladesh’s tea gardens are in…",
-          "a": "Sylhet",
+          "q": "Who wrote the national anthem ‘Amar Shonar Bangla’?",
+          "a": "Rabindranath Tagore",
           "w": {
-            "1": "Khulna",
-            "2": "Rajshahi",
-            "3": "Barishal"
+            "1": "Kazi Nazrul Islam",
+            "2": "Jibanananda Das",
+            "3": "Humayun Ahmed"
           }
         },
         "13": {
-          "q": "Which spice gives kacchi its golden colour and smell?",
-          "a": "Saffron",
+          "q": "Which planet is closest to the Sun?",
+          "a": "Mercury",
           "w": {
-            "1": "Cumin",
-            "2": "Black pepper",
-            "3": "Cinnamon"
+            "1": "Venus",
+            "2": "Earth",
+            "3": "Mars"
           }
         },
         "14": {
-          "q": "Naan is baked in a…",
-          "a": "Tandoor (clay oven)",
+          "q": "Which planet is called the Red Planet?",
+          "a": "Mars",
           "w": {
-            "1": "Frying pan",
-            "2": "Steamer",
-            "3": "Pressure cooker"
+            "1": "Jupiter",
+            "2": "Saturn",
+            "3": "Venus"
           }
         },
         "15": {
-          "q": "Paneer is a kind of…",
-          "a": "Cheese",
+          "q": "Which planet is famous for its rings?",
+          "a": "Saturn",
           "w": {
-            "1": "Bread",
-            "2": "Rice",
-            "3": "Sweet"
+            "1": "Mars",
+            "2": "Earth",
+            "3": "Mercury"
           }
         },
         "16": {
-          "q": "Pizza first came from which country?",
-          "a": "Italy",
+          "q": "How many days are there in a leap year?",
+          "a": "366",
           "w": {
-            "1": "USA",
-            "2": "France",
-            "3": "Greece"
+            "1": "365",
+            "2": "364",
+            "3": "367"
           }
         },
         "17": {
-          "q": "Sushi comes from which country?",
-          "a": "Japan",
+          "q": "Which is the largest animal on Earth?",
+          "a": "Blue whale",
           "w": {
-            "1": "China",
-            "2": "Korea",
-            "3": "Thailand"
+            "1": "Elephant",
+            "2": "Giraffe",
+            "3": "Great white shark"
           }
         },
         "18": {
-          "q": "Tacos are famous food from…",
-          "a": "Mexico",
+          "q": "Which is the fastest land animal?",
+          "a": "Cheetah",
           "w": {
-            "1": "Spain",
-            "2": "Brazil",
-            "3": "India"
+            "1": "Lion",
+            "2": "Horse",
+            "3": "Tiger"
           }
         },
         "19": {
-          "q": "Momo dumplings are a famous food of…",
-          "a": "Nepal",
+          "q": "How many legs does a spider have?",
+          "a": "8",
           "w": {
-            "1": "Egypt",
-            "2": "Italy",
-            "3": "Kenya"
+            "1": "6",
+            "2": "10",
+            "3": "4"
           }
         },
         "20": {
-          "q": "Chocolate is made from the beans of the…",
-          "a": "Cacao tree",
+          "q": "How many colours are there in a rainbow?",
+          "a": "7",
           "w": {
-            "1": "Coffee plant",
-            "2": "Vanilla plant",
-            "3": "Coconut tree"
+            "1": "5",
+            "2": "6",
+            "3": "8"
           }
         },
         "21": {
-          "q": "Marzipan is made from which nut?",
-          "a": "Almond",
+          "q": "Which animal is called the ship of the desert?",
+          "a": "Camel",
           "w": {
-            "1": "Cashew",
-            "2": "Peanut",
-            "3": "Walnut"
+            "1": "Horse",
+            "2": "Elephant",
+            "3": "Donkey"
           }
         },
         "22": {
-          "q": "Guacamole is made mainly from…",
-          "a": "Avocado",
+          "q": "Which is the largest ocean?",
+          "a": "Pacific Ocean",
           "w": {
-            "1": "Green peas",
-            "2": "Cucumber",
-            "3": "Green apple"
+            "1": "Atlantic Ocean",
+            "2": "Indian Ocean",
+            "3": "Arctic Ocean"
           }
         },
         "23": {
-          "q": "Which vegetable can make you cry when you cut it?",
-          "a": "Onion",
+          "q": "How many players of one team are on the pitch in football?",
+          "a": "11",
           "w": {
-            "1": "Potato",
-            "2": "Carrot",
-            "3": "Tomato"
+            "1": "9",
+            "2": "10",
+            "3": "12"
           }
         },
         "24": {
-          "q": "Popcorn is made from…",
-          "a": "Corn",
+          "q": "How many balls are bowled in one over of cricket?",
+          "a": "6",
           "w": {
-            "1": "Rice",
-            "2": "Wheat",
-            "3": "Barley"
+            "1": "4",
+            "2": "5",
+            "3": "8"
           }
         },
         "25": {
-          "q": "Which bird lays the biggest egg?",
-          "a": "Ostrich",
+          "q": "How many stumps does a cricket wicket have?",
+          "a": "3",
           "w": {
-            "1": "Duck",
-            "2": "Goose",
-            "3": "Turkey"
+            "1": "2",
+            "2": "4",
+            "3": "5"
           }
         },
         "26": {
-          "q": "Honey is made by…",
-          "a": "Bees",
+          "q": "How many rings are in the Olympic symbol?",
+          "a": "5",
           "w": {
-            "1": "Ants",
-            "2": "Butterflies",
-            "3": "Wasps"
+            "1": "4",
+            "2": "6",
+            "3": "7"
           }
         },
         "27": {
-          "q": "Which of these is a fruit, not a vegetable, for a scientist?",
-          "a": "Tomato",
+          "q": "Which is the tallest mountain on Earth?",
+          "a": "Mount Everest",
           "w": {
-            "1": "Potato",
-            "2": "Onion",
-            "3": "Carrot"
+            "1": "K2",
+            "2": "Kanchenjunga",
+            "3": "Mount Fuji"
           }
         },
         "28": {
-          "q": "Jilapi is soaked in…",
-          "a": "Sugar syrup",
+          "q": "Which of these birds cannot fly?",
+          "a": "Penguin",
           "w": {
-            "1": "Milk",
-            "2": "Salt water",
-            "3": "Tea"
+            "1": "Crow",
+            "2": "Eagle",
+            "3": "Parrot"
+          }
+        },
+        "29": {
+          "q": "How many continents are there?",
+          "a": "7",
+          "w": {
+            "1": "5",
+            "2": "6",
+            "3": "8"
+          }
+        },
+        "30": {
+          "q": "What comes next: 2, 4, 8, 16, …?",
+          "a": "32",
+          "w": {
+            "1": "24",
+            "2": "30",
+            "3": "36"
+          }
+        },
+        "31": {
+          "q": "Which gas do humans need to breathe to live?",
+          "a": "Oxygen",
+          "w": {
+            "1": "Helium",
+            "2": "Neon",
+            "3": "Methane"
+          }
+        },
+        "32": {
+          "q": "Which is the tallest animal?",
+          "a": "Giraffe",
+          "w": {
+            "1": "Elephant",
+            "2": "Camel",
+            "3": "Horse"
+          }
+        },
+        "33": {
+          "q": "How many sides does a hexagon have?",
+          "a": "6",
+          "w": {
+            "1": "5",
+            "2": "7",
+            "3": "8"
+          }
+        },
+        "34": {
+          "q": "What is 12 × 12?",
+          "a": "144",
+          "w": {
+            "1": "124",
+            "2": "148",
+            "3": "132"
           }
         }
-      },
-      "decoys": {
-        "1": "Pasta Carbonara",
-        "2": "Sushi Roll",
-        "3": "Beef Tacos",
-        "4": "Ramen",
-        "5": "Fish and Chips",
-        "6": "Croissant",
-        "7": "Paella",
-        "8": "Falafel",
-        "9": "Pad Thai",
-        "10": "Lasagna",
-        "11": "Dim Sum",
-        "12": "Burrito"
       }
     },
     "race": {
-      "rules": "Watch the middle. Tap only for the target dish: first tap wins a point, a wrong tap loses one. {n} targets!",
-      "target": "This is the target dish",
+      "rules": "Watch the middle. Tap only for the target picture: first tap wins a point, a wrong tap loses one. {n} targets!",
+      "target": "This is the target picture",
       "only": "Tap only for this",
       "tap": "TAP!",
       "got": "Got it!",
@@ -3618,105 +3665,127 @@
       "roundTo": "{name} takes the round!",
       "draw": "A draw! Next round.",
       "hostThinking": "Hmm, let me think…",
-      "youBeatHost": "You beat me! You are the real chef today.",
+      "youBeatHost": "You beat me! You are the real champion today.",
       "hostWon": "I won this time. Try again?",
       "cell": "Square {n}"
     },
     "love": {
       "secret": "Answer for yourself. No peeking!",
-      "share": "Which dish would you share tonight?",
       "pass": "Done! Now give the phone to {name}. No peeking at the answers!",
       "ready": "I am {name}, I am ready",
       "waitPartner": "Done! Waiting for {name}…",
       "matches": "{n} of {total} answers match",
       "tier": {
-        "top": "Made for each other! Order a dessert to share.",
+        "top": "Made for each other! Hold hands and smile.",
         "mid": "A sweet match, with a little spice!",
         "low": "Opposites attract! You have lots to talk about."
       },
       "bank": {
         "1": {
-          "q": "Tea or coffee?",
+          "q": "Beach or mountains?",
           "o": {
-            "1": "Tea",
-            "2": "Coffee"
+            "1": "Beach",
+            "2": "Mountains"
           }
         },
         "2": {
-          "q": "Sea or hills?",
+          "q": "Morning bird or night owl?",
           "o": {
-            "1": "Sea",
-            "2": "Hills"
-          }
-        },
-        "3": {
-          "q": "Sunrise or sunset?",
-          "o": {
-            "1": "Sunrise",
-            "2": "Sunset"
-          }
-        },
-        "4": {
-          "q": "A rainy day: khichuri at home or a long drive?",
-          "o": {
-            "1": "Khichuri at home",
-            "2": "A long drive"
-          }
-        },
-        "5": {
-          "q": "Movie night or a walk outside?",
-          "o": {
-            "1": "Movie night",
-            "2": "A walk outside"
-          }
-        },
-        "6": {
-          "q": "Sweet or spicy?",
-          "o": {
-            "1": "Sweet",
-            "2": "Spicy"
-          }
-        },
-        "7": {
-          "q": "Morning person or night owl?",
-          "o": {
-            "1": "Morning person",
+            "1": "Morning bird",
             "2": "Night owl"
           }
         },
-        "8": {
-          "q": "Fuchka or chotpoti?",
+        "3": {
+          "q": "Rain or sunshine?",
           "o": {
-            "1": "Fuchka",
-            "2": "Chotpoti"
+            "1": "Rain",
+            "2": "Sunshine"
           }
         },
-        "9": {
-          "q": "Plan everything or see what happens?",
+        "4": {
+          "q": "Cricket or football?",
           "o": {
-            "1": "Plan everything",
-            "2": "See what happens"
+            "1": "Cricket",
+            "2": "Football"
           }
         },
-        "10": {
+        "5": {
+          "q": "Movie at home or at the cinema?",
+          "o": {
+            "1": "At home",
+            "2": "At the cinema"
+          }
+        },
+        "6": {
           "q": "Call or text?",
           "o": {
             "1": "Call",
             "2": "Text"
           }
         },
-        "11": {
-          "q": "Rickshaw ride or car ride?",
+        "7": {
+          "q": "Cats or dogs?",
           "o": {
-            "1": "Rickshaw",
-            "2": "Car"
+            "1": "Cats",
+            "2": "Dogs"
+          }
+        },
+        "8": {
+          "q": "City life or village life?",
+          "o": {
+            "1": "City",
+            "2": "Village"
+          }
+        },
+        "9": {
+          "q": "Plan everything or go with the flow?",
+          "o": {
+            "1": "Plan it all",
+            "2": "Go with the flow"
+          }
+        },
+        "10": {
+          "q": "Sing or dance?",
+          "o": {
+            "1": "Sing",
+            "2": "Dance"
+          }
+        },
+        "11": {
+          "q": "Save or spend?",
+          "o": {
+            "1": "Save",
+            "2": "Spend"
           }
         },
         "12": {
-          "q": "Dessert first or the main dish first?",
+          "q": "Visit the past or the future?",
           "o": {
-            "1": "Dessert first",
-            "2": "Main dish first"
+            "1": "The past",
+            "2": "The future"
+          }
+        },
+        "13": {
+          "q": "Books or videos?",
+          "o": {
+            "1": "Books",
+            "2": "Videos"
+          }
+        },
+        "14": {
+          "q": "Dream holiday?",
+          "o": {
+            "1": "Sea",
+            "2": "Hills",
+            "3": "Jungle"
+          }
+        },
+        "15": {
+          "q": "Pick a superpower!",
+          "o": {
+            "1": "Fly",
+            "2": "Be invisible",
+            "3": "Read minds"
           }
         }
       },
@@ -3724,18 +3793,167 @@
       "answered": "{a} said {x} · {b} said {y}"
     },
     "catch": {
-      "rules": "{seconds} seconds and {lives} lives. Catch dishes, grab the gold stars, and dodge the burnt ones!",
+      "rules": "{seconds} seconds and {lives} lives. Catch the falling things, grab the gold stars, and dodge the fireballs!",
       "turn": "{name}, it is your turn! Ready?",
-      "dish": "Dish +{n}",
       "gold": "Gold star +{n}",
-      "burnt": "Burnt: lose a life",
+      "burnt": "Fireball: lose a life",
       "how": "Slide your finger on the box to move.",
       "area": "Game area: slide to move the chef",
-      "burntOut": "Burnt out!",
+      "burntOut": "Out of lives!",
       "timeUp": "Time up!",
       "soloDone": "You caught {score} points! Can you beat it?",
       "waitOthers": "Great round! Waiting for the others to finish…",
-      "secondsLeft": "{n}s"
+      "secondsLeft": "{n}s",
+      "item": "Catch +{n}"
+    },
+    "themes": {
+      "animals": "Animals",
+      "space": "Space",
+      "sports": "Sports",
+      "vehicles": "Vehicles",
+      "party": "Party"
+    },
+    "guess": {
+      "round": "Round {n} of {total}",
+      "hidden": "The hidden picture",
+      "what": "What is hiding behind the blur?",
+      "worth": "Right now a correct pick is worth {n} points",
+      "option": "Picture {n}",
+      "waiting": "Waiting for the others…",
+      "soloDone": "You scored {score} points!"
+    },
+    "wheel": {
+      "decide": "What should the wheel decide?",
+      "spin": "Spin!",
+      "again": "Spin again",
+      "spinning": "Round and round…",
+      "fun": "Just for fun. No money moves.",
+      "label": "Wheel with {names}",
+      "topics": {
+        "1": {
+          "q": "Who pays the bill?",
+          "r": "{name} pays the bill!"
+        },
+        "2": {
+          "q": "Who orders next?",
+          "r": "{name} orders next!"
+        },
+        "3": {
+          "q": "Who tells a joke?",
+          "r": "{name}, tell us a joke!"
+        },
+        "4": {
+          "q": "Who sings a song?",
+          "r": "{name}, sing us a song!"
+        },
+        "5": {
+          "q": "Who goes first?",
+          "r": "{name} goes first!"
+        },
+        "6": {
+          "q": "Who tells their funniest story?",
+          "r": "{name}, tell us your funniest story!"
+        }
+      }
+    },
+    "rather": {
+      "title": "Would you rather…",
+      "question": "Question {n} of {total}",
+      "waiting": "Your pick is in. Waiting for the others…",
+      "picked": "Picked",
+      "pickFor": "{name} picks {choice}",
+      "most": "Most of the table thinks alike. Those who picked it score!",
+      "split": "A split table! Nobody scores.",
+      "alike": "Everyone thinks alike! Everyone scores!",
+      "noOne": "Nobody thought alike this time!",
+      "winner": "{name} thinks most like the table!",
+      "next": "Next question",
+      "letters": {
+        "1": "A",
+        "2": "B"
+      },
+      "bank": {
+        "1": {
+          "a": "Be able to fly",
+          "b": "Be invisible"
+        },
+        "2": {
+          "a": "Live by the sea",
+          "b": "Live in the mountains"
+        },
+        "3": {
+          "a": "Always arrive 10 minutes early",
+          "b": "Always arrive 10 minutes late"
+        },
+        "4": {
+          "a": "Talk to animals",
+          "b": "Speak every language"
+        },
+        "5": {
+          "a": "Have no internet for a week",
+          "b": "Have no fan for a week"
+        },
+        "6": {
+          "a": "Be a famous cricketer",
+          "b": "Be a famous singer"
+        },
+        "7": {
+          "a": "Travel to the past",
+          "b": "Travel to the future"
+        },
+        "8": {
+          "a": "Have a pet tiger",
+          "b": "Have a pet elephant"
+        },
+        "9": {
+          "a": "Win a lottery today",
+          "b": "Win a trip around the world"
+        },
+        "10": {
+          "a": "Live in a big city",
+          "b": "Live in a quiet village"
+        },
+        "11": {
+          "a": "Never get stuck in traffic",
+          "b": "Never get a mosquito bite"
+        },
+        "12": {
+          "a": "Be the funniest person in the room",
+          "b": "Be the smartest person in the room"
+        },
+        "13": {
+          "a": "Know the future",
+          "b": "Change the past"
+        },
+        "14": {
+          "a": "Have a flying rickshaw",
+          "b": "Have a boat that talks"
+        },
+        "15": {
+          "a": "Swim with dolphins",
+          "b": "Walk with elephants"
+        },
+        "16": {
+          "a": "Be able to pause time",
+          "b": "Be able to rewind time"
+        },
+        "17": {
+          "a": "Have rain every day",
+          "b": "Have sunshine every day"
+        },
+        "18": {
+          "a": "Live without music",
+          "b": "Live without movies"
+        },
+        "19": {
+          "a": "Meet your hero",
+          "b": "Meet your future self"
+        },
+        "20": {
+          "a": "Be tiny for a day",
+          "b": "Be a giant for a day"
+        }
+      }
     }
   },
   "tableQr": {
@@ -3784,10 +4002,13 @@
     "cardOffersGames": "Menu · Member card · Games · Review",
     "gameLabel": {
       "catch": "Catch game",
-      "memory": "Memory game",
       "quiz": "Quiz",
+      "guess": "Blur guess game",
+      "memory": "Memory game",
       "race": "Tap race",
       "duel": "Three in a row",
+      "rather": "Would you rather game",
+      "wheel": "Spin the wheel game",
       "love": "Couple game",
       "host": "The host character’s name"
     }

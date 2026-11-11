@@ -1,8 +1,8 @@
-import type { Face } from './memory';
 import { rng } from './random';
 
 /**
- * Dish Duel (ADR 0046): three in a row on a 3×3 board, best of three rounds; each player's piece is a dish.
+ * Three in a Row (ADR 0046, pictures from ADR 0047): three in a row on a 3×3 board, best of three rounds;
+ * each player's piece is a picture.
  * Alone, you play the host character, who plays well but not perfectly, so you can beat it.
  */
 export interface DuelState {
@@ -18,8 +18,8 @@ export interface DuelState {
   line: number[] | null;
   roundOver: boolean;
   over: boolean;
-  /** Each player's piece: a dish or a food picture. */
-  pieces: [Face, Face];
+  /** Each player's piece: a picture number (into PICTURES). */
+  pieces: [number, number];
 }
 
 export type DuelAction = { type: 'place'; cell: number } | { type: 'next' };
@@ -37,7 +37,7 @@ const LINES = [
 
 export const ROUNDS_TO_WIN = 2;
 
-export function initDuel(vsHost: boolean, pieces: [Face, Face]): DuelState {
+export function initDuel(vsHost: boolean, pieces: [number, number]): DuelState {
   return {
     game: 'duel',
     vsHost,

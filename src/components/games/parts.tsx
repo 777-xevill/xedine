@@ -1,43 +1,15 @@
 'use client';
 
-import {
-  Apple,
-  CakeSlice,
-  Cherry,
-  Coffee,
-  Cookie,
-  Croissant,
-  IceCreamCone,
-  Pizza,
-  Sandwich,
-  Soup,
-  Trophy,
-  type LucideIcon,
-} from 'lucide-react';
-import Image from 'next/image';
+import { Trophy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatNumber, type Locale } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import type { GameAction, GameState } from '@/modules/games/game';
-import type { GameDish, Player } from '@/modules/games/catalog';
-import type { Face } from '@/modules/games/memory';
+import type { Player } from '@/modules/games/catalog';
+import { PICTURES } from '@/modules/games/pictures';
 import { HostSays, type Mood } from './mascot';
-
-/** Food pictures used when the menu has too few dish photos (Dish Memory, Tap Race, Dish Duel). */
-export const FOOD_ICONS: LucideIcon[] = [
-  Pizza,
-  Coffee,
-  IceCreamCone,
-  Soup,
-  Sandwich,
-  CakeSlice,
-  Cookie,
-  Apple,
-  Cherry,
-  Croissant,
-];
 
 /** Each player's colour, from the brand's bright accents. */
 export const PLAYER_BG = [
@@ -60,68 +32,22 @@ export interface GameProps<S extends GameState> {
   /** This phone runs the game (timers, the host character's moves). */
   runner: boolean;
   players: Player[];
-  dishes: GameDish[];
   hostName: string;
-  restaurant: string;
   locale: Locale;
   onAgain: () => void;
   onExit: () => void;
 }
 
-export function dishName(d: GameDish | undefined, locale: Locale): string {
-  if (!d) return '';
-  return locale === 'bn' && d.name_bn ? d.name_bn : d.name;
-}
-
-/** A dish photo (or its name on a tile) or a food picture, filling its box. */
-export function FaceView({
-  face,
-  dishes,
-  locale,
-  className,
-}: {
-  face: Face;
-  dishes: GameDish[];
-  locale: Locale;
-  className?: string;
-}) {
-  if (face.kind === 'icon') {
-    const Icon = FOOD_ICONS[face.i % FOOD_ICONS.length]!;
-    return (
-      <span
-        className={cn(
-          'flex size-full items-center justify-center bg-surface-elevated text-purple',
-          className,
-        )}
-      >
-        <Icon aria-hidden className="size-1/2" strokeWidth={1.6} />
-      </span>
-    );
-  }
-  const d = dishes[face.i];
-  if (d?.photo) {
-    return (
-      <span className={cn('relative block size-full', className)}>
-        <Image
-          src={d.photo}
-          alt={dishName(d, locale)}
-          fill
-          unoptimized
-          sizes="120px"
-          draggable={false}
-          className="object-cover select-none"
-        />
-      </span>
-    );
-  }
+/**
+ * A picture (an emoji from the game's picture sets) sized to its box: the box is a size container, so the
+ * picture grows and shrinks with it.
+ */
+export function Pic({ face, className }: { face: number; className?: string }) {
   return (
-    <span
-      className={cn(
-        'flex size-full items-center justify-center bg-surface-elevated p-1 text-center text-xs font-bold leading-tight',
-        className,
-      )}
-    >
-      {dishName(d, locale)}
+    <span aria-hidden className={cn('block size-full [container-type:size]', className)}>
+      <span className="flex size-full items-center justify-center leading-none select-none text-[length:62cqmin]">
+        {PICTURES[face] ?? ''}
+      </span>
     </span>
   );
 }

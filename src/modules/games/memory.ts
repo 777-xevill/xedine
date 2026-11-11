@@ -1,17 +1,19 @@
-import { rng, shuffle } from './random';
+import { themeFaces, THEMES } from './pictures';
+import { pick, rng, shuffle } from './random';
 
 /**
- * Dish Memory (ADR 0046): turn over two cards; a pair of the same dish is yours and you go again. With more
- * than one player the turn passes on a miss; the most pairs wins. A face is a dish (by its place in the
- * menu list) or one of the built-in food pictures when the menu has too few photos.
+ * Match Pairs (ADR 0046, pictures from ADR 0047): turn over two cards; a pair of the same picture is yours
+ * and you go again. With more than one player the turn passes on a miss; the most pairs wins. Each game uses
+ * pictures from one theme (animals, space, sports…).
  */
-export type Face = { kind: 'dish'; i: number } | { kind: 'icon'; i: number };
-
 export interface MemoryState {
   game: 'memory';
   players: number;
-  faces: Face[];
-  /** Each card's face, by index into `faces`. */
+  /** The theme the pictures come from (a place in THEMES). */
+  theme: number;
+  /** The pictures in play (numbers into PICTURES). */
+  faces: number[];
+  /** Each card's picture, by index into `faces`. */
   cards: number[];
   open: number[];
   /** Who matched each card (player index), or null. */
@@ -24,22 +26,12 @@ export interface MemoryState {
 
 export type MemoryAction = { type: 'flip'; card: number } | { type: 'hide' };
 
-export const ICON_FACES = 8;
-
-/** Six pairs alone, eight with friends. Dishes with photos first, then food pictures. */
-export function initMemory(players: number, photoDishes: number[], seed: number): MemoryState {
+/** Six pairs alone, eight with friends. */
+export function initMemory(players: number, seed: number): MemoryState {
   const next = rng(seed);
   const pairs = players > 1 ? 8 : 6;
-  const dishes = shuffle(photoDishes, next).slice(0, pairs);
-  const faces: Face[] = [
-    ...dishes.map((i): Face => ({ kind: 'dish', i })),
-    ...shuffle(
-      Array.from({ length: ICON_FACES }, (_, i) => i),
-      next,
-    )
-      .slice(0, pairs - dishes.length)
-      .map((i): Face => ({ kind: 'icon', i })),
-  ];
+  const theme = pick(THEMES.length, next);
+  const faces = shuffle(themeFaces(theme), next).slice(0, pairs);
   const cards = shuffle(
     faces.flatMap((_, f) => [f, f]),
     next,
@@ -47,6 +39,7 @@ export function initMemory(players: number, photoDishes: number[], seed: number)
   return {
     game: 'memory',
     players,
+    theme,
     faces,
     cards,
     open: [],

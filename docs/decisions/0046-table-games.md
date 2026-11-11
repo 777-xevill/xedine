@@ -1,6 +1,8 @@
 # ADR 0046 — Games at the table: alone, with friends or as a couple, on one phone or each on their own
 
 - Date: 2026-11-12
+- Changed by ADR 0047: the games no longer use the menu (pictures and questions are general), and three
+  games were added. Read 0047 for what the games are now.
 - Status: accepted (built at the founder's request: "when they sit at the table they can play multiple
   games: one person single, 2, 3, 4 people, and a couple game … each restaurant can add its name in the
   game like Kacchi Bhai"; answers: players choose one phone or separate phones; "amazing, not generic";

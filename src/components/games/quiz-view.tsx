@@ -2,25 +2,11 @@
 
 import { Check, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { formatBDT, formatNumber } from '@/lib/i18n/format';
+import { formatNumber } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
-import {
-  QUESTION_SECONDS,
-  quizTurn,
-  rightOption,
-  type QuizQuestion,
-  type QuizState,
-} from '@/modules/games/quiz';
+import { QUESTION_SECONDS, quizTurn, rightOption, type QuizState } from '@/modules/games/quiz';
 import { HostSays } from './mascot';
-import {
-  dishName,
-  PLAYER_BG,
-  PlayerChips,
-  Results,
-  useLater,
-  useLine,
-  type GameProps,
-} from './parts';
+import { PLAYER_BG, PlayerChips, Results, useLater, useLine, type GameProps } from './parts';
 
 interface BankQuestion {
   q: string;
@@ -28,12 +14,11 @@ interface BankQuestion {
   w: Record<string, string>;
 }
 
-/** Food Quiz (ADR 0046): food questions and questions about this restaurant's own menu. */
+/** Brain Quiz (ADR 0046, 0047): quick questions on animals, Bangladesh, sports, space and puzzles. */
 export function QuizView(props: GameProps<QuizState>) {
-  const { state: s, dispatch, me, runner, players, dishes, locale, hostName, restaurant } = props;
+  const { state: s, dispatch, me, runner, players, locale, hostName } = props;
   const t = useTranslations('games');
   const bank = Object.values(t.raw('quiz.bank') as Record<string, BankQuestion>);
-  const decoys = Object.values(t.raw('quiz.decoys') as Record<string, string>);
   const q = s.questions[s.index];
   const turn = quizTurn(s);
   useLater(runner && s.phase === 'ask', QUESTION_SECONDS * 1000, s.n, () =>
@@ -65,14 +50,10 @@ export function QuizView(props: GameProps<QuizState>) {
     );
   }
 
-  const { text, options } = render(q, {
-    bank,
-    decoys,
-    dishes,
-    locale,
-    onMenu: t('quiz.onMenu', { restaurant }),
-    priceText: (price) => t('quiz.price', { price }),
-  });
+  const b = bank[q.i] ?? { q: '', a: '', w: {} };
+  const items = [b.a, ...Object.values(b.w)];
+  const text = b.q;
+  const options = q.order.map((k) => items[k] ?? '');
   const right = rightOption(q);
   const answerer = me ?? turn ?? 0;
   const mine = s.answers[answerer];
@@ -158,32 +139,4 @@ export function QuizView(props: GameProps<QuizState>) {
       ) : null}
     </div>
   );
-}
-
-function render(
-  q: QuizQuestion,
-  ctx: {
-    bank: BankQuestion[];
-    decoys: string[];
-    dishes: GameProps<QuizState>['dishes'];
-    locale: GameProps<QuizState>['locale'];
-    onMenu: string;
-    priceText: (price: string) => string;
-  },
-): { text: string; options: string[] } {
-  const { bank, decoys, dishes, locale, onMenu, priceText } = ctx;
-  if (q.kind === 'bank') {
-    const b = bank[q.i] ?? { q: '', a: '', w: {} };
-    const items = [b.a, ...Object.values(b.w)];
-    return { text: b.q, options: q.order.map((k) => items[k] ?? '') };
-  }
-  if (q.kind === 'menu') {
-    const items = [dishName(dishes[q.dish], locale), ...q.decoys.map((d) => decoys[d] ?? '')];
-    return { text: onMenu, options: q.order.map((k) => items[k] ?? '') };
-  }
-  const price = dishes[q.dishes[q.answer]!]?.price_poisha ?? 0;
-  return {
-    text: priceText(formatBDT(price, locale)),
-    options: q.dishes.map((d) => dishName(dishes[d], locale)),
-  };
 }

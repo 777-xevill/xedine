@@ -5,27 +5,21 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { GamesApp } from '@/components/games/games-app';
 import { LocaleSwitcher } from '@/components/locale-switcher';
-import { parseGameNames, type GameDish } from '@/modules/games/catalog';
-import { dishPhotoUrl } from '@/modules/customers/member-card-view';
+import { parseGameNames } from '@/modules/games/catalog';
 import { readTablePage } from '@/modules/customers/table-page-view';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 /**
- * Games at the table (ADR 0046): opened from the table page. Played in the browser, no app; nothing about
- * the customer is stored. The games use the restaurant's real dishes and the names the owner gave them.
+ * Games at the table (ADR 0046, 0047): opened from the table page. Played in the browser, no app; nothing
+ * about the customer is stored. The games use fun pictures and questions (not the menu) and the names the
+ * owner gave them.
  */
 export default async function TableGamesPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const [t, page] = await Promise.all([getTranslations('tablePage'), readTablePage(token)]);
   if (!page || !page.games_on) notFound();
-  const dishes: GameDish[] = page.menu.slice(0, 60).map((m) => ({
-    name: m.name,
-    name_bn: m.name_bn,
-    price_poisha: m.price_poisha,
-    photo: m.photo_path ? dishPhotoUrl(m.photo_path) : null,
-  }));
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 px-4 py-5">
@@ -44,7 +38,6 @@ export default async function TableGamesPage({ params }: { params: Promise<{ tok
         token={token}
         restaurant={page.restaurant}
         names={parseGameNames(page.game_names)}
-        dishes={dishes}
       />
     </div>
   );

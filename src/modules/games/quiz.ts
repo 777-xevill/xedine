@@ -1,20 +1,21 @@
-import { pick, rng, shuffle } from './random';
+import { rng, shuffle } from './random';
 
 /**
- * Food Quiz (ADR 0046). Questions come from a food question bank (in the message files, so every phone
- * shows them in its own language) and from the restaurant's real menu: "which of these is on our menu?"
- * and "which dish costs ৳320 here?" (the price is the menu price, never made up). A question only stores
- * indexes, so each phone writes the words itself.
+ * Brain Quiz (ADR 0046; general questions from ADR 0047). Questions come from a bank in the message files
+ * (animals, Bangladesh, sports, space, little puzzles), so every phone shows them in its own language. A
+ * question only stores its place in the bank and the order of its four answers.
  *
  * - Alone: ten questions against the clock.
  * - Together (each on their own phone): everyone answers at once; a right answer is 100, the first right
  *   answer gets 50 more and the second 25 more.
  * - Turns (one phone): the phone goes round; each player answers their own questions for 100 each.
  */
-export type QuizQuestion =
-  | { kind: 'bank'; i: number; order: number[] }
-  | { kind: 'menu'; dish: number; decoys: number[]; order: number[] }
-  | { kind: 'price'; dishes: number[]; answer: number };
+export interface QuizQuestion {
+  /** The question's place in the bank. */
+  i: number;
+  /** The shown order of the four answers: item 0 is the right one. */
+  order: number[];
+}
 
 export interface QuizState {
   game: 'quiz';
@@ -38,13 +39,11 @@ export const QUESTION_SECONDS = 15;
 
 /** Which shown option is the right one. */
 export function rightOption(q: QuizQuestion): number {
-  if (q.kind === 'price') return q.answer;
-  // In bank and menu questions, the right answer is item 0 before shuffling.
   return q.order.indexOf(0);
 }
 
 export function optionCount(q: QuizQuestion): number {
-  return q.kind === 'price' ? q.dishes.length : q.order.length;
+  return q.order.length;
 }
 
 export interface QuizSetup {
@@ -52,47 +51,18 @@ export interface QuizSetup {
   players: number;
   /** How many questions the bank has; each has one right and three wrong answers. */
   bankSize: number;
-  /** Dish prices in poisha, by menu index. */
-  prices: number[];
-  /**
-   * Which made-up dishes (by index into the full decoy list in the message files) may be used as wrong
-   * answers to "which is on our menu?": the ones whose name is not on this menu.
-   */
-  decoys: number[];
   seed: number;
 }
 
-/** Questions: at most three from the menu, the rest from the bank; never the same question twice. */
+/** Questions from the bank, never the same one twice. */
 export function buildQuestions(setup: QuizSetup, count: number): QuizQuestion[] {
   const next = rng(setup.seed);
-  const out: QuizQuestion[] = [];
-  const dishCount = setup.prices.length;
-  const menu: QuizQuestion[] = [];
-  if (dishCount >= 1 && setup.decoys.length >= 3) {
-    const dish = pick(dishCount, next);
-    const decoys = shuffle(setup.decoys, next).slice(0, 3);
-    menu.push({ kind: 'menu', dish, decoys, order: shuffle([0, 1, 2, 3], next) });
-  }
-  // Price questions need four dishes with four different prices.
-  const byPrice = new Map<number, number>();
-  for (const i of shuffle(
-    Array.from({ length: dishCount }, (_, i) => i),
-    next,
-  ))
-    if (!byPrice.has(setup.prices[i]!)) byPrice.set(setup.prices[i]!, i);
-  const distinct = [...byPrice.values()];
-  for (let k = 0; k < 2 && distinct.length >= 4; k++) {
-    const dishes = shuffle(distinct, next).slice(0, 4);
-    menu.push({ kind: 'price', dishes, answer: pick(4, next) });
-  }
-  const bank = shuffle(
+  return shuffle(
     Array.from({ length: setup.bankSize }, (_, i) => i),
     next,
   )
-    .slice(0, Math.max(0, count - menu.length))
-    .map((i): QuizQuestion => ({ kind: 'bank', i, order: shuffle([0, 1, 2, 3], next) }));
-  out.push(...bank, ...menu.slice(0, Math.min(menu.length, count)));
-  return shuffle(out, next).slice(0, count);
+    .slice(0, count)
+    .map((i): QuizQuestion => ({ i, order: shuffle([0, 1, 2, 3], next) }));
 }
 
 export function initQuiz(setup: QuizSetup): QuizState {

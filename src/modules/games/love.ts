@@ -1,16 +1,15 @@
 import { rng, shuffle } from './random';
 
 /**
- * Love Match (ADR 0046), for a couple: both answer the same little questions about themselves ("tea or
- * coffee?") without seeing the other's answers, then the phone shows how many match. On one phone the first
- * answers, hands the phone over (the answers are hidden), then the second answers. The last question is
- * which dish from this menu they would share tonight.
+ * Love Match (ADR 0046; questions with no food from ADR 0047), for a couple: both answer the same little
+ * questions about themselves ("beach or mountains?") without seeing the other's answers, then the phone
+ * shows how many match. On one phone the first answers, hands the phone over (the answers are hidden), then
+ * the second answers.
  */
 export interface LoveState {
   game: 'love';
-  /** Question bank indexes; a last "which dish to share" question is added when the menu has 3 dishes. */
+  /** Question bank indexes. */
   questions: number[];
-  shareDishes: number[];
   answers: [number[], number[]];
   /** One phone: true after the first partner finishes, until the second says they are ready. */
   handoff: boolean;
@@ -20,14 +19,9 @@ export interface LoveState {
 
 export type LoveAction = { type: 'answer'; option: number } | { type: 'ready' };
 
-export const LOVE_QUESTIONS = 6;
+export const LOVE_QUESTIONS = 7;
 
-export function initLove(
-  local: boolean,
-  bankSize: number,
-  dishCount: number,
-  seed: number,
-): LoveState {
+export function initLove(local: boolean, bankSize: number, seed: number): LoveState {
   const next = rng(seed);
   return {
     game: 'love',
@@ -35,13 +29,6 @@ export function initLove(
       Array.from({ length: bankSize }, (_, i) => i),
       next,
     ).slice(0, LOVE_QUESTIONS),
-    shareDishes:
-      dishCount >= 3
-        ? shuffle(
-            Array.from({ length: dishCount }, (_, i) => i),
-            next,
-          ).slice(0, 3)
-        : [],
     answers: [[], []],
     handoff: false,
     local,
@@ -50,7 +37,7 @@ export function initLove(
 }
 
 export function loveTotal(s: LoveState): number {
-  return s.questions.length + (s.shareDishes.length ? 1 : 0);
+  return s.questions.length;
 }
 
 /** Whose answers the one phone is taking now (0, then 1), or null when both are done. */

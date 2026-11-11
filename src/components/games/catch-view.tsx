@@ -13,14 +13,13 @@ import {
   catchOver,
   type CatchState,
 } from '@/modules/games/catch';
-import type { GameDish } from '@/modules/games/catalog';
-import type { Face } from '@/modules/games/memory';
+import { themeFaces, THEMES } from '@/modules/games/pictures';
 import { HostSays, Mascot, type Mood } from './mascot';
-import { FaceView, PlayerChips, Results, useLine, type GameProps } from './parts';
+import { Pic, PlayerChips, Results, useLine, type GameProps } from './parts';
 
-/** Chef Catch (ADR 0046): move the host character to catch the dishes; dodge the burnt ones. */
+/** Catch It! (ADR 0046, 0047): move the host character to catch the falling pictures; dodge the fireballs. */
 export function CatchView(props: GameProps<CatchState>) {
-  const { state: s, dispatch, me, players, dishes, locale, hostName } = props;
+  const { state: s, dispatch, me, players, locale, hostName } = props;
   const t = useTranslations('games');
   const [playing, setPlaying] = useState(false);
   const endLine = useLine(
@@ -52,7 +51,6 @@ export function CatchView(props: GameProps<CatchState>) {
   if (playing && !done) {
     return (
       <CatchRound
-        dishes={dishes}
         locale={locale}
         onDone={(points) => {
           setPlaying(false);
@@ -81,8 +79,10 @@ export function CatchView(props: GameProps<CatchState>) {
           </HostSays>
           <ul className="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
             <li className="rounded-card border border-line bg-surface p-2">
-              <span className="mx-auto mb-1 block size-8 overflow-hidden rounded-full bg-surface-elevated" />
-              {t('catch.dish', { n: formatNumber(CATCH_POINTS.dish, locale) })}
+              <span className="mx-auto mb-1 block size-8">
+                <Pic face={0} />
+              </span>
+              {t('catch.item', { n: formatNumber(CATCH_POINTS.item, locale) })}
             </li>
             <li className="rounded-card border border-line bg-surface p-2">
               <Star aria-hidden className="mx-auto mb-1 size-8 fill-warning-bright text-warning" />
@@ -107,8 +107,8 @@ interface Drop {
   x: number;
   y: number;
   speed: number;
-  kind: 'dish' | 'gold' | 'bad';
-  face: Face;
+  kind: 'item' | 'gold' | 'bad';
+  face: number;
 }
 
 interface Pop {
@@ -123,15 +123,7 @@ interface Pop {
 const PLATE_Y = 0.86;
 const REACH = 0.13;
 
-function CatchRound({
-  dishes,
-  locale,
-  onDone,
-}: {
-  dishes: GameDish[];
-  locale: Locale;
-  onDone: (points: number) => void;
-}) {
+function CatchRound({ locale, onDone }: { locale: Locale; onDone: (points: number) => void }) {
   const t = useTranslations('games');
   const area = useRef<HTMLDivElement>(null);
   const done = useRef(onDone);
@@ -159,10 +151,8 @@ function CatchRound({
   });
 
   useEffect(() => {
-    const photos = dishes.flatMap((d, i) => (d.photo ? [i] : [])).slice(0, 10);
-    const faces: Face[] = photos.length
-      ? photos.map((i) => ({ kind: 'dish', i }))
-      : Array.from({ length: 6 }, (_, i) => ({ kind: 'icon', i }));
+    // Each round falls from one theme (animals, space, sports…).
+    const faces = themeFaces(Math.floor(Math.random() * THEMES.length));
     let drops: Drop[] = [];
     let pops: Pop[] = [];
     let x = 0.5;
@@ -186,7 +176,7 @@ function CatchRound({
       if (nowMs >= nextSpawn) {
         const r = Math.random();
         const badShare = 0.2 + Math.min(0.15, elapsed * 0.004);
-        const kind: Drop['kind'] = r < 0.07 ? 'gold' : r < 0.07 + badShare ? 'bad' : 'dish';
+        const kind: Drop['kind'] = r < 0.07 ? 'gold' : r < 0.07 + badShare ? 'bad' : 'item';
         drops.push({
           id: ++id,
           x: 0.08 + Math.random() * 0.84,
@@ -216,7 +206,7 @@ function CatchRound({
             });
             navigator.vibrate?.(80);
           } else {
-            const points = d.kind === 'gold' ? CATCH_POINTS.gold : CATCH_POINTS.dish;
+            const points = d.kind === 'gold' ? CATCH_POINTS.gold : CATCH_POINTS.item;
             score += points;
             mood = d.kind === 'gold' ? 'wow' : 'cheer';
             moodUntil = nowMs + 450;
@@ -245,7 +235,7 @@ function CatchRound({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [dishes, locale]);
+  }, [locale]);
 
   const move = (clientX: number) => {
     const r = area.current?.getBoundingClientRect();
@@ -303,9 +293,7 @@ function CatchRound({
                 className="size-full fill-warning-bright text-warning drop-shadow"
               />
             ) : (
-              <span className="block size-full overflow-hidden rounded-full border-2 border-surface shadow-soft">
-                <FaceView face={d.face} dishes={dishes} locale={locale} />
-              </span>
+              <Pic face={d.face} />
             )}
           </span>
         ))}

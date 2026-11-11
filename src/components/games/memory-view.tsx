@@ -5,12 +5,13 @@ import { useTranslations } from 'next-intl';
 import { formatNumber } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import { needsHide, type MemoryState } from '@/modules/games/memory';
+import { themeKey } from '@/modules/games/pictures';
 import { HostSays } from './mascot';
-import { FaceView, PLAYER_RING, PlayerChips, Results, useLater, type GameProps } from './parts';
+import { Pic, PLAYER_RING, PlayerChips, Results, useLater, type GameProps } from './parts';
 
-/** Dish Memory (ADR 0046): find the pairs of the restaurant's own dishes. */
+/** Match Pairs (ADR 0046, 0047): find the pairs of pictures. */
 export function MemoryView(props: GameProps<MemoryState>) {
-  const { state: s, dispatch, me, runner, players, dishes, locale, hostName } = props;
+  const { state: s, dispatch, me, runner, players, locale, hostName } = props;
   const t = useTranslations('games');
   const solo = s.players === 1;
   const myTurn = me === null || me === s.turn;
@@ -42,11 +43,17 @@ export function MemoryView(props: GameProps<MemoryState>) {
     <div className="space-y-4">
       {solo ? (
         <HostSays name={hostName} mood="think">
-          {t('memory.soloHint', { moves: formatNumber(s.moves, locale) })}
+          {t('memory.soloHint', {
+            theme: t(`themes.${themeKey(s.theme)}`),
+            moves: formatNumber(s.moves, locale),
+          })}
         </HostSays>
       ) : (
         <>
           <PlayerChips players={players} scores={s.scores} active={s.turn} locale={locale} />
+          <p className="text-center text-xs font-semibold text-secondary">
+            {t('memory.theme', { theme: t(`themes.${themeKey(s.theme)}`) })}
+          </p>
           <p className="text-center text-lg font-bold">
             {me !== null && me === s.turn
               ? t('yourTurn')
@@ -81,7 +88,7 @@ export function MemoryView(props: GameProps<MemoryState>) {
                   <ChefHat aria-hidden className="size-1/2 opacity-80" strokeWidth={1.6} />
                 </span>
                 <span className="game-card-front absolute inset-0 overflow-hidden rounded-input border border-line bg-surface">
-                  <FaceView face={s.faces[face]!} dishes={dishes} locale={locale} />
+                  <Pic face={s.faces[face]!} />
                 </span>
               </span>
             </button>

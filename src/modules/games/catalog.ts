@@ -1,9 +1,19 @@
 /**
- * Table games (ADR 0046): the games a customer can play on the table page while the food is cooking, on
- * one phone or each on their own phone. Pure: shared by the owner's page, the table page and the games.
+ * Table games (ADR 0046, 0047): the games a customer can play on the table page while the food is cooking,
+ * on one phone or each on their own phone. Pure: shared by the owner's page, the table page and the games.
  */
 
-export const GAME_KEYS = ['catch', 'memory', 'quiz', 'race', 'duel', 'love'] as const;
+export const GAME_KEYS = [
+  'catch',
+  'quiz',
+  'guess',
+  'memory',
+  'race',
+  'duel',
+  'rather',
+  'wheel',
+  'love',
+] as const;
 export type GameKey = (typeof GAME_KEYS)[number];
 
 /** What the owner can rename: every game and the host character who presents them. */
@@ -15,10 +25,13 @@ export const MAX_NAME = 40;
 /** How many can play each game. The couple game is always two. */
 export const PLAYERS: Record<GameKey, { min: number; max: number }> = {
   catch: { min: 1, max: 4 },
-  memory: { min: 1, max: 4 },
   quiz: { min: 1, max: 4 },
+  guess: { min: 1, max: 4 },
+  memory: { min: 1, max: 4 },
   race: { min: 2, max: 4 },
   duel: { min: 1, max: 2 },
+  rather: { min: 2, max: 4 },
+  wheel: { min: 2, max: 4 },
   love: { min: 2, max: 2 },
 };
 
@@ -42,12 +55,4 @@ export function parseGameNames(value: unknown): Partial<Record<NameKey, string>>
 export interface Player {
   id: string;
   name: string;
-}
-
-/** A dish the games can show: its name in both languages and a photo link when it has one. */
-export interface GameDish {
-  name: string;
-  name_bn: string | null;
-  price_poisha: number;
-  photo: string | null;
 }

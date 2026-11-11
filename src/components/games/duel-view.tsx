@@ -5,19 +5,11 @@ import { formatNumber } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import { hostMove, ROUNDS_TO_WIN, type DuelState } from '@/modules/games/duel';
 import { HostSays } from './mascot';
-import {
-  FaceView,
-  PLAYER_BG,
-  PLAYER_RING,
-  Results,
-  useLater,
-  useLine,
-  type GameProps,
-} from './parts';
+import { Pic, PLAYER_BG, PLAYER_RING, Results, useLater, useLine, type GameProps } from './parts';
 
-/** Dish Duel (ADR 0046): three in a row with two dishes as pieces; alone, against the host character. */
+/** Three in a Row (ADR 0046, 0047): two pictures as pieces; alone, against the host character. */
 export function DuelView(props: GameProps<DuelState>) {
-  const { state: s, dispatch, me, runner, players, dishes, locale, hostName } = props;
+  const { state: s, dispatch, me, runner, players, locale, hostName } = props;
   const t = useTranslations('games');
   const moves = s.board.filter((v) => v !== null).length;
   const hostTurn = s.vsHost && s.turn === 1 && !s.roundOver;
@@ -62,7 +54,7 @@ export function DuelView(props: GameProps<DuelState>) {
             )}
           >
             <span className="size-10 shrink-0 overflow-hidden rounded-full">
-              <FaceView face={s.pieces[i]!} dishes={dishes} locale={locale} />
+              <Pic face={s.pieces[i]!} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{p.name}</span>
@@ -123,7 +115,7 @@ export function DuelView(props: GameProps<DuelState>) {
           >
             {v !== null ? (
               <span className="game-pop block size-full overflow-hidden rounded-full">
-                <FaceView face={s.pieces[v]!} dishes={dishes} locale={locale} />
+                <Pic face={s.pieces[v]!} />
               </span>
             ) : null}
           </button>

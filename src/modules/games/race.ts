@@ -1,13 +1,13 @@
 /**
- * Tap Race (ADR 0046): dishes flash one after another; when the target dish shows, the first to tap wins
- * the point, and a tap on any other dish loses one. On one phone each player has a corner of the screen;
+ * Tap Race (ADR 0046, pictures from ADR 0047): pictures flash one after another; when the target picture
+ * shows, the first to tap wins the point, and a tap on any other picture loses one. On one phone each player has a corner of the screen;
  * on separate phones each phone is a buzzer. The phone running the game decides what shows next.
  */
 export interface RaceState {
   game: 'race';
   players: number;
-  /** Faces in play (same meaning as in Dish Memory) and which one is the target. */
-  faces: { kind: 'dish' | 'icon'; i: number }[];
+  /** The pictures in play (numbers into PICTURES) and which of them is the target. */
+  faces: number[];
   target: number;
   /** The face on screen now, with a counter so the same face twice is still a new show. */
   showing: { face: number; n: number } | null;
@@ -23,11 +23,7 @@ export type RaceAction =
 
 export const RACE_TARGETS = 8;
 
-export function initRace(
-  players: number,
-  faces: { kind: 'dish' | 'icon'; i: number }[],
-  target: number,
-): RaceState {
+export function initRace(players: number, faces: number[], target: number): RaceState {
   return {
     game: 'race',
     players,
@@ -68,7 +64,7 @@ export function reduceRace(s: RaceState, a: RaceAction, by: number): RaceState {
   }
 }
 
-/** The next face to show: the target about one time in three, never the same wrong dish twice in a row. */
+/** The next face to show: the target about one time in three, never the same wrong picture twice in a row. */
 export function nextFace(s: RaceState, r: number, r2: number): number {
   if (r < 0.34) return s.target;
   const others = s.faces.map((_, i) => i).filter((i) => i !== s.target && i !== s.showing?.face);

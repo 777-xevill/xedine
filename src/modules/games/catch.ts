@@ -1,5 +1,6 @@
 /**
- * Chef Catch (ADR 0046): the host character catches falling dishes on a plate and dodges the burnt ones.
+ * Catch It! (ADR 0046, pictures from ADR 0047): the host character catches falling pictures on a plate and
+ * dodges the fireballs.
  * Each player plays the round on their own screen; on one phone they take turns. This state only keeps the
  * scores, so the moving part never has to travel between phones.
  */
@@ -17,7 +18,7 @@ export type CatchAction = { type: 'score'; points: number };
 
 export const CATCH_SECONDS = 45;
 export const CATCH_LIVES = 3;
-export const CATCH_POINTS = { dish: 10, gold: 30 } as const;
+export const CATCH_POINTS = { item: 10, gold: 30 } as const;
 
 export function initCatch(players: number, local: boolean): CatchState {
   return {

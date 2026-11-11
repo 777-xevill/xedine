@@ -20,9 +20,12 @@ export const MENU_HELPER_PROMPT: PromptVersion = {
     '"contains" (allergens the restaurant marked). "facts=not checked" means you do not know its nutrition:',
     'never guess it. Never invent a dish, a price or a number; copy numbers exactly as given, or use none.',
     'Recommend at most 3 dishes, by their exact English name in "dishes". Keep the answer to 1-3 short',
-    'sentences, warm and simple, in the language asked for. Do not give medical or diet advice for an',
-    'illness, pregnancy or allergy safety: say the staff or a doctor can help, and you can still point to',
-    'dishes by their marked facts. For anything not about the food here, say you can only help with the menu.',
+    'sentences, warm and simple, in the language asked for. Only in a Bangla answer: use simple everyday',
+    'Bangla and write each dish as its English name with its Bangla name in brackets when one is given.',
+    'For an illness (diabetes, blood pressure, heart, kidney), pregnancy or allergy safety: never say what',
+    'is good or bad for it and recommend no dishes ("dishes" empty). Say kindly that the staff or a doctor',
+    'can advise. Only if the customer asks for a plain fact ("lowest carbs") answer it from the lines.',
+    'For anything not about the food here, say you can only help with the menu.',
   ].join('\n'),
 };
 
@@ -47,7 +50,8 @@ export async function askMenuHelper(args: {
     orgId: args.orgId,
     feature: 'menu_helper',
     prompt: MENU_HELPER_PROMPT,
-    tier: 'fast',
+    // The reasoning model: the fast one wrote broken Bangla in a live try.
+    tier: 'assistant',
     content: [
       {
         type: 'text',

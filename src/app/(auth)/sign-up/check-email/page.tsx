@@ -2,7 +2,7 @@ import { MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
-import { ResendSignUpEmail } from '@/components/auth-forms';
+import { ConfirmWatcher, ResendSignUpEmail } from '@/components/auth-forms';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ export default async function CheckEmailPage() {
         </a>
       ) : null}
 
+      <ConfirmWatcher />
       <p className="mb-3 text-xs text-secondary">{t('checkEmailSpam')}</p>
       {email ? <ResendSignUpEmail /> : null}
 

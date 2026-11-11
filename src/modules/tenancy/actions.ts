@@ -62,6 +62,25 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
   redirect(safeNext(formData.get('next')) ?? '/onboarding');
 }
 
+/**
+ * The check-email page asks this every few seconds: has the link been tapped yet? The Gmail app opens the
+ * link in its own browser tab, which on Android shares Chrome's cookies, so the sign-up tab sees the new
+ * session and moves on by itself.
+ */
+export async function signUpConfirmedAction(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return Boolean(user?.email_confirmed_at);
+}
+
+/** "I've confirmed, continue": into the app when this browser is signed in, else to sign in. */
+export async function continueAfterConfirmAction(): Promise<void> {
+  const confirmed = await signUpConfirmedAction();
+  redirect(confirmed ? '/onboarding' : '/sign-in?notice=confirmedSignIn&next=/onboarding');
+}
+
 /** "Send the email again" on /sign-up/check-email, for the address that just signed up. */
 export async function resendSignUpEmailAction(): Promise<FormState> {
   const email = (await cookies()).get(SIGNUP_EMAIL_COOKIE)?.value;

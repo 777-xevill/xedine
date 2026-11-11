@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useActionState, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useActionState, useEffect, useState } from 'react';
 import { Alert, Hint, Input, Label } from '@/components/ui/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,8 @@ import {
   signInWithProviderAction,
   phoneSignInAction,
   resendSignUpEmailAction,
+  signUpConfirmedAction,
+  continueAfterConfirmAction,
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
 import { fallbackSlug, slugFromName } from '@/modules/tenancy/slug';
@@ -174,6 +177,42 @@ export function SignInForm({ next, urlError }: { next?: string; urlError?: strin
           {t('common.signUp')}
         </Link>
       </p>
+    </form>
+  );
+}
+
+/**
+ * Watches for the confirmation while the check-email page is open: every few seconds and whenever the
+ * person comes back to this tab. Once the link is tapped anywhere that shares this browser's sign-in, the
+ * page goes on to restaurant set-up by itself. The button covers a link opened in a different browser.
+ */
+export function ConfirmWatcher() {
+  const t = useTranslations('auth');
+  const router = useRouter();
+  useEffect(() => {
+    let done = false;
+    const check = async () => {
+      if (done || document.visibilityState !== 'visible') return;
+      if (await signUpConfirmedAction()) {
+        done = true;
+        router.replace('/onboarding');
+      }
+    };
+    const timer = window.setInterval(check, 4000);
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      done = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [router]);
+  return (
+    <form action={continueAfterConfirmAction} className="mb-3">
+      <Button type="submit" variant="secondary" className="w-full">
+        {t('confirmedContinue')}
+      </Button>
     </form>
   );
 }

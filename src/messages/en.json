@@ -167,14 +167,16 @@
     "checkEmailSentNoAddress": "We sent a confirmation link to your email.",
     "checkEmailStep1": "Open the email from Xedine.",
     "checkEmailStep2": "Tap \"Confirm my email\".",
-    "checkEmailStep3": "You will come back here to set up your restaurant.",
+    "checkEmailStep3": "Come back to this page. It moves on to restaurant set-up by itself.",
     "openGmail": "Open Gmail",
     "checkEmailSpam": "Can't find it? Look in Spam or Promotions, or send it again.",
     "sendAgain": "Send the email again",
     "sending": "Sending…",
     "emailResent": "Sent again. Check your inbox.",
     "wrongEmail": "Typed the wrong email?",
-    "signUpAgain": "Sign up again"
+    "signUpAgain": "Sign up again",
+    "confirmedContinue": "I've confirmed, continue",
+    "confirmedSignIn": "Your email is confirmed. Sign in with the email and password you just chose."
   },
   "landing": {
     "eyebrow": "The restaurant app made for Bangladesh",

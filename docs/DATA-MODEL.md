@@ -275,6 +275,9 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `open_shift` | `p_org uuid, p_branch uuid, p_device uuid, p_staff uuid, p_opening_float bigint` |
 | `org_ai_allowed` | `p_org uuid, p_now timestamp with time zone` |
 | `org_whatsapp_allowed` | `p_org uuid, p_now timestamp with time zone` |
+| `phone_account_link` | `p_phone text, p_user_id uuid` |
+| `phone_sign_in_check` | `p_phone text, p_code_hash text, p_now timestamp with time zone` |
+| `phone_sign_in_issue` | `p_phone text, p_code_hash text, p_full_name text, p_now timestamp with time zone` |
 | `put_nutrition_guesses` | `p_org uuid, p_rows jsonb, p_model text, p_prompt_version integer` |
 | `receive_transfer` | `p_transfer uuid, p_lines jsonb DEFAULT '[]'::jsonb, p_note text DEFAULT NULL::text` |
 | `reconcile_bazar_list` | `p_list uuid` |

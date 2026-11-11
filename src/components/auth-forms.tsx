@@ -4,14 +4,16 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useActionState, useState } from 'react';
 import { Alert, Hint, Input, Label } from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   createOrganizationAction,
   signInAction,
   signUpAction,
   acceptInvitationAction,
   joinWithInviteAction,
-  signInWithFacebookAction,
+  signInWithProviderAction,
+  phoneSignInAction,
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
 
@@ -21,20 +23,108 @@ export function ErrorAlert({ error }: { error?: string }) {
   return <Alert tone="danger">{t(error)}</Alert>;
 }
 
-/** "Continue with Facebook" (ADR 0041): its own form, so it never submits the email fields. */
-export function FacebookSignIn({ next }: { next?: string }) {
+/**
+ * "Continue with Google / Facebook / phone number" (ADR 0041, 0050). Each provider is its own form, so it
+ * never submits the email fields; only the providers switched on are shown.
+ */
+export function QuickSignIn({
+  next,
+  google,
+  facebook,
+  phone,
+}: {
+  next?: string;
+  google: boolean;
+  facebook: boolean;
+  phone: boolean;
+}) {
   const t = useTranslations('auth');
+  if (!google && !facebook && !phone) return null;
+  const phoneHref = next ? `/sign-in/phone?next=${encodeURIComponent(next)}` : '/sign-in/phone';
   return (
-    <div className="mb-4 space-y-4">
-      <form action={signInWithFacebookAction}>
-        <input type="hidden" name="next" value={next ?? ''} />
-        <Button type="submit" variant="secondary" className="w-full">
-          {t('continueWithFacebook')}
-        </Button>
-      </form>
+    <div className="mb-4 space-y-3">
+      {(['google', 'facebook'] as const)
+        .filter((p) => (p === 'google' ? google : facebook))
+        .map((provider) => (
+          <form key={provider} action={signInWithProviderAction}>
+            <input type="hidden" name="provider" value={provider} />
+            <input type="hidden" name="next" value={next ?? ''} />
+            <Button type="submit" variant="secondary" className="w-full">
+              {t(provider === 'google' ? 'continueWithGoogle' : 'continueWithFacebook')}
+            </Button>
+          </form>
+        ))}
+      {phone ? (
+        <Link href={phoneHref} className={cn(buttonVariants({ variant: 'secondary' }), 'w-full')}>
+          {t('continueWithPhone')}
+        </Link>
+      ) : null}
       <p className="flex items-center gap-3 text-xs text-secondary before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line">
         {t('orWithEmail')}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Phone sign-in (ADR 0050): 1) open the Xedine bot on Telegram and share your number, 2) type the phone and
+ * the 6-digit code the bot sends. Free: Telegram proves the number, no SMS is bought.
+ */
+export function PhoneSignInForm({ next, botLink }: { next?: string; botLink: string }) {
+  const t = useTranslations();
+  const [state, action, pending] = useActionState(phoneSignInAction, initialState);
+  return (
+    <div className="space-y-5">
+      <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
+        <li>{t('auth.phoneStep1')}</li>
+        <li>{t('auth.phoneStep2')}</li>
+        <li>{t('auth.phoneStep3')}</li>
+      </ol>
+      <a
+        href={botLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-h-11 w-full items-center justify-center rounded-full bg-action px-4 text-sm font-semibold text-on-action"
+      >
+        {t('auth.phoneOpenTelegram')}
+      </a>
+      <form action={action} className="space-y-4">
+        <input type="hidden" name="next" value={next ?? ''} />
+        <ErrorAlert error={state.error} />
+        <div className="space-y-1">
+          <Label htmlFor="phone">{t('auth.phoneNumber')}</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="01712345678"
+            required
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="code">{t('auth.phoneCode')}</Label>
+          <Input
+            id="code"
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={12}
+            required
+          />
+          <Hint>{t('auth.phoneCodeHint')}</Hint>
+        </div>
+        <Button type="submit" className="w-full" disabled={pending}>
+          {t('auth.phoneSignIn')}
+        </Button>
+      </form>
+      <Link
+        href={next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'}
+        className="block text-center text-sm text-secondary underline"
+      >
+        {t('auth.phoneBack')}
+      </Link>
     </div>
   );
 }

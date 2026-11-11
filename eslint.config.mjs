@@ -73,6 +73,8 @@ export default defineConfig([
       'src/lib/db/service-role.ts',
       // Creates the confirmed account for a holder of a live invitation token (ADR 0035).
       'src/modules/tenancy/invite-account.ts',
+      // Phone sign-in: a live code for a phone the Telegram bot verified makes the session (ADR 0050).
+      'src/modules/tenancy/phone-sign-in.ts',
       // Meta Page tokens are written only here, after the owner is proven (ADR 0040).
       'src/modules/social/connect.ts',
       // A customer's card page has no account: one card is read by its link token (ADR 0042).

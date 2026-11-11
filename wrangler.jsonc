@@ -13,4 +13,6 @@
   "observability": { "enabled": true },
   // Closest placement to Supabase (the old vercel.json pinned sin1). Secrets are set with `wrangler secret`.
   "placement": { "mode": "smart" },
+  // Plain switches, not secrets. "Continue with Google" (ADR 0050): the provider is on in Supabase.
+  "vars": { "GOOGLE_SIGN_IN": "on" },
 }

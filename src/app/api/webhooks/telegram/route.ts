@@ -2,6 +2,7 @@ import { after, NextResponse, type NextRequest } from 'next/server';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { telegramApi, telegramSecretOk, type TelegramUpdate } from '@/lib/messaging/telegram';
 import { handleTelegramUpdate } from '@/modules/purchasing/chat-bot';
+import { handlePhoneSignIn, isPhoneSignInMessage } from '@/modules/tenancy/phone-sign-in-bot';
 
 /**
  * Telegram bot webhook (ADR 0025). Telegram signs nothing, so it sends the secret given to setWebhook
@@ -40,7 +41,13 @@ export async function POST(request: NextRequest) {
         // Update ids count per bot; the bot's id (the token's public prefix) keeps a new bot's ids apart.
         event_id: `${token.split(':')[0]}:${update.update_id}`,
         payload: {
-          kind: update.callback_query ? 'button' : update.message?.voice ? 'voice' : 'message',
+          kind: update.callback_query
+            ? 'button'
+            : update.message?.contact
+              ? 'contact'
+              : update.message?.voice
+                ? 'voice'
+                : 'message',
         },
       },
       { onConflict: 'provider,event_id', ignoreDuplicates: true },
@@ -50,7 +57,18 @@ export async function POST(request: NextRequest) {
 
   after(async () => {
     try {
-      await handleTelegramUpdate(update, telegramApi(token), sb);
+      const message = update.message;
+      // Phone sign-in (ADR 0050) works for anyone, connected to a restaurant or not; private chats only.
+      if (message?.chat.type === 'private' && isPhoneSignInMessage(message)) {
+        await handlePhoneSignIn(
+          message,
+          telegramApi(token),
+          sb,
+          process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+        );
+      } else {
+        await handleTelegramUpdate(update, telegramApi(token), sb);
+      }
     } catch (e) {
       console.error('telegram update', e instanceof Error ? e.message.slice(0, 120) : 'error');
     }

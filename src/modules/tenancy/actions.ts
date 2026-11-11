@@ -10,6 +10,8 @@ import { isLocale } from '@/lib/i18n/format';
 import { LOCALE_COOKIE, resolveLocale } from '@/lib/i18n/request';
 import { mapDbError, safeNext, type FormState } from './form-state';
 import { createInvitedAccount } from './invite-account';
+import { oauthProvider } from './oauth';
+import { checkPhoneSignIn } from './phone-sign-in';
 
 const ROLES = ['manager', 'cashier', 'kitchen', 'purchaser', 'accountant'] as const;
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -107,18 +109,51 @@ export async function signInAction(_prev: FormState, formData: FormData): Promis
   redirect(safeNext(formData.get('next')) ?? '/');
 }
 
-/** Off to Facebook through Supabase Auth; /auth/callback finishes the sign-in (ADR 0041). */
-export async function signInWithFacebookAction(formData: FormData): Promise<void> {
+/** Off to Facebook or Google through Supabase Auth; /auth/callback finishes the sign-in (ADR 0041, 0050). */
+export async function signInWithProviderAction(formData: FormData): Promise<void> {
+  const provider = oauthProvider(formData.get('provider'));
   const next = safeNext(formData.get('next'));
   const callback = new URL('/auth/callback', publicEnv().NEXT_PUBLIC_SITE_URL);
+  callback.searchParams.set('provider', provider);
   if (next) callback.searchParams.set('next', next);
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'facebook',
-    options: { redirectTo: callback.toString(), scopes: 'email,public_profile' },
+    provider,
+    options: {
+      redirectTo: callback.toString(),
+      scopes: provider === 'facebook' ? 'email,public_profile' : 'email profile',
+      // Google: always let the person pick which Google account (a shared shop phone has several).
+      ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
+    },
   });
-  if (error || !data.url) redirect('/sign-in?error=facebookFailed');
+  if (error || !data.url) redirect(`/sign-in?error=${provider}Failed`);
   redirect(data.url);
+}
+
+/**
+ * Phone sign-in (ADR 0050): the phone and the code the Telegram bot sent. A right code becomes the session
+ * cookie through a one-time token; a phone signing in the first time gets an account and goes to onboarding.
+ */
+export async function phoneSignInAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const result = await checkPhoneSignIn({
+    phone: String(formData.get('phone') ?? ''),
+    code: String(formData.get('code') ?? ''),
+  });
+  if (result.status !== 'ok') {
+    const keys = {
+      invalidPhone: 'phoneInvalid',
+      invalidCode: 'signInCodeInvalid',
+      noCode: 'signInCodeMissing',
+      wrong: 'signInCodeWrong',
+      locked: 'signInCodeLocked',
+      failed: 'generic',
+    } as const;
+    return { error: keys[result.status] };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ type: 'email', token_hash: result.tokenHash });
+  if (error) return { error: 'generic' };
+  redirect(safeNext(formData.get('next')) ?? '/');
 }
 
 export async function signOutAction(): Promise<void> {

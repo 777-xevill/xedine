@@ -13,7 +13,10 @@ export interface TelegramChat {
 export interface TelegramMessage {
   message_id: number;
   chat: TelegramChat;
+  from?: { id: number; language_code?: string };
   text?: string;
+  /** A shared contact; `user_id` is set when it is a Telegram account's own card (ADR 0050). */
+  contact?: { phone_number: string; first_name?: string; last_name?: string; user_id?: number };
   caption?: string;
   voice?: { file_id: string; duration: number; file_size?: number };
   audio?: { file_id: string; duration: number; file_size?: number };
@@ -46,6 +49,10 @@ export interface TelegramApi {
     buttons?: InlineButton[][],
   ): Promise<void>;
   answerCallback(callbackId: string, text?: string): Promise<void>;
+  /** A message with one "share my phone number" button under the typing box (ADR 0050). */
+  askForContact(chatId: number, text: string, button: string): Promise<void>;
+  /** A message that also takes away a button left under the typing box. */
+  sendClearingKeyboard(chatId: number, text: string): Promise<void>;
   typing(chatId: number): Promise<void>;
   /** A file the person sent, as bytes; null when it is over Telegram's 20 MB bot download limit. */
   download(fileId: string): Promise<{ bytes: Uint8Array; path: string } | null>;
@@ -88,6 +95,20 @@ export function telegramApi(token: string, fetchImpl: typeof fetch = fetch): Tel
     },
     async answerCallback(callbackId, text) {
       await call('answerCallbackQuery', { callback_query_id: callbackId, text });
+    },
+    async askForContact(chatId, text, button) {
+      await call('sendMessage', {
+        chat_id: chatId,
+        text,
+        reply_markup: {
+          keyboard: [[{ text: button, request_contact: true }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      });
+    },
+    async sendClearingKeyboard(chatId, text) {
+      await call('sendMessage', { chat_id: chatId, text, reply_markup: { remove_keyboard: true } });
     },
     async typing(chatId) {
       await call('sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);

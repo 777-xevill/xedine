@@ -1,8 +1,12 @@
 import { getTranslations } from 'next-intl/server';
-import { FacebookSignIn, SignUpForm } from '@/components/auth-forms';
+import { QuickSignIn, SignUpForm } from '@/components/auth-forms';
 import { Card, PageTitle } from '@/components/ui/form';
 import { safeNext } from '@/modules/tenancy/form-state';
-import { facebookSignInEnabled } from '@/modules/tenancy/oauth';
+import {
+  facebookSignInEnabled,
+  googleSignInEnabled,
+  phoneSignInEnabled,
+} from '@/modules/tenancy/oauth';
 
 export default async function SignUpPage({
   searchParams,
@@ -14,7 +18,12 @@ export default async function SignUpPage({
   return (
     <Card>
       <PageTitle title={t('signUpTitle')} subtitle={t('signUpSubtitle')} />
-      {facebookSignInEnabled() ? <FacebookSignIn next={safe} /> : null}
+      <QuickSignIn
+        next={safe}
+        google={googleSignInEnabled()}
+        facebook={facebookSignInEnabled()}
+        phone={phoneSignInEnabled()}
+      />
       <SignUpForm next={safe} />
     </Card>
   );

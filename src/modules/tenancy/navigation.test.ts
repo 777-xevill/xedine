@@ -45,6 +45,7 @@ describe('navigation (ADR 0024)', () => {
       'sales',
       'leaks',
       'menu',
+      'nutrition',
       'tableQr',
       'complaints',
     ]);

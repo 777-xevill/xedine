@@ -1,13 +1,14 @@
 import 'server-only';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
+import type { FactsFields } from '@/modules/menu/food-facts';
 import type { MenuDish } from './member-card-view';
 import { TABLE_TOKEN } from './table-qr';
 
 /**
  * The customer's table page (ADR 0045) has no account: the table's link token is the only credential.
  * table_page is callable by the service role only and returns the names, the member card rules, the
- * branch's Google review link and its menu, or null for an unknown link.
+ * branch's Google review link and its menu (with approved food facts), or null for an unknown link.
  */
 export interface TablePageView {
   org_id: string;
@@ -24,7 +25,8 @@ export interface TablePageView {
   complaint_token: string;
   games_on: boolean;
   game_names: unknown;
-  menu: MenuDish[];
+  /** With the dish's approved food facts (ADR 0049), null where none are approved. */
+  menu: (MenuDish & FactsFields)[];
 }
 
 export async function readTablePage(token: string): Promise<TablePageView | null> {

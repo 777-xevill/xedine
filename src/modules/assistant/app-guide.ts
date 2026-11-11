@@ -94,6 +94,21 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
     what: 'Categories, dishes and the printed prices; add or hide an item, photos, import a menu. Owner only.',
     words: ['menu', 'dish', 'item', 'price', 'category', 'add item', 'মেনু', 'দাম'],
   },
+  nutrition: {
+    name: 'Food facts',
+    what: 'Calories, protein, carbs, fat and allergens for each dish, shown to customers on the table QR menu. "Fill with AI" makes a first guess for dishes with nothing yet; open a dish, check or change the numbers and tap Approve, or "Approve all AI guesses". Customers see only approved facts. Owner and manager.',
+    words: [
+      'nutrition',
+      'calorie',
+      'calories',
+      'protein',
+      'allergen',
+      'food facts',
+      'kcal',
+      'ক্যালরি',
+      'প্রোটিন',
+    ],
+  },
   recipes: {
     name: 'Dish ingredients',
     what: 'What goes into one plate of each dish (Burger: bun 1 piece, chicken 150 g). Every dish ordered at the till then takes these out of stock by itself. Tap a dish, write or fix the list and Save; "Ask AI to fill this" writes a first list to check with the chef. Owner and manager edit (the manager writes it for the chef); one plate\'s cost is owner and accountant only. Ingredient prices come from the bazar by themselves (the latest price paid); there is no page to type them.',

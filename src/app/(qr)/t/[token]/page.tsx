@@ -2,17 +2,18 @@ import { Gamepad2, IdCard, MessageSquareWarning, Star, UtensilsCrossed } from 'l
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { DishMenu } from '@/components/dish-menu';
 import { Mascot } from '@/components/games/mascot';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { NotifyOffersField } from '@/components/notify-offers-field';
 import { OnceForm } from '@/components/once-form';
+import { TableMenu, type TableDish } from '@/components/table-menu';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/form';
 import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { aiConfigured } from '@/lib/llm-gateway';
 import { vapidPublicKey } from '@/modules/customers/jobs/push';
 import { memberCardPath } from '@/modules/customers/member-card';
-import { readMemberCard } from '@/modules/customers/member-card-view';
+import { dishPhotoUrl, readMemberCard } from '@/modules/customers/member-card-view';
 import { cardCookieName, isNumberedTable } from '@/modules/customers/table-qr';
 import { parseGameNames } from '@/modules/games/catalog';
 import { readTablePage } from '@/modules/customers/table-page-view';
@@ -70,6 +71,11 @@ export default async function TablePage({
     ? t('tableN', { n: formatNumber(Number(page.table), loc) })
     : page.table;
   const complaintHref = `/c/${page.complaint_token}`;
+  // The menu with each dish's approved food facts (ADR 0049); photo links are made here, on the server.
+  const dishes: TableDish[] = page.menu.map((m) => ({
+    ...m,
+    photoUrl: m.photo_path ? dishPhotoUrl(m.photo_path) : null,
+  }));
 
   const gamesHref = `/t/${token}/games`;
   const hostName = parseGameNames(page.game_names).host ?? t('hostName');
@@ -245,7 +251,12 @@ export default async function TablePage({
         {page.menu.length === 0 ? (
           <p className="glass rounded-sheet p-5 text-sm text-secondary">{t('menuEmpty')}</p>
         ) : (
-          <DishMenu dishes={page.menu} locale={loc} otherLabel={t('otherDishes')} />
+          <TableMenu
+            dishes={dishes}
+            token={token}
+            aiOn={aiConfigured()}
+            otherLabel={t('otherDishes')}
+          />
         )}
         <p className="px-1 text-xs text-secondary">{t('menuNote')}</p>
       </section>

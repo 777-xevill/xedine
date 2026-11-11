@@ -300,7 +300,8 @@
     "foodSafety": "Food safety",
     "dailyChecks": "Daily checks",
     "complaints": "Complaints",
-    "tableQr": "Table QR"
+    "tableQr": "Table QR",
+    "nutrition": "Food facts"
   },
   "discountCodes": {
     "title": "Discount codes",
@@ -3237,7 +3238,31 @@
     "gamesTitle": "Play while you wait",
     "gamesBody": "{host} has nine games for you: alone, with friends or as a couple. No app.",
     "gamesPlay": "Play now",
-    "hostName": "Mishti"
+    "hostName": "Mishti",
+    "helperTitle": "Not sure what to eat?",
+    "helperBody": "Tap a button, or ask in your own words, in Bangla or English.",
+    "helperBodyNoAi": "Tap a button to see our picks.",
+    "pickProtein": "High protein",
+    "pickLight": "Light (up to {kcal} kcal)",
+    "pickBudget": "Up to {price}",
+    "askLabel": "Ask about the food",
+    "askPlaceholder": "e.g. something filling, not spicy",
+    "askButton": "Ask",
+    "asking": "Thinking…",
+    "askBusy": "Lots of questions from this table. Try again in a few minutes.",
+    "askFailed": "The helper can’t answer right now. Please ask the staff.",
+    "ourPicks": "Our picks for you:",
+    "noPicks": "Nothing on the menu fits that yet. Ask the staff.",
+    "closeAnswer": "Close",
+    "avoidTitle": "I don’t eat:",
+    "hiddenByFilter": "{n} dishes hidden: they contain what you don’t eat, or the restaurant hasn’t checked them yet.",
+    "facts": "{kcal} kcal · {protein} g protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "protein": "Protein",
+    "grams": "{n} g",
+    "contains": "Contains: {list}",
+    "containsNone": "No common allergens marked."
   },
   "games": {
     "names": {
@@ -4043,5 +4068,45 @@
     "busyBody": "Please tell a member of staff, or try again in an hour.",
     "goneTitle": "This link no longer works",
     "goneBody": "Please ask a member of staff for the new QR code."
+  },
+  "allergens": {
+    "nuts": "Nuts",
+    "milk": "Milk & ghee",
+    "egg": "Egg",
+    "gluten": "Wheat (gluten)",
+    "fish": "Fish",
+    "shellfish": "Prawn & crab",
+    "soy": "Soy",
+    "sesame": "Sesame",
+    "beef": "Beef"
+  },
+  "nutrition": {
+    "title": "Food facts",
+    "subtitle": "Calories, protein and allergens for each dish. Customers see them on the table menu once you approve.",
+    "empty": "No dishes yet",
+    "emptyBody": "Add dishes on the Menu page first.",
+    "counts": "{approved} approved · {waiting} waiting for your check · {none} not started",
+    "fill": "Fill with AI",
+    "filling": "AI is guessing…",
+    "fillHint": "AI makes a first guess for each dish. Check the numbers, change any that look wrong, then approve.",
+    "aiOff": "AI is not set up, so type the facts yourself and approve.",
+    "filled": "{n} dishes guessed. Check them below and approve. {left} more to go: tap Fill with AI again.",
+    "approveAll": "Approve all AI guesses ({n})",
+    "approvedAll": "{n} dishes approved. Customers can see them now.",
+    "saving": "Saving…",
+    "summary": "{kcal} kcal · {protein} g protein",
+    "statusApproved": "Approved",
+    "statusGuess": "AI guess: check it",
+    "statusNone": "Not started",
+    "kcal": "Calories (kcal)",
+    "protein": "Protein (g)",
+    "carbs": "Carbs (g)",
+    "fat": "Fat (g)",
+    "allergens": "Contains",
+    "guessHint": "This is an AI guess. Customers see it only after you approve.",
+    "approve": "Approve",
+    "askAi": "Ask AI",
+    "askAgain": "Ask AI again",
+    "clear": "Remove"
   }
 }

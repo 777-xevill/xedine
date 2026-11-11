@@ -30,6 +30,7 @@ export type IconKey =
   | 'sales'
   | 'leaks'
   | 'menu'
+  | 'nutrition'
   | 'recipes'
   | 'menuProfit'
   | 'purchases'
@@ -101,6 +102,8 @@ const CORE: LinkRule[] = [
   { key: 'sales', path: '/sales', roles: LEADS },
   { key: 'leaks', path: '/leaks', roles: MONEY },
   { key: 'menu', path: '/menu', roles: ['owner'] },
+  // Food facts (ADR 0049): calories and protein on the table menu, guessed by AI, approved by a person.
+  { key: 'nutrition', path: '/nutrition', roles: ['owner', 'manager'] },
   // Table QR (ADR 0045): the QR code on every table, so it is never switched off.
   { key: 'tableQr', path: '/table-qr', roles: ['owner', 'manager'] },
   { key: 'complaints', path: '/complaints', roles: ['owner', 'manager'] },
@@ -193,6 +196,7 @@ const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   tableQr: 'customers',
   complaints: 'customers',
   menu: 'restaurant',
+  nutrition: 'restaurant',
   branches: 'restaurant',
   staffRecords: 'restaurant',
   compliance: 'restaurant',

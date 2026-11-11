@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (119)
+## Tables (120)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -45,6 +45,7 @@
 | `dining_tables` | Tables per branch, optional QR token. | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner, manager | PK id · → branches | pos · P1 |
 | `discount_codes` | Secret discount codes the restaurant gives customers: percent off, optional limit and end date. | org | read: owner, manager; write: owner, manager (secret codes: a cashier uses one through apply_discount_code and never lists them (ADR 0038)) | PK id | pos · P11 |
 | `discounts` | Order/line discounts with reason and approver. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, discount_codes, order_items, orders, reason_codes, staff | pos · P1 |
+| `dish_nutrition` | Calories, protein, carbs, fat and allergens per plate; AI guess until the owner or a manager approves. | org | read: owner, manager, kitchen, accountant; write: service role only (writes only via put_nutrition_guesses / approve_dish_nutrition / clear_dish_nutrition (audited)) | PK org_id, menu_item_id · → menu_items | menu · P11 |
 | `feature_flags` | Platform feature flags. | platform (no tenant data) | read: signed-in users; write: none | PK key | billing · P10 |
 | `feedback` | Post-meal rating 0-10 and comment via link. | org + branch | read: owner, manager; write: service role only (submitted through a public link by the service role) | PK id · → branches, customers, orders | customers · P8 |
 | `finding_evidence` | Evidence rows behind each finding. Money-gated. | org | read: owner, accountant; write: service role only (written by detectors) | PK id · → findings | leaks · P2 |
@@ -136,7 +137,7 @@
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (183)
+## RPC functions (186)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -158,6 +159,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `approve_action` | `p_device uuid, p_approver_staff uuid, p_pin text, p_action approval_action` |
 | `approve_bazar_list` | `p_list uuid, p_lines jsonb DEFAULT '[]'::jsonb` |
 | `approve_campaign` | `p_campaign uuid` |
+| `approve_dish_nutrition` | `p_org uuid, p_item uuid, p_kcal integer, p_protein numeric, p_carbs numeric, p_fat numeric, p_allergens text[]` |
 | `approve_growth_draft` | `p_draft uuid, p_caption_bn text DEFAULT NULL::text, p_caption_en text DEFAULT NULL::text, p_target_date date DEFAULT NULL::date` |
 | `approve_recipe_draft` | `p_draft uuid, p_payload jsonb DEFAULT NULL::jsonb` |
 | `approve_review_reply` | `p_reply uuid, p_body text DEFAULT NULL::text` |
@@ -174,6 +176,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `chat_update_purchase_draft` | `p_channel chat_channel, p_external_id text, p_draft uuid, p_lines jsonb, p_confidence jsonb` |
 | `chat_usual_days` | `p_channel chat_channel, p_external_id text` |
 | `claim_device` | `p_device uuid, p_code text` |
+| `clear_dish_nutrition` | `p_org uuid, p_item uuid` |
 | `close_shift` | `p_org uuid, p_branch uuid, p_shift uuid, p_counted_cash bigint, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `complaint_link` | `p_token text` |
 | `complete_incident_action` | `p_org uuid, p_action uuid` |
@@ -272,6 +275,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `open_shift` | `p_org uuid, p_branch uuid, p_device uuid, p_staff uuid, p_opening_float bigint` |
 | `org_ai_allowed` | `p_org uuid, p_now timestamp with time zone` |
 | `org_whatsapp_allowed` | `p_org uuid, p_now timestamp with time zone` |
+| `put_nutrition_guesses` | `p_org uuid, p_rows jsonb, p_model text, p_prompt_version integer` |
 | `receive_transfer` | `p_transfer uuid, p_lines jsonb DEFAULT '[]'::jsonb, p_note text DEFAULT NULL::text` |
 | `reconcile_bazar_list` | `p_list uuid` |
 | `record_ai_usage` | `p_org uuid, p_date date, p_model text, p_feature text, p_input bigint, p_output bigint, p_cache_read bigint, p_cache_write bigint, p_cost_usd_micros bigint` |

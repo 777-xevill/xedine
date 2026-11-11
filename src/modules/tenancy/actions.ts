@@ -8,7 +8,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { publicEnv } from '@/lib/env';
 import { isLocale } from '@/lib/i18n/format';
 import { LOCALE_COOKIE, resolveLocale } from '@/lib/i18n/request';
-import { mapDbError, safeNext, type FormState } from './form-state';
+import { mapDbError, safeNext, SIGNUP_EMAIL_COOKIE, type FormState } from './form-state';
 import { createInvitedAccount } from './invite-account';
 import { oauthProvider } from './oauth';
 import { checkPhoneSignIn } from './phone-sign-in';
@@ -47,8 +47,35 @@ export async function signUpAction(_prev: FormState, formData: FormData): Promis
             ? 'emailLimit'
             : 'generic',
     };
-  if (!data.session) return { ok: true, message: 'checkEmail' };
+  if (!data.session) {
+    // The next page says which address the link went to and can send it again. Kept in a short,
+    // private cookie rather than the address bar, so the email never lands in links or logs.
+    (await cookies()).set(SIGNUP_EMAIL_COOKIE, parsed.data.email, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/sign-up',
+      maxAge: 60 * 60,
+    });
+    redirect('/sign-up/check-email');
+  }
   redirect(safeNext(formData.get('next')) ?? '/onboarding');
+}
+
+/** "Send the email again" on /sign-up/check-email, for the address that just signed up. */
+export async function resendSignUpEmailAction(): Promise<FormState> {
+  const email = (await cookies()).get(SIGNUP_EMAIL_COOKIE)?.value;
+  if (!email || !z.email().safeParse(email).success) return { error: 'generic' };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  if (error)
+    return {
+      error:
+        error.code === 'over_email_send_rate_limit' || error.status === 429
+          ? 'emailLimit'
+          : 'generic',
+    };
+  return { ok: true, message: 'emailResent' };
 }
 
 /**

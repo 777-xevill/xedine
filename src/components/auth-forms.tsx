@@ -14,6 +14,7 @@ import {
   joinWithInviteAction,
   signInWithProviderAction,
   phoneSignInAction,
+  resendSignUpEmailAction,
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
 import { fallbackSlug, slugFromName } from '@/modules/tenancy/slug';
@@ -173,6 +174,21 @@ export function SignInForm({ next, urlError }: { next?: string; urlError?: strin
           {t('common.signUp')}
         </Link>
       </p>
+    </form>
+  );
+}
+
+/** "Didn't get it? Send again" on the check-your-email page. */
+export function ResendSignUpEmail() {
+  const t = useTranslations('auth');
+  const [state, action, pending] = useActionState(resendSignUpEmailAction, initialState);
+  return (
+    <form action={action} className="space-y-3">
+      <ErrorAlert error={state.error} />
+      {state.ok ? <Alert tone="success">{t('emailResent')}</Alert> : null}
+      <Button type="submit" variant="secondary" className="w-full" disabled={pending}>
+        {pending ? t('sending') : t('sendAgain')}
+      </Button>
     </form>
   );
 }

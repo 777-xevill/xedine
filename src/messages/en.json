@@ -160,7 +160,20 @@
     "phoneCode": "6-digit code from Telegram",
     "phoneCodeHint": "The code works for 10 minutes. Never give it to anyone.",
     "phoneSignIn": "Sign in",
-    "phoneBack": "Back to other ways to sign in"
+    "phoneBack": "Back to other ways to sign in",
+    "checkEmailTitle": "Check your email",
+    "checkEmailSentTo": "We sent a confirmation link to",
+    "checkEmailSentNoAddress": "We sent a confirmation link to your email.",
+    "checkEmailStep1": "Open the email from Xedine.",
+    "checkEmailStep2": "Tap \"Confirm my email\".",
+    "checkEmailStep3": "You will come back here to set up your restaurant.",
+    "openGmail": "Open Gmail",
+    "checkEmailSpam": "Can't find it? Look in Spam or Promotions, or send it again.",
+    "sendAgain": "Send the email again",
+    "sending": "Sending…",
+    "emailResent": "Sent again. Check your inbox.",
+    "wrongEmail": "Typed the wrong email?",
+    "signUpAgain": "Sign up again"
   },
   "landing": {
     "eyebrow": "The restaurant app made for Bangladesh",

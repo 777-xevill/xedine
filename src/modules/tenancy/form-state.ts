@@ -10,6 +10,9 @@ export interface FormState {
 
 export const initialState: FormState = {};
 
+/** The address that just signed up, for /sign-up/check-email (a short private cookie, never the URL). */
+export const SIGNUP_EMAIL_COOKIE = 'xedine_signup_email';
+
 interface DbError {
   code?: string;
   message?: string;

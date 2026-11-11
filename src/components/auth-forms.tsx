@@ -16,6 +16,7 @@ import {
   phoneSignInAction,
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
+import { fallbackSlug, slugFromName } from '@/modules/tenancy/slug';
 
 export function ErrorAlert({ error }: { error?: string }) {
   const t = useTranslations('errors');
@@ -232,23 +233,50 @@ export function OnboardingForm() {
   const [state, action, pending] = useActionState(createOrganizationAction, initialState);
   const [rows, setRows] = useState<BranchRow[]>([{ key: 1 }]);
   const [nextKey, setNextKey] = useState(2);
+  const [slug, setSlug] = useState('');
+  const [slugEdited, setSlugEdited] = useState(false);
+  // A name with no English letters (Bangla) gets a numbered link; the digits are chosen once, on typing.
+  const [fallbackDigits, setFallbackDigits] = useState<number | null>(null);
+  const fallbackFor = (name: string) => {
+    if (!name.trim()) return '';
+    const digits = fallbackDigits ?? Math.floor(Math.random() * 10000);
+    if (fallbackDigits === null) setFallbackDigits(digits);
+    return fallbackSlug(digits);
+  };
   return (
     <form action={action} className="space-y-6">
       <ErrorAlert error={state.error} />
       <div>
         <Label htmlFor="name">{t('onboarding.orgName')}</Label>
-        <Input id="name" name="name" required maxLength={120} />
+        <Input
+          id="name"
+          name="name"
+          required
+          maxLength={120}
+          onChange={(e) => {
+            // The link follows the name until the owner types their own.
+            if (!slugEdited) setSlug(slugFromName(e.target.value) || fallbackFor(e.target.value));
+          }}
+        />
       </div>
       <div>
         <Label htmlFor="slug">{t('onboarding.orgSlug')}</Label>
-        <Input
-          id="slug"
-          name="slug"
-          required
-          pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]"
-          spellCheck={false}
-          autoCapitalize="none"
-        />
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-sm text-secondary">{t('onboarding.slugPrefix')}</span>
+          <Input
+            id="slug"
+            name="slug"
+            required
+            value={slug}
+            onChange={(e) => {
+              setSlugEdited(true);
+              setSlug(e.target.value.toLowerCase());
+            }}
+            pattern="[a-z0-9][a-z0-9\-]{1,38}[a-z0-9]"
+            spellCheck={false}
+            autoCapitalize="none"
+          />
+        </div>
         <Hint>{t('onboarding.slugHelp')}</Hint>
       </div>
       <fieldset className="space-y-3">

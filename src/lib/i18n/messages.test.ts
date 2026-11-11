@@ -35,7 +35,7 @@ describe('i18n message catalogues', () => {
   });
 
   it('Bangla messages are actually Bangla (brand names and language labels excepted)', () => {
-    const allowedLatin = new Set(['common.appName', 'common.english']);
+    const allowedLatin = new Set(['common.appName', 'common.english', 'onboarding.slugPrefix']);
     for (const [key, value] of Object.entries(bn_)) {
       if (allowedLatin.has(key)) continue;
       expect(/[ঀ-৿]/.test(value), `${key} is not translated: "${value}"`).toBe(true);

@@ -27,6 +27,15 @@ const PUBLIC_PREFIXES = [
 ];
 
 export async function proxy(request: NextRequest) {
+  // One address only. Google and Facebook send the person back to the main address, and the sign-in
+  // cookie set on www would not travel with them, so a sign-in begun on www always failed.
+  const host = request.nextUrl.host;
+  if (host.startsWith('www.')) {
+    const main = request.nextUrl.clone();
+    main.host = host.slice(4);
+    return NextResponse.redirect(main, 308);
+  }
+
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

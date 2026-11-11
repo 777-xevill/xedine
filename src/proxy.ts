@@ -14,6 +14,8 @@ const PUBLIC_PREFIXES = [
   '/accept-invite',
   // Facebook sign-in returns here before there is a session (ADR 0041).
   '/auth/callback',
+  // The link in the "confirm your email" message (opened on any device, signed out).
+  '/auth/confirm',
   '/api/health',
   '/api/jobs',
   '/api/webhooks',

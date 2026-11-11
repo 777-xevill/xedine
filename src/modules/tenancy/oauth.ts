@@ -50,4 +50,6 @@ export const OAUTH_ERRORS = new Set([
   'facebookFailed',
   'googleCancelled',
   'googleFailed',
+  // /auth/confirm: an email link that is old, used already, or broken.
+  'confirmFailed',
 ]);

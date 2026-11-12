@@ -132,7 +132,8 @@ export const ids = {
 };
 
 const iso = (ms: number) => new Date(ms).toISOString();
-const frozenNowMs = Date.parse(FROZEN_NOW);
+// SEED_FROZEN_NOW only lets a demo top-up (later days than the anchor) pass; tests never set it.
+const frozenNowMs = Date.parse(process.env.SEED_FROZEN_NOW ?? FROZEN_NOW);
 
 const EID_CLOSURE = new Set(
   CALENDAR.filter((c) => c.kind === 'eid').flatMap((c) => {

@@ -244,69 +244,89 @@ export default async function MenuProfitPage({
               className="w-28"
             />
           </div>
-          <div>
-            <Label htmlFor="sim-portion">{t('portionPct')}</Label>
-            <Input
-              id="sim-portion"
-              name="portion"
-              inputMode="decimal"
-              defaultValue={sp.portion ?? '100'}
-              className="w-24"
-            />
-          </div>
+          <details
+            className="basis-full text-sm"
+            open={Boolean(sp.portion && sp.portion !== '100')}
+          >
+            <summary className="cursor-pointer text-secondary">{t('portionToggle')}</summary>
+            <div className="mt-2">
+              <Label htmlFor="sim-portion">{t('portionPct')}</Label>
+              <Input
+                id="sim-portion"
+                name="portion"
+                inputMode="decimal"
+                defaultValue={sp.portion ?? '100'}
+                className="w-24"
+              />
+              <Hint>{t('portionHint')}</Hint>
+            </div>
+          </details>
           <Button type="submit" variant="secondary">
             {t('simulate')}
           </Button>
         </form>
         {sim?.error ? <p className="mt-4 text-sm text-danger">{t('simError')}</p> : null}
         {simRow ? (
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[28rem] text-sm">
-              <thead>
-                <tr className="text-xs text-secondary">
-                  <th scope="col" className="py-1 text-start font-medium" />
-                  <th scope="col" className="py-1 text-end font-medium">
-                    {t('now')}
-                  </th>
-                  <th scope="col" className="py-1 text-end font-medium">
-                    {t('then')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(
-                  [
-                    ['price', 'current_price_poisha', 'new_price_poisha', 'money'],
-                    ['netPrice', 'current_net_unit_poisha', 'new_net_unit_poisha', 'money'],
-                    ['cost', 'current_cost_poisha', 'new_cost_poisha', 'money'],
-                    ['cm', 'current_cm_poisha', 'new_cm_poisha', 'money'],
-                    ['foodCost', 'current_food_cost_bps', 'new_food_cost_bps', 'bps'],
-                  ] as const
-                ).map(([label, a, b, kind]) => (
-                  <tr key={label} className="border-t border-line/60">
-                    <th scope="row" className="py-1.5 text-start font-normal text-secondary">
-                      {t(`sim.${label}`)}
-                    </th>
-                    {[a, b].map((k) => (
-                      <td key={k} className="py-1.5 text-end tabular-nums">
-                        {simRow[k] == null
-                          ? '—'
-                          : kind === 'money'
-                            ? formatBDT(Number(simRow[k]), loc)
-                            : formatBps(Number(simRow[k]), loc)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-3 text-sm">
-              {t('simImpact', {
-                qty: formatNumber(Number(simRow.qty_28d ?? 0), loc),
-                change: formatBDT(Number(simRow.cm_change_28d_poisha ?? 0), loc),
+          <div className="mt-5">
+            <p className="text-base font-semibold">
+              {t('simHeadline', {
+                item: (items ?? []).find((i) => i.id === simItem)?.name ?? '',
+                price: formatBDT(Number(simRow.new_price_poisha ?? 0), loc),
+                after: formatBDT(Number(simRow.new_cm_poisha ?? 0), loc),
+                before: formatBDT(Number(simRow.current_cm_poisha ?? 0), loc),
               })}
             </p>
+            <p className="mt-1 text-sm">
+              {Number(simRow.cm_change_28d_poisha ?? 0) === 0
+                ? t('simImpactNone')
+                : t(Number(simRow.cm_change_28d_poisha) > 0 ? 'simImpactUp' : 'simImpactDown', {
+                    qty: formatNumber(Number(simRow.qty_28d ?? 0), loc),
+                    change: formatBDT(Math.abs(Number(simRow.cm_change_28d_poisha)), loc),
+                  })}
+            </p>
             <Hint>{t('simAssumption')}</Hint>
+            <details className="mt-3 overflow-x-auto text-sm">
+              <summary className="cursor-pointer text-secondary">{t('simFullNumbers')}</summary>
+              <table className="mt-2 w-full min-w-[28rem] text-sm">
+                <thead>
+                  <tr className="text-xs text-secondary">
+                    <th scope="col" className="py-1 text-start font-medium" />
+                    <th scope="col" className="py-1 text-end font-medium">
+                      {t('now')}
+                    </th>
+                    <th scope="col" className="py-1 text-end font-medium">
+                      {t('then')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(
+                    [
+                      ['price', 'current_price_poisha', 'new_price_poisha', 'money'],
+                      ['netPrice', 'current_net_unit_poisha', 'new_net_unit_poisha', 'money'],
+                      ['cost', 'current_cost_poisha', 'new_cost_poisha', 'money'],
+                      ['cm', 'current_cm_poisha', 'new_cm_poisha', 'money'],
+                      ['foodCost', 'current_food_cost_bps', 'new_food_cost_bps', 'bps'],
+                    ] as const
+                  ).map(([label, a, b, kind]) => (
+                    <tr key={label} className="border-t border-line/60">
+                      <th scope="row" className="py-1.5 text-start font-normal text-secondary">
+                        {t(`sim.${label}`)}
+                      </th>
+                      {[a, b].map((k) => (
+                        <td key={k} className="py-1.5 text-end tabular-nums">
+                          {simRow[k] == null
+                            ? '—'
+                            : kind === 'money'
+                              ? formatBDT(Number(simRow[k]), loc)
+                              : formatBps(Number(simRow[k]), loc)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
           </div>
         ) : null}
         <p className="mt-6 text-sm">

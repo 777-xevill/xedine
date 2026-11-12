@@ -1353,24 +1353,24 @@
     "coverage": "Sales with a recipe",
     "coverageHint": "Food cost % is only for items with a recipe.",
     "addRecipes": "Add recipes",
-    "matrixTitle": "Menu engineering",
+    "matrixTitle": "Your dishes, sorted by profit",
     "noSales": "No sales in this period.",
     "classes": {
       "star": {
-        "name": "Stars",
-        "advice": "Popular and profitable. Keep quality and visibility high."
+        "name": "Winners",
+        "advice": "Sell well and earn well. Keep them great."
       },
       "plowhorse": {
-        "name": "Plowhorses",
-        "advice": "Popular but thin. Nudge the price or trim the cost."
+        "name": "Busy but thin",
+        "advice": "Sell a lot but earn little. Raise the price a little or cut the cost."
       },
       "puzzle": {
-        "name": "Puzzles",
-        "advice": "Profitable but rarely ordered. Promote them."
+        "name": "Hidden gems",
+        "advice": "Earn well but few order them. Show them off."
       },
       "dog": {
-        "name": "Dogs",
-        "advice": "Rarely ordered and thin. Rework or remove."
+        "name": "Weak dishes",
+        "advice": "Few order them and they earn little. Fix or remove."
       }
     },
     "none": "None",
@@ -1381,12 +1381,16 @@
       "foodCost": "Food cost"
     },
     "unknown": "Not classified (no recipe yet): {items}",
-    "simTitle": "Price & portion simulator",
-    "simBody": "Try a new menu price or portion size and see the margin, at the last 28 days' sales.",
-    "chooseItem": "Choose an item",
+    "simTitle": "What if I change a price?",
+    "simBody": "Pick a dish, type a new price, and see what you would earn on it. Uses the last 28 days of sales.",
+    "chooseItem": "Choose a dish",
     "newPrice": "New price (৳)",
-    "portionPct": "Portion %",
-    "simulate": "Calculate",
+    "portionPct": "Plate size %",
+    "simulate": "Show me",
+    "portionToggle": "Change the plate size too (optional)",
+    "portionHint": "100 means the same size as now. 90 means 10% less food on the plate.",
+    "simHeadline": "{item} at {price}: you would keep {after} on each plate, instead of {before} now.",
+    "simFullNumbers": "Show the full numbers",
     "simError": "This item needs a costed recipe first.",
     "now": "Now",
     "then": "With the change",
@@ -1397,7 +1401,9 @@
       "cm": "Margin a unit",
       "foodCost": "Food cost"
     },
-    "simImpact": "At the last 28 days' {qty} sold, that is {change} of margin.",
+    "simImpactUp": "On the {qty} plates sold in the last 28 days, that is {change} more in your pocket.",
+    "simImpactDown": "On the {qty} plates sold in the last 28 days, that is {change} less in your pocket.",
+    "simImpactNone": "No change in what you earn.",
     "simAssumption": "A projection: it assumes the same number sold, which a price change may not keep.",
     "seeMarginLeaks": "See items losing money"
   },

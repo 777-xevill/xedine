@@ -1,4 +1,15 @@
-import { CalendarDays, ChefHat, ShoppingBasket } from 'lucide-react';
+import {
+  CalendarDays,
+  ChefHat,
+  Cloud,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  MapPin,
+  ShoppingBasket,
+  Sun,
+  Thermometer,
+} from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -9,7 +20,13 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, Card, CardTitle, EmptyState, Hint, Input, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import {
+  formatBps,
+  formatDhakaDay,
+  formatDhakaTime,
+  formatNumber,
+  type Locale,
+} from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import {
   approveBazarAction,
@@ -18,7 +35,7 @@ import {
   reconcileBazarAction,
   sendBazarAction,
 } from '@/modules/forecasting/actions';
-import { forecast, forecastAccuracy, prepPlan } from '@/modules/forecasting/queries';
+import { branchOutlook, forecast, forecastAccuracy, prepPlan } from '@/modules/forecasting/queries';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
 import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
@@ -26,6 +43,14 @@ import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
 const TABS = ['forecast', 'prep', 'bazar'] as const;
 type Tab = (typeof TABS)[number];
+const SKY_ICON = {
+  clear: Sun,
+  cloudy: Cloud,
+  rain: CloudRain,
+  storm: CloudLightning,
+  fog: CloudFog,
+} as const;
+const noonDhaka = (date: string) => new Date(`${date}T06:00:00Z`);
 const STATUS_TONE = {
   draft: 'neutral',
   approved: 'info',
@@ -51,9 +76,11 @@ export default async function PlanPage({
     ? (sp.tab as Tab)
     : 'forecast';
   const branch = pickBranch(ctx, sp.branch);
-  const [t, tu, locale] = await Promise.all([
+  const [t, tu, to, tk, locale] = await Promise.all([
     getTranslations('plan'),
     getTranslations('units'),
+    getTranslations('outlook'),
+    getTranslations('calendar'),
     getLocale(),
   ]);
   const loc = locale as Locale;
@@ -71,6 +98,20 @@ export default async function PlanPage({
       <input type="hidden" name="orgSlug" value={ctx.org.slug} />
     </>
   );
+  const outlook = await branchOutlook(ctx.org.id, branch.id, today);
+  const weatherOn = new Map(outlook.days.map((d) => [d.date, d]));
+  const eventsOn = (d: string) =>
+    outlook.events.filter((e) => e.kind !== 'weather' && e.starts_on <= d && e.ends_on >= d);
+  const rainFlagged = (d: string) =>
+    outlook.events.some((e) => e.kind === 'weather' && e.starts_on <= d && e.ends_on >= d);
+  const dayLabel = (d: string) =>
+    d === today
+      ? to('today')
+      : d === addDays(today, 1)
+        ? to('tomorrow')
+        : formatDhakaDay(noonDhaka(d), loc);
+  const n1 = (v: number) => formatNumber(v, loc, { fractionDigits: Number.isInteger(v) ? 0 : 1 });
+  const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
 
   return (
     <>
@@ -98,38 +139,160 @@ export default async function PlanPage({
           }))}
         />
       ) : null}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <PillNav
-          label={t('sections')}
-          items={[
-            { key: 'forecast' as const, icon: <CalendarDays /> },
-            { key: 'prep' as const, icon: <ChefHat /> },
-            { key: 'bazar' as const, icon: <ShoppingBasket /> },
-          ].map((x) => ({
-            href: href({ tab: x.key }),
-            label: t(`tabs.${x.key}`),
-            active: x.key === tab,
-            icon: x.icon,
-          }))}
-        />
-        <PillNav
-          label={t('day')}
-          items={[1, 2, 3].map((d) => {
-            const day = addDays(today, d);
-            return {
-              href: href({ date: day }),
-              label: d === 1 ? t('tomorrow') : day,
-              active: day === date,
-            };
+      <Card className="mb-6 p-4 sm:p-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="mb-0">{to('title', { branch: branch.name })}</CardTitle>
+          <p className="text-xs text-secondary">
+            {outlook.updatedAt
+              ? to('updated', { time: formatDhakaTime(new Date(outlook.updatedAt), loc) })
+              : to('noWeather')}
+          </p>
+        </div>
+        <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          {days.map((d) => {
+            const w = weatherOn.get(d);
+            const Icon = w ? SKY_ICON[w.sky] : null;
+            const ev = eventsOn(d);
+            const active = d === date;
+            return (
+              <li key={d} className="min-w-[6.5rem] flex-1">
+                <Link
+                  href={href({ date: d })}
+                  aria-current={active ? 'date' : undefined}
+                  className={`flex h-full flex-col gap-1 rounded-input border p-3 text-sm transition hover:bg-surface-elevated ${
+                    active ? 'border-purple ring-1 ring-purple/40' : 'border-line'
+                  }`}
+                >
+                  <span className="font-semibold">{dayLabel(d)}</span>
+                  {w && Icon ? (
+                    <span className="flex items-center gap-1.5">
+                      <Icon
+                        aria-label={to(`sky.${w.sky}`)}
+                        className={`size-5 ${w.sky === 'rain' || w.sky === 'storm' ? 'text-info' : 'text-warning'}`}
+                      />
+                      {w.maxC !== null ? (
+                        <span className="tabular-nums">{to('maxTemp', { c: n1(w.maxC) })}</span>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted">—</span>
+                  )}
+                  {w && w.rainMm >= 1 ? (
+                    <span className="text-xs text-info tabular-nums">
+                      {to('rainMm', { mm: n1(w.rainMm) })}
+                    </span>
+                  ) : null}
+                  {w?.hot ? (
+                    <span className="flex items-center gap-1 text-xs text-danger">
+                      <Thermometer aria-hidden className="size-3.5" />
+                      {to('hot')}
+                    </span>
+                  ) : null}
+                  {ev.slice(0, 2).map((e) => (
+                    <span
+                      key={`${e.kind}-${e.starts_on}-${e.name}`}
+                      className="truncate rounded-full bg-surface-elevated px-2 py-0.5 text-xs"
+                      title={e.name}
+                    >
+                      {e.name || tk(`kinds.${e.kind as 'holiday'}`)}
+                    </span>
+                  ))}
+                </Link>
+              </li>
+            );
           })}
-        />
-      </div>
+        </ul>
+
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="mb-2 text-sm font-semibold">{to('nextHours')}</p>
+          <p className={`mb-2 text-sm ${outlook.rainSoon ? 'text-info' : 'text-secondary'}`}>
+            {outlook.rainSoon
+              ? to('rainSoon', {
+                  start: formatDhakaTime(new Date(outlook.rainSoon.start), loc),
+                  end: formatDhakaTime(new Date(outlook.rainSoon.end), loc),
+                  mm: n1(outlook.rainSoon.rainMm),
+                })
+              : outlook.hours.length > 0
+                ? to('noRainSoon')
+                : to('noWeather')}
+          </p>
+          {outlook.hours.length > 0 ? (
+            <ul className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+              {outlook.hours.map((h) => {
+                const sky =
+                  h.rainMm >= 0.5
+                    ? h.symbol?.includes('thunder')
+                      ? 'storm'
+                      : 'rain'
+                    : h.symbol?.includes('cloudy') && !h.symbol.includes('partly')
+                      ? 'cloudy'
+                      : h.symbol?.includes('fog')
+                        ? 'fog'
+                        : 'clear';
+                const Icon = SKY_ICON[sky];
+                return (
+                  <li
+                    key={h.at}
+                    className="flex min-w-[3.5rem] flex-col items-center gap-0.5 rounded-input bg-surface-elevated px-2 py-1.5 text-xs"
+                  >
+                    <span className="text-secondary tabular-nums">
+                      {formatDhakaTime(new Date(h.at), loc)}
+                    </span>
+                    <Icon
+                      aria-label={to(`sky.${sky}`)}
+                      className={`size-4 ${sky === 'rain' || sky === 'storm' ? 'text-info' : 'text-warning'}`}
+                    />
+                    <span className="tabular-nums">
+                      {h.tempC === null ? '—' : to('maxTemp', { c: n1(Math.round(h.tempC)) })}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-secondary">
+          {!outlook.exactLocation ? (
+            <span className="flex items-center gap-1.5">
+              <MapPin aria-hidden className="size-3.5" />
+              {to('approxLocation')}
+              {ctx.isOwner ? (
+                <Link
+                  href={`/${ctx.org.slug}/branch?branch=${branch.id}`}
+                  className="font-medium text-purple hover:underline"
+                >
+                  {to('setLocation')}
+                </Link>
+              ) : null}
+            </span>
+          ) : (
+            <span />
+          )}
+          <span>{to('attribution')}</span>
+        </div>
+      </Card>
+
+      <PillNav
+        label={t('sections')}
+        className="mb-6"
+        items={[
+          { key: 'forecast' as const, icon: <CalendarDays /> },
+          { key: 'prep' as const, icon: <ChefHat /> },
+          { key: 'bazar' as const, icon: <ShoppingBasket /> },
+        ].map((x) => ({
+          href: href({ tab: x.key }),
+          label: t(`tabs.${x.key}`),
+          active: x.key === tab,
+          icon: x.icon,
+        }))}
+      />
 
       {canApprove ? (
         <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
-          <p className="text-sm text-secondary">{t('flagBody')}</p>
+          <p className="max-w-xl text-sm text-secondary">{t('flagBody')}</p>
           <div className="flex flex-wrap gap-2">
-            {(['weather', 'hartal', 'cricket'] as const).map((kind) => (
+            {(['hartal', 'cricket', 'weather'] as const).map((kind) => (
               <ActionForm key={kind} action={flagDayAction} successKey="plan.flagged">
                 {hidden}
                 <input
@@ -165,60 +328,113 @@ export default async function PlanPage({
               formatNumber(Math.round(v * 10) / 10, loc, {
                 fractionDigits: Number.isInteger(Math.round(v * 10) / 10) ? 0 : 1,
               });
+            const grand = items.reduce((sum, i) => sum + total(i.menu_item_id), 0);
+            const naive = rows.reduce((sum, r) => sum + r.naive_qty, 0);
+            const reasons = [
+              ...eventsOn(date).map((e) => e.name || tk(`kinds.${e.kind as 'holiday'}`)),
+              ...(rainFlagged(date) ? [tk('kinds.weather')] : []),
+              ...(Number(date.slice(8, 10)) <= 7 ? [t('salaryWeek')] : []),
+            ];
+            const w = weatherOn.get(date);
             return (
               <Card className="p-4 sm:p-6">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="mb-0">{t('forecastTitle', { date })}</CardTitle>
-                  {a ? (
-                    <StatusBadge tone={a.is_shown ? 'success' : 'neutral'}>
-                      {a.is_shown ? t('modelShown') : t('naiveShown')}
-                    </StatusBadge>
-                  ) : null}
-                </div>
-                {a && a.wape_bps !== null && a.naive_wape_bps !== null ? (
-                  <Hint className="-mt-1 mb-4">
-                    {t('accuracy', {
-                      model: formatBps(a.wape_bps, loc),
-                      naive: formatBps(a.naive_wape_bps, loc),
-                      days: formatNumber(a.days, loc),
-                    })}
-                  </Hint>
-                ) : null}
                 {items.length === 0 ? (
                   <EmptyState title={t('noForecast')} body={t('noForecastBody')} />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[32rem] text-sm">
-                      <thead className="text-xs text-secondary uppercase">
-                        <tr>
-                          <th className="py-2 text-start font-medium">{t('item')}</th>
-                          {parts.map((p) => (
-                            <th key={p} className="py-2 text-end font-medium">
-                              {t(`dayparts.${p}`)}
-                            </th>
-                          ))}
-                          <th className="py-2 text-end font-medium">{t('total')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((i) => (
-                          <tr key={i.menu_item_id} className="border-t border-line">
-                            <td className="py-2.5 font-medium">{label(i.name, i.name_bn)}</td>
-                            {parts.map((p) => (
-                              <td key={p} className="py-2.5 text-end tabular-nums">
-                                {fmt(cell(i.menu_item_id, p))}
-                              </td>
+                  <>
+                    <h2 className="text-xl font-bold">
+                      {t('forecastHeadline', {
+                        day: dayLabel(date),
+                        total: formatNumber(Math.round(grand), loc),
+                      })}
+                    </h2>
+                    <p className="mt-1 text-sm text-secondary">
+                      {t('forecastCompare', { naive: formatNumber(Math.round(naive), loc) })}
+                    </p>
+                    {reasons.length > 0 ? (
+                      <p className="mt-1 text-sm">
+                        {t('forecastReasons', { reasons: reasons.join(', ') })}
+                      </p>
+                    ) : null}
+                    {w?.rainy ? (
+                      <p className="mt-1 text-sm text-info">{to('rainCounted')}</p>
+                    ) : null}
+
+                    <p className="mt-5 mb-2 text-sm font-semibold">{t('topDishes')}</p>
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {items.map((i) => (
+                        <li
+                          key={i.menu_item_id}
+                          className="flex items-center justify-between gap-3 rounded-input border border-line px-3 py-2.5"
+                        >
+                          <span className="font-medium">{label(i.name, i.name_bn)}</span>
+                          <span className="text-lg font-bold tabular-nums">
+                            {formatNumber(Math.round(total(i.menu_item_id)), loc)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <details className="mt-5 text-sm">
+                      <summary className="cursor-pointer font-medium text-secondary">
+                        {t('byTimeOfDay')}
+                      </summary>
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="w-full min-w-[32rem] text-sm">
+                          <thead className="text-xs text-secondary">
+                            <tr>
+                              <th className="py-2 text-start font-medium">{t('item')}</th>
+                              {parts.map((p) => (
+                                <th key={p} className="py-2 text-end font-medium">
+                                  {t(`dayparts.${p}`)}
+                                </th>
+                              ))}
+                              <th className="py-2 text-end font-medium">{t('total')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {items.map((i) => (
+                              <tr key={i.menu_item_id} className="border-t border-line">
+                                <td className="py-2 font-medium">{label(i.name, i.name_bn)}</td>
+                                {parts.map((p) => (
+                                  <td key={p} className="py-2 text-end tabular-nums">
+                                    {fmt(cell(i.menu_item_id, p))}
+                                  </td>
+                                ))}
+                                <td className="py-2 text-end font-semibold tabular-nums">
+                                  {fmt(total(i.menu_item_id))}
+                                </td>
+                              </tr>
                             ))}
-                            <td className="py-2.5 text-end font-semibold tabular-nums">
-                              {fmt(total(i.menu_item_id))}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+
+                    <details className="mt-3 text-sm">
+                      <summary className="cursor-pointer font-medium text-secondary">
+                        {t('howAccurate')}
+                      </summary>
+                      <div className="mt-2 space-y-2">
+                        {a ? (
+                          <StatusBadge tone={a.is_shown ? 'success' : 'neutral'}>
+                            {a.is_shown ? t('modelShown') : t('naiveShown')}
+                          </StatusBadge>
+                        ) : null}
+                        {a && a.wape_bps !== null && a.naive_wape_bps !== null ? (
+                          <p className="text-secondary">
+                            {t('accuracyPlain', {
+                              model: formatBps(a.wape_bps, loc),
+                              naive: formatBps(a.naive_wape_bps, loc),
+                              days: formatNumber(a.days, loc),
+                            })}
+                          </p>
+                        ) : null}
+                        <Hint>{t('forecastHint')}</Hint>
+                      </div>
+                    </details>
+                  </>
                 )}
-                <Hint className="mt-3">{t('forecastHint')}</Hint>
               </Card>
             );
           })()

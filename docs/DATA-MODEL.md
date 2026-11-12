@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (120)
+## Tables (122)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -90,6 +90,7 @@
 | `org_context` | Owner-stated goals, rules and constraints the assistant must respect. | org | read: owner, manager, accountant; write: owner | PK id | assistant · P4 |
 | `org_cost_settings` | Money-gated cost assumptions (assumed food cost %). | org | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK org_id | tenancy · P0 |
 | `org_feature_flags` | Per-org feature flag overrides. | org | custom — read: members; written by the service role | PK org_id, key · → feature_flags | billing · P10 |
+| `org_job_marks` | What a job already did once for an org (alert sent, calendar day added). Service role only. | org · service only | no client access | PK org_id, key | forecasting · P11 |
 | `org_profile` | Business profile: cuisine, format, price band, area, owner WhatsApp. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
 | `org_receipt_settings` | Receipt header/footer and Mushak-6.3-ready fields (TODO verify). | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | pos · P1 |
 | `org_settings` | VAT/service-charge config, price basis, cutoff, dayparts, week start, locale. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
@@ -135,9 +136,10 @@
 | `usage_counters` | Plan usage counters. | org | read: owner; write: service role only (written by jobs (service role)) | PK id | billing · P10 |
 | `voids` | Voided lines; after_kot/after_payment feed leak detectors. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, order_items, orders, reason_codes, staff | pos · P1 |
 | `waste_logs` | Logged waste with reason; quantities only. | org + branch | read: owner, manager, kitchen, accountant; write: service role only (written only by the audited Phase 5 RPCs (ADR 0018)) | PK id · → branches, ingredients, menu_items, reason_codes, staff | inventory · P5 |
+| `weather_hours` | Weather forecast per branch per hour (MET Norway). | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: service role only (weather for the branch; everyone at the branch reads, only the weather job writes (ADR 0051)) | PK org_id, branch_id, at · → branches | forecasting · P11 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (186)
+## RPC functions (187)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -310,6 +312,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `send_bazar_list` | `p_list uuid, p_messages jsonb` |
 | `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
 | `send_transfer` | `p_org uuid, p_from uuid, p_to uuid, p_lines jsonb, p_notes text DEFAULT NULL::text` |
+| `set_branch_location` | `p_org uuid, p_branch uuid, p_lat numeric, p_lon numeric` |
 | `set_finding_status` | `p_finding uuid, p_status finding_status, p_reason text DEFAULT NULL::text, p_snooze_until date DEFAULT NULL::date` |
 | `set_google_review_url` | `p_org uuid, p_branch uuid, p_url text` |
 | `set_ingredient_hidden` | `p_org uuid, p_ingredient uuid, p_hidden boolean, p_now timestamp with time zone, p_none_left boolean DEFAULT false` |

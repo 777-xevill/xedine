@@ -505,7 +505,16 @@
       "declined": "Not approved",
       "cancelled": "Cancelled"
     },
-    "requestCancel": "Cancel request"
+    "requestCancel": "Cancel request",
+    "locationTitle": "Where is this branch?",
+    "locationBody": "Xedine shows the weather for this spot on the Plan page and warns you before rain. Without it, the weather follows the branch’s area.",
+    "useMyLocation": "Use this phone’s location",
+    "locating": "Finding you…",
+    "locateFailed": "Could not get the location. Allow location for this site, or type the numbers from Google Maps (press and hold the spot).",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "saveLocation": "Save location",
+    "locationHint": "Stand inside the branch and tap the button, then Save. Empty both boxes to go back to the area’s weather."
   },
   "settings": {
     "title": "Settings",
@@ -1973,19 +1982,19 @@
   },
   "plan": {
     "title": "Plan",
-    "subtitle": "What tomorrow will sell, what to cook, and what to buy.",
+    "subtitle": "What is coming, what will sell, what to cook and what to buy.",
     "calendar": "Calendar",
     "branches": "Branches",
     "sections": "Plan sections",
     "tabs": {
-      "forecast": "Forecast",
-      "prep": "Prep plan",
-      "bazar": "Bazar list"
+      "forecast": "What will sell",
+      "prep": "What to cook",
+      "bazar": "What to buy"
     },
     "day": "Day",
     "tomorrow": "Tomorrow",
     "noBranch": "You have no branch to plan for yet.",
-    "flagBody": "Rain, a hartal or a big match changes sales. Flag it so the forecast learns:",
+    "flagBody": "A hartal or a big match coming? Tell Xedine so the forecast adjusts. Rain is added by itself from the weather.",
     "flag": {
       "weather": "Rain",
       "hartal": "Hartal",
@@ -2055,7 +2064,15 @@
     "reconcile": "Check against purchases",
     "reconcileHint": "Compares the list with the purchases entered for the day.",
     "messageHeader": "Bazar list for {date} — {branch}",
-    "messageLines": "{count} items in total"
+    "messageLines": "{count} items in total",
+    "forecastHeadline": "{day}: about {total} dishes",
+    "forecastCompare": "Same day last week: {naive} dishes.",
+    "forecastReasons": "Counted in: {reasons}.",
+    "topDishes": "Dishes to expect",
+    "byTimeOfDay": "By time of day",
+    "howAccurate": "How good is this guess?",
+    "accuracyPlain": "Over the last {days} days the guess per dish was off by {model} on average; copying the same day last week was off by {naive}. Xedine shows whichever was closer.",
+    "salaryWeek": "salary week"
   },
   "calendar": {
     "title": "Calendar",
@@ -4271,5 +4288,39 @@
         "body": "Within 30 days. We email you when it is done."
       }
     }
+  },
+  "outlook": {
+    "rainSoonAlert": "🌧 Rain coming at {branch}: from {start} to {end}, about {mm} mm. When it rains fewer people walk in and more order delivery: keep riders and packaging ready.",
+    "rainFlagName": "Rain (weather forecast)",
+    "sky": {
+      "clear": "Sunny",
+      "cloudy": "Cloudy",
+      "rain": "Rain",
+      "storm": "Storm",
+      "fog": "Fog"
+    },
+    "title": "Next 7 days at {branch}",
+    "updated": "Weather updated {time}",
+    "noWeather": "The weather shows here within 3 hours.",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "rainMm": "{mm} mm",
+    "maxTemp": "{c}°",
+    "hot": "Very hot",
+    "rainCounted": "Rain is already counted in the forecast.",
+    "nextHours": "Next hours",
+    "rainSoon": "Rain from {start} to {end}, about {mm} mm.",
+    "noRainSoon": "No rain in the next 12 hours.",
+    "approxLocation": "Weather is for the branch’s area. For the exact spot, set the location on the Branch page.",
+    "setLocation": "Set location",
+    "attribution": "Weather data: MET Norway",
+    "briefRainToday": "🌧 Rain today at {branches}. The forecast already counts it: keep riders ready.",
+    "briefWeatherToday": "Today’s weather: {sky}, up to {max}°C.",
+    "briefHotToday": "🔥 Very hot today, up to {max}°C: keep cold drinks stocked.",
+    "briefRainDays": "🌧 Rain expected on {days}.",
+    "briefComingUp": "📅 Coming up: {events}.",
+    "briefTomorrow": "Tomorrow’s weather: {sky}, up to {max}°C.",
+    "briefTomorrowRain": "🌧 Rain tomorrow at {branches}: the forecast already counts it.",
+    "briefTomorrowEvents": "📅 Tomorrow: {events}."
   }
 }

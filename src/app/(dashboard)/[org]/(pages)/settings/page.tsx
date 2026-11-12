@@ -1,11 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import {
-  ChannelForm,
-  CommissionForm,
-  ReceiptSettingsForm,
-} from '@/components/settings-forms';
+import { ChannelForm, CommissionForm, ReceiptSettingsForm } from '@/components/settings-forms';
 import { SettingsForm } from '@/components/team-forms';
 import { Button } from '@/components/ui/button';
 import { ActionForm } from '@/components/action-form';

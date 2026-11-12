@@ -96,7 +96,9 @@ export async function answerOwnerQuestion(args: {
       access: {
         slug: (org?.slug as string | undefined) ?? '',
         roles: ['owner' as Role],
-        enabled: parseFeatures((settings as { enabled_features?: unknown } | null)?.enabled_features),
+        enabled: parseFeatures(
+          (settings as { enabled_features?: unknown } | null)?.enabled_features,
+        ),
       },
       translate: async (l) =>
         createTranslator({

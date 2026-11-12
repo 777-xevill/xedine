@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { BranchRequestForm, TableForm } from '@/components/branch-forms';
+import { BranchLocationForm, BranchRequestForm, TableForm } from '@/components/branch-forms';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
@@ -26,7 +26,7 @@ export default async function BranchPage({
 
   const [t, tc] = await Promise.all([getTranslations('branch'), getTranslations('common')]);
   const supabase = await createClient();
-  const [{ data: tables }, { data: requests }] = await Promise.all([
+  const [{ data: tables }, { data: requests }, { data: place }] = await Promise.all([
     supabase
       .from('dining_tables')
       .select('id, name, seats, is_active')
@@ -41,6 +41,12 @@ export default async function BranchPage({
           .order('created_at', { ascending: false })
           .limit(8)
       : Promise.resolve({ data: [] }),
+    supabase
+      .from('branches')
+      .select('latitude, longitude')
+      .eq('org_id', ctx.org.id)
+      .eq('id', current.id)
+      .maybeSingle(),
   ]);
   const TONE = {
     pending: 'warning',
@@ -110,6 +116,28 @@ export default async function BranchPage({
       ) : null}
 
       <div className="max-w-3xl">
+        {ctx.isOwner ? (
+          <Card className="mb-6">
+            <CardTitle>{t('locationTitle')}</CardTitle>
+            <p className="-mt-2 mb-4 text-sm text-secondary">{t('locationBody')}</p>
+            <BranchLocationForm
+              key={current.id}
+              orgId={ctx.org.id}
+              orgSlug={ctx.org.slug}
+              branchId={current.id}
+              latitude={
+                place?.latitude === null || place?.latitude === undefined
+                  ? null
+                  : Number(place.latitude)
+              }
+              longitude={
+                place?.longitude === null || place?.longitude === undefined
+                  ? null
+                  : Number(place.longitude)
+              }
+            />
+          </Card>
+        ) : null}
         <Card>
           <CardTitle>{t('tablesTitle')}</CardTitle>
           <p className="-mt-2 mb-4 text-sm text-secondary">{t('tablesBody')}</p>

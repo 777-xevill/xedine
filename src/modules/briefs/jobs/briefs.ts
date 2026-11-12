@@ -9,6 +9,7 @@ import { addDays, businessDate } from '@/lib/time/business-date';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
 import { validateNumbers } from '@/modules/assistant/validator';
+import { outlookLines } from '@/modules/forecasting/jobs/outlook-lines';
 import { queueMessage } from '@/modules/messaging/jobs/outbox';
 
 /**
@@ -176,6 +177,15 @@ export async function composeBrief(args: {
     );
   }
 
+  // What is coming (ADR 0051): weather and the calendar. A failure here never blocks the brief.
+  if (kind === 'morning' || kind === 'evening') {
+    try {
+      lines.push(...(await outlookLines(sb, orgId, today, at, locale, kind)));
+    } catch (e) {
+      console.error('brief outlook', e instanceof Error ? e.message.slice(0, 120) : 'error');
+    }
+  }
+
   // The leaks to look at (money: the owner's own brief).
   const { data: open } = await sb
     .from('findings')
@@ -229,7 +239,7 @@ export async function ownerRecipient(sb: Supabase, orgId: string) {
  * Telegram chats the owner has connected (Settings → Telegram). Telegram is free and needs no plan or
  * template approval, so a connected owner always gets the brief there.
  */
-async function ownerTelegramChats(sb: Supabase, orgId: string): Promise<number[]> {
+export async function ownerTelegramChats(sb: Supabase, orgId: string): Promise<number[]> {
   const [{ data: links }, { data: owners }] = await Promise.all([
     sb
       .from('chat_links')
@@ -253,7 +263,7 @@ async function ownerTelegramChats(sb: Supabase, orgId: string): Promise<number[]
   return [...new Set(chats)];
 }
 
-async function briefLocale(sb: Supabase, orgId: string): Promise<Locale> {
+export async function briefLocale(sb: Supabase, orgId: string): Promise<Locale> {
   const { data } = await sb
     .from('org_profile')
     .select('brief_language')
@@ -303,4 +313,48 @@ export async function queueBrief(
     delivered = true;
   }
   return delivered ? 'queued' : 'no_recipient';
+}
+
+/**
+ * A one-off message to the owner (ADR 0051: the "rain soon" alert), sent at most once per `key`: Telegram now,
+ * WhatsApp through the outbox. The key is claimed in org_job_marks before anything is sent, so a job that runs
+ * twice never sends twice. Returns false when the key was already used or nobody can be reached.
+ */
+export async function notifyOwnerOnce(
+  sb: Supabase,
+  orgId: string,
+  key: string,
+  compose: (locale: Locale) => string,
+): Promise<boolean> {
+  const [to, chats] = await Promise.all([ownerRecipient(sb, orgId), ownerTelegramChats(sb, orgId)]);
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const telegram = token && chats.length > 0 ? telegramApi(token) : null;
+  if (!to && !telegram) return false;
+  const { data: claimed, error } = await sb
+    .from('org_job_marks')
+    .upsert({ org_id: orgId, key }, { onConflict: 'org_id,key', ignoreDuplicates: true })
+    .select('key');
+  if (error) throw error;
+  if ((claimed ?? []).length === 0) return false;
+  const locale = to?.locale ?? (await briefLocale(sb, orgId));
+  const text = compose(locale);
+  if (telegram) {
+    for (const chat of chats) {
+      try {
+        await telegram.sendMessage(chat, text);
+      } catch (e) {
+        console.error('alert telegram', e instanceof Error ? e.message.slice(0, 120) : 'error');
+      }
+    }
+  }
+  if (to)
+    await queueMessage(sb, {
+      orgId,
+      toPhone: to.phone,
+      templateKey: 'outlook_alert',
+      language: to.locale,
+      body: text,
+      idempotencyKey: `alert:${key}`.slice(0, 200),
+    });
+  return true;
 }

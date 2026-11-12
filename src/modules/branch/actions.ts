@@ -49,3 +49,32 @@ export async function toggleTableActiveAction(formData: FormData): Promise<void>
   if (error) console.error('table toggle', error.code);
   refresh(parsed.data.orgSlug);
 }
+
+/**
+ * The owner sets (or clears) where a branch is, for its weather (ADR 0051). Both boxes empty = clear: the
+ * weather then follows the branch's area or city. Audited in SQL (set_branch_location).
+ */
+export async function setBranchLocationAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const coord = (min: number, max: number) =>
+    z.union([z.literal(''), z.coerce.number().min(min).max(max)]);
+  const parsed = scope
+    .extend({ latitude: coord(-90, 90), longitude: coord(-180, 180) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { latitude, longitude } = parsed.data;
+  if ((latitude === '') !== (longitude === '')) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_branch_location', {
+    p_org: parsed.data.orgId,
+    p_branch: parsed.data.branchId,
+    p_lat: latitude === '' ? null : latitude,
+    p_lon: longitude === '' ? null : longitude,
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  revalidatePath(`/${parsed.data.orgSlug}/plan`);
+  return { ok: true };
+}

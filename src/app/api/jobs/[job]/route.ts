@@ -6,6 +6,7 @@ import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/ti
 import { queueBrief } from '@/modules/briefs/jobs/briefs';
 import { sendComplianceReminders } from '@/modules/compliance/jobs/reminders';
 import { runAutoCampaigns, sendFeedbackRequests } from '@/modules/customers/jobs/retention';
+import { runWeather } from '@/modules/forecasting/jobs/weather';
 import { runOutbox } from '@/modules/messaging/jobs/outbox';
 
 /**
@@ -24,6 +25,7 @@ const KNOWN_JOBS = new Set([
   'feedback_requests',
   'benchmarks',
   'social_tick',
+  'weather',
 ]);
 
 function authorized(request: NextRequest): boolean {
@@ -147,9 +149,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       ? at.toISOString().slice(0, 15)
       : job === 'send_outbox' || job === 'feedback_requests'
         ? at.toISOString().slice(0, 16)
-        : job === 'benchmarks'
-          ? businessDate(at).slice(0, 7)
-          : businessDate(at);
+        : job === 'weather'
+          ? at.toISOString().slice(0, 13)
+          : job === 'benchmarks'
+            ? businessDate(at).slice(0, 7)
+            : businessDate(at);
   const { data: runId, error } = await supabase.rpc('job_run_begin', {
     p_job: job,
     p_org: null,
@@ -178,6 +182,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (snapError) throw snapError;
       await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
       return NextResponse.json({ period, month, cells });
+    }
+    if (job === 'weather') {
+      // Every three hours (ADR 0051): weather per branch, rain flags, the national calendar, rain alerts.
+      const weather = await runWeather(supabase, at);
+      await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
+      return NextResponse.json({ period, ...weather });
     }
     if (job === 'send_outbox') {
       const drained = await runOutbox();

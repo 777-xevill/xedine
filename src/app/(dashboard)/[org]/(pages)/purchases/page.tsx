@@ -5,15 +5,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-  Card,
-  CardTitle,
-  EmptyState,
-  Input,
-  Label,
-  PageTitle,
-  Textarea,
-} from '@/components/ui/form';
+import { Card, CardTitle, EmptyState, Input, Label, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { PurchaseEntry } from '@/components/purchase-entry';
 import { createClient } from '@/lib/db/supabase-server';
@@ -21,11 +13,7 @@ import { formatBDT, type Locale } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
-import {
-  addSupplierAction,
-  importReferencePricesAction,
-  voidPurchaseAction,
-} from '@/modules/purchasing/actions';
+import { addSupplierAction, voidPurchaseAction } from '@/modules/purchasing/actions';
 import type { BaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
@@ -286,31 +274,6 @@ export default async function PurchasesPage({
                   <Input id="s-phone" name="phone" inputMode="tel" maxLength={20} />
                 </div>
                 <Button type="submit">{t('addSupplier')}</Button>
-              </ActionForm>
-            </Card>
-          ) : null}
-          {ctx.isOwner ? (
-            <Card className="lg:col-span-2">
-              <CardTitle>{t('marketTitle')}</CardTitle>
-              <p className="-mt-2 mb-4 max-w-3xl text-sm text-secondary">{t('marketBody')}</p>
-              <ActionForm
-                action={importReferencePricesAction}
-                successKey="purchases.marketImported"
-                className="space-y-3"
-              >
-                {hidden}
-                <Textarea
-                  name="csv"
-                  rows={5}
-                  required
-                  maxLength={100000}
-                  aria-label={t('marketCsv')}
-                  placeholder={t('marketPlaceholder')}
-                  className="font-mono text-sm"
-                />
-                <Button type="submit" variant="secondary">
-                  {t('marketImport')}
-                </Button>
               </ActionForm>
             </Card>
           ) : null}

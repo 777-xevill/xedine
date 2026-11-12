@@ -87,27 +87,38 @@ export async function runWeather(
   result.branches = list.length;
 
   // One call per place (rounded to ~1 km): branches in the same area share it.
-  const cache = new Map<string, WeatherPoint[] | null>();
+  // The places are fetched together, not one after another: the whole job has to fit in a short run.
+  const placeOf = new Map(
+    list.map((b) => {
+      const c = branchCoords(b);
+      return [b.id, { key: `${c.lat.toFixed(2)},${c.lon.toFixed(2)}`, lat: c.lat, lon: c.lon }];
+    }),
+  );
+  const places = new Map([...placeOf.values()].map((p) => [p.key, p]));
+  const cache = new Map<string, WeatherPoint[] | null>(
+    await Promise.all(
+      [...places.values()].map(async (p): Promise<[string, WeatherPoint[] | null]> => {
+        try {
+          const pts = await fetchPoints(p.lat, p.lon);
+          result.fetched += 1;
+          return [p.key, pts];
+        } catch (e) {
+          console.error('weather fetch', e instanceof Error ? e.message.slice(0, 120) : 'error');
+          result.failed += 1;
+          return [p.key, null];
+        }
+      }),
+    ),
+  );
   const pointsOf = new Map<string, WeatherPoint[]>();
+  const fetchedAt = at.toISOString();
+  const rows: Record<string, unknown>[] = [];
   for (const b of list) {
-    const c = branchCoords(b);
-    const key = `${c.lat.toFixed(2)},${c.lon.toFixed(2)}`;
-    if (!cache.has(key)) {
-      try {
-        cache.set(key, await fetchPoints(c.lat, c.lon));
-        result.fetched += 1;
-      } catch (e) {
-        console.error('weather fetch', e instanceof Error ? e.message.slice(0, 120) : 'error');
-        cache.set(key, null);
-        result.failed += 1;
-      }
-    }
-    const pts = cache.get(key);
+    const pts = cache.get(placeOf.get(b.id)!.key);
     if (!pts || pts.length === 0) continue;
     pointsOf.set(b.id, pts);
-    const fetchedAt = at.toISOString();
-    const { error: upErr } = await sb.from('weather_hours').upsert(
-      pts.map((p) => ({
+    for (const p of pts)
+      rows.push({
         org_id: b.org_id,
         branch_id: b.id,
         at: p.at,
@@ -116,9 +127,12 @@ export async function runWeather(
         rain_mm: p.rainMm,
         symbol: p.symbol,
         fetched_at: fetchedAt,
-      })),
-      { onConflict: 'org_id,branch_id,at' },
-    );
+      });
+  }
+  for (let i = 0; i < rows.length; i += 2000) {
+    const { error: upErr } = await sb
+      .from('weather_hours')
+      .upsert(rows.slice(i, i + 2000), { onConflict: 'org_id,branch_id,at' });
     if (upErr) throw upErr;
   }
   // Keep two weeks of readings: enough to show what the weather was, small enough to stay cheap.
@@ -130,45 +144,54 @@ export async function runWeather(
   const byOrg = new Map<string, BranchRow[]>();
   for (const b of list) byOrg.set(b.org_id, [...(byOrg.get(b.org_id) ?? []), b]);
 
-  for (const [orgId, orgBranches] of byOrg) {
-    const orgCutoff = cutoffOf.get(orgId) ?? DEFAULT_CUTOFF_MINUTES;
-    const today = businessDate(at, orgCutoff);
-    const last = addDays(today, DAYS_AHEAD);
+  // Each org on its own, all at once; one org failing does not stop the others.
+  const outcomes = await Promise.allSettled(
+    [...byOrg].map(async ([orgId, orgBranches]) => {
+      const orgCutoff = cutoffOf.get(orgId) ?? DEFAULT_CUTOFF_MINUTES;
+      const today = businessDate(at, orgCutoff);
+      const last = addDays(today, DAYS_AHEAD);
 
-    // 1. Rainy days on the calendar: the forecast scales a flagged day by what rainy days did before.
-    const rainy = new Set<string>();
-    let haveWeather = false;
-    for (const b of orgBranches) {
-      const pts = pointsOf.get(b.id);
-      if (!pts) continue;
-      haveWeather = true;
-      for (const d of dailyWeather(pts, today, last, b.cutoff_minutes ?? orgCutoff))
-        if (d.rainy) rainy.add(d.date);
-    }
-    if (haveWeather) result.flaggedDays += await syncRainFlags(sb, orgId, today, last, rainy);
+      // 1. Rainy days on the calendar: the forecast scales a flagged day by what rainy days did before.
+      const rainy = new Set<string>();
+      let haveWeather = false;
+      for (const b of orgBranches) {
+        const pts = pointsOf.get(b.id);
+        if (!pts) continue;
+        haveWeather = true;
+        for (const d of dailyWeather(pts, today, last, b.cutoff_minutes ?? orgCutoff))
+          if (d.rainy) rainy.add(d.date);
+      }
+      if (haveWeather) result.flaggedDays += await syncRainFlags(sb, orgId, today, last, rainy);
 
-    // 2. The national calendar's coming days, once each.
-    result.calendarAdded += await addCalendar(sb, orgId, today);
+      // 2. The national calendar's coming days, once each.
+      result.calendarAdded += await addCalendar(sb, orgId, today);
 
-    // 3. Rain about to start at a branch: one alert per branch per business day.
-    for (const b of orgBranches) {
-      const pts = pointsOf.get(b.id);
-      const w = pts ? rainWindow(pts, at.toISOString()) : null;
-      if (!w) continue;
-      const sent = await notifyOwnerOnce(sb, orgId, `rain_soon:${b.id}:${today}`, (locale) => {
-        const t = translator(locale);
-        return t('rainSoonAlert', {
-          branch: b.name,
-          start: formatDhakaTime(new Date(w.start), locale),
-          end: formatDhakaTime(new Date(w.end), locale),
-          mm: formatNumber(w.rainMm, locale, {
-            fractionDigits: Number.isInteger(w.rainMm) ? 0 : 1,
-          }),
+      // 3. Rain about to start at a branch: one alert per branch per business day.
+      for (const b of orgBranches) {
+        const pts = pointsOf.get(b.id);
+        const w = pts ? rainWindow(pts, at.toISOString()) : null;
+        if (!w) continue;
+        const sent = await notifyOwnerOnce(sb, orgId, `rain_soon:${b.id}:${today}`, (locale) => {
+          const t = translator(locale);
+          return t('rainSoonAlert', {
+            branch: b.name,
+            start: formatDhakaTime(new Date(w.start), locale),
+            end: formatDhakaTime(new Date(w.end), locale),
+            mm: formatNumber(w.rainMm, locale, {
+              fractionDigits: Number.isInteger(w.rainMm) ? 0 : 1,
+            }),
+          });
         });
-      });
-      if (sent) result.alerts += 1;
-    }
-  }
+        if (sent) result.alerts += 1;
+      }
+    }),
+  );
+  for (const o of outcomes)
+    if (o.status === 'rejected')
+      console.error(
+        'weather org',
+        o.reason instanceof Error ? o.reason.message.slice(0, 120) : 'error',
+      );
   return result;
 }
 
@@ -241,36 +264,38 @@ async function addCalendar(sb: Supabase, orgId: string, today: string): Promise<
   const done = new Set((marks ?? []).map((m) => m.key as string));
   const todo = coming.filter((e) => !done.has(`calendar:${e.key}`));
   if (todo.length === 0) return 0;
-  const locale = await briefLocale(sb, orgId);
-  let added = 0;
-  for (const e of todo) {
-    // The same day already on the calendar (typed by the owner) is left alone.
-    const { data: same } = await sb
+  const [locale, { data: existing, error: exErr }] = await Promise.all([
+    briefLocale(sb, orgId),
+    sb
       .from('calendar_events')
-      .select('id')
+      .select('kind, starts_on')
       .eq('org_id', orgId)
-      .eq('kind', e.kind)
-      .eq('starts_on', e.starts_on)
-      .limit(1);
-    if ((same ?? []).length === 0) {
-      const { error: insErr } = await sb.from('calendar_events').insert({
+      .in(
+        'starts_on',
+        todo.map((e) => e.starts_on),
+      ),
+  ]);
+  if (exErr) throw exErr;
+  // The same day already on the calendar (typed by the owner) is left alone.
+  const have = new Set((existing ?? []).map((e) => `${e.kind as string}|${e.starts_on as string}`));
+  const add = todo.filter((e) => !have.has(`${e.kind}|${e.starts_on}`));
+  if (add.length > 0) {
+    const { error: insErr } = await sb.from('calendar_events').insert(
+      add.map((e) => ({
         org_id: orgId,
         name: locale === 'bn' ? e.name_bn : e.name,
         kind: e.kind,
         starts_on: e.starts_on,
         ends_on: e.ends_on,
         source: CALENDAR_SOURCE,
-      });
-      if (insErr) throw insErr;
-      added += 1;
-    }
-    const { error: markErr } = await sb
-      .from('org_job_marks')
-      .upsert(
-        { org_id: orgId, key: `calendar:${e.key}` },
-        { onConflict: 'org_id,key', ignoreDuplicates: true },
-      );
-    if (markErr) throw markErr;
+      })),
+    );
+    if (insErr) throw insErr;
   }
-  return added;
+  const { error: markErr } = await sb.from('org_job_marks').upsert(
+    todo.map((e) => ({ org_id: orgId, key: `calendar:${e.key}` })),
+    { onConflict: 'org_id,key', ignoreDuplicates: true },
+  );
+  if (markErr) throw markErr;
+  return add.length;
 }

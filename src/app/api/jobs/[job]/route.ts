@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { NextResponse, type NextRequest } from 'next/server';
+import { after, NextResponse, type NextRequest } from 'next/server';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
 import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/time/business-date';
@@ -185,9 +185,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     if (job === 'weather') {
       // Every three hours (ADR 0051): weather per branch, rain flags, the national calendar, rain alerts.
-      const weather = await runWeather(supabase, at);
-      await supabase.rpc('job_run_finish', { p_run: runId, p_status: 'succeeded', p_error: null });
-      return NextResponse.json({ period, ...weather });
+      // It can take longer than pg_net waits (30 s), so the call is answered at once and the work finishes
+      // after the response; the run is closed either way.
+      after(async () => {
+        try {
+          await runWeather(supabase, at);
+          await supabase.rpc('job_run_finish', {
+            p_run: runId,
+            p_status: 'succeeded',
+            p_error: null,
+          });
+        } catch (e) {
+          await supabase.rpc('job_run_finish', {
+            p_run: runId,
+            p_status: 'failed',
+            p_error: e instanceof Error ? e.message.slice(0, 500) : 'failed',
+          });
+        }
+      });
+      return NextResponse.json({ status: 'started', period });
     }
     if (job === 'send_outbox') {
       const drained = await runOutbox();

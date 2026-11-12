@@ -5,9 +5,8 @@ import { useTranslations } from 'next-intl';
 import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, Hint, Input, Label, Select } from '@/components/ui/form';
+import { Alert, Hint, Input, Label, Select, Textarea } from '@/components/ui/form';
 import { UnitField } from '@/components/unit-field';
-import { VoiceTextarea } from '@/components/voice-textarea';
 import { cn } from '@/lib/utils';
 import { recordPurchaseAction, sayBazarAction, type SaidLine } from '@/modules/purchasing/actions';
 import {
@@ -62,10 +61,7 @@ export function PurchaseEntry({
   suppliers,
   ingredients,
   days,
-  lang,
 }: {
-  /** What the browser's speech recognition should listen for. */
-  lang: 'bn-BD' | 'en-US';
   orgId: string;
   orgSlug: string;
   branches: { id: string; name: string }[];
@@ -119,6 +115,7 @@ export function PurchaseEntry({
   const [focused, setFocused] = React.useState<number | null>(null);
   const [branch, setBranch] = React.useState(defaultBranchId);
   const [forDays, setForDays] = React.useState('');
+  const [supplierId, setSupplierId] = React.useState('');
 
   const [state, formAction, pending] = React.useActionState(
     async (prev: FormState, formData: FormData): Promise<FormState> => {
@@ -126,6 +123,7 @@ export function PurchaseEntry({
       if (res.ok) {
         setRows([blank()]);
         setForDays('');
+        setSupplierId('');
       }
       return res;
     },
@@ -404,22 +402,26 @@ export function PurchaseEntry({
         <input type="hidden" name="orgId" value={orgId} />
         <input type="hidden" name="orgSlug" value={orgSlug} />
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="p-branch">{t('branch')}</Label>
-            <Select
-              id="p-branch"
-              name="branchId"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              required
-            >
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </Select>
-          </div>
+          {branches.length > 1 ? (
+            <div>
+              <Label htmlFor="p-branch">{t('branch')}</Label>
+              <Select
+                id="p-branch"
+                name="branchId"
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                required
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : (
+            <input type="hidden" name="branchId" value={branch} />
+          )}
           <div>
             <Label htmlFor="p-date">{t('date')}</Label>
             <Input
@@ -431,39 +433,54 @@ export function PurchaseEntry({
               required
             />
           </div>
-          <div>
-            <Label htmlFor="p-days">{t('forDays')}</Label>
-            <Select
-              id="p-days"
-              name="forDays"
-              value={forDays}
-              onChange={(e) => setForDays(e.target.value)}
-            >
-              <option value="">{t('forDaysNone')}</option>
-              {days.map((d) => (
-                <option key={d} value={d}>
-                  {t('daysOption', { count: d })}
-                </option>
-              ))}
-            </Select>
-            <Hint>{t('forDaysHint')}</Hint>
-          </div>
-          <div>
-            <Label htmlFor="p-sup">{t('supplier')}</Label>
-            <Select id="p-sup" name="supplierId" defaultValue="">
-              <option value="">{t('newOrNoSupplier')}</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="p-supname">{t('newSupplier')}</Label>
-            <Input id="p-supname" name="supplierName" maxLength={120} />
-          </div>
         </div>
+
+        <details className="rounded-input border border-line px-3 py-2 text-sm">
+          <summary className="cursor-pointer font-medium text-secondary">
+            {t('moreDetails')}
+          </summary>
+          <div className="mt-3 grid gap-3 pb-1 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="p-days">{t('forDays')}</Label>
+              <Select
+                id="p-days"
+                name="forDays"
+                value={forDays}
+                onChange={(e) => setForDays(e.target.value)}
+              >
+                <option value="">{t('forDaysNone')}</option>
+                {days.map((d) => (
+                  <option key={d} value={d}>
+                    {t('daysOption', { count: d })}
+                  </option>
+                ))}
+              </Select>
+              <Hint>{t('forDaysHint')}</Hint>
+            </div>
+            <div>
+              <Label htmlFor="p-sup">{t('supplier')}</Label>
+              <Select
+                id="p-sup"
+                name="supplierId"
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+              >
+                <option value="">{t('newOrNoSupplier')}</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {supplierId === '' ? (
+              <div>
+                <Label htmlFor="p-supname">{t('newSupplier')}</Label>
+                <Input id="p-supname" name="supplierName" maxLength={120} />
+              </div>
+            ) : null}
+          </div>
+        </details>
 
         <p className="pt-2 text-sm font-semibold">{t('lines')}</p>
         <div className="space-y-3">{rows.map((r, i) => rowView(r, i))}</div>
@@ -543,18 +560,13 @@ export function PurchaseEntry({
               }}
               className="space-y-2"
             >
-              <VoiceTextarea
+              <Label htmlFor="say-text">{t('say.label')}</Label>
+              <Textarea
                 id="say-text"
                 name="text"
-                label={t('say.label')}
+                rows={3}
                 placeholder={t('say.placeholder')}
-                lang={lang}
-                labels={{
-                  speak: t('speak'),
-                  stop: t('stop'),
-                  unsupported: t('voiceUnsupported'),
-                  listening: t('listening'),
-                }}
+                maxLength={4000}
               />
               <Button type="submit" disabled={saying} className="w-full">
                 {t('say.send')}

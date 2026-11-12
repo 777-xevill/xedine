@@ -226,7 +226,7 @@
       },
       "stock": {
         "title": "Stock & purchases",
-        "body": "Record bazar and supplier bills from a photo or by voice, and hear about low stock first."
+        "body": "Record the bazar and supplier bills, and hear about low stock first."
       },
       "plan": {
         "title": "Forecast & shopping list",
@@ -1871,17 +1871,16 @@
   },
   "purchases": {
     "title": "Purchases",
-    "subtitle": "The bazar, entered by form, by a photo of the chit, or by voice.",
+    "subtitle": "Write down what you bought: here on this page, or in a Telegram chat.",
     "sections": "Purchase sections",
     "tabs": {
       "record": "Enter bazar",
-      "drafts": "From photo or voice",
       "history": "History",
       "suppliers": "Suppliers"
     },
     "branch": "Branch",
     "supplier": "Supplier",
-    "newOrNoSupplier": "None or new…",
+    "newOrNoSupplier": "None or a new one…",
     "newSupplier": "New supplier name",
     "ingredient": "Ingredient",
     "matchFor": "Match “{name}”…",
@@ -1889,11 +1888,15 @@
     "qty": "Quantity",
     "unit": "Unit",
     "lineTotal": "Paid ৳",
-    "recordTitle": "Enter a purchase",
+    "recordTitle": "What did you buy today?",
     "date": "Date",
-    "lines": "What was bought",
-    "linesHint": "One item at a time: type its name, the quantity and what you paid for it. The unit cost updates from what you paid.",
-    "record": "Save purchase",
+    "lines": "Items",
+    "linesHint": "For each item type the name, how much, and what you paid in total. Xedine works out the price per kg for you.",
+    "moreDetails": "More details (optional): how many days, supplier",
+    "telegramTitle": "Easier: send it in Telegram",
+    "telegramBody": "Message the Xedine Telegram bot, for example “chicken 10 kg 1800”. It shows you the list, you tap ✅, and it lands here and in your stock.",
+    "telegramSetup": "Set up Telegram",
+    "record": "Save",
     "recorded": "Purchase saved.",
     "aiTitle": "Read it for me",
     "aiBody": "Snap the bazar chit or receipt, or say what was bought. You check the draft before anything is saved.",
@@ -1941,7 +1944,7 @@
     "forDaysNone": "Not said",
     "forDaysHint": "Xedine shows a countdown on the Stock page.",
     "daysOption": "{count, plural, one {# day} other {# days}}",
-    "typeItem": "Type the item, e.g. chicken",
+    "typeItem": "Item name, e.g. chicken",
     "found": "In your stock: {name}",
     "notThis": "Not this — it is new",
     "isNew": "Is “{name}” a new item? It is not in your stock yet.",

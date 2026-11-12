@@ -89,7 +89,10 @@ async function transport(sb: Supabase): Promise<MessagingTransport | null> {
       phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
       // TODO(verify): the Graph API version with Meta at go-live.
       graphVersion: process.env.WHATSAPP_GRAPH_VERSION ?? 'v21.0',
-      templateName: (key, lang) => names.get(`${key}/${lang}`) ?? null,
+      // Templates only once Meta has approved them for a real number (WHATSAPP_TEMPLATES=on). Meta's free
+      // test number cannot have templates, so briefs go as plain text inside the 24-hour window.
+      templateName: (key, lang) =>
+        process.env.WHATSAPP_TEMPLATES === 'on' ? (names.get(`${key}/${lang}`) ?? null) : null,
     });
   }
   if (process.env.MESSAGING_TRANSPORT === 'mock') return mockTransport();

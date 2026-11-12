@@ -10,6 +10,8 @@ import {
   type OutboundMessage,
   type OutboxStore,
   isOptOut,
+  templateParam,
+  TEMPLATE_PARAM_MAX,
 } from './core';
 import { normalizeBdPhone } from './phone';
 
@@ -113,6 +115,35 @@ describe('outbox', () => {
       template: { name: 'xedine_brief_morning_bn' },
     });
     expect(calls[1]!.body).toMatchObject({ type: 'text', text: { body: 'Yesterday: ৳1,23,456' } });
+  });
+
+  it('flattens a multi-line brief into one template value Meta accepts', async () => {
+    const calls: Record<string, unknown>[] = [];
+    const fakeFetch = (async (_url: string, init: RequestInit) => {
+      calls.push(JSON.parse(String(init.body)));
+      return new Response(JSON.stringify({ messages: [{ id: 'wamid.2' }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const transport = whatsappTransport({
+      token: 't',
+      phoneNumberId: '123',
+      graphVersion: 'v99.0',
+      templateName: () => 'xedine_brief_morning_bn',
+      fetchImpl: fakeFetch,
+    });
+    await transport.send({
+      ...msg('c'),
+      body: 'Sales ৳1,23,456\n\n\tTop dish:     Kacchi\r\nDo next: order rice',
+    });
+    const param = (calls[0] as { template: { components: { parameters: { text: string }[] }[] } })
+      .template.components[0]!.parameters[0]!.text;
+    expect(param).toBe('Sales ৳1,23,456 · Top dish: Kacchi · Do next: order rice');
+  });
+
+  it('keeps a long value under the template limit', () => {
+    const out = templateParam('x'.repeat(5000));
+    expect(out.length).toBe(TEMPLATE_PARAM_MAX);
+    expect(out.endsWith('…')).toBe(true);
+    expect(templateParam('a\nb')).toBe('a · b');
   });
 });
 

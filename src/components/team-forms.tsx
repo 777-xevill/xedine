@@ -194,10 +194,13 @@ export function SettingsForm({
     serviceChargePct: string;
     cutoff: string;
     weekStart: number;
+    /** The restaurant already has orders, so the database refuses a change of price basis (ADR 0005). */
+    priceBasisLocked: boolean;
   };
 }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(updateSettingsAction, initialState);
+  const locked = settings.priceBasisLocked;
   return (
     <form action={action} className="space-y-6">
       <input type="hidden" name="orgId" value={orgId} />
@@ -207,27 +210,37 @@ export function SettingsForm({
 
       <fieldset>
         <legend className="mb-2 text-sm font-medium">{t('settings.priceBasis')}</legend>
-        <label className="flex min-h-11 items-center gap-2 text-sm">
+        {/* A disabled radio is not submitted, so the locked choice travels in a hidden field. */}
+        {locked ? (
+          <input type="hidden" name="priceIncludesVat" value={String(settings.priceIncludesVat)} />
+        ) : null}
+        <label
+          className={`flex min-h-11 items-center gap-2 text-sm ${locked && !settings.priceIncludesVat ? 'text-secondary' : ''}`}
+        >
           <input
             type="radio"
             name="priceIncludesVat"
             value="true"
             defaultChecked={settings.priceIncludesVat}
+            disabled={locked}
             className="size-4 accent-purple"
           />
           {t('settings.priceInclusive')}
         </label>
-        <label className="flex min-h-11 items-center gap-2 text-sm">
+        <label
+          className={`flex min-h-11 items-center gap-2 text-sm ${locked && settings.priceIncludesVat ? 'text-secondary' : ''}`}
+        >
           <input
             type="radio"
             name="priceIncludesVat"
             value="false"
             defaultChecked={!settings.priceIncludesVat}
+            disabled={locked}
             className="size-4 accent-purple"
           />
           {t('settings.priceExclusive')}
         </label>
-        <Hint>{t('settings.priceBasisHelp')}</Hint>
+        <Hint>{locked ? t('settings.priceBasisLockedNow') : t('settings.priceBasisHelp')}</Hint>
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">

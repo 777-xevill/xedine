@@ -514,6 +514,7 @@
     "priceInclusive": "Include VAT (customer pays the menu price)",
     "priceExclusive": "Exclude VAT (VAT is added at the till)",
     "priceBasisHelp": "Locked after your first order, so your history stays comparable.",
+    "priceBasisLockedNow": "Locked: you already have sales, so this stays as it is. You can still change the VAT rate and everything else.",
     "vatRate": "VAT rate (%)",
     "serviceCharge": "Service charge (%)",
     "regulatoryNote": "Tax rules change. Enter the rates your accountant confirms — Xedine never assumes them.",
@@ -576,6 +577,7 @@
     "deleteReasonConfirm": "Delete this reason for good? Old records stay, but they will no longer show this reason. To just stop using it, press Deactivate instead.",
     "whatsappTitle": "WhatsApp briefs",
     "whatsappBody": "A morning brief at 9:00, an evening close at 23:00 and a weekly review, and you can ask questions by message. Nothing is sent until you tick the box.",
+    "whatsappHint": "To receive on WhatsApp, first send \"hi\" to the Xedine WhatsApp number from this phone. The brief arrives after that. Prefer not to? Connect Telegram in Settings: it needs no setup and costs nothing.",
     "whatsappNumber": "Your WhatsApp number",
     "briefLanguage": "Language",
     "whatsappConsent": "Yes, send my briefs and answers to this number on WhatsApp."

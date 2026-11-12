@@ -38,6 +38,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
     { data: channels },
     { data: commissions },
     { data: profile },
+    { data: anyOrder },
   ] = await Promise.all([
     supabase
       .from('org_settings')
@@ -66,6 +67,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
       .select('owner_whatsapp, brief_language, owner_whatsapp_opt_in_at')
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
+    // One order is enough to lock the price basis (the database enforces it; this only shows it).
+    supabase.from('orders').select('id').eq('org_id', ctx.org.id).limit(1),
   ]);
   if (!s) notFound();
 
@@ -98,6 +101,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
             serviceChargePct: String(s.service_charge_bps / 100),
             cutoff: `${hh}:${mm}`,
             weekStart: s.week_start,
+            priceBasisLocked: (anyOrder ?? []).length > 0,
           }}
         />
       </Card>
@@ -187,7 +191,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
 
       <Card className="mt-6">
         <CardTitle>{t('whatsappTitle')}</CardTitle>
-        <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('whatsappBody')}</p>
+        <p className="-mt-2 mb-2 max-w-2xl text-sm text-secondary">{t('whatsappBody')}</p>
+        <p className="mb-4 max-w-2xl text-sm text-secondary">{t('whatsappHint')}</p>
         <ActionForm
           action={setOwnerWhatsappAction}
           successKey="common.saved"

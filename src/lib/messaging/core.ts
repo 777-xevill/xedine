@@ -88,6 +88,21 @@ export function mockTransport(sentLog: OutboundMessage[] = []): MessagingTranspo
 }
 
 /**
+ * A template's {{1}} value as Meta accepts it: no new lines or tabs, never more than four spaces in a
+ * row (else error 132018), and the whole body under 1,024 characters. A multi-line brief becomes one
+ * line with " · " between its lines.
+ */
+export const TEMPLATE_PARAM_MAX = 900;
+export function templateParam(text: string): string {
+  const flat = text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\t/g, ' ').replace(/ {2,}/g, ' ').trim())
+    .filter((line) => line !== '')
+    .join(' · ');
+  return flat.length > TEMPLATE_PARAM_MAX ? `${flat.slice(0, TEMPLATE_PARAM_MAX - 1)}…` : flat;
+}
+
+/**
  * WhatsApp Cloud API (Meta Graph). TODO(verify): the Graph API version and the approved template names
  * with Meta at go-live; both are configuration, not code.
  */
@@ -111,7 +126,9 @@ export function whatsappTransport(cfg: {
             template: {
               name: template,
               language: { code: message.language === 'bn' ? 'bn' : 'en' },
-              components: [{ type: 'body', parameters: [{ type: 'text', text: message.body }] }],
+              components: [
+                { type: 'body', parameters: [{ type: 'text', text: templateParam(message.body) }] },
+              ],
             },
           }
         : {

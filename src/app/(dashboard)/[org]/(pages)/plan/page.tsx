@@ -158,6 +158,8 @@ export default async function PlanPage({
               <li key={d} className="min-w-[6.5rem] flex-1">
                 <Link
                   href={href({ date: d })}
+                  // Each day is a full forecast: load it on tap, not eight of them in advance.
+                  prefetch={false}
                   aria-current={active ? 'date' : undefined}
                   className={`flex h-full flex-col gap-1 rounded-input border p-3 text-sm transition hover:bg-surface-elevated ${
                     active ? 'border-purple ring-1 ring-purple/40' : 'border-line'

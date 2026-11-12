@@ -2636,7 +2636,7 @@
       },
       "purchasing": {
         "title": "Purchases & suppliers",
-        "body": "Record bazar and supplier bills, from a photo or by voice."
+        "body": "Record bazar and supplier bills, here or by Telegram chat."
       },
       "planning": {
         "title": "Forecast & shopping list",
@@ -2729,7 +2729,7 @@
     },
     "total": "Total {amount}",
     "askConfirm": "Add this to stock?",
-    "needsFix": "Some lines need fixing. Send the whole list again with them corrected, or fix it in Xedine → Purchases → From photo or voice.",
+    "needsFix": "Some lines need fixing. Send the whole list again with them corrected, or type it in Xedine → Purchases yourself.",
     "btnAdd": "✅ Add to stock",
     "btnCancel": "❌ Cancel",
     "added": "✅ Added to stock.",

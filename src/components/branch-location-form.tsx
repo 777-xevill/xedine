@@ -7,12 +7,33 @@ import { ActionForm } from '@/components/action-form';
 import { Button } from '@/components/ui/button';
 import { Hint, Input, Label } from '@/components/ui/form';
 import { setBranchLocationAction } from '@/modules/branch/actions';
-import { findPlaceAction, type FoundPlace } from '@/modules/branch/geocode-actions';
+import { resolveSpotAction } from '@/modules/branch/geocode-actions';
+import {
+  looksLikeSpotText,
+  photonUrl,
+  placesFromPhoton,
+  spellingVariants,
+  type Place,
+} from '@/modules/branch/photon';
+
+const MIN_CHARS = 2;
+const DELAY_MS = 300;
+
+/** Ask the search service; if the spelling finds nothing, try the usual Bangla-to-English spellings. */
+async function searchPlaces(query: string, signal: AbortSignal): Promise<Place[]> {
+  for (const q of [query, ...spellingVariants(query)]) {
+    const res = await fetch(photonUrl(q), { signal });
+    if (!res.ok) throw new Error('search failed');
+    const places = placesFromPhoton(await res.json());
+    if (places.length > 0) return places;
+  }
+  return [];
+}
 
 /**
- * Where the branch is, for its weather (ADR 0051), made easy for a laptop as well as a phone: type the place
- * and tap the right result, paste a Google Maps link, or use this device's location. The numbers are there
- * to see (and to type) under "numbers". Both boxes empty = follow the branch's area.
+ * Where the branch is, for its weather (ADR 0051), the way Google Maps does it: type the place and
+ * suggestions appear as you type (arrow keys and Enter work); or paste a Google Maps link or the numbers;
+ * or use this device's location. The numbers are under "numbers". Both boxes empty = the area's weather.
  */
 export function BranchLocationForm({
   orgId,
@@ -32,35 +53,69 @@ export function BranchLocationForm({
   const [lon, setLon] = React.useState(longitude === null ? '' : String(longitude));
   const [status, setStatus] = React.useState<'idle' | 'finding' | 'failed'>('idle');
   const [query, setQuery] = React.useState('');
-  const [searching, setSearching] = React.useState(false);
-  const [places, setPlaces] = React.useState<FoundPlace[]>([]);
+  const [suggestions, setSuggestions] = React.useState<Place[]>([]);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [active, setActive] = React.useState(0);
   const [searchError, setSearchError] = React.useState<string | null>(null);
   const [picked, setPicked] = React.useState<string | null>(null);
+  const latest = React.useRef(0);
+
+  const typed = query.trim();
+  const searchable = typed.length >= MIN_CHARS && !looksLikeSpotText(typed);
+  // What is shown never outlives what is typed: short or pasted text shows no suggestions.
+  const shown = open && searchable ? suggestions : [];
+
+  // Suggest as the owner types, after a short pause. Only answers to the latest text are used.
+  React.useEffect(() => {
+    if (!searchable) return;
+    const id = ++latest.current;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const places = await searchPlaces(typed, controller.signal);
+        if (id !== latest.current) return;
+        setSuggestions(places);
+        setActive(0);
+        setSearchError(places.length === 0 ? 'notFound' : null);
+      } catch {
+        if (id === latest.current && !controller.signal.aborted) {
+          setSuggestions([]);
+          setSearchError('unavailable');
+        }
+      } finally {
+        if (id === latest.current) setLoading(false);
+      }
+    }, DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [typed, searchable]);
 
   const choose = (name: string, la: number, lo: number) => {
     setLat(String(la));
     setLon(String(lo));
     setPicked(name);
-    setPlaces([]);
+    setQuery(name);
+    setOpen(false);
     setSearchError(null);
   };
-  const search = async () => {
-    if (query.trim().length < 2) return;
-    setSearching(true);
-    setSearchError(null);
-    setPlaces([]);
-    setPicked(null);
-    const found = await findPlaceAction(query);
-    setSearching(false);
-    if (!found.ok) {
-      setSearchError(found.error);
+  const submitSearch = async () => {
+    if (typed.length < MIN_CHARS) return;
+    if (!looksLikeSpotText(typed)) {
+      const choice = shown[active] ?? suggestions[active] ?? suggestions[0];
+      if (choice) choose(choice.name, choice.lat, choice.lon);
+      else setOpen(true);
       return;
     }
-    // One clear answer (numbers or a map link): fill it in. Several: let the owner pick.
-    if (found.places.length === 1) {
-      const only = found.places[0]!;
-      choose(only.name, only.lat, only.lon);
-    } else setPlaces(found.places);
+    // Numbers or a Google Maps link (a short link is opened on the server to see where it leads).
+    setLoading(true);
+    const found = await resolveSpotAction(typed);
+    setLoading(false);
+    if (found.ok) choose(`${found.lat}, ${found.lon}`, found.lat, found.lon);
+    else setSearchError(found.error);
   };
   const locate = () => {
     if (!('geolocation' in navigator)) {
@@ -94,15 +149,31 @@ export function BranchLocationForm({
           <Input
             id="b-search"
             value={query}
-            maxLength={400}
+            maxLength={600}
             autoComplete="off"
+            role="combobox"
+            aria-expanded={shown.length > 0}
+            aria-controls="b-suggestions"
             placeholder={t('searchPlaceholder')}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+              setPicked(null);
+              setSearchError(null);
+            }}
             onKeyDown={(e) => {
-              // Enter searches; it must not save the form.
-              if (e.key === 'Enter') {
+              if (e.key === 'ArrowDown' && shown.length > 0) {
                 e.preventDefault();
-                void search();
+                setActive((i) => (i + 1) % shown.length);
+              } else if (e.key === 'ArrowUp' && shown.length > 0) {
+                e.preventDefault();
+                setActive((i) => (i - 1 + shown.length) % shown.length);
+              } else if (e.key === 'Escape') {
+                setOpen(false);
+              } else if (e.key === 'Enter') {
+                // Enter picks the highlighted suggestion; it must not save the form.
+                e.preventDefault();
+                void submitSearch();
               }
             }}
             className="min-w-0 flex-1"
@@ -110,33 +181,42 @@ export function BranchLocationForm({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void search()}
-            disabled={searching}
+            onClick={() => void submitSearch()}
+            disabled={loading}
           >
             <Search aria-hidden className="size-4" />
-            {searching ? t('searching') : t('search')}
+            {loading ? t('searching') : t('search')}
           </Button>
         </div>
-        {searchError ? (
-          <p className="mt-2 text-sm text-warning">{t(`searchError.${searchError}`)}</p>
+        {shown.length > 0 ? (
+          <ul
+            id="b-suggestions"
+            role="listbox"
+            className="glass-tile mt-1 overflow-hidden rounded-input"
+          >
+            {shown.map((p, i) => (
+              <li key={`${p.lat},${p.lon},${p.name}`} role="option" aria-selected={i === active}>
+                <button
+                  type="button"
+                  // Mouse-down, so the choice lands before the box loses focus.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    choose(p.name, p.lat, p.lon);
+                  }}
+                  onMouseEnter={() => setActive(i)}
+                  className={`flex w-full items-start gap-2 px-3 py-2 text-start text-sm ${
+                    i === active ? 'bg-surface-elevated' : ''
+                  }`}
+                >
+                  <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-secondary" />
+                  <span>{p.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : null}
-        {places.length > 0 ? (
-          <div className="mt-2">
-            <p className="mb-1 text-sm text-secondary">{t('pickOne')}</p>
-            <ul className="space-y-1">
-              {places.map((p) => (
-                <li key={`${p.lat},${p.lon}`}>
-                  <button
-                    type="button"
-                    onClick={() => choose(p.name, p.lat, p.lon)}
-                    className="glass-tile w-full rounded-input px-3 py-2 text-start text-sm hover:underline"
-                  >
-                    {p.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {searchError && !(shown.length > 0) ? (
+          <p className="mt-2 text-sm text-warning">{t(`searchError.${searchError}`)}</p>
         ) : null}
       </div>
 

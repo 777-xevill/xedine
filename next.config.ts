@@ -22,10 +22,11 @@ const nextConfig: NextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
           // The microphone is used for voice entry (purchases, waste); the camera scans a customer's
-          // member-card QR at the till (ADR 0042); nothing else needs device access.
+          // member-card QR at the till (ADR 0042); the branch page asks for the location to set the weather spot
+          // (ADR 0051); nothing else needs device access.
           {
             key: 'Permissions-Policy',
-            value: 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=()',
+            value: 'camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()',
           },
           // A narrow CSP that cannot break Next's inline scripts: no framing, no plugins, no base hijack,
           // forms post only to this site. A full script-src policy needs nonces (Run by hand, SECURITY.md).

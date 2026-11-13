@@ -2655,7 +2655,8 @@
     "branch": "Which branch do they buy for?",
     "noAccess": "{name} (no access yet)",
     "moreBranches": "To buy for another branch, give them that branch first on the Team page.",
-    "openTeam": "Open Team"
+    "openTeam": "Open Team",
+    "ownerNote": "This connects you for the whole restaurant: your morning and evening brief, alerts, and questions to Xedine."
   },
   "chatBot": {
     "ownerHelp": "Ask me about your restaurant. Tap a topic below or just type your question, in Bangla or English. For example: \"How were sales today?\"\n\nTo record the bazar, send a list like:\nmurgi 10 kg 1800\npiyaj 5 kg 300\n\n/stop disconnects this chat.",

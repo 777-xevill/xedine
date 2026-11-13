@@ -85,6 +85,7 @@ export default async function TelegramSettingsPage({
       );
       return {
         userId: m.user_id as string,
+        isOwner: m.role === 'owner',
         label: `${nameOf.get(m.user_id as string) ?? t('unnamed')} (${roles(m.role as string)})`,
         branches: allBranches.map((b) => ({ ...b, allowed: allowed.has(b.id) })),
       };

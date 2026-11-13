@@ -19,6 +19,7 @@ export function TelegramLinkForm({
   orgSlug: string;
   people: {
     userId: string;
+    isOwner: boolean;
     label: string;
     branches: { id: string; name: string; allowed: boolean }[];
   }[];
@@ -88,7 +89,10 @@ export function TelegramLinkForm({
           ))}
         </Select>
       </div>
-      {person ? (
+      {person?.isOwner ? (
+        // The owner is not buying: one chat for the whole restaurant (briefs, alerts, questions).
+        <p className="text-sm text-secondary">{t('telegramPage.ownerNote')}</p>
+      ) : person ? (
         <div>
           <Label htmlFor="tg-branch">{t('telegramPage.branch')}</Label>
           <Select

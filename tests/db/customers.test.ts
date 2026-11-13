@@ -470,6 +470,57 @@ describe('post-meal feedback and review replies', () => {
     expect(f!.token_hash).not.toBe(requests[0]!.token);
   });
 
+  it('deleting a number: owner or manager only, the bills stay without it, and it is audited (ADR 0053)', async () => {
+    const fx = await fixture(['Main']);
+    const b = fx.org.branchIds[0]!;
+    const manager = await addMember(fx.org, 'manager', [b]);
+    const cashier = await addMember(fx.org, 'cashier', [b]);
+    const c = await customer(fx);
+    await pushOn(fx, c);
+    const bill = await order(fx, b, addDays(TODAY, -3), { customer: c });
+    await admin(
+      `insert into public.loyalty_points (org_id, customer_id, kind, points) values ($1, $2, 'adjust', 40)`,
+      [fx.org.id, c],
+    );
+    expect(
+      (
+        await asUser(cashier, (s) =>
+          s.attempt('select public.delete_customer($1, $2)', [fx.org.id, c]),
+        )
+      ).ok,
+    ).toBe(false);
+    await asUser(manager, (s) => s.q('select public.delete_customer($1, $2)', [fx.org.id, c]), {
+      commit: true,
+    });
+    const left = await one<{ cust: string; consents: string; subs: string; pts: string }>(
+      `select (select count(*) from public.customers where org_id = $1 and id = $2) cust,
+              (select count(*) from public.consents where customer_id = $2) consents,
+              (select count(*) from public.push_subscriptions where customer_id = $2) subs,
+              (select count(*) from public.loyalty_points where customer_id = $2) pts`,
+      [fx.org.id, c],
+    );
+    expect(left).toEqual({ cust: '0', consents: '0', subs: '0', pts: '0' });
+    const kept = await one<{ customer_id: string | null; net_poisha: string }>(
+      `select customer_id, net_poisha from public.orders where id = $1`,
+      [bill],
+    );
+    expect(kept.customer_id).toBeNull();
+    expect(n(kept.net_poisha)).toBe(50000);
+    const audit = await one<{ before: { phone: string; visits: number; points: number } }>(
+      `select before from public.audit_log where org_id = $1 and action = 'customer.delete'`,
+      [fx.org.id],
+    );
+    expect(audit.before).toMatchObject({ visits: 1, points: 40 });
+    expect(audit.before.phone).not.toMatch(/\d{11}/); // masked
+    expect(
+      (
+        await asUser(manager, (s) =>
+          s.attempt('select public.delete_customer($1, $2)', [fx.org.id, c]),
+        )
+      ).ok,
+    ).toBe(false); // already gone
+  });
+
   it('a reply is posted only after the owner or a manager approves it', async () => {
     const fx = await fixture(['Main']);
     const b = fx.org.branchIds[0]!;

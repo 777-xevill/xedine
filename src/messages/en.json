@@ -2136,6 +2136,8 @@
       "service": "Service speed"
     },
     "identified": "Orders with a phone number",
+    "deleteNumber": "Delete this number",
+    "deleteConfirm": "Delete {phone}?\n\nThis removes the number, the member card, the points and the notification setting for good. {visits} past bills stay in your sales, but without this number. This cannot be undone.",
     "return30": "First-timers back in 30 days",
     "return60": "First-timers back in 60 days",
     "atRisk": "Regulars at risk",

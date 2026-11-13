@@ -93,6 +93,21 @@ export async function adjustPointsAction(_prev: FormState, formData: FormData): 
   return { ok: true };
 }
 
+/** Delete a customer's number (ADR 0053). The database checks owner/manager and writes the audit row. */
+export async function deleteCustomerAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG), customerId: z.uuid() })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('delete_customer', {
+    p_org: parsed.data.orgId,
+    p_customer: parsed.data.customerId,
+  });
+  if (error) console.error('customer delete', error.code);
+  revalidatePath(`/${parsed.data.orgSlug}/customers`);
+}
+
 export async function resetMemberCardAction(formData: FormData): Promise<void> {
   const parsed = z
     .object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG), customerId: z.uuid() })

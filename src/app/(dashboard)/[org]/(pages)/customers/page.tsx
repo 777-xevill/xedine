@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { DeleteCustomerButton } from '@/components/delete-customer-button';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, EmptyState, Hint, PageTitle, Stat } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
@@ -117,6 +118,7 @@ export default async function CustomersPage({
                           <th className="py-2 text-end font-medium">{t('spend90')}</th>
                           <th className="py-2 text-end font-medium">{t('rfm')}</th>
                           <th className="py-2 text-end font-medium">{t('segment')}</th>
+                          <th className="py-2" />
                         </tr>
                       </thead>
                       <tbody>
@@ -151,6 +153,15 @@ export default async function CustomersPage({
                               >
                                 {t(`segments.${c.segment as string}`)}
                               </StatusBadge>
+                            </td>
+                            <td className="py-2.5 text-end">
+                              <DeleteCustomerButton
+                                orgId={ctx.org.id}
+                                orgSlug={ctx.org.slug}
+                                customerId={c.customer_id as string}
+                                phone={c.phone as string}
+                                visits={Number(c.visits)}
+                              />
                             </td>
                           </tr>
                         ))}

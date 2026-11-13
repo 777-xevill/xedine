@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { looksLikeSpotText, photonUrl, placesFromPhoton, spellingVariants } from './photon';
 
 describe('photonUrl', () => {
-  it('asks only inside Bangladesh and trims the text', () => {
-    const url = new URL(photonUrl('  gulshan 2 '));
+  it('searches the whole world and trims the text', () => {
+    const url = new URL(photonUrl('  new york '));
     expect(url.origin).toBe('https://photon.komoot.io');
-    expect(url.searchParams.get('q')).toBe('gulshan 2');
-    expect(url.searchParams.get('bbox')).toBe('88.0,20.5,92.7,26.7');
+    expect(url.searchParams.get('q')).toBe('new york');
+    expect(url.searchParams.has('bbox')).toBe(false);
   });
 });
 
@@ -19,10 +19,32 @@ describe('placesFromPhoton', () => {
         district: 'Gulshan',
         city: 'Dhaka',
         state: 'Dhaka Division',
+        country: 'Bangladesh',
       },
     };
     const places = placesFromPhoton({ features: [feature, feature] });
-    expect(places).toEqual([{ name: 'Gulshan 2, Gulshan, Dhaka', lat: 23.79471, lon: 90.41371 }]);
+    expect(places).toEqual([
+      { name: 'Gulshan 2, Gulshan, Dhaka, Bangladesh', lat: 23.79471, lon: 90.41371 },
+    ]);
+  });
+
+  it('names the country, and the state only when there is no city', () => {
+    const places = placesFromPhoton({
+      features: [
+        {
+          geometry: { coordinates: [-74.0, 40.7] },
+          properties: { name: 'New York', state: 'New York', country: 'United States' },
+        },
+        {
+          geometry: { coordinates: [-0.1, 51.5] },
+          properties: { name: 'Soho', city: 'London', state: 'England', country: 'United Kingdom' },
+        },
+      ],
+    });
+    expect(places.map((p) => p.name)).toEqual([
+      'New York, United States',
+      'Soho, London, United Kingdom',
+    ]);
   });
 
   it('does not repeat a word the name already has, and skips rows with no spot or no name', () => {

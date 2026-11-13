@@ -1,7 +1,8 @@
 /**
  * As-you-type place search for a branch's spot (ADR 0051), like typing in Google Maps. Uses Photon, a free
  * search-as-you-type service over OpenStreetMap that allows calls straight from the browser. Only the typed
- * place text is sent. This file is the pure part: the request address, reading the answer, spelling variants.
+ * place text is sent. Searches the whole world (a branch can be anywhere). This file is the pure part: the
+ * request address, reading the answer, spelling variants.
  */
 
 export interface Place {
@@ -10,16 +11,12 @@ export interface Place {
   lon: number;
 }
 
-/** Bangladesh, so a search for "Gulshan 2" never lands in another country. */
-const BANGLADESH_BOX = '88.0,20.5,92.7,26.7';
-
 export function photonUrl(query: string, limit = 6): string {
   const url = new URL('https://photon.komoot.io/api/');
   url.search = new URLSearchParams({
     q: query.trim(),
     limit: String(limit),
     lang: 'en',
-    bbox: BANGLADESH_BOX,
   }).toString();
   return url.toString();
 }
@@ -33,10 +30,12 @@ interface PhotonFeature {
     locality?: string;
     city?: string;
     county?: string;
+    state?: string;
+    country?: string;
   };
 }
 
-/** "Gulshan 2, Gulshan, Dhaka": the name, then where it is, with repeats removed. */
+/** "Gulshan 2, Gulshan, Dhaka, Bangladesh": the name, then where it is, with repeats removed. */
 export function placesFromPhoton(json: unknown): Place[] {
   const features = (json as { features?: PhotonFeature[] } | null)?.features ?? [];
   const seen = new Set<string>();
@@ -46,7 +45,16 @@ export function placesFromPhoton(json: unknown): Place[] {
     const p = f.properties ?? {};
     if (!c || !Number.isFinite(c[0]) || !Number.isFinite(c[1])) continue;
     const parts: string[] = [];
-    for (const part of [p.name, p.street, p.district ?? p.locality, p.city ?? p.county]) {
+    const where = p.city ?? p.county;
+    // The state only when there is no city to name, so "Dhaka Division" does not pad every Dhaka result.
+    for (const part of [
+      p.name,
+      p.street,
+      p.district ?? p.locality,
+      where,
+      where ? null : p.state,
+      p.country,
+    ]) {
       if (part && !parts.includes(part)) parts.push(part);
     }
     const name = parts.join(', ');

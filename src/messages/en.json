@@ -2384,7 +2384,7 @@
     "vat": "VAT",
     "total": "Total sales",
     "downloadVat": "Sales and VAT (Excel)",
-    "downloadOrders": "All orders (Excel)",
+    "downloadOrders": "Every bill (Excel)",
     "vatDisclaimer": "Excel files you can send to your accountant as they are. A working summary from your orders, not a filed VAT return.",
     "dueDayTitle": "VAT return due day",
     "dueDay": "Day of the month",
@@ -2399,7 +2399,9 @@
     "allGood": "All your papers are fine for now",
     "removeConfirm": "Remove “{name}”?\n\nIt stops showing here and you will not get reminders for it. This cannot be undone.",
     "moreDetails": "More details (optional)",
-    "changeDay": "Change the VAT return day"
+    "changeDay": "Change the VAT return day",
+    "vatFileHint": "For your accountant: one page of totals for the month, by branch and VAT rate.",
+    "ordersFileHint": "Every bill of the month, one per row, to check or filter. No totals page."
   },
   "staffRecords": {
     "title": "Staff records",

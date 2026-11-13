@@ -249,22 +249,28 @@ export default async function CompliancePage({ params }: { params: Promise<{ org
               <dt className="text-secondary">{t('vat')}</dt>
               <dd className="text-end">{bdt(sum('vat_poisha'))}</dd>
             </dl>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-              <a
-                className="inline-flex items-center gap-2 text-sm font-semibold text-info underline-offset-4 hover:underline"
-                href={`/api/export/vat?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}&lang=${loc}`}
-              >
-                <Download aria-hidden className="size-4" />
-                {t('downloadVat')}
-              </a>
-              <a
-                className="inline-flex items-center gap-2 text-sm font-semibold text-info underline-offset-4 hover:underline"
-                href={`/api/export/orders?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}&lang=${loc}`}
-              >
-                <Download aria-hidden className="size-4" />
-                {t('downloadOrders')}
-              </a>
-            </div>
+            <ul className="mt-4 space-y-3">
+              <li>
+                <a
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-info underline-offset-4 hover:underline"
+                  href={`/api/export/vat?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}&lang=${loc}`}
+                >
+                  <Download aria-hidden className="size-4" />
+                  {t('downloadVat')}
+                </a>
+                <p className="ms-6 text-xs text-secondary">{t('vatFileHint')}</p>
+              </li>
+              <li>
+                <a
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-info underline-offset-4 hover:underline"
+                  href={`/api/export/orders?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}&lang=${loc}`}
+                >
+                  <Download aria-hidden className="size-4" />
+                  {t('downloadOrders')}
+                </a>
+                <p className="ms-6 text-xs text-secondary">{t('ordersFileHint')}</p>
+              </li>
+            </ul>
             <Hint className="mt-3">{t('vatDisclaimer')}</Hint>
             {ctx.isOwner ? (
               <details className="mt-4 border-t border-line pt-3">

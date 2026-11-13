@@ -96,7 +96,7 @@ describe('the two files for the accountant', () => {
     expect(cells.flat().join(' ')).toContain('not a filed VAT return');
   });
 
-  it('all orders: a summary of completed orders only, then every order in words', () => {
+  it('every bill: one sheet, one row per order in words, no totals (those are in the VAT file)', () => {
     const order = (o: Partial<Record<string, unknown>>) => ({
       branch_id: 'b1',
       business_date: '2026-10-05',
@@ -112,7 +112,7 @@ describe('the two files for the accountant', () => {
       ...o,
     });
     const sheets = ordersSheets({
-      ...common,
+      branchName,
       lang: 'bn',
       rows: [
         order({}),
@@ -120,10 +120,8 @@ describe('the two files for the accountant', () => {
         order({ order_status: 'open', payment_status: 'unpaid' }),
       ],
     });
-    expect(sheets.map((s) => s.name)).toEqual(['সারসংক্ষেপ', 'সব অর্ডার']);
-    const sum = sheets[0]!.rows.map((r) => r.map((c) => c.value));
-    expect(sum[5]).toEqual(['Uttara', 1, 1000, 75, 100, 1175, 1, 1]); // money from the completed one only
-    const list = sheets[1]!.rows.map((r) => r.map((c) => c.value));
+    expect(sheets.map((s) => s.name)).toEqual(['সব অর্ডার']);
+    const list = sheets[0]!.rows.map((r) => r.map((c) => c.value));
     expect(list).toHaveLength(4);
     expect(list[1]!.slice(0, 6)).toEqual([
       '2026-10-05',
@@ -133,6 +131,8 @@ describe('the two files for the accountant', () => {
       'সম্পন্ন',
       'পরিশোধিত',
     ]);
-    expect(sheets[1]!.freezeRow).toBe(1);
+    expect(sheets[0]!.freezeRow).toBe(1);
+    // The three orders (completed, cancelled, open) are all listed.
+    expect(list.slice(1).map((r) => r[4])).toEqual(['সম্পন্ন', 'বাতিল', 'খোলা']);
   });
 });

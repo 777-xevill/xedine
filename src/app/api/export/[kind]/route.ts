@@ -86,7 +86,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       rows.push(...((data ?? []) as OrderRow[]));
       if ((data ?? []).length < 1000) break;
     }
-    file = buildXlsx(ordersSheets({ ...common, rows }));
+    file = buildXlsx(ordersSheets({ lang, branchName, rows }));
   }
   return new NextResponse(Buffer.from(file), {
     headers: {

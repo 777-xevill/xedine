@@ -203,7 +203,7 @@ Status: ◐ **built; local checks green; full-seed checks written for CI** (2026
 **Evidence so far (local):** `tests/db/customers.test.ts` (12 hand-worked tests: segments and RFM, consent and opt-out, caps, holdout, lift sample rule, feedback token once-only, themes, reply approval, slow-slot and lapse detectors); `tests/db/seed-inventory.test.ts` finds S11 on the seed; `tests/db/seed-lapse.test.ts` (opt-in, XEDINE_SLOW=1) matches S12 exactly. Decisions in [ADR 0021](decisions/0021-phase-8-customers-retention-reviews.md). **Needs CI:** `metrics:validate` at SEED_PHASE=8.
 **Build**
 - [x] Customer profiles, consent, visit history, RFM segments, at-risk list — `/[org]/customers`, `metric_customers`, `metric_customer_summary`
-- [x] Post-meal feedback link (0–10 + comment) via WhatsApp, linked to order and items — `job_feedback_requests`, `/f/[token]`, `submit_feedback`; **real sends wait for Meta template approval**
+- [x] Post-meal feedback link (0–10 + comment), linked to order and items — `job_feedback_requests`, `/f/[token]`, `submit_feedback`; sent as a browser notification since ADR 0052 (no WhatsApp to customers)
 - [x] Automations: first-visit thank-you + second-visit nudge (48 h), win-back, frequency caps, opt-out keywords, holdout groups — `run_campaign`, `auto_run`, `record_opt_out`
 - [x] Campaign builder (bn/en messages); results with lift vs holdout — `/[org]/campaigns`, `metric_campaign_results`
 - [~] Reviews: paste-in for Facebook/foodpanda/Google, themes, AI reply drafts (approve) — `/[org]/reviews`; **Google Business Profile import waits for API access (ADR 0010)**

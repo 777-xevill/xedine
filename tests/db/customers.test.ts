@@ -60,6 +60,21 @@ async function customer(fx: Fx, consent: boolean | null = true) {
   return c;
 }
 
+/** The customer's phone allowed notifications (table QR, ADR 0048): the only way Xedine reaches them (ADR 0052). */
+async function pushOn(fx: Fx, customerId: string) {
+  await admin(
+    `insert into public.push_subscriptions (org_id, customer_id, endpoint, p256dh, auth)
+     values ($1, $2, $3, $4, $5)`,
+    [
+      fx.org.id,
+      customerId,
+      `https://push.example/${randomUUID()}`,
+      `B${'a'.repeat(86)}`,
+      'a'.repeat(22),
+    ],
+  );
+}
+
 async function order(
   fx: Fx,
   branch: string,
@@ -267,8 +282,10 @@ describe('campaigns respect consent, caps, opt-outs and holdouts', () => {
     manager = await addMember(fx.org, 'manager', [b]);
     cashier = await addMember(fx.org, 'cashier', [b]);
     // 40 at-risk customers (visits 80 and 70 days ago): 30 consented, 6 never asked, 4 refused.
+    // Of the 30 who consented, 20 allowed notifications on their phone; the other 10 cannot be reached.
     for (let i = 0; i < 40; i++) {
       const c = await customer(fx, i < 30 ? true : i < 36 ? null : false);
+      if (i < 20 || i >= 36) await pushOn(fx, c);
       customers.push(c);
       for (const d of [80, 70]) await order(fx, b, addDays(TODAY, -d), { customer: c });
     }
@@ -314,18 +331,24 @@ describe('campaigns respect consent, caps, opt-outs and holdouts', () => {
         commit: true,
       },
     )) as [{ r: Row }];
-    expect(n(r.queued) + n(r.holdout) + n(r.no_consent) + n(r.capped)).toBe(40);
+    expect(n(r.queued) + n(r.holdout) + n(r.no_consent) + n(r.no_push) + n(r.capped)).toBe(40);
     expect(n(r.holdout)).toBeGreaterThan(0);
+    expect(n(r.no_push)).toBeGreaterThan(0);
     const sent = await admin<{ customer_id: string }>(
       `select s.customer_id from public.campaign_sends s where s.campaign_id = $1 and s.status = 'queued'`,
       [campaign],
     );
-    expect(sent.every((s) => customers.indexOf(s.customer_id) < 30)).toBe(true);
+    expect(sent.length).toBe(n(r.queued));
+    // Only consented customers with notifications on; refusers with a phone subscription are still skipped.
+    expect(sent.every((s) => customers.indexOf(s.customer_id) < 20)).toBe(true);
+  });
+
+  it('sends nothing on WhatsApp: the outbox stays empty (ADR 0052)', async () => {
     const outbox = await admin<{ n: number }>(
-      `select count(*)::int as n from public.message_outbox where org_id = $1 and template_key = 'campaign'`,
+      `select count(*)::int as n from public.message_outbox where org_id = $1`,
       [fx.org.id],
     );
-    expect(outbox[0]!.n).toBe(n(r.queued));
+    expect(outbox[0]!.n).toBe(0);
   });
 
   it('the same campaign does not repeat within 30 days, and another one is capped', async () => {
@@ -336,7 +359,7 @@ describe('campaigns respect consent, caps, opt-outs and holdouts', () => {
         commit: true,
       },
     )) as [{ r: Row }];
-    expect(n(r.queued) + n(r.holdout) + n(r.no_consent)).toBe(0);
+    expect(n(r.queued) + n(r.holdout) + n(r.no_consent) + n(r.no_push)).toBe(0);
     const other = await id(
       `insert into public.campaigns (org_id, name, kind, holdout_pct, body_bn, status, approved_at) values ($1, 'Second', 'win_back', 0, 'x', 'approved', now()) returning id`,
       [fx.org.id],
@@ -353,9 +376,11 @@ describe('campaigns respect consent, caps, opt-outs and holdouts', () => {
       [campaign],
     );
     expect(n(r2.capped)).toBe(first!.n);
-    // Only the consenting customers held out of the first campaign may hear from the second one.
+    // Only the consenting customers with notifications on, held out of the first campaign, may hear from the second.
     const [held] = await admin<{ n: number }>(
-      `select count(*)::int as n from public.campaign_sends where campaign_id = $1 and is_holdout and private.marketing_ok($2, customer_id)`,
+      `select count(*)::int as n from public.campaign_sends s where s.campaign_id = $1 and s.is_holdout
+         and private.marketing_ok($2, s.customer_id)
+         and exists (select 1 from public.push_subscriptions p where p.org_id = $2 and p.customer_id = s.customer_id and p.is_active)`,
       [campaign, fx.org.id],
     );
     expect(n(r2.queued)).toBe(held!.n);
@@ -402,6 +427,12 @@ describe('post-meal feedback and review replies', () => {
        values (gen_random_uuid(),$1,$2,$3,$4,'completed','paid',$5,100,100,100,100,false,0)`,
       [fx.org.id, b, fx.channel, c, recent],
     );
+    // Without notifications on, there is no way to ask (no WhatsApp, ADR 0052): nothing is made.
+    const unreachable = await asService((s) =>
+      s.q('select * from public.job_feedback_requests($1, now())', [fx.org.id]),
+    );
+    expect(unreachable).toHaveLength(0);
+    await pushOn(fx, c);
     const requests = await asService(
       (s) =>
         s.q<{ token: string; to_phone: string }>(

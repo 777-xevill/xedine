@@ -1,14 +1,17 @@
 import 'server-only';
 import type { createServiceRoleClient } from '@/lib/db/service-role';
+import { createTranslator } from 'next-intl';
 import { publicEnv } from '@/lib/env';
-import { queueMessage } from '@/modules/messaging/jobs/outbox';
-import { pushCampaign } from './push';
+import bn from '@/messages/bn.json';
+import en from '@/messages/en.json';
+import { pushCampaign, pushToCustomers } from './push';
 
 /**
  * Retention jobs (ROADMAP Phase 8), as the service role for one explicit org at a time:
  *  - post-meal feedback links for customers who consented (one per customer per week, SQL decides who);
  *  - campaigns the owner approved AND switched to run by themselves (auto_run; off by default, ADR 0021).
- * Nothing is sent from here: messages go to the outbox, which the WhatsApp transport drains.
+ * Customers hear from Xedine only as a notification on the phone where they allowed it (ADR 0052), never on
+ * WhatsApp.
  */
 type Supabase = ReturnType<typeof createServiceRoleClient>;
 
@@ -24,16 +27,43 @@ export async function sendFeedbackRequests(sb: Supabase, orgId: string, at: Date
     token: string;
     lang: string;
   }[];
-  for (const r of rows) {
-    await queueMessage(sb, {
-      orgId,
-      toPhone: r.to_phone,
-      templateKey: 'feedback_request',
-      language: r.lang === 'en' ? 'en' : 'bn',
-      body: `${publicEnv().NEXT_PUBLIC_SITE_URL}/f/${r.token}`,
-      idempotencyKey: `feedback:${r.feedback_id}`,
-    });
-  }
+  if (rows.length === 0) return 0;
+  const [{ data: customers }, { data: org }] = await Promise.all([
+    sb
+      .from('customers')
+      .select('id, phone')
+      .eq('org_id', orgId)
+      .in(
+        'phone',
+        rows.map((r) => r.to_phone),
+      ),
+    sb.from('organizations').select('name').eq('id', orgId).maybeSingle(),
+  ]);
+  const idOf = new Map((customers ?? []).map((c) => [c.phone as string, c.id as string]));
+  const site = publicEnv().NEXT_PUBLIC_SITE_URL;
+  const title = (org?.name as string | undefined) ?? 'Xedine';
+  await pushToCustomers(
+    sb,
+    orgId,
+    rows.flatMap((r) => {
+      const customerId = idOf.get(r.to_phone);
+      if (!customerId) return [];
+      const t = createTranslator({
+        locale: r.lang === 'en' ? 'en' : 'bn',
+        messages: r.lang === 'en' ? en : bn,
+        namespace: 'customers',
+      });
+      return [
+        {
+          customerId,
+          title,
+          body: t('feedbackPush', { restaurant: title }),
+          url: `${site}/f/${r.token}`,
+          tag: `feedback-${r.feedback_id}`,
+        },
+      ];
+    }),
+  );
   return rows.length;
 }
 

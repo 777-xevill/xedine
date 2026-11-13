@@ -126,16 +126,6 @@ export async function pushCampaign(
   const customers = [...new Set((sends ?? []).map((s) => s.customer_id as string))];
   if (customers.length === 0) return { sent: 0, failed: 0 };
 
-  const { data: subs } = await sb
-    .from('push_subscriptions')
-    .select('id, customer_id, endpoint, p256dh, auth')
-    .eq('org_id', orgId)
-    .eq('is_active', true)
-    .in('customer_id', customers)
-    .order('last_sent_at', { ascending: true, nullsFirst: true })
-    .limit(PUSH_PER_RUN);
-  if (!subs || subs.length === 0) return { sent: 0, failed: 0 };
-
   const { data: cards } = await sb
     .from('member_cards')
     .select('customer_id, token')
@@ -147,6 +137,54 @@ export async function pushCampaign(
   const body = ((en ? c.body_en : c.body_bn) ?? c.body_bn ?? c.body_en ?? '') as string;
   const title = (org?.name as string | undefined) ?? 'Xedine';
   const site = publicEnv().NEXT_PUBLIC_SITE_URL;
+  return pushToCustomers(
+    sb,
+    orgId,
+    customers.map((customerId) => {
+      const card = cardOf.get(customerId);
+      return {
+        customerId,
+        title,
+        body,
+        url: card ? `${site}${memberCardPath(card)}` : site,
+        tag: `campaign-${campaignId}`,
+      };
+    }),
+  );
+}
+
+export interface CustomerNotice {
+  customerId: string;
+  title: string;
+  body: string;
+  /** Opened when the customer taps the notification; a link on this site. */
+  url: string;
+  /** Same tag = the newer notification replaces the older one on the phone. */
+  tag: string;
+}
+
+/**
+ * Rings every active phone of each customer with their notice (at most PUSH_PER_RUN phones, least recently
+ * notified first). A phone the browser has dropped is switched off. The only way Xedine messages a customer
+ * (ADR 0052).
+ */
+export async function pushToCustomers(
+  sb: Supabase,
+  orgId: string,
+  notices: CustomerNotice[],
+): Promise<{ sent: number; failed: number }> {
+  if (notices.length === 0) return { sent: 0, failed: 0 };
+  const noticeOf = new Map(notices.map((n) => [n.customerId, n]));
+  const { data: subs } = await sb
+    .from('push_subscriptions')
+    .select('id, customer_id, endpoint, p256dh, auth')
+    .eq('org_id', orgId)
+    .eq('is_active', true)
+    .in('customer_id', [...noticeOf.keys()])
+    .order('last_sent_at', { ascending: true, nullsFirst: true })
+    .limit(PUSH_PER_RUN);
+  if (!subs || subs.length === 0) return { sent: 0, failed: 0 };
+  const site = publicEnv().NEXT_PUBLIC_SITE_URL;
   const keys = await vapidKeys(sb);
 
   let sent = 0;
@@ -157,13 +195,8 @@ export async function pushCampaign(
   for (let i = 0; i < subs.length; i += 5) {
     await Promise.all(
       subs.slice(i, i + 5).map(async (s) => {
-        const card = cardOf.get(s.customer_id as string);
-        const message = JSON.stringify({
-          title,
-          body,
-          url: card ? `${site}${memberCardPath(card)}` : site,
-          tag: `campaign-${campaignId}`,
-        });
+        const n = noticeOf.get(s.customer_id as string)!;
+        const message = JSON.stringify({ title: n.title, body: n.body, url: n.url, tag: n.tag });
         let outcome: PushOutcome;
         try {
           outcome = await sendWebPush({

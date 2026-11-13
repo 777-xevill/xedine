@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { BranchLocationForm, BranchRequestForm, TableForm } from '@/components/branch-forms';
+import { BranchRequestForm, TableForm } from '@/components/branch-forms';
+import { BranchLocationForm } from '@/components/branch-location-form';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';

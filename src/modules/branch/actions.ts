@@ -64,7 +64,10 @@ export async function setBranchLocationAction(
     .extend({ latitude: coord(-90, 90), longitude: coord(-180, 180) })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
-  const { latitude, longitude } = parsed.data;
+  // "Use the area's weather instead" sends clear=1: both boxes empty.
+  const cleared = formData.get('clear') === '1';
+  const latitude = cleared ? '' : parsed.data.latitude;
+  const longitude = cleared ? '' : parsed.data.longitude;
   if ((latitude === '') !== (longitude === '')) return { error: 'invalidInput' };
   const supabase = await createClient();
   const { error } = await supabase.rpc('set_branch_location', {

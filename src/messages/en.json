@@ -2631,7 +2631,7 @@
     "notSetUp": "The Telegram bot is not set up yet. Create a bot with @BotFather, then add TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME and TELEGRAM_WEBHOOK_SECRET to the server settings.",
     "connectTitle": "Connect a purchaser",
     "connectBody": "Make a one-time link and send it to the person (WhatsApp, SMS, any way). When they tap it, Telegram opens the bot and their chat is connected.",
-    "person": "Person and branch",
+    "person": "Who is it for?",
     "linkHint": "The link works once and expires after 48 hours. Only the owner and purchasers can record the bazar.",
     "makeLink": "Make link",
     "linkReady": "Send this link to them:",
@@ -2648,7 +2648,9 @@
     "how2": "The bot answers with every line it understood, matched to your ingredients, and the total.",
     "how3": "Nothing changes until they tap ✅ Add to stock. Then the purchase is recorded in their name and stock goes up.",
     "how4Voice": "Voice notes and photos of the chit work too.",
-    "how4NoVoice": "Voice notes and photos need AI: add an OpenAI key to switch them on. Typed lists work without it."
+    "how4NoVoice": "Voice notes and photos need AI: add an OpenAI key to switch them on. Typed lists work without it.",
+    "branch": "Which branch do they buy for?",
+    "oneBranch": "Branch: {name}"
   },
   "chatBot": {
     "ownerHelp": "Ask me about your restaurant. Tap a topic below or just type your question, in Bangla or English. For example: \"How were sales today?\"\n\nTo record the bazar, send a list like:\nmurgi 10 kg 1800\npiyaj 5 kg 300\n\n/stop disconnects this chat.",

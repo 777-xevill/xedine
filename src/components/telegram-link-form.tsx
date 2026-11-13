@@ -12,17 +12,22 @@ import { initialState } from '@/modules/tenancy/form-state';
 export function TelegramLinkForm({
   orgId,
   orgSlug,
-  targets,
+  people,
   ready,
 }: {
   orgId: string;
   orgSlug: string;
-  targets: { value: string; label: string }[];
+  people: { userId: string; label: string; branches: { id: string; name: string }[] }[];
   ready: boolean;
 }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(createChatLinkAction, initialState);
   const [copied, setCopied] = useState(false);
+  const [userId, setUserId] = useState(people[0]?.userId ?? '');
+  const [branchId, setBranchId] = useState('');
+  const person = people.find((p) => p.userId === userId) ?? people[0];
+  // A branch picked for someone else does not carry over: fall back to this person's first branch.
+  const branch = person?.branches.find((b) => b.id === branchId) ?? person?.branches[0];
   const link = state.ok ? state.data?.link : undefined;
 
   return (
@@ -54,16 +59,52 @@ export function TelegramLinkForm({
           </div>
         </Alert>
       ) : null}
+      <input
+        type="hidden"
+        name="target"
+        value={person && branch ? `${person.userId}|${branch.id}` : ''}
+      />
       <div>
-        <Label htmlFor="tg-target">{t('telegramPage.person')}</Label>
-        <Select id="tg-target" name="target" required onChange={() => setCopied(false)}>
-          {targets.map((x) => (
-            <option key={x.value} value={x.value}>
+        <Label htmlFor="tg-person">{t('telegramPage.person')}</Label>
+        <Select
+          id="tg-person"
+          value={person?.userId ?? ''}
+          onChange={(e) => {
+            setUserId(e.target.value);
+            setBranchId('');
+            setCopied(false);
+          }}
+        >
+          {people.map((x) => (
+            <option key={x.userId} value={x.userId}>
               {x.label}
             </option>
           ))}
         </Select>
       </div>
+      {person && person.branches.length > 1 ? (
+        <div>
+          <Label htmlFor="tg-branch">{t('telegramPage.branch')}</Label>
+          <Select
+            id="tg-branch"
+            value={branch?.id ?? ''}
+            onChange={(e) => {
+              setBranchId(e.target.value);
+              setCopied(false);
+            }}
+          >
+            {person.branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      ) : branch ? (
+        <p className="text-sm text-secondary">
+          {t('telegramPage.oneBranch', { name: branch.name })}
+        </p>
+      ) : null}
       <Hint>{t('telegramPage.linkHint')}</Hint>
       <Button type="submit" disabled={!ready || pending} onClick={() => setCopied(false)}>
         {t('telegramPage.makeLink')}

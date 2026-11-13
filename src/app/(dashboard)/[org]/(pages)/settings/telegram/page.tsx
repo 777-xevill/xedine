@@ -72,17 +72,22 @@ export default async function TelegramSettingsPage({
   );
   const branchName = new Map((branches ?? []).map((b) => [b.id as string, b.name as string]));
 
-  // Everyone who may buy, for each branch they may buy for.
-  const targets = (memberships ?? []).flatMap((m) => {
-    const ids =
-      m.branch_scope === 'all'
-        ? (branches ?? []).map((b) => b.id as string)
-        : (scoped ?? []).filter((s) => s.membership_id === m.id).map((s) => s.branch_id as string);
-    return ids.map((b) => ({
-      value: `${m.user_id}|${b}`,
-      label: `${nameOf.get(m.user_id as string) ?? t('unnamed')} · ${roles(m.role as string)} · ${branchName.get(b) ?? ''}`,
-    }));
-  });
+  // Everyone who may buy, once each, with the branches they may buy for.
+  const people = (memberships ?? [])
+    .map((m) => {
+      const ids =
+        m.branch_scope === 'all'
+          ? (branches ?? []).map((b) => b.id as string)
+          : (scoped ?? [])
+              .filter((s) => s.membership_id === m.id)
+              .map((s) => s.branch_id as string);
+      return {
+        userId: m.user_id as string,
+        label: `${nameOf.get(m.user_id as string) ?? t('unnamed')} (${roles(m.role as string)})`,
+        branches: ids.map((b) => ({ id: b, name: branchName.get(b) ?? '' })),
+      };
+    })
+    .filter((p) => p.branches.length > 0);
   const at = now();
   const connected = (links ?? []).filter((l) => l.external_id !== null);
   const pending = (links ?? []).filter(
@@ -125,13 +130,13 @@ export default async function TelegramSettingsPage({
           {t('connectTitle')}
         </CardTitle>
         <p className="-mt-2 mb-4 text-sm text-secondary">{t('connectBody')}</p>
-        {targets.length === 0 ? (
+        {people.length === 0 ? (
           <EmptyState title={t('noPurchasers')} className="py-6" />
         ) : (
           <TelegramLinkForm
             orgId={ctx.org.id}
             orgSlug={ctx.org.slug}
-            targets={targets}
+            people={people}
             ready={ready}
           />
         )}

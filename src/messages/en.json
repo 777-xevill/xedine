@@ -2629,11 +2629,11 @@
     }
   },
   "telegramPage": {
-    "title": "Telegram bazar bot",
-    "subtitle": "Purchasers send the day’s bazar to a Telegram bot, typed or by voice, and tap ✅ to add it to stock. No need to open Xedine.",
+    "title": "Telegram",
+    "subtitle": "Get your morning and evening brief and alerts on your phone, ask Xedine questions, and let purchasers record the bazar. Free, no need to open Xedine.",
     "notSetUp": "The Telegram bot is not set up yet. Create a bot with @BotFather, then add TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME and TELEGRAM_WEBHOOK_SECRET to the server settings.",
-    "connectTitle": "Connect a purchaser",
-    "connectBody": "Make a one-time link and send it to the person (WhatsApp, SMS, any way). When they tap it, Telegram opens the bot and their chat is connected.",
+    "connectTitle": "Connect Telegram",
+    "connectBody": "Pick yourself to get briefs and alerts and to ask questions, or pick a purchaser so they can record the bazar. Make a one-time link and send it to that person (WhatsApp, SMS, any way). When they tap it, Telegram opens the bot and their chat is connected.",
     "person": "Who is it for?",
     "linkHint": "The link works once and expires after 48 hours. Only the owner and purchasers can record the bazar.",
     "makeLink": "Make link",

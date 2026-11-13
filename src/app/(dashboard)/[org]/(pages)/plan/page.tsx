@@ -43,7 +43,7 @@ import {
   reconcileBazarAction,
   sendBazarAction,
 } from '@/modules/forecasting/actions';
-import { branchOutlook, forecast, forecastAccuracy, prepPlan } from '@/modules/forecasting/queries';
+import { branchOutlook, forecast, prepPlan } from '@/modules/forecasting/queries';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
 import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
@@ -354,30 +354,40 @@ export default async function PlanPage({
 
       {tab === 'forecast'
         ? await (async () => {
-            const [rows, acc] = await Promise.all([
-              forecast(ctx.org.id, branch.id, date),
-              forecastAccuracy(ctx.org.id, branch.id).catch(() => []),
-            ]);
-            const a = acc.find((x) => x.branch_id === branch.id);
-            const parts = [...new Set(rows.map((r) => r.daypart))];
+            const rows = await forecast(ctx.org.id, branch.id, date);
             const items = [...new Map(rows.map((r) => [r.menu_item_id, r])).values()];
-            const cell = (item: string, part: string) =>
-              rows.find((r) => r.menu_item_id === item && r.daypart === part)?.qty ?? 0;
             const total = (item: string) =>
               rows.filter((r) => r.menu_item_id === item).reduce((s, r) => s + r.qty, 0);
             items.sort((x, y) => total(y.menu_item_id) - total(x.menu_item_id));
-            const fmt = (v: number) =>
-              formatNumber(Math.round(v * 10) / 10, loc, {
-                fractionDigits: Number.isInteger(Math.round(v * 10) / 10) ? 0 : 1,
-              });
             const grand = items.reduce((sum, i) => sum + total(i.menu_item_id), 0);
             const naive = rows.reduce((sum, r) => sum + r.naive_qty, 0);
+            // No promised count: only whether the day might be busier, quieter or the usual.
+            const mood =
+              naive > 0 && grand > naive * 1.08
+                ? 'Up'
+                : naive > 0 && grand < naive * 0.92
+                  ? 'Down'
+                  : 'Same';
             const reasons = [
               ...eventsOn(date).map((e) => e.name || tk(`kinds.${e.kind as 'holiday'}`)),
               ...(rainFlagged(date) ? [tk('kinds.weather')] : []),
               ...(Number(date.slice(8, 10)) <= 7 ? [t('salaryWeek')] : []),
             ];
             const w = weatherOn.get(date);
+            const dish = (i: (typeof items)[number], idx: number) => (
+              <li
+                key={i.menu_item_id}
+                className="flex items-center gap-3 rounded-input border border-line px-3 py-2.5"
+              >
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-bold tabular-nums">
+                  {formatNumber(idx + 1, loc)}
+                </span>
+                <span className="font-medium">{label(i.name, i.name_bn)}</span>
+                {idx < 3 ? (
+                  <span className="ms-auto text-xs text-purple">{t('likelyFavourite')}</span>
+                ) : null}
+              </li>
+            );
             return (
               <Card className="p-4 sm:p-6">
                 {items.length === 0 ? (
@@ -385,16 +395,10 @@ export default async function PlanPage({
                 ) : (
                   <>
                     <h2 className="text-xl font-bold">
-                      {t('forecastHeadline', {
-                        day: dayLabel(date),
-                        total: formatNumber(Math.round(grand), loc),
-                      })}
+                      {t(`forecastHeadline${mood}`, { day: dayLabel(date) })}
                     </h2>
-                    <p className="mt-1 text-sm text-secondary">
-                      {t('forecastCompare', { naive: formatNumber(Math.round(naive), loc) })}
-                    </p>
                     {reasons.length > 0 ? (
-                      <p className="mt-1 text-sm">
+                      <p className="mt-1 text-sm text-secondary">
                         {t('forecastReasons', { reasons: reasons.join(', ') })}
                       </p>
                     ) : null}
@@ -403,91 +407,20 @@ export default async function PlanPage({
                     ) : null}
 
                     <p className="mt-5 mb-2 text-sm font-semibold">{t('topDishes')}</p>
-                    {(() => {
-                      const dish = (i: (typeof items)[number]) => (
-                        <li
-                          key={i.menu_item_id}
-                          className="flex items-center justify-between gap-3 rounded-input border border-line px-3 py-2.5"
-                        >
-                          <span className="font-medium">{label(i.name, i.name_bn)}</span>
-                          <span className="text-lg font-bold tabular-nums">
-                            {formatNumber(Math.round(total(i.menu_item_id)), loc)}
-                          </span>
-                        </li>
-                      );
-                      return (
-                        <>
-                          <ul className="grid gap-2 sm:grid-cols-2">
-                            {items.slice(0, 5).map(dish)}
-                          </ul>
-                          {items.length > 5 ? (
-                            <details className="mt-2 text-sm">
-                              <summary className="cursor-pointer font-medium text-purple">
-                                {t('showAllDishes')}
-                              </summary>
-                              <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                                {items.slice(5).map(dish)}
-                              </ul>
-                            </details>
-                          ) : null}
-                        </>
-                      );
-                    })()}
-
-                    <details className="mt-5 text-sm">
-                      <summary className="cursor-pointer font-medium text-secondary">
-                        {t('moreDetails')}
-                      </summary>
-                      <p className="mt-3 mb-1 font-medium">{t('byTimeOfDay')}</p>
-                      <div className="mt-2 overflow-x-auto">
-                        <table className="w-full min-w-[32rem] text-sm">
-                          <thead className="text-xs text-secondary">
-                            <tr>
-                              <th className="py-2 text-start font-medium">{t('item')}</th>
-                              {parts.map((p) => (
-                                <th key={p} className="py-2 text-end font-medium">
-                                  {t(`dayparts.${p}`)}
-                                </th>
-                              ))}
-                              <th className="py-2 text-end font-medium">{t('total')}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items.map((i) => (
-                              <tr key={i.menu_item_id} className="border-t border-line">
-                                <td className="py-2 font-medium">{label(i.name, i.name_bn)}</td>
-                                {parts.map((p) => (
-                                  <td key={p} className="py-2 text-end tabular-nums">
-                                    {fmt(cell(i.menu_item_id, p))}
-                                  </td>
-                                ))}
-                                <td className="py-2 text-end font-semibold tabular-nums">
-                                  {fmt(total(i.menu_item_id))}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <p className="mt-4 mb-1 font-medium">{t('howAccurate')}</p>
-                      <div className="mt-2 space-y-2">
-                        {a ? (
-                          <StatusBadge tone={a.is_shown ? 'success' : 'neutral'}>
-                            {a.is_shown ? t('modelShown') : t('naiveShown')}
-                          </StatusBadge>
-                        ) : null}
-                        {a && a.wape_bps !== null && a.naive_wape_bps !== null ? (
-                          <p className="text-secondary">
-                            {t('accuracyPlain', {
-                              model: formatBps(a.wape_bps, loc),
-                              naive: formatBps(a.naive_wape_bps, loc),
-                              days: formatNumber(a.days, loc),
-                            })}
-                          </p>
-                        ) : null}
-                        <Hint>{t('forecastHint')}</Hint>
-                      </div>
-                    </details>
+                    <ol className="grid gap-2 sm:grid-cols-2">
+                      {items.slice(0, 5).map((i, idx) => dish(i, idx))}
+                    </ol>
+                    {items.length > 5 ? (
+                      <details className="mt-2 text-sm">
+                        <summary className="cursor-pointer font-medium text-purple">
+                          {t('showAllDishes')}
+                        </summary>
+                        <ol className="mt-2 grid gap-2 sm:grid-cols-2">
+                          {items.slice(5).map((i, idx) => dish(i, idx + 5))}
+                        </ol>
+                      </details>
+                    ) : null}
+                    <Hint className="mt-4">{t('guessNote')}</Hint>
                   </>
                 )}
               </Card>
@@ -497,42 +430,41 @@ export default async function PlanPage({
 
       {tab === 'prep'
         ? await (async () => {
-            const rows = await prepPlan(ctx.org.id, branch.id, date);
+            const rows = (await prepPlan(ctx.org.id, branch.id, date)).sort(
+              (x, y) => y.portions - x.portions,
+            );
             return rows.length === 0 ? (
               <EmptyState title={t('noForecast')} body={t('noForecastBody')} />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {rows.map((r) => (
-                  <Card key={r.menu_item_id} className="p-5">
-                    <p className="font-bold">{label(r.name, r.name_bn)}</p>
-                    <p className="mt-2 text-3xl font-extrabold tabular-nums">
-                      {r.batches !== null && r.batch_unit
-                        ? t('batches', { count: r.batches, unit: t(`batchUnits.${r.batch_unit}`) })
-                        : t('portions', { count: formatNumber(Math.ceil(r.portions), loc) })}
-                    </p>
-                    <p className="text-sm text-secondary">
-                      {r.batches !== null
-                        ? t('portionsPerBatch', {
-                            portions: formatNumber(Math.ceil(r.portions), loc),
-                            per: formatNumber(r.batch_portions ?? 0, loc),
-                          })
-                        : t('forecastPortions')}
-                    </p>
-                    {r.key_ingredients.length > 0 ? (
-                      <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
-                        {r.key_ingredients.map((k) => (
-                          <li key={k.name} className="flex justify-between gap-2">
-                            <span>{label(k.name, k.name_bn)}</span>
-                            <span className="tabular-nums text-secondary">
-                              {qty(k.qty, k.base)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </Card>
-                ))}
-              </div>
+              <>
+                <p className="mb-3 text-sm text-secondary">{t('prepBody')}</p>
+                <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {rows.map((r, idx) => (
+                    <li key={r.menu_item_id}>
+                      <Card className="h-full p-5">
+                        <div className="flex items-center gap-3">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-sm font-bold tabular-nums">
+                            {formatNumber(idx + 1, loc)}
+                          </span>
+                          <p className="font-bold">{label(r.name, r.name_bn)}</p>
+                        </div>
+                        <p className="mt-2 text-sm text-secondary">
+                          {idx < 3 ? t('prepBusy') : t('prepMaybe')}
+                        </p>
+                        {r.key_ingredients.length > 0 ? (
+                          <p className="mt-3 border-t border-line pt-3 text-sm">
+                            {t('prepMightNeed', {
+                              list: r.key_ingredients
+                                .map((k) => label(k.name, k.name_bn))
+                                .join(', '),
+                            })}
+                          </p>
+                        ) : null}
+                      </Card>
+                    </li>
+                  ))}
+                </ol>
+              </>
             );
           })()
         : null}

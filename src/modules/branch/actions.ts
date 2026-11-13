@@ -21,14 +21,34 @@ export async function createTableAction(_prev: FormState, formData: FormData): P
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
   const supabase = await createClient();
+  const seats = parsed.data.seats === '' ? null : parsed.data.seats;
   const { error } = await supabase.from('dining_tables').insert({
     org_id: parsed.data.orgId,
     branch_id: parsed.data.branchId,
     name: parsed.data.name,
-    seats: parsed.data.seats === '' ? null : parsed.data.seats,
+    seats,
   });
-  if (error) return { error: error.code === '23505' ? 'nameTaken' : mapDbError(error) };
+  if (error) {
+    if (error.code !== '23505') return { error: mapDbError(error) };
+    // The name exists. If that table was removed earlier it comes back (same QR code) instead of
+    // clashing with a table nobody can see in the list of live tables.
+    const { data: old } = await supabase
+      .from('dining_tables')
+      .select('id, is_active')
+      .eq('org_id', parsed.data.orgId)
+      .eq('branch_id', parsed.data.branchId)
+      .eq('name', parsed.data.name)
+      .maybeSingle();
+    if (!old || old.is_active) return { error: 'nameTaken' };
+    const { error: backError } = await supabase
+      .from('dining_tables')
+      .update({ is_active: true, seats })
+      .eq('org_id', parsed.data.orgId)
+      .eq('id', old.id);
+    if (backError) return { error: mapDbError(backError) };
+  }
   refresh(parsed.data.orgSlug);
+  revalidatePath(`/${parsed.data.orgSlug}/table-qr`);
   return { ok: true };
 }
 
@@ -48,6 +68,7 @@ export async function toggleTableActiveAction(formData: FormData): Promise<void>
     .eq('id', parsed.data.id);
   if (error) console.error('table toggle', error.code);
   refresh(parsed.data.orgSlug);
+  revalidatePath(`/${parsed.data.orgSlug}/table-qr`);
 }
 
 /**

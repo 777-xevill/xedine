@@ -32,8 +32,7 @@ export default async function BranchPage({
       .from('dining_tables')
       .select('id, name, seats, is_active')
       .eq('org_id', ctx.org.id)
-      .eq('branch_id', current.id)
-      .order('name'),
+      .eq('branch_id', current.id),
     ctx.isOwner
       ? supabase
           .from('branch_requests')
@@ -49,6 +48,10 @@ export default async function BranchPage({
       .eq('id', current.id)
       .maybeSingle(),
   ]);
+  // Natural order, so "2" comes before "10" and "T2" before "T10".
+  const orderedTables = [...(tables ?? [])].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true }),
+  );
   const TONE = {
     pending: 'warning',
     approved: 'success',
@@ -143,11 +146,11 @@ export default async function BranchPage({
           <CardTitle>{t('tablesTitle')}</CardTitle>
           <p className="-mt-2 mb-4 text-sm text-secondary">{t('tablesBody')}</p>
           <TableForm orgId={ctx.org.id} orgSlug={ctx.org.slug} branchId={current.id} />
-          {(tables ?? []).length === 0 ? (
+          {orderedTables.length === 0 ? (
             <EmptyState className="mt-4" title={t('noTables')} />
           ) : (
             <ul className="mt-4 flex flex-wrap gap-2">
-              {(tables ?? []).map((tb) => (
+              {orderedTables.map((tb) => (
                 <li
                   key={tb.id}
                   className="glass-tile flex items-center gap-1.5 rounded-full py-1 ps-3 pe-1.5"

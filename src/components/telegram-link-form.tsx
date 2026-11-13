@@ -17,7 +17,11 @@ export function TelegramLinkForm({
 }: {
   orgId: string;
   orgSlug: string;
-  people: { userId: string; label: string; branches: { id: string; name: string }[] }[];
+  people: {
+    userId: string;
+    label: string;
+    branches: { id: string; name: string; allowed: boolean }[];
+  }[];
   ready: boolean;
 }) {
   const t = useTranslations();
@@ -27,7 +31,9 @@ export function TelegramLinkForm({
   const [branchId, setBranchId] = useState('');
   const person = people.find((p) => p.userId === userId) ?? people[0];
   // A branch picked for someone else does not carry over: fall back to this person's first branch.
-  const branch = person?.branches.find((b) => b.id === branchId) ?? person?.branches[0];
+  const branch =
+    person?.branches.find((b) => b.id === branchId && b.allowed) ??
+    person?.branches.find((b) => b.allowed);
   const link = state.ok ? state.data?.link : undefined;
 
   return (
@@ -82,7 +88,7 @@ export function TelegramLinkForm({
           ))}
         </Select>
       </div>
-      {person && person.branches.length > 1 ? (
+      {person ? (
         <div>
           <Label htmlFor="tg-branch">{t('telegramPage.branch')}</Label>
           <Select
@@ -94,16 +100,20 @@ export function TelegramLinkForm({
             }}
           >
             {person.branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
+              <option key={b.id} value={b.id} disabled={!b.allowed}>
+                {b.allowed ? b.name : t('telegramPage.noAccess', { name: b.name })}
               </option>
             ))}
           </Select>
+          {person.branches.some((b) => !b.allowed) ? (
+            <Hint className="mt-1">
+              {t('telegramPage.moreBranches')}{' '}
+              <a href={`/${orgSlug}/team`} className="font-medium text-purple underline">
+                {t('telegramPage.openTeam')}
+              </a>
+            </Hint>
+          ) : null}
         </div>
-      ) : branch ? (
-        <p className="text-sm text-secondary">
-          {t('telegramPage.oneBranch', { name: branch.name })}
-        </p>
       ) : null}
       <Hint>{t('telegramPage.linkHint')}</Hint>
       <Button type="submit" disabled={!ready || pending} onClick={() => setCopied(false)}>

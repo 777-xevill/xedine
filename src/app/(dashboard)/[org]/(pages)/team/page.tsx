@@ -1,11 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { ActionForm } from '@/components/action-form';
 import { ConfirmTeamButton, InviteForm } from '@/components/team-forms';
+import { Button } from '@/components/ui/button';
 import { Card, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
-import { removeMemberAction, revokeInvitationAction } from '@/modules/tenancy/actions';
+import {
+  removeMemberAction,
+  revokeInvitationAction,
+  updateMemberBranchesAction,
+} from '@/modules/tenancy/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
 
@@ -123,11 +129,47 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
         <ul className="divide-y divide-line" data-testid="members">
           {(memberships ?? []).map((m) => (
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium">{nameOf.get(m.user_id) ?? m.user_id}</p>
                 <p className="text-sm text-secondary">
                   {roles(m.role)} · {scopeOf(m.id, m.branch_scope)}
                 </p>
+                {m.role !== 'owner' && m.role !== 'accountant' ? (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-sm font-medium text-purple">
+                      {t('changeBranches')}
+                    </summary>
+                    <ActionForm
+                      action={updateMemberBranchesAction}
+                      successKey="common.saved"
+                      className="mt-2 space-y-2"
+                    >
+                      <input type="hidden" name="membershipId" value={m.id} />
+                      <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+                      <div className="flex flex-wrap gap-2">
+                        {(branches ?? []).map((b) => (
+                          <label
+                            key={b.id}
+                            className="glass-tile flex items-center gap-2 rounded-input px-3 py-2 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              name="branchId"
+                              value={b.id}
+                              defaultChecked={(links ?? []).some(
+                                (l) => l.membership_id === m.id && l.branch_id === b.id,
+                              )}
+                            />
+                            {b.name}
+                          </label>
+                        ))}
+                      </div>
+                      <Button type="submit" size="sm" variant="secondary">
+                        {t('saveBranches')}
+                      </Button>
+                    </ActionForm>
+                  </details>
+                ) : null}
               </div>
               {m.role !== 'owner' ? (
                 <ConfirmTeamButton

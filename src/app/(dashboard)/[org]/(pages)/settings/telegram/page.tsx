@@ -72,22 +72,24 @@ export default async function TelegramSettingsPage({
   );
   const branchName = new Map((branches ?? []).map((b) => [b.id as string, b.name as string]));
 
-  // Everyone who may buy, once each, with the branches they may buy for.
+  // Everyone who may buy, once each, with every branch and whether they may buy for it.
+  const allBranches = (branches ?? []).map((b) => ({ id: b.id as string, name: b.name as string }));
   const people = (memberships ?? [])
     .map((m) => {
-      const ids =
+      const allowed = new Set(
         m.branch_scope === 'all'
-          ? (branches ?? []).map((b) => b.id as string)
+          ? allBranches.map((b) => b.id)
           : (scoped ?? [])
               .filter((s) => s.membership_id === m.id)
-              .map((s) => s.branch_id as string);
+              .map((s) => s.branch_id as string),
+      );
       return {
         userId: m.user_id as string,
         label: `${nameOf.get(m.user_id as string) ?? t('unnamed')} (${roles(m.role as string)})`,
-        branches: ids.map((b) => ({ id: b, name: branchName.get(b) ?? '' })),
+        branches: allBranches.map((b) => ({ ...b, allowed: allowed.has(b.id) })),
       };
     })
-    .filter((p) => p.branches.length > 0);
+    .filter((p) => p.branches.some((b) => b.allowed));
   const at = now();
   const connected = (links ?? []).filter((l) => l.external_id !== null);
   const pending = (links ?? []).filter(

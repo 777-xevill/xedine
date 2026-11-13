@@ -294,6 +294,27 @@ export async function revokeInvitationAction(formData: FormData): Promise<void> 
   revalidatePath(`/${slug.data}/team`);
 }
 
+/** The owner changes which branches a team member can see and work in. The database checks the rest. */
+export async function updateMemberBranchesAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = z.uuid().safeParse(formData.get('membershipId'));
+  const slug = z.string().regex(SLUG).safeParse(formData.get('orgSlug'));
+  const branchIds = z.array(z.uuid()).safeParse(formData.getAll('branchId'));
+  if (!id.success || !slug.success || !branchIds.success) return { error: 'invalidInput' };
+  if (branchIds.data.length === 0) return { error: 'memberNeedsBranch' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('update_membership', {
+    p_membership: id.data,
+    p_branch_ids: branchIds.data,
+  });
+  if (error) return { error: mapDbError(error) };
+  revalidatePath(`/${slug.data}/team`);
+  revalidatePath(`/${slug.data}/settings/telegram`);
+  return { ok: true };
+}
+
 export async function removeMemberAction(formData: FormData): Promise<void> {
   const id = z.uuid().safeParse(formData.get('membershipId'));
   const slug = z.string().regex(SLUG).safeParse(formData.get('orgSlug'));

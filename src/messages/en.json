@@ -124,7 +124,8 @@
     "signInCodeLocked": "Too many wrong tries. Get a new code from the Telegram bot.",
     "confirmFailed": "This confirmation link has expired or was already used. Sign in with your email and password; if that fails, create the account again.",
     "resendWait": "Please wait one minute, then tap Send again.",
-    "noteInvalid": "Write something in the note first."
+    "noteInvalid": "Write something in the note first.",
+    "memberNeedsBranch": "Choose at least one branch."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -432,7 +433,9 @@
     "confirmRemove": "Remove {name}? They lose access right away. You can invite them again later.",
     "purchaserNote": "A purchaser records the bazar in Telegram. After they join, open Settings → Telegram, make their Telegram link and send it to them. They tap it and press START.",
     "confirmRevoke": "Cancel the invitation for {name}? Their link will stop working.",
-    "acceptInvite": "Accept invitation"
+    "acceptInvite": "Accept invitation",
+    "changeBranches": "Change branches",
+    "saveBranches": "Save branches"
   },
   "roles": {
     "owner": "Owner",
@@ -2650,7 +2653,9 @@
     "how4Voice": "Voice notes and photos of the chit work too.",
     "how4NoVoice": "Voice notes and photos need AI: add an OpenAI key to switch them on. Typed lists work without it.",
     "branch": "Which branch do they buy for?",
-    "oneBranch": "Branch: {name}"
+    "noAccess": "{name} (no access yet)",
+    "moreBranches": "To buy for another branch, give them that branch first on the Team page.",
+    "openTeam": "Open Team"
   },
   "chatBot": {
     "ownerHelp": "Ask me about your restaurant. Tap a topic below or just type your question, in Bangla or English. For example: \"How were sales today?\"\n\nTo record the bazar, send a list like:\nmurgi 10 kg 1800\npiyaj 5 kg 300\n\n/stop disconnects this chat.",

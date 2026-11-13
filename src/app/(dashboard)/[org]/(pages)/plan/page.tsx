@@ -8,7 +8,6 @@ import {
   MapPin,
   ShoppingBasket,
   Sun,
-  Thermometer,
 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -179,18 +178,7 @@ export default async function PlanPage({
                   ) : (
                     <span className="text-xs text-muted">—</span>
                   )}
-                  {w && w.rainMm >= 1 ? (
-                    <span className="text-xs text-info tabular-nums">
-                      {to('rainMm', { mm: n1(w.rainMm) })}
-                    </span>
-                  ) : null}
-                  {w?.hot ? (
-                    <span className="flex items-center gap-1 text-xs text-danger">
-                      <Thermometer aria-hidden className="size-3.5" />
-                      {to('hot')}
-                    </span>
-                  ) : null}
-                  {ev.slice(0, 2).map((e) => (
+                  {ev.slice(0, 1).map((e) => (
                     <span
                       key={`${e.kind}-${e.starts_on}-${e.name}`}
                       className="truncate rounded-full bg-surface-elevated px-2 py-0.5 text-xs"
@@ -219,38 +207,43 @@ export default async function PlanPage({
                 : to('noWeather')}
           </p>
           {outlook.hours.length > 0 ? (
-            <ul className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-              {outlook.hours.map((h) => {
-                const sky =
-                  h.rainMm >= 0.5
-                    ? h.symbol?.includes('thunder')
-                      ? 'storm'
-                      : 'rain'
-                    : h.symbol?.includes('cloudy') && !h.symbol.includes('partly')
-                      ? 'cloudy'
-                      : h.symbol?.includes('fog')
-                        ? 'fog'
-                        : 'clear';
-                const Icon = SKY_ICON[sky];
-                return (
-                  <li
-                    key={h.at}
-                    className="flex min-w-[3.5rem] flex-col items-center gap-0.5 rounded-input bg-surface-elevated px-2 py-1.5 text-xs"
-                  >
-                    <span className="text-secondary tabular-nums">
-                      {formatDhakaTime(new Date(h.at), loc)}
-                    </span>
-                    <Icon
-                      aria-label={to(`sky.${sky}`)}
-                      className={`size-4 ${sky === 'rain' || sky === 'storm' ? 'text-info' : 'text-warning'}`}
-                    />
-                    <span className="tabular-nums">
-                      {h.tempC === null ? '—' : to('maxTemp', { c: n1(Math.round(h.tempC)) })}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <details className="text-sm">
+              <summary className="cursor-pointer font-medium text-purple">
+                {to('hourByHour')}
+              </summary>
+              <ul className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+                {outlook.hours.map((h) => {
+                  const sky =
+                    h.rainMm >= 0.5
+                      ? h.symbol?.includes('thunder')
+                        ? 'storm'
+                        : 'rain'
+                      : h.symbol?.includes('cloudy') && !h.symbol.includes('partly')
+                        ? 'cloudy'
+                        : h.symbol?.includes('fog')
+                          ? 'fog'
+                          : 'clear';
+                  const Icon = SKY_ICON[sky];
+                  return (
+                    <li
+                      key={h.at}
+                      className="flex min-w-[3.5rem] flex-col items-center gap-0.5 rounded-input bg-surface-elevated px-2 py-1.5 text-xs"
+                    >
+                      <span className="text-secondary tabular-nums">
+                        {formatDhakaTime(new Date(h.at), loc)}
+                      </span>
+                      <Icon
+                        aria-label={to(`sky.${sky}`)}
+                        className={`size-4 ${sky === 'rain' || sky === 'storm' ? 'text-info' : 'text-warning'}`}
+                      />
+                      <span className="tabular-nums">
+                        {h.tempC === null ? '—' : to('maxTemp', { c: n1(Math.round(h.tempC)) })}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
           ) : null}
         </div>
 
@@ -291,9 +284,10 @@ export default async function PlanPage({
       />
 
       {canApprove ? (
-        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
-          <p className="max-w-xl text-sm text-secondary">{t('flagBody')}</p>
-          <div className="flex flex-wrap gap-2">
+        <details className="glass-tile mb-6 rounded-input p-4 text-sm">
+          <summary className="cursor-pointer font-medium">{t('flagSummary')}</summary>
+          <p className="mt-2 max-w-xl text-secondary">{t('flagBody')}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
             {(['hartal', 'cricket', 'weather'] as const).map((kind) => (
               <ActionForm key={kind} action={flagDayAction} successKey="plan.flagged">
                 {hidden}
@@ -309,7 +303,7 @@ export default async function PlanPage({
               </ActionForm>
             ))}
           </div>
-        </Card>
+        </details>
       ) : null}
 
       {tab === 'forecast'
@@ -363,8 +357,8 @@ export default async function PlanPage({
                     ) : null}
 
                     <p className="mt-5 mb-2 text-sm font-semibold">{t('topDishes')}</p>
-                    <ul className="grid gap-2 sm:grid-cols-2">
-                      {items.map((i) => (
+                    {(() => {
+                      const dish = (i: (typeof items)[number]) => (
                         <li
                           key={i.menu_item_id}
                           className="flex items-center justify-between gap-3 rounded-input border border-line px-3 py-2.5"
@@ -374,13 +368,31 @@ export default async function PlanPage({
                             {formatNumber(Math.round(total(i.menu_item_id)), loc)}
                           </span>
                         </li>
-                      ))}
-                    </ul>
+                      );
+                      return (
+                        <>
+                          <ul className="grid gap-2 sm:grid-cols-2">
+                            {items.slice(0, 5).map(dish)}
+                          </ul>
+                          {items.length > 5 ? (
+                            <details className="mt-2 text-sm">
+                              <summary className="cursor-pointer font-medium text-purple">
+                                {t('showAllDishes')}
+                              </summary>
+                              <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                                {items.slice(5).map(dish)}
+                              </ul>
+                            </details>
+                          ) : null}
+                        </>
+                      );
+                    })()}
 
                     <details className="mt-5 text-sm">
                       <summary className="cursor-pointer font-medium text-secondary">
-                        {t('byTimeOfDay')}
+                        {t('moreDetails')}
                       </summary>
+                      <p className="mt-3 mb-1 font-medium">{t('byTimeOfDay')}</p>
                       <div className="mt-2 overflow-x-auto">
                         <table className="w-full min-w-[32rem] text-sm">
                           <thead className="text-xs text-secondary">
@@ -411,12 +423,7 @@ export default async function PlanPage({
                           </tbody>
                         </table>
                       </div>
-                    </details>
-
-                    <details className="mt-3 text-sm">
-                      <summary className="cursor-pointer font-medium text-secondary">
-                        {t('howAccurate')}
-                      </summary>
+                      <p className="mt-4 mb-1 font-medium">{t('howAccurate')}</p>
                       <div className="mt-2 space-y-2">
                         {a ? (
                           <StatusBadge tone={a.is_shown ? 'success' : 'neutral'}>

@@ -16,7 +16,6 @@ export const FEATURE_KEYS = [
   'purchasing',
   'planning',
   'customers',
-  'reviews',
   'branches',
   'compliance',
   'staffRecords',
@@ -38,7 +37,6 @@ export type IconKey =
   | 'customers'
   | 'campaigns'
   | 'growth'
-  | 'reviews'
   | 'branches'
   | 'benchmarks'
   | 'compliance'
@@ -128,7 +126,6 @@ const OPTIONAL: LinkRule[] = [
   { key: 'customers', path: '/customers', roles: LEADS, feature: 'customers' },
   { key: 'campaigns', path: '/campaigns', roles: ['owner', 'manager'], feature: 'customers' },
   { key: 'growth', path: '/growth', roles: ['owner', 'manager'], feature: 'customers' },
-  { key: 'reviews', path: '/reviews', roles: ['owner', 'manager'], feature: 'reviews' },
   { key: 'branches', path: '/branches', roles: LEADS, feature: 'branches' },
   { key: 'benchmarks', path: '/benchmarks', roles: MONEY, feature: 'branches' },
   { key: 'compliance', path: '/compliance', roles: LEADS, feature: 'compliance' },
@@ -192,7 +189,6 @@ const SECTION_OF: Partial<Record<IconKey, NavSectionKey>> = {
   customers: 'customers',
   campaigns: 'customers',
   growth: 'customers',
-  reviews: 'customers',
   tableQr: 'customers',
   complaints: 'customers',
   menu: 'restaurant',

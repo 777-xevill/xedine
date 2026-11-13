@@ -1,5 +1,4 @@
-import { CircleAlert, CircleCheck, QrCode } from 'lucide-react';
-import Link from 'next/link';
+import { CircleAlert, CircleCheck } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
@@ -7,7 +6,23 @@ import { LocaleSwitcher } from '@/components/locale-switcher';
 import { Banner } from '@/components/stock/parts';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, Hint, Input, PageTitle, Select, Textarea } from '@/components/ui/form';
+import {
+  Card,
+  CardTitle,
+  Hint,
+  Input,
+  Label,
+  PageTitle,
+  Select,
+  Textarea,
+} from '@/components/ui/form';
+import { PillNav } from '@/components/ui/pill-nav';
+import { publicEnv } from '@/lib/env';
+import {
+  resetComplaintBoxAction,
+  saveGoogleReviewAction,
+} from '@/modules/customers/table-qr-actions';
+import { complaintUrl } from '@/modules/reviews/complaint-link';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
@@ -18,7 +33,7 @@ import {
   reopenIncidentAction,
   saveIncidentAction,
 } from '@/modules/reviews/incident-actions';
-import { getOrgContext } from '@/modules/tenancy/context';
+import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
 const SEVERITIES = ['low', 'medium', 'high'] as const;
 const SEVERITY_TONE = { low: 'info', medium: 'warning', high: 'danger' } as const;
@@ -61,16 +76,35 @@ interface Action {
  * here. Each open case walks through three plain steps. A case closes only with its cause, what the customer
  * got, and every corrective action done.
  */
-export default async function ComplaintsPage({ params }: { params: Promise<{ org: string }> }) {
-  const { org } = await params;
+export default async function ComplaintsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ org: string }>;
+  searchParams: Promise<{ branch?: string }>;
+}) {
+  const [{ org }, { branch }] = await Promise.all([params, searchParams]);
   const ctx = await getOrgContext(org);
   if (!ctx.roles.includes('owner') && !ctx.roles.includes('manager')) notFound();
-  const [t, locale] = await Promise.all([getTranslations('complaints'), getLocale()]);
+  const [t, tq, locale] = await Promise.all([
+    getTranslations('complaints'),
+    getTranslations('tableQr'),
+    getLocale(),
+  ]);
+  const current = pickBranch(ctx, branch);
   const loc = locale as Locale;
   const supabase = await createClient();
   const args = { p_org: ctx.org.id, p_branch: ctx.selectedBranchId, p_now: now().toISOString() };
-  const [{ date: today }, list, summary] = await Promise.all([
+  const [{ date: today }, { data: branchRow }, list, summary] = await Promise.all([
     businessToday(ctx.org.id),
+    current
+      ? supabase
+          .from('branches')
+          .select('google_review_url, complaint_token')
+          .eq('org_id', ctx.org.id)
+          .eq('id', current.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
     supabase.rpc('metric_incidents', args),
     supabase.rpc('metric_incident_summary', args),
   ]);
@@ -106,6 +140,13 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
       <input type="hidden" name="orgSlug" value={ctx.org.slug} />
     </>
   );
+  const boxHidden = (
+    <>
+      {hidden}
+      <input type="hidden" name="branchId" value={current?.id ?? ''} />
+    </>
+  );
+  const site = publicEnv().NEXT_PUBLIC_SITE_URL;
 
   const header = (x: Incident) => (
     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -173,6 +214,68 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} actions={<LocaleSwitcher />} />
       <div className="mx-auto max-w-2xl space-y-5">
+        {current ? (
+          <Card className="space-y-4 p-4 sm:p-5">
+            {ctx.branches.length > 1 ? (
+              <PillNav
+                label={tq('branchPicker')}
+                items={ctx.branches.map((b) => ({
+                  href: `/${ctx.org.slug}/complaints?branch=${b.id}`,
+                  label: b.name,
+                  active: b.id === current.id,
+                }))}
+              />
+            ) : null}
+            <ActionForm
+              action={saveGoogleReviewAction}
+              successKey="common.saved"
+              className="space-y-2"
+            >
+              {boxHidden}
+              <CardTitle>{tq('googleTitle')}</CardTitle>
+              <Label htmlFor="rc-google">{tq('googleLabel')}</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="rc-google"
+                  name="url"
+                  type="url"
+                  inputMode="url"
+                  maxLength={500}
+                  defaultValue={branchRow?.google_review_url ?? ''}
+                  placeholder="https://g.page/r/…/review"
+                  className="min-w-0 flex-1"
+                />
+                <Button type="submit" variant="secondary">
+                  {tq('save')}
+                </Button>
+              </div>
+              <Hint>{tq('googleHint')}</Hint>
+            </ActionForm>
+            {branchRow?.complaint_token ? (
+              <div className="space-y-2 border-t border-line pt-4">
+                <p className="font-semibold">{tq('complaintBoxTitle')}</p>
+                <Hint>{tq('complaintBoxHint')}</Hint>
+                <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    href={complaintUrl(site, branchRow.complaint_token)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-purple underline"
+                  >
+                    {tq('complaintBoxOpen')}
+                  </a>
+                  <ActionForm action={resetComplaintBoxAction} successKey="common.saved">
+                    {boxHidden}
+                    <Button type="submit" size="sm" variant="ghost">
+                      {tq('complaintBoxReset')}
+                    </Button>
+                  </ActionForm>
+                </div>
+              </div>
+            ) : null}
+          </Card>
+        ) : null}
+
         {open.length > 0 ? (
           <Banner
             tone={overdue > 0 ? 'danger' : 'warning'}
@@ -311,17 +414,6 @@ export default async function ComplaintsPage({ params }: { params: Promise<{ org
             </Card>
           );
         })}
-
-        <Link
-          href={`/${ctx.org.slug}/table-qr`}
-          className="glass-tile flex items-center justify-between gap-3 rounded-card p-4 text-sm"
-        >
-          <span>
-            <span className="block font-semibold">{t('qrMovedTitle')}</span>
-            <span className="block text-secondary">{t('qrMovedBody')}</span>
-          </span>
-          <QrCode aria-hidden className="size-6 shrink-0 text-purple" />
-        </Link>
 
         {closed.length > 0 ? (
           <details className="glass-tile rounded-card p-4">

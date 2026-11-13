@@ -104,7 +104,7 @@ describe('navigation (ADR 0024)', () => {
 
   it('every feature switch turns on at least one link, and unknown values are dropped', () => {
     for (const f of FEATURE_KEYS) expect(FEATURE_LINKS[f].length, f).toBeGreaterThan(0);
-    expect(parseFeatures(['reviews', 'nope', 42])).toEqual(['reviews']);
+    expect(parseFeatures(['branches', 'nope', 42])).toEqual(['branches']);
     expect(parseFeatures(null)).toEqual([]);
   });
 });

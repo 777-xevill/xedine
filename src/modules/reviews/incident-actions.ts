@@ -108,39 +108,3 @@ export async function reopenIncidentAction(
   if (error) return { error: mapDbError(error) };
   return done(parsed.data.orgSlug);
 }
-
-/** From the Reviews page: a bad review or comment becomes a case (once). */
-export async function caseFromReviewAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base
-    .extend({ reviewId: z.uuid(), branchId: z.union([z.uuid(), z.literal('')]).optional() })
-    .safeParse(entries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc('incident_from_review', {
-    p_org: parsed.data.orgId,
-    p_review: parsed.data.reviewId,
-    p_branch: parsed.data.branchId || null,
-  });
-  if (error) return { error: mapDbError(error) };
-  revalidatePath(`/${parsed.data.orgSlug}/reviews`);
-  return done(parsed.data.orgSlug);
-}
-
-export async function caseFromFeedbackAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base.extend({ feedbackId: z.uuid() }).safeParse(entries(formData));
-  if (!parsed.success) return { error: 'invalidInput' };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc('incident_from_feedback', {
-    p_org: parsed.data.orgId,
-    p_feedback: parsed.data.feedbackId,
-  });
-  if (error) return { error: mapDbError(error) };
-  revalidatePath(`/${parsed.data.orgSlug}/reviews`);
-  return done(parsed.data.orgSlug);
-}

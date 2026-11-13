@@ -50,7 +50,7 @@ export const GROUPS: Record<string, Group> = {
   },
   people: {
     tools: ['get_customers_summary', 'get_reviews_summary'],
-    pages: ['customers', 'campaigns', 'growth', 'reviews'],
+    pages: ['customers', 'campaigns', 'growth', 'complaints'],
     words:
       /customer|review|rating|complain|regular|guest|feedback|কাস্টমার|রিভিউ|অভিযোগ|রেটিং|গ্রাহক/i,
   },

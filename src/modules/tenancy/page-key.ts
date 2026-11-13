@@ -12,7 +12,7 @@ const BY_SEGMENT: Record<string, IconKey> = {
   customers: 'customers',
   campaigns: 'campaigns',
   growth: 'growth',
-  reviews: 'reviews',
+  reviews: 'complaints',
   branches: 'branches',
   benchmarks: 'benchmarks',
   compliance: 'compliance',

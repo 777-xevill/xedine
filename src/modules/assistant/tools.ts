@@ -406,7 +406,7 @@ export const TOOL_PAGES: Record<string, string> = {
   compare_branches: 'branches',
   get_benchmarks: 'benchmarks',
   get_customers_summary: 'customers',
-  get_reviews_summary: 'reviews',
+  get_reviews_summary: 'complaints',
   get_purchases: 'purchases',
   get_compliance: 'compliance',
   get_safety_status: 'foodSafety',

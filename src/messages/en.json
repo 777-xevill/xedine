@@ -306,7 +306,6 @@
     "plan": "Plan",
     "customers": "Customers",
     "campaigns": "Campaigns",
-    "reviews": "Reviews",
     "branches": "Branches",
     "benchmarks": "Benchmarks",
     "compliance": "Compliance",
@@ -336,7 +335,7 @@
     "memberCard": "Member card",
     "foodSafety": "Food safety",
     "dailyChecks": "Daily checks",
-    "complaints": "Complaints",
+    "complaints": "Reviews & complaints",
     "tableQr": "Table QR",
     "nutrition": "Food facts"
   },
@@ -2221,59 +2220,6 @@
     "approved": "Approved.",
     "ran": "Sent as notifications. Customers who did not allow notifications, or were notified lately, were skipped."
   },
-  "reviews": {
-    "title": "Reviews",
-    "subtitle": "Every review and after-meal comment in one place, with what was happening that day.",
-    "ratingOf": "{source} ({n})",
-    "sources": {
-      "google": "Google",
-      "facebook": "Facebook",
-      "foodpanda": "foodpanda",
-      "feedback": "After-meal feedback",
-      "other": "Other"
-    },
-    "addTitle": "Add a review",
-    "source": "Source",
-    "stars": "Stars",
-    "branch": "Branch",
-    "allBranches": "Whole restaurant",
-    "date": "Date",
-    "author": "Name (optional)",
-    "text": "Review text",
-    "add": "Add review",
-    "googleNote": "Google reviews will come in by themselves once the Business Profile connection is approved; until then, paste them here.",
-    "feedbackTitle": "After-meal comments",
-    "noFeedback": "No comments yet",
-    "score": "{score}/10",
-    "themes": {
-      "slow_service": "Slow service",
-      "cold_food": "Cold food",
-      "taste": "Taste",
-      "salty": "Too salty",
-      "portion": "Portion size",
-      "price": "Price",
-      "staff": "Staff",
-      "cleanliness": "Cleanliness",
-      "wrong_order": "Wrong order",
-      "praise": "Praise"
-    },
-    "aiNotConfigured": "AI drafts are off until an AI key is added. You can still write replies yourself.",
-    "none": "No reviews yet",
-    "starsOf": "{stars} stars",
-    "anonymous": "Anonymous",
-    "context": "That day ({date}): median serve time {ticket} min (usual {usual} min). On duty: {staff}. Dishes mentioned: {items}.",
-    "replyApproved": "Reply approved — post it on the platform",
-    "replyApprovedOk": "Approved. Copy it to the platform to post.",
-    "aiDraft": "AI Generated draft",
-    "reply": "Reply",
-    "approveReply": "Approve reply",
-    "drafted": "Draft saved.",
-    "draftWithAi": "Draft a reply with AI",
-    "writeOwn": "Or write your own",
-    "saveDraft": "Save draft",
-    "openCase": "Open a complaint",
-    "caseOpened": "Complaint opened. Follow it on the Complaints page."
-  },
   "feedbackPage": {
     "title": "How was your meal?",
     "question": "How likely are you to recommend us to a friend? 0 is not at all, 10 is definitely.",
@@ -2671,10 +2617,6 @@
       "customers": {
         "title": "Customers & marketing",
         "body": "Regulars, win-back offers and content ideas."
-      },
-      "reviews": {
-        "title": "Reviews",
-        "body": "Collect feedback and draft replies to reviews."
       },
       "branches": {
         "title": "Branch comparison",
@@ -3217,8 +3159,8 @@
     "scoreLine": "Recorded {score} of the checks in the last {days} days."
   },
   "complaints": {
-    "title": "Complaints",
-    "subtitle": "Customers write their complaints by scanning your QR code. You see them here and fix them.",
+    "title": "Reviews & complaints",
+    "subtitle": "Your Google review link and the private complaint box. Only you and your managers see what customers write here.",
     "age": "{count, plural, =0 {Opened today} one {Open {n} day} other {Open {n} days}}",
     "overdue": "{n} overdue",
     "customer": "Customer",
@@ -3276,9 +3218,7 @@
     "changeSeverity": "Change how serious",
     "closedTitle": "Closed ({n})",
     "seeWhatWasDone": "See what was done",
-    "usualHours": "Cases usually close in {n} hours.",
-    "qrMovedTitle": "The complaint QR code is now on the Table QR page",
-    "qrMovedBody": "Every table gets its own QR code: menu, member card, Google review and the complaint box."
+    "usualHours": "Cases usually close in {n} hours."
   },
   "tablePage": {
     "goneTitle": "This QR code is not working",

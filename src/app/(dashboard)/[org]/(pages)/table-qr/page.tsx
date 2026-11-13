@@ -13,14 +13,11 @@ import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
 import { publicEnv } from '@/lib/env';
 import { formatNumber, type Locale } from '@/lib/i18n/format';
-import { complaintUrl } from '@/modules/reviews/complaint-link';
 import { isNumberedTable, MAX_TABLES, tableUrl } from '@/modules/customers/table-qr';
 import {
   makeTablesAction,
-  resetComplaintBoxAction,
   resetTableLinkAction,
   saveGamesAction,
-  saveGoogleReviewAction,
 } from '@/modules/customers/table-qr-actions';
 import { MAX_NAME, NAME_KEYS, parseGameNames } from '@/modules/games/catalog';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
@@ -50,28 +47,21 @@ export default async function TableQrPage({
   const [t, locale] = await Promise.all([getTranslations('tableQr'), getLocale()]);
   const loc = locale as Locale;
   const supabase = await createClient();
-  const [tg, { data: tableRows }, { data: branchRow }, { data: loyalty }, { data: games }] =
-    await Promise.all([
-      getTranslations('games'),
-      supabase
-        .from('dining_tables')
-        .select('id, name, qr_token')
-        .eq('org_id', ctx.org.id)
-        .eq('branch_id', current.id)
-        .eq('is_active', true),
-      supabase
-        .from('branches')
-        .select('google_review_url, complaint_token')
-        .eq('org_id', ctx.org.id)
-        .eq('id', current.id)
-        .maybeSingle(),
-      supabase.from('loyalty_settings').select('is_on').eq('org_id', ctx.org.id).maybeSingle(),
-      supabase
-        .from('org_settings')
-        .select('games_on, game_names')
-        .eq('org_id', ctx.org.id)
-        .maybeSingle(),
-    ]);
+  const [tg, { data: tableRows }, { data: loyalty }, { data: games }] = await Promise.all([
+    getTranslations('games'),
+    supabase
+      .from('dining_tables')
+      .select('id, name, qr_token')
+      .eq('org_id', ctx.org.id)
+      .eq('branch_id', current.id)
+      .eq('is_active', true),
+    supabase.from('loyalty_settings').select('is_on').eq('org_id', ctx.org.id).maybeSingle(),
+    supabase
+      .from('org_settings')
+      .select('games_on, game_names')
+      .eq('org_id', ctx.org.id)
+      .maybeSingle(),
+  ]);
   const gameNames = parseGameNames(games?.game_names);
   // Numbered tables in number order, then the named ones.
   const tables = ((tableRows ?? []) as TableRow[]).sort((a, b) => {
@@ -162,34 +152,6 @@ export default async function TableQrPage({
               <Button type="submit">{t('make')}</Button>
             </div>
             <Hint>{t('howManyHint')}</Hint>
-          </ActionForm>
-        </Card>
-
-        <Card className="p-4 sm:p-5">
-          <CardTitle>{t('googleTitle')}</CardTitle>
-          <ActionForm
-            action={saveGoogleReviewAction}
-            successKey="common.saved"
-            className="space-y-2"
-          >
-            {hidden}
-            <Label htmlFor="tq-google">{t('googleLabel')}</Label>
-            <div className="flex gap-2">
-              <Input
-                id="tq-google"
-                name="url"
-                type="url"
-                inputMode="url"
-                maxLength={500}
-                defaultValue={branchRow?.google_review_url ?? ''}
-                placeholder="https://g.page/r/…/review"
-                className="min-w-0 flex-1"
-              />
-              <Button type="submit" variant="secondary">
-                {t('save')}
-              </Button>
-            </div>
-            <Hint>{t('googleHint')}</Hint>
           </ActionForm>
         </Card>
 
@@ -290,27 +252,6 @@ export default async function TableQrPage({
               })}
             </ul>
           </Card>
-        ) : null}
-
-        {branchRow?.complaint_token ? (
-          <details className="glass-tile rounded-card p-4 text-sm">
-            <summary className="cursor-pointer font-semibold">{t('complaintBoxTitle')}</summary>
-            <Hint className="mt-2">{t('complaintBoxHint')}</Hint>
-            <a
-              href={complaintUrl(site, branchRow.complaint_token)}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-block font-medium text-purple underline"
-            >
-              {t('complaintBoxOpen')}
-            </a>
-            <ActionForm action={resetComplaintBoxAction} successKey="common.saved" className="mt-3">
-              {hidden}
-              <Button type="submit" size="sm" variant="secondary">
-                {t('complaintBoxReset')}
-              </Button>
-            </ActionForm>
-          </details>
         ) : null}
       </div>
     </>

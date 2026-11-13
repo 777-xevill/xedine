@@ -16,6 +16,7 @@ const base = z.object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG), branch
 const entries = (formData: FormData) => Object.fromEntries(formData);
 const done = (slug: string): FormState => {
   revalidatePath(`/${slug}/table-qr`);
+  revalidatePath(`/${slug}/complaints`);
   return { ok: true };
 };
 

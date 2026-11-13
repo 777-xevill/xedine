@@ -180,11 +180,6 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
       'ফেসবুক',
     ],
   },
-  reviews: {
-    name: 'Reviews',
-    what: 'Every review and after-meal comment in one place, ratings, complaint themes and reply drafts.',
-    words: ['review', 'rating', 'complaint', 'feedback', 'google', 'রিভিউ'],
-  },
   branches: {
     name: 'Branches',
     what: 'Branch comparison: which branch does best, what the others could match, and what moves between branches. Needs the Branches feature switched on.',
@@ -255,9 +250,14 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
     ],
   },
   complaints: {
-    name: 'Complaints',
-    what: 'Customers write complaints through the table QR code (Table QR page) or the complaint link; the owner or manager sees them here and records why it happened, what the customer got and the corrective actions.',
+    name: 'Reviews & complaints',
+    what: 'The Google review link for the branch and the private complaint box. Customers write complaints through the table QR code or the complaint link; only the owner or manager sees them here and records why it happened, what the customer got and the corrective actions.',
     words: [
+      'review',
+      'rating',
+      'google',
+      'feedback',
+      'রিভিউ',
       'complaint',
       'incident',
       'corrective action',

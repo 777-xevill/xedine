@@ -2704,7 +2704,7 @@
     "linkInvalid": "This link was already used, has expired, or is wrong. Ask the owner for a new one.",
     "welcome": "Connected ✅ You are recording the bazar for {org}, {branch}.",
     "help": "Send today’s bazar like this:\nmurgi 10 kg 1800 3 din\npiyaj 5 kg 300\ndim 2 dozen 330\n\nOne item per line: name, quantity, unit, total paid, and how many days it is for. I will show you the list; tap ✅ to add it to stock.\n/stop disconnects this chat.",
-    "stopped": "Disconnected. This chat will no longer record purchases.",
+    "stopped": "Disconnected. This chat is no longer connected to Xedine.",
     "voiceOff": "Voice notes are not switched on yet. Please type the list.",
     "photoOff": "Reading photos is not switched on yet. Please type the list.",
     "tooLong": "That is too long for me. Keep a voice note under 5 minutes.",
@@ -2725,7 +2725,8 @@
       "many": "{n} days"
     },
     "daysNote": "📅 = how many days it is for. The owner sees a countdown in Xedine. To change it, tap a number below.",
-    "askDays": "📅 For how many days is this bazar? Tap a number below. If you skip it, the owner sees no countdown."
+    "askDays": "📅 For how many days is this bazar? Tap a number below. If you skip it, the owner sees no countdown.",
+    "welcomeOwner": "Connected ✅ You are connected as the owner of {org}, {branch}."
   },
   "stockGuard": {
     "title": "Stock Guard",

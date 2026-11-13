@@ -367,9 +367,10 @@ async function redeem(sb: Sb, api: TelegramApi, chatId: number, code: string) {
   ]);
   const { t } = translators(session?.locale ?? 'bn');
   if (session && (await isActiveOwner(sb, session.orgId, session.userId))) {
+    // The owner is not a purchaser: no "you are recording the bazar" line, just who they are connected as.
     await api.sendMessage(
       chatId,
-      t('welcome', {
+      t('welcomeOwner', {
         org: (org?.name as string | undefined) ?? '',
         branch: (branch?.name as string | undefined) ?? '',
       }),

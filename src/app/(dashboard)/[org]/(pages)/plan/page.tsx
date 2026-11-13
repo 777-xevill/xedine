@@ -5,6 +5,8 @@ import {
   CloudFog,
   CloudLightning,
   CloudRain,
+  FileDown,
+  MessageCircle,
   MapPin,
   ShoppingBasket,
   Sun,
@@ -43,6 +45,7 @@ import {
   reconcileBazarAction,
   sendBazarAction,
 } from '@/modules/forecasting/actions';
+import { waLink, waPhone } from '@/modules/forecasting/bazar-share';
 import { branchOutlook, forecast, prepPlan } from '@/modules/forecasting/queries';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
@@ -483,7 +486,7 @@ export default async function PlanPage({
               ? await supabase
                   .from('bazar_list_lines')
                   .select(
-                    'id, suggested_qty_base, approved_qty_base, purchased_qty_base, forecast_qty, stock_qty, safety_qty, adjust_bps, suppliers(name), ingredients(name, name_bn, base)',
+                    'id, suggested_qty_base, approved_qty_base, purchased_qty_base, forecast_qty, stock_qty, safety_qty, adjust_bps, suppliers(name, phone), ingredients(name, name_bn, base)',
                   )
                   .eq('bazar_list_id', list.id)
               : { data: [] };
@@ -496,7 +499,7 @@ export default async function PlanPage({
               stock_qty: number | null;
               safety_qty: number;
               adjust_bps: number;
-              suppliers: { name: string } | null;
+              suppliers: { name: string; phone: string | null } | null;
               ingredients: { name: string; name_bn: string | null; base: BaseUnit } | null;
             };
             const ls = (lines ?? []) as unknown as L[];
@@ -523,6 +526,66 @@ export default async function PlanPage({
                   </div>
                 </div>
                 <p className="-mt-1 mb-4 max-w-3xl text-sm text-secondary">{t('bazarBody')}</p>
+                {list && ls.length > 0
+                  ? (() => {
+                      const shown = ls.map((l) => ({
+                        text: `${label(l.ingredients?.name ?? '', l.ingredients?.name_bn ?? null)} — ${qty(Number(l.approved_qty_base ?? l.suggested_qty_base), l.ingredients?.base ?? 'g')}`,
+                        supplier: l.suppliers,
+                      }));
+                      const header = t('messageHeader', { date, branch: branch.name });
+                      const whole = [header, ...shown.map((x) => `• ${x.text}`)].join('\n');
+                      const bySupplier = new Map<
+                        string,
+                        { phone: string | null; lines: string[] }
+                      >();
+                      for (const x of shown) {
+                        if (!x.supplier?.phone || !waPhone(x.supplier.phone)) continue;
+                        const e = bySupplier.get(x.supplier.name) ?? {
+                          phone: x.supplier.phone,
+                          lines: [],
+                        };
+                        e.lines.push(`• ${x.text}`);
+                        bySupplier.set(x.supplier.name, e);
+                      }
+                      const chip =
+                        'inline-flex min-h-10 items-center gap-2 rounded-full border border-line px-4 text-sm font-medium hover:bg-surface-elevated';
+                      return (
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                          <a
+                            href={`/api/bazar-sheet?${new URLSearchParams({ org: ctx.org.slug, branch: branch.id, date }).toString()}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={chip}
+                          >
+                            <FileDown aria-hidden className="size-4" />
+                            {t('downloadPdf')}
+                          </a>
+                          <a
+                            href={waLink(whole)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={chip}
+                          >
+                            <MessageCircle aria-hidden className="size-4" />
+                            {t('sendWhatsappList')}
+                          </a>
+                          {[...bySupplier].map(([name, e]) => (
+                            <a
+                              key={name}
+                              href={waLink([header, ...e.lines].join('\n'), e.phone)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={chip}
+                            >
+                              <MessageCircle aria-hidden className="size-4" />
+                              {t('sendWhatsappTo', { name })}
+                            </a>
+                          ))}
+                          <Hint className="basis-full">{t('shareHint')}</Hint>
+                        </div>
+                      );
+                    })()
+                  : null}
                 {!list ? (
                   <EmptyState title={t('noList')} body={canDraft ? t('noListBody') : undefined} />
                 ) : ls.length === 0 ? (

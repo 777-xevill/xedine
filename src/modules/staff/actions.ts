@@ -137,6 +137,43 @@ export async function recordAdvanceAction(
   return { ok: true };
 }
 
+/** One tap for the usual day: everyone at the branch who is not marked yet is marked present. */
+export async function markAllPresentAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = z
+    .object({
+      orgSlug: z.string().regex(SLUG),
+      branchId: z.uuid(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const [{ data: staff }, { data: marked }] = await Promise.all([
+    supabase.from('staff').select('id').eq('branch_id', parsed.data.branchId).eq('is_active', true),
+    supabase
+      .from('attendance')
+      .select('staff_id')
+      .eq('branch_id', parsed.data.branchId)
+      .eq('work_date', parsed.data.date),
+  ]);
+  const done = new Set((marked ?? []).map((m) => m.staff_id as string));
+  for (const s of staff ?? []) {
+    if (done.has(s.id as string)) continue;
+    // Each call checks that the caller is the owner or a manager of this branch (the database decides).
+    const { error } = await supabase.rpc('mark_attendance', {
+      p_staff: s.id,
+      p_date: parsed.data.date,
+      p_status: 'present',
+    });
+    if (error) return { error: mapDbError(error) };
+  }
+  revalidatePath(`/${parsed.data.orgSlug}/staff/records`);
+  return { ok: true };
+}
+
 export async function markAttendanceAction(formData: FormData): Promise<void> {
   const parsed = z
     .object({

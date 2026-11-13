@@ -63,9 +63,10 @@ export default async function StaffPage({
       .order('created_at', { ascending: false }),
   ]);
 
-  // The database enforces this too (ADR 0014); the form just doesn't offer what would be refused.
+  // The database enforces this too (ADR 0014); the form just doesn't offer what would be refused. "Owner" is
+  // not offered: an owner who works the till uses a Branch manager PIN, which can approve the same things.
   const roles = ctx.isOwner
-    ? (['cashier', 'kitchen', 'manager', 'owner'] as const)
+    ? (['cashier', 'kitchen', 'manager'] as const)
     : (['cashier', 'kitchen'] as const);
   const canEdit = (role: string) => ctx.isOwner || (role !== 'manager' && role !== 'owner');
   const hidden = (

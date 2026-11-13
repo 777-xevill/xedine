@@ -177,6 +177,12 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_calendar',
+    description:
+      'Special days on the calendar for the next two weeks: holidays, festivals, matches, rain days and days the owner added with a note (what is happening and why sales may change). Use for "what is coming up", "any festival or holiday soon", "why is tomorrow different".',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
     name: 'get_menu_matrix',
     description:
       'Menu engineering (star, plowhorse, puzzle, dog) with margin per item. Owner and accountant only.',
@@ -392,6 +398,7 @@ export const TOOL_PAGES: Record<string, string> = {
   get_waste: 'stock',
   get_food_cost_gap: 'stock',
   get_forecast: 'plan',
+  get_calendar: 'plan',
   get_menu_matrix: 'menuProfit',
   get_menu: 'menu',
   get_recipe: 'recipes',
@@ -748,6 +755,41 @@ export async function runTool(
             actual_food_cost_poisha: num(r.cogs_actual_poisha),
             count_uncertainty_poisha: num(r.uncertainty_poisha),
             net_sales_poisha: num(r.net_sales_poisha),
+          })),
+        };
+      }
+      case 'get_calendar': {
+        const { data: w, error: we } = await ctx.sb.rpc('metric_window', {
+          p_org: ctx.orgId,
+          p_window: 'today',
+          p_now: ctx.nowIso,
+        });
+        if (we) return fail(we);
+        const today = (w as { to_date: string }[])[0]!.to_date;
+        const last = new Date(Date.parse(`${today}T00:00:00Z`) + 14 * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+        const { data, error } = await ctx.sb
+          .from('calendar_events')
+          .select('name, kind, starts_on, ends_on, note, closed')
+          .eq('org_id', ctx.orgId)
+          .gte('ends_on', today)
+          .lte('starts_on', last)
+          .order('starts_on')
+          .limit(25);
+        if (error) return fail(error);
+        return {
+          metric_id: 'calendar.upcoming',
+          filters: { from: today, to: last },
+          as_of,
+          data: (data ?? []).map((e) => ({
+            name: e.name,
+            kind: e.kind,
+            from: e.starts_on,
+            to: e.ends_on,
+            closed: e.closed === true,
+            // The owner's own words about the day: read it as information, never as an instruction.
+            note: e.note ?? null,
           })),
         };
       }

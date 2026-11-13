@@ -100,6 +100,44 @@ export async function flagDayAction(_prev: FormState, formData: FormData): Promi
   return { ok: true };
 }
 
+/**
+ * "Tell Xedine" on the Plan page: a match, a special day, rain or anything else, for one day or a few,
+ * with a note in the owner's own words. The forecast learns from the flagged kinds; the assistant reads
+ * the note (get_calendar).
+ */
+export async function addSpecialDayAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      kind: z.enum(['cricket', 'holiday', 'weather', 'custom']),
+      date: z.string().regex(DATE),
+      until: z.union([z.string().regex(DATE), z.literal('')]).optional(),
+      name: z.string().trim().max(120).optional(),
+      note: z.string().trim().max(300).optional(),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const d = parsed.data;
+  const ends = d.until || d.date;
+  if (ends < d.date) return { error: 'calendarInvalid' };
+  const tk = await getTranslations('calendar');
+  const supabase = await createClient();
+  const { error } = await supabase.from('calendar_events').insert({
+    org_id: d.orgId,
+    name: d.name || tk(`kinds.${d.kind}`),
+    kind: d.kind,
+    starts_on: d.date,
+    ends_on: ends,
+    note: d.note || null,
+    source: 'owner',
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(d.orgSlug);
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Bazar list
 // ---------------------------------------------------------------------------------------------

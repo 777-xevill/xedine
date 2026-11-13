@@ -43,10 +43,10 @@ export const GROUPS: Record<string, Group> = {
       /stock|ingredient|used|waste|los(s|e|ing)|buy|bought|purchase|bazar|bazaar|supplier|shelf|running (out|low)|inventory|count|food cost|মজুত|স্টক|ওয়েস্ট|লস|ক্ষতি|বাজার|কেনা|ফুরি|নষ্ট|কাঁচামাল|খরচ হ|উপকরণ/i,
   },
   menu: {
-    tools: ['get_menu', 'get_recipe', 'get_menu_matrix', 'get_forecast'],
+    tools: ['get_menu', 'get_recipe', 'get_menu_matrix', 'get_forecast', 'get_calendar'],
     pages: ['menu', 'recipes', 'menuProfit', 'plan'],
     words:
-      /menu|dish|recipe|ingredient|plate|price|margin|cost|forecast|tomorrow|plan|prep|মেনু|দাম|রেসিপি|উপকরণ|প্লেট|লাগে|খরচ|কাল|পরিকল্পনা|মার্জিন/i,
+      /menu|dish|recipe|ingredient|plate|price|margin|cost|forecast|tomorrow|plan|prep|festival|holiday|special day|coming up|rain|উৎসব|ছুটি|বৃষ্টি|মেনু|দাম|রেসিপি|উপকরণ|প্লেট|লাগে|খরচ|কাল|পরিকল্পনা|মার্জিন/i,
   },
   people: {
     tools: ['get_customers_summary', 'get_reviews_summary'],

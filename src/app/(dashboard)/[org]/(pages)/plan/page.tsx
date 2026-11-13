@@ -16,7 +16,16 @@ import { ActionForm } from '@/components/action-form';
 import { UnitField } from '@/components/unit-field';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Alert, Card, CardTitle, EmptyState, Hint, Input, PageTitle } from '@/components/ui/form';
+import {
+  Alert,
+  Card,
+  CardTitle,
+  EmptyState,
+  Hint,
+  Input,
+  PageTitle,
+  Textarea,
+} from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
 import {
@@ -29,7 +38,7 @@ import {
 import { addDays } from '@/lib/time/business-date';
 import {
   approveBazarAction,
-  flagDayAction,
+  addSpecialDayAction,
   generateBazarAction,
   reconcileBazarAction,
   sendBazarAction,
@@ -287,22 +296,59 @@ export default async function PlanPage({
         <details className="glass-tile mb-6 rounded-input p-4 text-sm">
           <summary className="cursor-pointer font-medium">{t('flagSummary')}</summary>
           <p className="mt-2 max-w-xl text-secondary">{t('flagBody')}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(['hartal', 'cricket', 'weather'] as const).map((kind) => (
-              <ActionForm key={kind} action={flagDayAction} successKey="plan.flagged">
-                {hidden}
-                <input
-                  type="hidden"
-                  name="date"
-                  value={date === addDays(today, 1) ? date : today}
-                />
-                <input type="hidden" name="kind" value={kind} />
-                <Button type="submit" size="sm" variant="secondary">
-                  {t(`flag.${kind}`)}
-                </Button>
-              </ActionForm>
-            ))}
-          </div>
+          <ActionForm
+            action={addSpecialDayAction}
+            successKey="plan.flagged"
+            className="mt-3 space-y-3"
+          >
+            {hidden}
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium">{t('flagWhat')}</legend>
+              <div className="flex flex-wrap gap-2">
+                {(['holiday', 'cricket', 'weather', 'custom'] as const).map((kind, i) => (
+                  <label key={kind} className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="kind"
+                      value={kind}
+                      defaultChecked={i === 0}
+                      className="peer sr-only"
+                    />
+                    <span className="inline-flex min-h-9 items-center rounded-full border border-line px-3 text-sm font-medium peer-checked:border-purple peer-checked:bg-surface-elevated peer-checked:ring-1 peer-checked:ring-purple/40 peer-focus-visible:ring-2">
+                      {t(`flag.${kind}`)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="flag-date" className="mb-1 block font-medium">
+                  {t('flagWhen')}
+                </label>
+                <Input id="flag-date" name="date" type="date" defaultValue={date} required />
+              </div>
+              <div>
+                <label htmlFor="flag-until" className="mb-1 block font-medium">
+                  {t('flagUntil')}
+                </label>
+                <Input id="flag-until" name="until" type="date" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="flag-name" className="mb-1 block font-medium">
+                {t('flagName')}
+              </label>
+              <Input id="flag-name" name="name" maxLength={120} />
+            </div>
+            <div>
+              <label htmlFor="flag-note" className="mb-1 block font-medium">
+                {t('flagNote')}
+              </label>
+              <Textarea id="flag-note" name="note" maxLength={300} rows={2} />
+            </div>
+            <Button type="submit">{t('flagAdd')}</Button>
+          </ActionForm>
         </details>
       ) : null}
 

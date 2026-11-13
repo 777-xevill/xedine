@@ -252,14 +252,14 @@ export default async function CompliancePage({ params }: { params: Promise<{ org
             <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
               <a
                 className="inline-flex items-center gap-2 text-sm font-semibold text-info underline-offset-4 hover:underline"
-                href={`/api/export/vat?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}`}
+                href={`/api/export/vat?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}&lang=${loc}`}
               >
                 <Download aria-hidden className="size-4" />
                 {t('downloadVat')}
               </a>
               <a
                 className="inline-flex items-center gap-2 text-sm font-semibold text-info underline-offset-4 hover:underline"
-                href={`/api/export/orders?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}`}
+                href={`/api/export/orders?org=${ctx.org.id}&from=${lastFrom}&to=${lastTo}&lang=${loc}`}
               >
                 <Download aria-hidden className="size-4" />
                 {t('downloadOrders')}

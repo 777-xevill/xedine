@@ -2321,14 +2321,14 @@
   },
   "benchmarks": {
     "title": "Benchmarks",
-    "subtitle": "Your last full month next to similar restaurants.",
-    "optedIn": "You share anonymous figures and see your peers’",
-    "notOptedIn": "You are not sharing figures yet",
-    "optInBody": "Sharing is anonymous: only ranges from groups of five or more restaurants are ever shown, never a single restaurant. Until you opt in, you see labelled reference ranges only.",
+    "subtitle": "Your last full month next to other restaurants.",
+    "optedIn": "You are sharing anonymous numbers",
+    "notOptedIn": "You are not sharing numbers yet",
+    "optInBody": "Nobody ever sees your restaurant on its own: only the usual range of groups of five or more restaurants. Until you share, you see typical ranges only.",
     "optIn": "Share and compare",
     "optOut": "Stop sharing",
-    "none": "No comparison yet",
-    "noneBody": "Ranges appear once five similar restaurants share their figures, or when reference ranges are loaded.",
+    "none": "Nothing to compare yet",
+    "noneBody": "It shows up once five similar restaurants share their numbers.",
     "metric": {
       "food_cost_theoretical_pct": "Food cost % (by recipes)",
       "labour_pct": "Labour % of sales",
@@ -2338,29 +2338,19 @@
       "visits_first_return_rate": "First-timers back in 30 days",
       "channel_delivery_share": "Delivery share of sales"
     },
-    "reference": "Industry reference",
-    "peers": "{k} restaurants",
-    "yours": "Yours, last full month",
-    "notEnoughOwn": "Not enough of your own data for this one",
-    "noRange": "No range for this figure yet.",
-    "p25": "Lower quarter",
-    "p50": "Middle",
-    "p75": "Upper quarter",
-    "place": {
-      "below_p25": "Below the lower quarter.",
-      "p25_p50": "Between the lower quarter and the middle.",
-      "p50_p75": "Between the middle and the upper quarter.",
-      "above_p75": "Above the upper quarter."
+    "reference": "Typical restaurants",
+    "peers": "{k} restaurants like yours",
+    "notEnoughOwn": "Not enough of your own data for this one yet.",
+    "verdict": {
+      "doingWell": "Doing well",
+      "fine": "Looks fine",
+      "worthALook": "Might be worth a look",
+      "aboutMiddle": "About the middle",
+      "lowerThanMost": "Lower than most",
+      "higherThanMost": "Higher than most"
     },
-    "better": {
-      "lower": "Lower is better.",
-      "higher": "Higher is better."
-    },
-    "referenceNote": "Reference range, not live peer data.",
-    "peerNote": "Peers: {segment}, month of {period}.",
-    "segmentAll": "all restaurants",
-    "band": "{band} branch(es)",
-    "privacy": "Food cost % is compared only for restaurants with recipes on at least 90% of sales. Figures are pooled once a month."
+    "barLabel": "Where you sit compared with other restaurants",
+    "usual": "Most restaurants: {from} to {to}"
   },
   "compliance": {
     "title": "Compliance",

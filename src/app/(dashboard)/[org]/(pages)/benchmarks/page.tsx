@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
-import { Badge } from '@/components/ui/badge';
+import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
+import { Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
@@ -24,6 +24,8 @@ interface Bench {
   place: 'below_p25' | 'p25_p50' | 'p50_p75' | 'above_p75' | null;
 }
 
+type Place = NonNullable<Bench['place']>;
+
 const BPS = new Set([
   'food_cost.theoretical_pct',
   'labour.pct',
@@ -32,10 +34,39 @@ const BPS = new Set([
 ]);
 const POISHA = new Set(['sales.net_per_branch_day', 'orders.aov']);
 
+/** Where the marker sits on the bar (percent from the left), by which quarter the restaurant falls in. */
+const SPOT: Record<Place, number> = { below_p25: 8, p25_p50: 37, p50_p75: 63, above_p75: 92 };
+
+const NEUTRAL_WORD: Record<Place, string> = {
+  below_p25: 'lowerThanMost',
+  p25_p50: 'aboutMiddle',
+  p50_p75: 'aboutMiddle',
+  above_p75: 'higherThanMost',
+};
+
+type Tone = 'success' | 'info' | 'warning' | 'neutral';
+
 /**
- * Benchmarks (ROADMAP Phase 9, PRODUCT.md M14): the restaurant's last full month against peers — only
- * cells of five or more restaurants, computed in SQL — or, until enough peers exist, a clearly labelled
- * reference range. Owner and accountant (food cost and labour % are money, ADR 0007).
+ * One plain word for how a figure compares. Figures where lower is better flip, so the word always reads as
+ * good news or something to look at; figures with no better direction just say lower or higher.
+ */
+function verdict(r: Bench): { key: string; tone: Tone } | null {
+  if (!r.place) return null;
+  if (r.better === 'neutral') return { key: NEUTRAL_WORD[r.place], tone: 'neutral' };
+  const best: Place = r.better === 'lower' ? 'below_p25' : 'above_p75';
+  const worst: Place = r.better === 'lower' ? 'above_p75' : 'below_p25';
+  if (r.place === best) return { key: 'doingWell', tone: 'success' };
+  if (r.place === worst) return { key: 'worthALook', tone: 'warning' };
+  const goodHalf: Place = r.better === 'lower' ? 'p25_p50' : 'p50_p75';
+  return r.place === goodHalf
+    ? { key: 'fine', tone: 'info' }
+    : { key: 'aboutMiddle', tone: 'neutral' };
+}
+
+/**
+ * Benchmarks (ROADMAP Phase 9, PRODUCT.md M14), in plain words: for each figure, yours, one word on how it
+ * compares, and a bar showing where you sit. Peers only as groups of five or more restaurants (SQL), or a
+ * labelled typical range until enough exist. Owner and accountant (food cost and labour % are money, ADR 0007).
  */
 export default async function BenchmarksPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
@@ -48,7 +79,7 @@ export default async function BenchmarksPage({ params }: { params: Promise<{ org
     supabase.rpc('metric_benchmarks', { p_org: ctx.org.id, p_now: now().toISOString() }),
     supabase.from('org_settings').select('benchmark_opt_in').eq('org_id', ctx.org.id).maybeSingle(),
   ]);
-  const rows = (data ?? []) as Bench[];
+  const rows = ((data ?? []) as Bench[]).filter((r) => r.p50 != null);
   const optedIn = Boolean(settings?.benchmark_opt_in);
   const show = (id: string, v: number | null) => {
     if (v == null) return '—';
@@ -56,17 +87,62 @@ export default async function BenchmarksPage({ params }: { params: Promise<{ org
     if (POISHA.has(id)) return formatBDT(Math.round(Number(v)), loc, { poisha: 'never' });
     return formatNumber(Number(v), loc, { fractionDigits: 1 });
   };
-  const segment = (s: Record<string, string> | null) =>
-    !s || Object.keys(s).length === 0
-      ? t('segmentAll')
-      : [s.cuisine, s.branch_band ? t('band', { band: s.branch_band }) : null]
-          .filter(Boolean)
-          .join(' · ');
 
   return (
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
-      <Card className="mb-6 flex flex-wrap items-center justify-between gap-4 p-5">
+      {rows.length === 0 ? (
+        <EmptyState title={t('none')} body={t('noneBody')} />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {rows.map((r) => {
+            const v = verdict(r);
+            return (
+              <Card key={r.metric_id} className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-semibold">{t(`metric.${r.metric_id.replace(/\./g, '_')}`)}</p>
+                  {r.is_reference ? (
+                    <Badge tone="neutral">{t('reference')}</Badge>
+                  ) : (
+                    <Badge tone="info">{t('peers', { k: formatNumber(Number(r.k), loc) })}</Badge>
+                  )}
+                </div>
+                <p className="mt-2 text-2xl font-bold tabular-nums">
+                  {show(r.metric_id, r.own_value)}
+                </p>
+                {r.own_value == null ? (
+                  <Hint>{t('notEnoughOwn')}</Hint>
+                ) : (
+                  <>
+                    {v ? (
+                      <div className="mt-1">
+                        <StatusBadge tone={v.tone}>{t(`verdict.${v.key}`)}</StatusBadge>
+                      </div>
+                    ) : null}
+                    {r.place ? (
+                      <div
+                        role="img"
+                        aria-label={t('barLabel')}
+                        className="relative mt-4 h-2 rounded-full bg-surface-elevated"
+                      >
+                        <span
+                          aria-hidden
+                          className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full bg-purple"
+                          style={{ insetInlineStart: `calc(${SPOT[r.place]}% - 0.5rem)` }}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
+                <p className="mt-3 text-sm text-secondary">
+                  {t('usual', { from: show(r.metric_id, r.p25), to: show(r.metric_id, r.p75) })}
+                </p>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      <Card className="mt-6 flex flex-wrap items-center justify-between gap-4 p-5">
         <div className="max-w-2xl">
           <p className="font-semibold">{optedIn ? t('optedIn') : t('notOptedIn')}</p>
           <p className="text-sm text-secondary">{t('optInBody')}</p>
@@ -82,58 +158,6 @@ export default async function BenchmarksPage({ params }: { params: Promise<{ org
           </ActionForm>
         ) : null}
       </Card>
-      {rows.every((r) => r.p50 == null) ? (
-        <EmptyState title={t('none')} body={t('noneBody')} />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {rows.map((r) => (
-            <Card key={r.metric_id} className="p-5">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="font-semibold">{t(`metric.${r.metric_id.replace(/\./g, '_')}`)}</p>
-                {r.p50 == null ? null : r.is_reference ? (
-                  <Badge tone="neutral">{t('reference')}</Badge>
-                ) : (
-                  <Badge tone="info">{t('peers', { k: formatNumber(Number(r.k), loc) })}</Badge>
-                )}
-              </div>
-              <p className="mt-2 text-2xl font-bold tabular-nums">
-                {show(r.metric_id, r.own_value)}
-              </p>
-              <p className="text-xs text-secondary">
-                {r.own_value == null ? t('notEnoughOwn') : t('yours')}
-              </p>
-              {r.p50 == null ? (
-                <Hint>{t('noRange')}</Hint>
-              ) : (
-                <>
-                  <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-sm tabular-nums">
-                    {(['p25', 'p50', 'p75'] as const).map((p) => (
-                      <div key={p} className="glass-tile rounded-input px-2 py-2">
-                        <dt className="text-xs text-secondary">{t(p)}</dt>
-                        <dd className="font-semibold">{show(r.metric_id, r[p])}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                  {r.place ? (
-                    <p className="mt-2 text-sm">
-                      {t(`place.${r.place}`)}
-                      {r.better !== 'neutral' ? ` ${t(`better.${r.better}`)}` : ''}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-secondary">
-                    {r.is_reference
-                      ? t('referenceNote')
-                      : t('peerNote', { segment: segment(r.segment), period: r.period ?? '' })}
-                  </p>
-                </>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
-      <Alert tone="info" className="mt-6">
-        {t('privacy')}
-      </Alert>
     </>
   );
 }

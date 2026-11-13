@@ -2,30 +2,27 @@ import { Check, Clock, Umbrella, Users, X } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { DeleteNoteButton } from '@/components/delete-note-button';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardTitle,
   EmptyState,
   Hint,
-  Input,
   Label,
   PageTitle,
   Select,
+  Textarea,
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import { businessToday } from '@/modules/metrics/queries';
-import {
-  markAllPresentAction,
-  markAttendanceAction,
-  recordAdvanceAction,
-} from '@/modules/staff/actions';
+import { addNoteAction, markAllPresentAction, markAttendanceAction } from '@/modules/staff/actions';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
-type Tab = 'attendance' | 'advances' | 'sales';
+type Tab = 'attendance' | 'notes';
 const STATUSES = ['present', 'half_day', 'leave', 'absent'] as const;
 const STATUS_ICON = { present: Check, half_day: Clock, leave: Umbrella, absent: X } as const;
 // Summary columns come back as present, half_day, on_leave, absent.
@@ -38,8 +35,7 @@ const SUMMARY_KEY = {
 
 /**
  * Staff records (ROADMAP Phase 10), in plain words and big tap targets: who came today (one tap each, or
- * everyone at once), money advanced to staff and what is still owed (owner and accountant), and who sold
- * the most. Sales and the cancel/discount/refund counts come from the same metric the leak detector uses.
+ * everyone at once), and private notes about a person or the restaurant (ADR 0055; owner and managers).
  */
 export default async function StaffRecordsPage({
   params,
@@ -52,9 +48,9 @@ export default async function StaffRecordsPage({
   const ctx = await getOrgContext(org);
   const has = (r: string) => ctx.roles.includes(r as never);
   if (!['owner', 'manager', 'accountant'].some(has)) notFound();
-  const money = has('owner') || has('accountant');
   const canMark = has('owner') || has('manager');
-  const tabs: Tab[] = ['attendance', ...(money ? (['advances'] as const) : []), 'sales'];
+  // Notes can be about a person, so only the owner and managers see them.
+  const tabs: Tab[] = ['attendance', ...(canMark ? (['notes'] as const) : [])];
   const tab = (tabs as string[]).includes(sp.tab ?? '') ? (sp.tab as Tab) : tabs[0]!;
   const branch = pickBranch(ctx, sp.branch);
   if (!branch) notFound();
@@ -63,7 +59,6 @@ export default async function StaffRecordsPage({
   const { date: today } = await businessToday(ctx.org.id);
   const from = addDays(today, -29);
   const supabase = await createClient();
-  const bdt = (v: unknown) => formatBDT(Number(v ?? 0), loc, { poisha: 'never' });
   const num = (v: unknown) => formatNumber(Number(v ?? 0), loc);
   const href = (x: { tab?: Tab; branch?: string }) =>
     `/${ctx.org.slug}/staff/records?tab=${x.tab ?? tab}&branch=${x.branch ?? branch.id}`;
@@ -211,168 +206,100 @@ export default async function StaffRecordsPage({
         ) : null}
       </div>
     );
-  } else if (tab === 'advances') {
-    const { data } = await supabase.rpc('metric_advance_balances', {
-      p_org: ctx.org.id,
-      p_branch: branch.id,
-    });
-    const rows = (data ?? []) as Record<string, unknown>[];
+  } else {
+    const { data: noteRows } = await supabase
+      .from('notes')
+      .select('id, staff_id, body, created_at')
+      .eq('org_id', ctx.org.id)
+      .eq('branch_id', branch.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    const names = new Map((staff ?? []).map((s) => [s.id as string, s.display_name as string]));
     body = (
       <div className="mx-auto max-w-2xl space-y-5">
         <Card className="p-4 sm:p-5">
-          <CardTitle>{t('advancesTitle')}</CardTitle>
-          {rows.length === 0 ? (
-            <EmptyState title={t('noAdvances')} body={t('noAdvancesBody')} />
+          <CardTitle>{t('noteTitle')}</CardTitle>
+          <ActionForm action={addNoteAction} successKey="common.saved" className="space-y-3">
+            {hidden}
+            <input type="hidden" name="branchId" value={branch.id} />
+            <div>
+              <Label htmlFor="note-body">{t('noteLabel')}</Label>
+              <Textarea
+                id="note-body"
+                name="body"
+                rows={3}
+                required
+                maxLength={2000}
+                placeholder={t('notePlaceholder')}
+              />
+            </div>
+            <div>
+              <Label htmlFor="note-about">{t('noteAbout')}</Label>
+              <Select id="note-about" name="staffId" defaultValue="">
+                <option value="">{t('aboutRestaurant')}</option>
+                {(staff ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.display_name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button type="submit">{t('noteSave')}</Button>
+          </ActionForm>
+          <Hint className="mt-3">{t('notesHint')}</Hint>
+        </Card>
+
+        <Card className="p-4 sm:p-5">
+          <CardTitle>{t('notesTitle')}</CardTitle>
+          {(noteRows ?? []).length === 0 ? (
+            <EmptyState title={t('noNotes')} body={t('noNotesBody')} />
           ) : (
             <ul className="space-y-3">
-              {rows.map((r) => (
-                <li key={r.staff_id as string} className="glass-tile rounded-input p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold">{r.display_name as string}</p>
-                    <p className="text-end">
-                      <span className="block text-lg font-bold tabular-nums">
-                        {bdt(r.balance_poisha)}
-                      </span>
-                      <span className="block text-xs text-secondary">{t('balance')}</span>
-                    </p>
+              {(noteRows ?? []).map((n) => (
+                <li key={n.id} className="glass-tile rounded-input p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs text-secondary">
+                        {n.staff_id && names.get(n.staff_id as string)
+                          ? t('aboutPerson', { name: names.get(n.staff_id as string) ?? '' })
+                          : t('aboutRestaurant')}
+                        {` · ${formatDhakaDate(new Date(n.created_at as string), loc)}`}
+                      </p>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">{n.body as string}</p>
+                    </div>
+                    {canMark ? (
+                      <DeleteNoteButton
+                        orgId={ctx.org.id}
+                        orgSlug={ctx.org.slug}
+                        noteId={n.id as string}
+                      />
+                    ) : null}
                   </div>
-                  <p className="mt-1 text-xs text-secondary">
-                    {`${t('given')}: ${bdt(r.given_poisha)} · ${t('repaid')}: ${bdt(r.repaid_poisha)}`}
-                  </p>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-        {has('owner') ? (
-          <details className="glass-tile rounded-card p-4 sm:p-5" open={rows.length === 0}>
-            <summary className="cursor-pointer font-semibold">{t('recordTitle')}</summary>
-            <ActionForm
-              action={recordAdvanceAction}
-              successKey="common.saved"
-              className="mt-3 space-y-3"
-            >
-              {hidden}
-              <div>
-                <Label htmlFor="adv-staff">{t('name')}</Label>
-                <Select id="adv-staff" name="staffId" required>
-                  {(staff ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.display_name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="adv-kind">{t('kind')}</Label>
-                <Select id="adv-kind" name="kind" defaultValue="given">
-                  <option value="given">{t('kindGiven')}</option>
-                  <option value="repaid">{t('kindRepaid')}</option>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="adv-amount">{t('amount')}</Label>
-                <Input id="adv-amount" name="amount" inputMode="decimal" required maxLength={20} />
-              </div>
-              <details>
-                <summary className="cursor-pointer text-sm text-secondary">
-                  {t('moreDetails')}
-                </summary>
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="adv-date">{t('date')}</Label>
-                    <Input
-                      id="adv-date"
-                      name="occurredOn"
-                      type="date"
-                      defaultValue={today}
-                      max={today}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="adv-note">{t('note')}</Label>
-                    <Input id="adv-note" name="note" maxLength={200} />
-                  </div>
-                </div>
-              </details>
-              <Button type="submit">{t('record')}</Button>
-            </ActionForm>
-            <Hint className="mt-3">{t('advancesHint')}</Hint>
-          </details>
-        ) : null}
       </div>
     );
-  } else {
-    const { data } = await supabase.rpc('metric_staff_sales', {
-      p_org: ctx.org.id,
-      p_branch: branch.id,
-      p_from: from,
-      p_to: today,
-    });
-    const rows = (data ?? []) as Record<string, unknown>[];
-    body =
-      rows.length === 0 ? (
-        <EmptyState title={t('noSales')} />
-      ) : (
-        <div className="mx-auto max-w-2xl space-y-5">
-          <Card className="p-4 sm:p-5">
-            <CardTitle>{t('salesTitle')}</CardTitle>
-            <ol className="space-y-3">
-              {rows.map((r, i) => {
-                const checks = [
-                  { k: 'voidsChip', n: Number(r.void_after_kot_count ?? 0) },
-                  { k: 'discountsChip', n: Number(r.discount_count ?? 0) },
-                  { k: 'refundsChip', n: Number(r.refund_count ?? 0) },
-                ].filter((c) => c.n > 0);
-                return (
-                  <li key={r.staff_id as string} className="glass-tile rounded-input p-3">
-                    <div className="flex items-center gap-3">
-                      <span
-                        aria-hidden
-                        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-elevated text-xs font-bold"
-                      >
-                        {num(i + 1)}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold">{r.staff_name as string}</p>
-                        <p className="text-xs text-secondary">
-                          {t('ordersCount', { count: Number(r.orders ?? 0), n: num(r.orders) })}
-                        </p>
-                      </div>
-                      <p className="text-lg font-bold tabular-nums">
-                        {bdt(r.completed_net_poisha)}
-                      </p>
-                    </div>
-                    {checks.length > 0 ? (
-                      <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-secondary">
-                        {checks.map((c) => (
-                          <span key={c.k}>{t(c.k, { n: num(c.n) })}</span>
-                        ))}
-                      </p>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ol>
-            <Hint className="mt-3">{t('salesHint')}</Hint>
-          </Card>
-        </div>
-      );
   }
 
   return (
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <PillNav
-          label={t('sections')}
-          items={tabs.map((x) => ({
-            href: href({ tab: x }),
-            label: t(`tabs.${x}`),
-            active: x === tab,
-          }))}
-        />
+        {tabs.length > 1 ? (
+          <PillNav
+            label={t('sections')}
+            items={tabs.map((x) => ({
+              href: href({ tab: x }),
+              label: t(`tabs.${x}`),
+              active: x === tab,
+            }))}
+          />
+        ) : (
+          <span />
+        )}
         {ctx.branches.length > 1 ? (
           <PillNav
             label={t('branches')}

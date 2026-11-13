@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (122)
+## Tables (123)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -82,6 +82,7 @@
 | `message_templates` | Approved message templates. Platform reference data. | platform (no tenant data) | read: signed-in users; write: none | PK id | messaging · P4 |
 | `modifier_groups` | Groups of add-ons with min/max selection. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id | menu · P1 |
 | `modifiers` | Add-on options with a price. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK id · → modifier_groups | menu · P1 |
+| `notes` | Private notes about a staff member or the restaurant, kept by the owner or a manager. | org + branch | read: owner, manager; write: owner, manager (private: owner and branch manager only; may be about a staff member, so never shown to cashiers or accountants) | PK id · → branches, staff | staff · P10 |
 | `order_events` | Append-only order status timeline. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, devices, orders, staff | kds · P1 |
 | `order_item_costs` | Recipe-cost snapshot per line. Money-gated. | org + branch | read: owner, accountant; write: service role only (money-gated; written by the service role from Phase 3) | PK order_item_id · → branches, order_items | recipes · P3 |
 | `order_item_modifiers` | Modifiers chosen on an order line. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, modifiers, order_items | pos · P1 |
@@ -139,7 +140,7 @@
 | `weather_hours` | Weather forecast per branch per hour (MET Norway). | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: service role only (weather for the branch; everyone at the branch reads, only the weather job writes (ADR 0051)) | PK org_id, branch_id, at · → branches | forecasting · P11 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (187)
+## RPC functions (188)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -186,6 +187,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `create_chat_link` | `p_org uuid, p_user uuid, p_branch uuid, p_channel chat_channel` |
 | `create_invitation` | `p_org uuid, p_email text, p_role app_role, p_branch_ids uuid[] DEFAULT '{}'::uuid[]` |
 | `create_organization` | `p_name text, p_slug text, p_branches jsonb DEFAULT '[]'::jsonb, p_locale locale_code DEFAULT 'bn'::locale_code` |
+| `delete_customer` | `p_org uuid, p_customer uuid` |
 | `discard_purchase_draft` | `p_draft uuid, p_reason text DEFAULT NULL::text` |
 | `discount_code_uses` | `p_org uuid` |
 | `dish_recipe_lines` | `p_org uuid` |

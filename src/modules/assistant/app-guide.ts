@@ -268,8 +268,8 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   staffRecords: {
     name: 'Staff records',
-    what: 'Attendance, advances and who sells what.',
-    words: ['attendance', 'advance', 'salary', 'staff sales', 'employee', 'হাজিরা'],
+    what: 'Who came to work today (one tap each, or everyone at once) and private notes about a staff member or the restaurant. Owner and managers.',
+    words: ['attendance', 'note', 'notes', 'staff note', 'employee', 'হাজিরা', 'নোট'],
   },
   pos: {
     name: 'POS till',

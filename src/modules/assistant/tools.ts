@@ -410,7 +410,7 @@ export const TOOL_PAGES: Record<string, string> = {
   get_purchases: 'purchases',
   get_compliance: 'compliance',
   get_safety_status: 'foodSafety',
-  get_staff_exceptions: 'staffRecords',
+  get_staff_exceptions: 'leaks',
 };
 
 /** Most ingredients a stock answer lists (worst first). */

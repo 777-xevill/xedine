@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -96,45 +95,45 @@ export async function revokeDeviceAction(formData: FormData): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Staff-lite (ROADMAP Phase 10): advances (owner; money, audited) and attendance (owner/manager).
+// Staff records (ROADMAP Phase 10): attendance (owner/manager) and private notes (ADR 0055).
 // ---------------------------------------------------------------------------------------------
-export async function recordAdvanceAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
+export async function addNoteAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z
     .object({
       orgId: z.uuid(),
       orgSlug: z.string().regex(SLUG),
-      staffId: z.uuid(),
-      kind: z.enum(['given', 'repaid']),
-      amount: z.string().trim().min(1).max(20),
-      occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      note: z.string().trim().max(200).optional(),
+      branchId: z.uuid(),
+      // Empty = a note about the restaurant; otherwise one staff member at this branch.
+      staffId: z.union([z.uuid(), z.literal('')]),
+      body: z.string().trim().min(1).max(2000),
     })
     .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: 'advanceInvalid' };
-  const poisha = parseTakaToPoisha(parsed.data.amount);
-  if (poisha === null || poisha <= 0) return { error: 'advanceInvalid' };
+  if (!parsed.success) return { error: 'noteInvalid' };
   const supabase = await createClient();
-  const { data: staff } = await supabase
-    .from('staff')
-    .select('branch_id')
-    .eq('id', parsed.data.staffId)
-    .eq('org_id', parsed.data.orgId)
-    .maybeSingle();
-  if (!staff) return { error: 'notAllowed' };
-  const { error } = await supabase.from('advances').insert({
+  const { error } = await supabase.from('notes').insert({
     org_id: parsed.data.orgId,
-    branch_id: staff.branch_id,
-    staff_id: parsed.data.staffId,
-    amount_poisha: parsed.data.kind === 'given' ? poisha : -poisha,
-    occurred_on: parsed.data.occurredOn,
-    note: parsed.data.note || null,
+    branch_id: parsed.data.branchId,
+    staff_id: parsed.data.staffId || null,
+    body: parsed.data.body,
   });
   if (error) return { error: mapDbError(error) };
   revalidatePath(`/${parsed.data.orgSlug}/staff/records`);
   return { ok: true };
+}
+
+export async function deleteNoteAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG), noteId: z.uuid() })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('notes')
+    .delete()
+    .eq('id', parsed.data.noteId)
+    .eq('org_id', parsed.data.orgId);
+  if (error) console.error('note delete', error.code);
+  revalidatePath(`/${parsed.data.orgSlug}/staff/records`);
 }
 
 /** One tap for the usual day: everyone at the branch who is not marked yet is marked present. */

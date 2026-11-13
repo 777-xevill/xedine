@@ -201,33 +201,7 @@ export function CartScreen({
               {t('backToOrder')}
             </Button>
           </div>
-        ) : (
-          <div className="mb-3 flex flex-wrap items-end gap-2">
-            <div>
-              <Label htmlFor="channel">{t('channel')}</Label>
-              <Select id="channel" value={channelId} onChange={(e) => setChannelId(e.target.value)}>
-                {channels.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            {isDineIn ? (
-              <div>
-                <Label htmlFor="table">{t('table')}</Label>
-                <Select id="table" value={tableId} onChange={(e) => setTableId(e.target.value)}>
-                  <option value="">{t('noTable')}</option>
-                  {tables.map((tb) => (
-                    <option key={tb.id} value={tb.id}>
-                      {tb.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            ) : null}
-          </div>
-        )}
+        ) : null}
 
         <CashierHelper
           menu={menu}
@@ -308,6 +282,33 @@ export function CartScreen({
 
       <aside className="glass flex min-h-0 flex-col rounded-card p-3">
         <h2 className="mb-2 font-semibold">{t('cart')}</h2>
+        {mode.kind !== 'round' ? (
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="channel">{t('channel')}</Label>
+              <Select id="channel" value={channelId} onChange={(e) => setChannelId(e.target.value)}>
+                {channels.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {isDineIn ? (
+              <div>
+                <Label htmlFor="table">{t('table')}</Label>
+                <Select id="table" value={tableId} onChange={(e) => setTableId(e.target.value)}>
+                  <option value="">{t('noTable')}</option>
+                  {tables.map((tb) => (
+                    <option key={tb.id} value={tb.id}>
+                      {tb.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="min-h-24 flex-1 overflow-y-auto">
           {cart.length === 0 ? (
             <p className="text-sm text-secondary">{t('cartEmpty')}</p>

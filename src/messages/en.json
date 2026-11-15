@@ -3006,7 +3006,20 @@
       "dishesBody": "Tap \"Post this\" on the dishes you want on Facebook and Instagram. Leave all on \"Xedine decides\" and it picks by sales. \"Never\" keeps a dish off.",
       "sold30": "Sold {n} in 30 days",
       "bestSeller": "Best seller",
-      "nextBadge": "Next post"
+      "nextBadge": "Next post",
+      "start": {
+        "title": "Get started",
+        "progress": "{done} of {total} done",
+        "open": "Open",
+        "photos": "Add a photo to your dishes",
+        "photosBody": "Posts are made only from your real dish photos. A clear photo of just the dish works best.",
+        "look": "Add your logo and phone number",
+        "lookBody": "Every poster uses your colours, logo and contact. Pick your two colours there too.",
+        "connect": "Connect Facebook and Instagram",
+        "connectBody": "Until then you can still make posters here and download them.",
+        "autopilot": "Switch the autopilot on",
+        "autopilotBody": "Xedine then posts by itself on your posting days."
+      }
     },
     "studio": {
       "dish": "Dish",

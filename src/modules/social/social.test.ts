@@ -304,6 +304,38 @@ describe('poster and reel templates', () => {
     expect(reelHtml(content)).not.toContain('<script>alert');
   });
 
+  it('gives a brand-new restaurant six working designs on every page: one dish, no cut-out, nothing filled in', () => {
+    const bare: PostContent = {
+      ...content,
+      cta: '',
+      badge: null,
+      restaurant: 'New Place',
+      area: null,
+      phone: null,
+      logoUrl: null,
+      dish: { name: 'Khichuri', cutUrl: null, photoUrl: 'data:image/jpeg;base64,P', price: null, note: null },
+      more: [],
+    };
+    for (const tone of ['friendly', 'premium', 'fun'] as const)
+      for (const english of [false, true]) {
+        const ctx = { tone, english, others: 0, hasCut: false };
+        for (let page = 0; page < 20; page++) {
+          const looks = lookPage(page, 6, ctx, 12345);
+          expect(looks).toHaveLength(6);
+          for (const l of looks) {
+            expect(layoutFits(l.layout, ctx), l.layout).toBe(true);
+            expect(LookSchema.safeParse(l).success).toBe(true);
+            const html = posterHtml({ ...bare, lang: english ? 'en' : 'bn', look: l });
+            expect(html, `${l.layout}/${l.plate}`).toContain('<!doctype html>');
+            expect(html, `${l.layout}/${l.plate}`).not.toMatch(/undefined|NaN|null/);
+          }
+        }
+        // The autopilot's own pick for the same restaurant.
+        const auto = lookForPost('org:post-1', ctx, []);
+        expect(layoutFits(auto.layout, ctx)).toBe(true);
+      }
+  });
+
   it('stands a clean cut-out on the poster and frames the photo when there is none', () => {
     const withCut = posterHtml({ ...content, look: { ...look('status'), plate: 'float' }, dish: dishArt('Kacchi', true) });
     expect(withCut).toContain('class="cut"');

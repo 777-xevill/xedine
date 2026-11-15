@@ -1,4 +1,14 @@
-import { Ban, Clapperboard, ImageIcon, Settings, Sparkles, Star, Wand2 } from 'lucide-react';
+import {
+  Ban,
+  CircleCheck,
+  CircleDashed,
+  Clapperboard,
+  ImageIcon,
+  Settings,
+  Sparkles,
+  Star,
+  Wand2,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -391,6 +401,15 @@ export default async function GrowthPage({
       String(a.name).localeCompare(String(b.name)),
   );
   const tabHref = (k: Tab) => `/${ctx.org.slug}/growth?tab=${k}`;
+  // A new restaurant's four steps, until all are done (owner only: the steps live on owner pages).
+  const socialSetup = `/${ctx.org.slug}/settings/social`;
+  const steps = [
+    { key: 'photos', done: dishes.length > 0, href: `/${ctx.org.slug}/menu` },
+    { key: 'look', done: Boolean(look?.logo_path || look?.phone), href: socialSetup },
+    { key: 'connect', done: Boolean(fb), href: socialSetup },
+    { key: 'autopilot', done: Boolean(look?.autopilot), href: socialSetup },
+  ] as const;
+  const stepsDone = steps.filter((s) => s.done).length;
   const markButton = (id: string, mark: 'post' | 'auto' | 'never', on: boolean) => (
     <form action={markSocialDishAction}>
       {hidden}
@@ -449,6 +468,47 @@ export default async function GrowthPage({
           ) : null}
         </div>
       </Card>
+
+      {ctx.isOwner && stepsDone < steps.length ? (
+        <Card className="mb-4 p-4">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-bold">{t('start.title')}</p>
+            <p className="text-sm text-secondary tabular-nums">
+              {t('start.progress', {
+                done: formatNumber(stepsDone, loc),
+                total: formatNumber(steps.length, loc),
+              })}
+            </p>
+          </div>
+          <ol className="space-y-3">
+            {steps.map((s) => (
+              <li key={s.key} className="flex items-start gap-3">
+                {s.done ? (
+                  <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-success" />
+                ) : (
+                  <CircleDashed aria-hidden className="mt-0.5 size-5 shrink-0 text-muted" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className={s.done ? 'text-secondary line-through' : 'font-semibold'}>
+                    {t(`start.${s.key}`)}
+                  </p>
+                  {s.done ? null : (
+                    <p className="text-sm text-secondary">{t(`start.${s.key}Body`)}</p>
+                  )}
+                </div>
+                {s.done ? null : (
+                  <Link
+                    href={s.href}
+                    className={buttonVariants({ variant: 'secondary', size: 'sm' })}
+                  >
+                    {t('start.open')}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ol>
+        </Card>
+      ) : null}
 
       <PillNav
         label={t('tabsLabel')}

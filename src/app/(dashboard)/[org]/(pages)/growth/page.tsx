@@ -2,6 +2,7 @@ import { Clapperboard, ImageIcon, Settings, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { createTranslator } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { SocialStudio, type StudioDish, type StudioPosterText } from '@/components/social-studio';
 import { Badge, StatusBadge } from '@/components/ui/badge';
@@ -13,11 +14,21 @@ import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { skipSocialPostAction } from '@/modules/social/actions';
 import { branchPricesByItem, posterPrice } from '@/modules/social/prices';
+import bn from '@/messages/bn.json';
+import en from '@/messages/en.json';
 import { getOrgContext } from '@/modules/tenancy/context';
 
-/** The poster's own words in one language (button labels, fallback lines), for the live preview. */
-async function posterText(locale: Locale): Promise<StudioPosterText & { plusVat: string }> {
-  const t = await getTranslations({ locale, namespace: 'social.poster' });
+/**
+ * The poster's own words in one language (button labels, fallback lines), for the live preview. Read
+ * straight from the catalogue, as the job does: the request's translator always follows the viewer's own
+ * language, but a Bangla poster needs Bangla words even when the owner's screen is in English.
+ */
+function posterText(locale: Locale): StudioPosterText & { plusVat: string } {
+  const t = createTranslator({
+    locale,
+    messages: locale === 'bn' ? bn : en,
+    namespace: 'social.poster',
+  });
   return {
     plusVat: t('plusVat'),
     cta: t('cta'),
@@ -101,8 +112,6 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     { data: branchPrices },
     { data: orgSettings },
     { data: profile },
-    posterBn,
-    posterEn,
   ] = await Promise.all([
     supabase
       .from('social_settings')
@@ -153,9 +162,9 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     supabase.from('org_profile').select('area, city').eq('org_id', ctx.org.id).maybeSingle(),
-    posterText('bn'),
-    posterText('en'),
   ]);
+  const posterBn = posterText('bn');
+  const posterEn = posterText('en');
   // The poster's colours and contact live in social_settings; the owner's first visit makes the row (the
   // database holds the default colours), a manager waits for the owner.
   let look = settings;

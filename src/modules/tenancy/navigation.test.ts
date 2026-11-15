@@ -48,6 +48,7 @@ describe('navigation (ADR 0024)', () => {
       'nutrition',
       'tableQr',
       'complaints',
+      'growth',
     ]);
     expect(nav.more).toEqual([]);
     expect(keys(nav.apps)).toEqual(['pos', 'kds']);
@@ -61,7 +62,7 @@ describe('navigation (ADR 0024)', () => {
       roles: ['owner'],
       enabled: ['recipes', 'customers'],
     });
-    expect(keys(owner.more)).toEqual(['menuProfit', 'customers', 'campaigns', 'growth']);
+    expect(keys(owner.more)).toEqual(['menuProfit', 'customers', 'campaigns']);
     // Menu profit shows money: a manager never gets the link, even with the feature on — but always
     // has Dish ingredients, because the manager writes it for the chef.
     const manager = buildNavigation({ slug: 'd', roles: ['manager'], enabled: ['recipes'] });

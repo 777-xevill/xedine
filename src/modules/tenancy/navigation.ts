@@ -105,6 +105,8 @@ const CORE: LinkRule[] = [
   // Table QR (ADR 0045): the QR code on every table, so it is never switched off.
   { key: 'tableQr', path: '/table-qr', roles: ['owner', 'manager'] },
   { key: 'complaints', path: '/complaints', roles: ['owner', 'manager'] },
+  // Growth (ADR 0040, 0058): a new restaurant must find it on day one, so no switch hides it.
+  { key: 'growth', path: '/growth', roles: ['owner', 'manager'] },
 ];
 
 const OPTIONAL: LinkRule[] = [
@@ -125,7 +127,6 @@ const OPTIONAL: LinkRule[] = [
   },
   { key: 'customers', path: '/customers', roles: LEADS, feature: 'customers' },
   { key: 'campaigns', path: '/campaigns', roles: ['owner', 'manager'], feature: 'customers' },
-  { key: 'growth', path: '/growth', roles: ['owner', 'manager'], feature: 'customers' },
   { key: 'branches', path: '/branches', roles: LEADS, feature: 'branches' },
   { key: 'benchmarks', path: '/benchmarks', roles: MONEY, feature: 'branches' },
   { key: 'compliance', path: '/compliance', roles: LEADS, feature: 'compliance' },

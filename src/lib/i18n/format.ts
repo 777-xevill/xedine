@@ -121,3 +121,12 @@ export function formatDhakaTime(instant: Date, locale: Locale): string {
 export function formatDhakaDateTime(instant: Date, locale: Locale): string {
   return `${formatDhakaDate(instant, locale)}, ${formatDhakaTime(instant, locale)}`;
 }
+
+/** A month as its name: "November 2026" / "নভেম্বর ২০২৬"; pass any instant inside the month (noon Dhaka). */
+export function formatDhakaMonth(instant: Date, locale: Locale): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: DHAKA_TZ,
+    month: 'long',
+    year: 'numeric',
+  }).format(instant);
+}

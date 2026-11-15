@@ -142,7 +142,7 @@
 | `weather_hours` | Weather forecast per branch per hour (MET Norway). | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: service role only (weather for the branch; everyone at the branch reads, only the weather job writes (ADR 0051)) | PK org_id, branch_id, at · → branches | forecasting · P11 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (193)
+## RPC functions (198)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -189,6 +189,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `complaint_link` | `p_token text` |
 | `complete_incident_action` | `p_org uuid, p_action uuid` |
 | `confirm_purchase_draft` | `p_draft uuid, p_supplier uuid, p_supplier_name text, p_purchased_on date, p_lines jsonb` |
+| `copy_salaries_from_previous_month` | `p_org uuid, p_month date` |
 | `create_chat_link` | `p_org uuid, p_user uuid, p_branch uuid, p_channel chat_channel` |
 | `create_invitation` | `p_org uuid, p_email text, p_role app_role, p_branch_ids uuid[] DEFAULT '{}'::uuid[]` |
 | `create_organization` | `p_name text, p_slug text, p_branches jsonb DEFAULT '[]'::jsonb, p_locale locale_code DEFAULT 'bn'::locale_code` |
@@ -224,6 +225,8 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `mark_attendance` | `p_staff uuid, p_date date, p_status attendance_status` |
 | `mark_growth_posted` | `p_draft uuid` |
+| `mark_salaries_paid` | `p_org uuid, p_month date, p_paid_on date, p_method text` |
+| `mark_salary_paid` | `p_org uuid, p_staff uuid, p_month date, p_amount bigint, p_paid_on date, p_method text` |
 | `mark_social_dish` | `p_org uuid, p_item uuid, p_mark text` |
 | `member_card_link` | `p_org uuid, p_customer uuid` |
 | `member_card_view` | `p_token text` |
@@ -317,6 +320,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `save_count_line` | `p_count uuid, p_ingredient uuid, p_qty numeric, p_note text DEFAULT NULL::text` |
 | `save_push_subscription` | `p_card_token text, p_endpoint text, p_p256dh text, p_auth text` |
 | `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text, p_draft uuid DEFAULT NULL::uuid` |
+| `save_salary` | `p_org uuid, p_staff uuid, p_month date, p_salary bigint, p_allowances bigint, p_note text DEFAULT NULL::text` |
 | `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
 | `send_bazar_list` | `p_list uuid, p_messages jsonb` |
 | `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
@@ -338,6 +342,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `submit_stock_count` | `p_count uuid` |
 | `table_page` | `p_token text, p_now timestamp with time zone` |
 | `transfer_destinations` | `p_org uuid` |
+| `update_fixed_cost` | `p_org uuid, p_id uuid, p_kind fixed_cost_kind, p_label text, p_monthly bigint, p_today date` |
 | `update_incident` | `p_org uuid, p_incident uuid, p_status text, p_severity text, p_root_cause text DEFAULT NULL::text, p_customer_resolution text DEFAULT NULL::text` |
 | `update_membership` | `p_membership uuid, p_role app_role DEFAULT NULL::app_role, p_branch_ids uuid[] DEFAULT NULL::uuid[]` |
 | `web_push_keys_get` |  |

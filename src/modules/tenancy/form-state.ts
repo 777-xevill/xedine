@@ -21,6 +21,7 @@ interface DbError {
 /** Refusals the database words for a person (ADR 0043): the exception's whole message → `errors.*` key. */
 const NAMED_REFUSALS: Record<string, string> = {
   food_safety_reason_needed: 'foodSafetyReasonNeeded',
+  'enter the pay first': 'salaryNotEntered',
   food_safety_blocked: 'foodSafetyBlocked',
   check_needs_note: 'checkNeedsNote',
   check_date_out_of_range: 'checkDateOutOfRange',

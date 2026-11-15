@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
 import { Button } from '@/components/ui/button';
+import { formatNumber } from '@/lib/i18n/format';
+import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, EmptyState, Input, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatBDT, type Locale } from '@/lib/i18n/format';
@@ -53,54 +55,81 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
     </>
   );
   const active = (fixed ?? []).filter((f) => !f.effective_to || f.effective_to >= today);
+  // Totals of the rows listed below (nothing estimated): what is entered, added up.
+  const fixedTotal = active.reduce((sum, f) => sum + Number(f.monthly_poisha), 0);
+  const salaryTotal = (staff ?? []).reduce((sum, s) => {
+    const e = salaryBy.get(s.id as string);
+    return sum + (e ? Number(e.salary_poisha) + Number(e.allowances_poisha) : 0);
+  }, 0);
+  const staffList = staff ?? [];
+  const paid = staffList.filter((s) => salaryBy.has(s.id as string)).length;
+  const tiles = [
+    { key: 'sumFixed', hint: 'sumFixedHint', value: fixedTotal },
+    { key: 'sumSalary', hint: 'sumSalaryHint', value: salaryTotal },
+    { key: 'sumTotal', hint: 'sumTotalHint', value: fixedTotal + salaryTotal },
+  ] as const;
 
   return (
     <>
       <SettingsNav ctx={ctx} current="costs" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        {tiles.map((x) => (
+          <Card key={x.key} className="p-4">
+            <p className="text-sm text-secondary">{t(x.key)}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">{money(x.value)}</p>
+            <p className="text-xs text-secondary">{t(x.hint)}</p>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         <Card>
           <CardTitle>{t('fixedTitle')}</CardTitle>
-          <ActionForm
-            action={addFixedCostAction}
-            successKey="common.saved"
-            className="mb-5 grid gap-3 sm:grid-cols-2"
-          >
-            {hidden}
-            <div>
-              <Label htmlFor="fc-branch">{t('branch')}</Label>
-              <Select id="fc-branch" name="branchId" defaultValue={ctx.branches[0]?.id ?? ''}>
-                {ctx.branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-                <option value="">{t('allBranches')}</option>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="fc-kind">{t('kind')}</Label>
-              <Select id="fc-kind" name="kind" defaultValue="rent">
-                {FIXED_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {t(`kinds.${k}`)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="fc-label">{t('label')}</Label>
-              <Input id="fc-label" name="label" maxLength={120} />
-            </div>
-            <div>
-              <Label htmlFor="fc-monthly">{t('monthly')}</Label>
-              <Input id="fc-monthly" name="monthly" inputMode="decimal" required />
-            </div>
-            <div className="sm:col-span-2">
-              <Button type="submit">{t('addFixed')}</Button>
-            </div>
-          </ActionForm>
+          <p className="-mt-2 mb-4 text-sm text-secondary">{t('fixedBody')}</p>
+          <details className="mb-5 rounded-input border border-line p-3" open={active.length === 0}>
+            <summary className="cursor-pointer text-sm font-semibold">{t('addTitle')}</summary>
+            <ActionForm
+              action={addFixedCostAction}
+              successKey="common.saved"
+              className="mt-3 grid gap-3 sm:grid-cols-2"
+            >
+              {hidden}
+              <div>
+                <Label htmlFor="fc-branch">{t('branch')}</Label>
+                <Select id="fc-branch" name="branchId" defaultValue={ctx.branches[0]?.id ?? ''}>
+                  {ctx.branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                  <option value="">{t('allBranches')}</option>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="fc-kind">{t('kind')}</Label>
+                <Select id="fc-kind" name="kind" defaultValue="rent">
+                  {FIXED_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {t(`kinds.${k}`)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="fc-label">{t('label')}</Label>
+                <Input id="fc-label" name="label" maxLength={120} />
+              </div>
+              <div>
+                <Label htmlFor="fc-monthly">{t('monthly')}</Label>
+                <Input id="fc-monthly" name="monthly" inputMode="decimal" required />
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="submit">{t('addFixed')}</Button>
+              </div>
+            </ActionForm>
+          </details>
           {active.length === 0 ? (
             <EmptyState title={t('noFixed')} />
           ) : (
@@ -139,21 +168,45 @@ export default async function CostsPage({ params }: { params: Promise<{ org: str
 
         <Card>
           <CardTitle>{t('salaryTitle', { month })}</CardTitle>
-          <p className="-mt-2 mb-4 text-sm text-secondary">{t('salaryBody')}</p>
-          {(staff ?? []).length === 0 ? (
+          <p className="-mt-2 mb-3 text-sm text-secondary">{t('salaryBody')}</p>
+          {staffList.length > 0 ? (
+            <p className="mb-4 text-sm font-semibold">
+              {t('payProgress', {
+                done: formatNumber(paid, loc),
+                total: formatNumber(staffList.length, loc),
+              })}
+              {paid < staffList.length ? (
+                <span className="block font-normal text-secondary">{t('payMissing')}</span>
+              ) : null}
+            </p>
+          ) : null}
+          {staffList.length === 0 ? (
             <EmptyState title={t('noStaff')} />
           ) : (
             <ul className="space-y-3">
-              {(staff ?? []).map((s) => {
+              {staffList.map((s) => {
                 const current = salaryBy.get(s.id as string);
                 return (
                   <li key={s.id} className="glass-tile rounded-input p-3">
-                    <p className="mb-2 text-sm font-semibold">
-                      {s.display_name}{' '}
-                      <span className="font-normal text-secondary">
-                        · {branchName(s.branch_id as string)}
-                      </span>
-                    </p>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold">
+                        {s.display_name}{' '}
+                        <span className="font-normal text-secondary">
+                          · {branchName(s.branch_id as string)}
+                        </span>
+                      </p>
+                      {current ? (
+                        <StatusBadge tone="success">
+                          {t('paySet', {
+                            amount: money(
+                              Number(current.salary_poisha) + Number(current.allowances_poisha),
+                            ),
+                          })}
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge tone="warning">{t('payNotSet')}</StatusBadge>
+                      )}
+                    </div>
                     <ActionForm
                       action={setSalaryAction}
                       successKey="common.saved"

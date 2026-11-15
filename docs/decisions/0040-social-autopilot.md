@@ -1,7 +1,9 @@
 # ADR 0040 — Social autopilot: Xedine posts to Facebook and Instagram by itself
 
 - Date: 2026-10-26
-- Status: accepted (built at the founder's request; the choices in §1–§3 were the founder's answers)
+- Status: accepted (built at the founder's request; the choices in §1–§3 were the founder's answers).
+  Amended by ADR 0057: dishes are cut out of their photos, ten designs replace the four of §3, the studio
+  plate is cut out too, and Growth's "Make a post" is a live preview with AI-written words.
 
 ## Context
 The Growth page only drafted ideas and captions; the owner had to approve each one and post it by hand

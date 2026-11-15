@@ -71,9 +71,115 @@ export function pickDish(
   return sorted[0] ?? null;
 }
 
-/** Which of the poster designs a post uses: rotates by day so the feed doesn't repeat itself. */
-export const POSTER_DESIGNS = ['band', 'centre', 'frame', 'split'] as const;
+/** The poster designs (ADR 0057). The first four are ADR 0040's, redrawn around dish cut-outs. */
+export const POSTER_DESIGNS = [
+  'band',
+  'centre',
+  'frame',
+  'split',
+  'status',
+  'mood',
+  'giant',
+  'menu',
+  'breakout',
+  'minimal',
+] as const;
 export type PosterDesign = (typeof POSTER_DESIGNS)[number];
-export function designForDay(date: BusinessDate, offset = 0): PosterDesign {
-  return POSTER_DESIGNS[(dayNumber(date) + offset) % POSTER_DESIGNS.length]!;
+export type SocialTone = 'friendly' | 'premium' | 'fun';
+
+export function isPosterDesign(value: unknown): value is PosterDesign {
+  return typeof value === 'string' && (POSTER_DESIGNS as readonly string[]).includes(value);
+}
+
+/** What the restaurant has to fill a design with. */
+export interface DesignNeeds {
+  /** The poster's words are English (the MOOD/FOOD/GOOD letters only work in English). */
+  english: boolean;
+  /** Dishes with a usable photo: the menu design needs at least two. */
+  dishes: number;
+}
+
+/**
+ * How many other dishes a design shows besides the main one, and what it needs of them: a clean cut-out
+ * (menu, letters, band, corners), just the photo (the phone's profile grid) or just the name (a list).
+ */
+export const DESIGN_EXTRAS: Partial<
+  Record<PosterDesign, { count: number; need: 'cut' | 'photo' | 'name' }>
+> = {
+  menu: { count: 2, need: 'cut' },
+  mood: { count: 1, need: 'cut' },
+  band: { count: 1, need: 'cut' },
+  minimal: { count: 1, need: 'cut' },
+  breakout: { count: 5, need: 'photo' },
+  split: { count: 3, need: 'name' },
+};
+
+export function designFits(design: PosterDesign, needs: DesignNeeds): boolean {
+  if (design === 'mood') return needs.english;
+  if (design === 'menu') return needs.dishes >= 2;
+  return true;
+}
+
+/** Each tone leads with the designs that suit it; the rest follow so the feed still varies. */
+const TONE_ORDER: Record<SocialTone, readonly PosterDesign[]> = {
+  friendly: [
+    'centre',
+    'status',
+    'giant',
+    'frame',
+    'band',
+    'split',
+    'menu',
+    'mood',
+    'breakout',
+    'minimal',
+  ],
+  fun: [
+    'status',
+    'split',
+    'mood',
+    'breakout',
+    'giant',
+    'band',
+    'centre',
+    'frame',
+    'menu',
+    'minimal',
+  ],
+  premium: [
+    'minimal',
+    'frame',
+    'menu',
+    'giant',
+    'centre',
+    'band',
+    'breakout',
+    'status',
+    'split',
+    'mood',
+  ],
+};
+
+/**
+ * The design of a day's post: rotates through the designs the owner allows and the restaurant can fill,
+ * skipping the ones its last few posts used, so the feed never repeats itself.
+ */
+export function designForDay(
+  date: BusinessDate,
+  o: {
+    tone: SocialTone;
+    allowed: readonly PosterDesign[];
+    needs: DesignNeeds;
+    recent?: readonly string[];
+    offset?: number;
+  },
+): PosterDesign {
+  const pool = TONE_ORDER[o.tone].filter((d) => o.allowed.includes(d) && designFits(d, o.needs));
+  if (pool.length === 0) return 'centre';
+  const start = (dayNumber(date) + (o.offset ?? 0)) % pool.length;
+  for (let i = 0; i < pool.length; i++) {
+    const d = pool[(start + i) % pool.length]!;
+    if (!(o.recent ?? []).includes(d)) return d;
+  }
+  return pool[start]!;
 }

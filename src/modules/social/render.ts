@@ -88,6 +88,8 @@ async function open(browser: Browser, html: string, size: { width: number; heigh
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all([...document.images].map((i) => i.decode().catch(() => undefined)));
+    // Shrink every headline that would overflow its box (poster-kit FIT_SCRIPT), now that fonts are in.
+    (window as unknown as { __fit?: () => void }).__fit?.();
   });
   return page;
 }

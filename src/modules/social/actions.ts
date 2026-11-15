@@ -3,10 +3,18 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
+import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
-import { slotAt } from '@/modules/social/schedule';
+import { isPosterDesign, slotAt } from '@/modules/social/schedule';
 import { connectPendingPage } from '@/modules/social/connect';
+import {
+  ApprovedWordsSchema,
+  type ApprovedWords,
+  type SocialWords,
+  SocialWordsSchema,
+} from '@/modules/social/words';
+import { writeSocialPost } from '@/modules/social/writer';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
@@ -44,6 +52,7 @@ export async function saveSocialSettingsAction(
       displayName: optional(60),
       area: optional(80),
       phone: optional(30),
+      showPrice: z.literal('on').optional(),
     })
     .safeParse(Object.fromEntries(formData));
   const days = formData
@@ -51,7 +60,14 @@ export async function saveSocialSettingsAction(
     .map(Number)
     .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
   const never = formData.getAll('never').filter((v): v is string => typeof v === 'string');
-  if (!parsed.success || days.length === 0 || !never.every((v) => z.uuid().safeParse(v).success))
+  const designs = [...new Set(formData.getAll('designs'))];
+  if (
+    !parsed.success ||
+    days.length === 0 ||
+    !never.every((v) => z.uuid().safeParse(v).success) ||
+    designs.length === 0 ||
+    !designs.every(isPosterDesign)
+  )
     return { error: 'invalidInput' };
   const d = parsed.data;
   const supabase = await createClient();
@@ -69,6 +85,8 @@ export async function saveSocialSettingsAction(
     area: d.area,
     phone: d.phone,
     never_item_ids: never,
+    designs,
+    show_price: d.showPrice === 'on',
   });
   if (error) return { error: mapDbError(error) };
   refresh(d.orgSlug);
@@ -100,6 +118,10 @@ export async function setSocialLogoAction(input: {
   return { ok: true };
 }
 
+/**
+ * The owner's own post. From the Growth preview it also carries the design they picked, the words they
+ * approved (as JSON) and up to three more dishes (`extra`), all optional (ADR 0057).
+ */
 export async function requestSocialPostAction(
   _prev: FormState,
   formData: FormData,
@@ -112,10 +134,30 @@ export async function requestSocialPostAction(
       when: z.enum(['now', 'later']),
       date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]).optional(),
       time: z.union([z.string().regex(/^\d{2}:\d{2}$/), z.literal('')]).optional(),
+      design: z.string().max(20).optional(),
+      words: z.string().max(8000).optional(),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
   const d = parsed.data;
+  if (d.design && !isPosterDesign(d.design)) return { error: 'invalidInput' };
+  let words: ApprovedWords | null = null;
+  if (d.words) {
+    let json: unknown;
+    try {
+      json = JSON.parse(d.words);
+    } catch {
+      return { error: 'invalidInput' };
+    }
+    const checked = ApprovedWordsSchema.safeParse(json);
+    if (!checked.success) return { error: 'invalidInput' };
+    words = Object.keys(checked.data).length ? checked.data : null;
+  }
+  const extra = [
+    ...new Set(formData.getAll('extra').filter((v): v is string => typeof v === 'string')),
+  ];
+  if (extra.length > 3 || !extra.every((v) => z.uuid().safeParse(v).success))
+    return { error: 'invalidInput' };
   const at = now();
   let when = at;
   let planDate = businessDate(at, 0);
@@ -133,10 +175,71 @@ export async function requestSocialPostAction(
     p_own_text: d.ownText ?? '',
     p_when: when.toISOString(),
     p_plan_date: planDate,
+    p_design: d.design || null,
+    p_words: words,
+    p_extra_items: extra.filter((id) => id !== d.itemId),
   });
   if (error) return { error: mapDbError(error) };
   refresh(d.orgSlug);
   return { ok: true };
+}
+
+/**
+ * "Write the words for me" in the Growth preview (ADR 0057): the AI writes every line a design may use,
+ * about the dish and the owner's idea. Nothing is posted; the owner sees the words on the poster, can
+ * change them, and only then posts. Numbers the AI makes up are refused (CLAUDE.md #1).
+ */
+export async function draftSocialWordsAction(input: {
+  orgId: string;
+  orgSlug: string;
+  itemId: string;
+  idea: string;
+}): Promise<
+  | { ok: true; words: SocialWords }
+  | { ok: false; error: 'notAllowed' | 'aiOff' | 'number' | 'failed' }
+> {
+  const parsed = base
+    .extend({ itemId: z.uuid(), idea: z.string().trim().max(300) })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'failed' };
+  const d = parsed.data;
+  const ctx = await getOrgContext(d.orgSlug);
+  if (ctx.org.id !== d.orgId || (!ctx.roles.includes('owner') && !ctx.roles.includes('manager')))
+    return { ok: false, error: 'notAllowed' };
+  if (!aiConfigured()) return { ok: false, error: 'aiOff' };
+  const supabase = await createClient();
+  const [{ data: dish }, { data: settings }] = await Promise.all([
+    supabase
+      .from('menu_items')
+      .select('name')
+      .eq('org_id', d.orgId)
+      .eq('id', d.itemId)
+      .maybeSingle(),
+    supabase
+      .from('social_settings')
+      .select('tone, display_name, area')
+      .eq('org_id', d.orgId)
+      .maybeSingle(),
+  ]);
+  if (!dish) return { ok: false, error: 'failed' };
+  try {
+    const written = await writeSocialPost({
+      orgId: d.orgId,
+      restaurant: (settings?.display_name as string | null) || ctx.org.name,
+      dish: dish.name as string,
+      fact: `The owner wants to tell people about ${dish.name as string}.`,
+      ownNote: d.idea || null,
+      tone: (settings?.tone as 'friendly' | 'premium' | 'fun' | undefined) ?? 'friendly',
+      area: (settings?.area as string | null) ?? null,
+    });
+    // Only the words go back to the browser (the schema drops the model name and prompt version).
+    return { ok: true, words: SocialWordsSchema.parse(written) };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error && e.message === 'invented_number' ? 'number' : 'failed',
+    };
+  }
 }
 
 export async function skipSocialPostAction(formData: FormData): Promise<void> {

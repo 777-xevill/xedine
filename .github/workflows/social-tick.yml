@@ -27,6 +27,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The dish cut-out model (BiRefNet-lite, ~214 MB, ADR 0057) is downloaded once and kept between runs.
+      - uses: actions/cache@v4
+        with:
+          path: .cache/models
+          key: social-models-v1-${{ hashFiles('src/modules/social/cutout.ts') }}
       - run: pnpm social:tick
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

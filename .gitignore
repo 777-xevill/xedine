@@ -46,3 +46,6 @@ Thumbs.db
 .open-next/
 .wrangler/
 .dev.vars
+
+# Downloaded AI models and local poster previews (pnpm social:preview, ADR 0057)
+/.cache/

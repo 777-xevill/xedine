@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (123)
+## Tables (124)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -118,6 +118,7 @@
 | `shifts` | Cash shifts: opening float, expected vs counted, over/short. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, devices, staff | pos · P1 |
 | `social_accounts` | The Facebook Page, Instagram and TikTok account an org connected for posting (ids and names only). | org | read: owner, manager; write: owner (insert by the connect callback (service role); owner may disconnect (ADR 0040)) | PK id | social · P11 |
 | `social_connect_pending` | Facebook Pages offered during Connect, kept for 30 minutes until the owner picks one. | org · service only | no client access | PK id | social · P11 |
+| `social_dish_art` | Each dish photo lifted off its background (and the AI studio plate), for posters. | org | read: owner, manager; write: service role only (written by the social job (service role); read by the Growth preview (ADR 0057)) | PK org_id, menu_item_id · → menu_items | social · P11 |
 | `social_posts` | Facebook/Instagram/TikTok posts the autopilot planned, made and published. | org | read: owner, manager; write: service role only (written by the social job (service role) and request_social_post / skip_social_post (ADR 0040)) | PK id · → menu_items | social · P11 |
 | `social_settings` | How the social autopilot posts for this org: switch, time, days, colours, logo, contact. | org | read: owner, manager; write: owner (the owner sets up the autopilot; managers can see it (ADR 0040)) | PK org_id | social · P11 |
 | `social_tokens` | Access token per connected account (Meta Page token; TikTok token + refresh token); service role only. | org · service only | no client access | PK account_id · → social_accounts | social · P11 |
@@ -298,7 +299,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `remove_membership` | `p_membership uuid` |
 | `reopen_incident` | `p_org uuid, p_incident uuid, p_reason text` |
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
-| `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date` |
+| `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date, p_design text DEFAULT NULL::text, p_words jsonb DEFAULT NULL::jsonb, p_extra_items uuid[] DEFAULT '{}'::uuid[]` |
 | `reset_complaint_link` | `p_org uuid, p_branch uuid` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |
 | `reset_table_link` | `p_org uuid, p_table uuid` |

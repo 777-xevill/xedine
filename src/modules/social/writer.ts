@@ -1,57 +1,43 @@
 import 'server-only';
 import { z } from 'zod';
 import { gateway, type PromptVersion } from '@/lib/llm-gateway';
+import { inventedNumber, SocialWordsSchema, type SocialWords } from './words';
+
+export { asciiDigits, inventedNumber, type SocialWords } from './words';
 
 /**
- * The words on a social autopilot post (ADR 0040): the reel's first-second hook, the poster headline and
- * tagline, and the Facebook/Instagram captions in Bangla and English. Grounded in one public fact about the
- * restaurant; the post goes out without anyone reading it first, so every number is checked below.
+ * The words on a social post (ADR 0040, 0057): the reel's first-second hook, every line a poster design
+ * may draw, and the Facebook/Instagram captions in Bangla and English. Grounded in one public fact about
+ * the restaurant; the autopilot's post goes out without anyone reading it first, so every number is
+ * checked below.
  */
 export const SOCIAL_POST_PROMPT: PromptVersion = {
   key: 'social_post',
-  version: 1,
+  version: 2,
   body: [
-    'You are the social media manager of a restaurant in Bangladesh. Write ONE Facebook/Instagram post',
-    'about the dish and the fact you are given. It is published as is, so it must be safe and true.',
+    'You are the social media manager of a restaurant in Bangladesh. Write the words for ONE',
+    'Facebook/Instagram post about the dish and the fact you are given. It is published as is, so it must',
+    'be safe and true.',
     'Rules:',
-    '- Use only the fact given. Never invent prices, discounts, offers, ratings, awards, ingredients,',
-    '  delivery promises or opening hours. Never write a number unless it is in the fact or the owner note.',
+    '- Use only the fact given (and the owner note, if any). Never invent prices, discounts, offers, ratings,',
+    '  awards, ingredients, delivery promises or opening hours. Never write a number unless it is in the fact',
+    '  or the owner note.',
+    '- *_en fields are English; *_bn fields are Bangla script.',
     '- hook_*: max 8 words, stops the scroll in the first second (a question, a bold claim the fact',
     '  supports, a "POV:" line or a craving trigger). No hashtags.',
     '- headline_*: max 4 words, poster headline, punchy (e.g. "Taste The Legend").',
-    '- tagline_*: max 10 words, one supporting line.',
+    '- tagline_*: max 8 words, one supporting line.',
+    '- kicker_*: max 4 words, a small line above a headline (e.g. "The best is here", "New on the menu").',
+    '- status_q_*: a playful status question, max 4 words (e.g. "What\'s your status?"). status_a_* and',
+    '  status_b_*: two everyday answers, max 2 words each (e.g. "Single", "Taken"). status_c_*: the funny',
+    '  answer that points to food, max 2 words (e.g. "Hungry").',
+    '- mood_word: one of MOOD, FOOD, GOOD. mood_top_en (max 3 words) + mood_word + mood_bottom_en (max 2',
+    '  words) read as one sentence, e.g. "What\'s your" MOOD "today?".',
     '- caption_bn: Bangla script, 2–4 short sentences, warm, Dhaka food culture, end with a call to come or',
     '  order, then up to 3 hashtags. caption_en: the same in English. Max 2 emojis per caption.',
     '- Match the tone you are given: friendly (warm, homely), premium (calm, elegant), fun (playful, Gen Z).',
   ].join('\n'),
 };
-
-const Output = z.object({
-  hook_en: z.string(),
-  hook_bn: z.string(),
-  headline_en: z.string(),
-  headline_bn: z.string(),
-  tagline_en: z.string(),
-  tagline_bn: z.string(),
-  caption_bn: z.string(),
-  caption_en: z.string(),
-});
-export type SocialWords = z.infer<typeof Output>;
-
-const DIGITS = /[0-9০-৯]+/g;
-const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
-/** Bangla digits as ASCII, so "১০" in a caption matches "10" in the fact. */
-export function asciiDigits(s: string): string {
-  return s.replace(/[০-৯]/g, (d) => String(BN_DIGITS.indexOf(d)));
-}
-
-/** Every number in the words must already be in the fact or the owner's note (CLAUDE.md #1). */
-export function inventedNumber(words: SocialWords, allowedText: string): string | null {
-  const allowed = new Set(asciiDigits(allowedText).match(DIGITS) ?? []);
-  for (const text of Object.values(words))
-    for (const n of asciiDigits(text).match(DIGITS) ?? []) if (!allowed.has(n)) return n;
-  return null;
-}
 
 export const DISH_PHOTO_CHECK_PROMPT: PromptVersion = {
   key: 'social_photo_check',
@@ -116,8 +102,8 @@ export async function writeSocialPost(args: {
     prompt: SOCIAL_POST_PROMPT,
     tier: 'fast',
     content: [{ type: 'text', text: lines.join('\n') }],
-    schema: Output,
-    maxTokens: 1200,
+    schema: SocialWordsSchema,
+    maxTokens: 1800,
   });
   const allowed = `${args.fact} ${args.ownNote ?? ''} ${args.restaurant} ${args.dish} ${args.area ?? ''}`;
   if (inventedNumber(result.output, allowed)) throw new Error('invented_number');

@@ -2796,6 +2796,23 @@
         "snacks": "snack time",
         "dinner": "dinner",
         "late": "late night"
+      },
+      "plusVat": "+VAT",
+      "labels": {
+        "orderNow": "Order now",
+        "follow": "Follow",
+        "message": "Message",
+        "callUs": "Call us"
+      },
+      "defaults": {
+        "kicker": "Fresh from our kitchen",
+        "tagline": "Made fresh, served hot",
+        "statusQ": "What's your status?",
+        "statusA": "Single",
+        "statusB": "Taken",
+        "statusC": "Hungry",
+        "moodTop": "What's your",
+        "moodBottom": "today?"
       }
     },
     "settings": {
@@ -2828,7 +2845,7 @@
       "photosCount": "{have} of {total} dishes have a photo.",
       "photosLink": "Add photos in Menu",
       "photosAiOn": "Xedine checks each photo really shows the dish, and AI makes it look like a studio shot before it goes on a poster.",
-      "photosAiOff": "Xedine puts your real photo on the poster. Clear, bright photos of one plate look best.",
+      "photosAiOff": "Xedine lifts the dish off your photo and stands it on the poster. A clear photo of the whole plate looks best.",
       "autopilotTitle": "Autopilot",
       "autopilotOn": "Post by itself",
       "autopilotOnHint": "Every posting day Xedine picks a dish (best seller, a quiet time to fill, or one that hasn't been shown for a while), writes the words and posts. Nobody needs to approve it.",
@@ -2890,7 +2907,11 @@
         "draft": "The video waits in your TikTok app. Tap it, check it and post with one tap. Posts are public.",
         "direct": "Xedine posts with no tap once TikTok approves Xedine. Until then, each video waits in your TikTok inbox for one tap."
       },
-      "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password."
+      "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password.",
+      "showPrice": "Show prices on posters",
+      "showPriceHint": "The menu price goes on posters that have room for it, only when every branch charges the same.",
+      "designs": "Poster styles the autopilot may use",
+      "designsHint": "It takes turns, so your page never repeats itself. Untick a style you never want."
     },
     "growth": {
       "title": "Growth",
@@ -2904,8 +2925,8 @@
       "notConnected": "Facebook is not connected yet, so posts wait here to download.",
       "photoCount": "{count} dishes have a photo Xedine can use.",
       "setup": "Set up",
-      "makeTitle": "Make a post now",
-      "makeBody": "Pick a dish and, if you like, say what to tell people. Xedine makes the poster or video and posts it.",
+      "makeTitle": "Make a post",
+      "makeBody": "Pick a dish and a style — you see the real poster before it goes out. Say what it is about and let the AI write the words, or type your own.",
       "noPhotos": "No dish photos yet",
       "noPhotosBody": "Add a photo to a dish on the Menu page. Posts are made only from your real dishes.",
       "dish": "Dish",
@@ -2961,7 +2982,88 @@
       },
       "footnote": "Checked {at}. Xedine checks every 10 minutes.",
       "onTikTok": "On TikTok",
-      "inTikTokInbox": "In your TikTok inbox"
+      "inTikTokInbox": "In your TikTok inbox",
+      "noLook": "Social is not set up yet",
+      "noLookBody": "The owner sets the colours and contact once in Settings → Social; then posts can be made here."
+    },
+    "studio": {
+      "dish": "Dish",
+      "style": "Style",
+      "posterLanguage": "Poster language",
+      "also": "Also on this poster (up to {count})",
+      "preview": "Poster preview",
+      "pending": "Xedine is still lifting this dish off its photo; in a few minutes it will stand on the poster without its background.",
+      "noCut": "The plate runs off the edge of this photo, so it shows as a round photo. A photo of the whole plate looks best.",
+      "idea": "What is this post about? (optional)",
+      "ideaExample": "e.g. Friday special, new on the menu, rainy-day khichuri",
+      "write": "Write the words for me",
+      "rewrite": "Write new words",
+      "writing": "Writing…",
+      "aiWrote": "AI wrote these words — read them before posting",
+      "autoWords": "If you don't write the words, Xedine's AI writes them when it makes the post.",
+      "headline": "Big words",
+      "tagline": "Small line",
+      "more": "More lines",
+      "lines": {
+        "kicker": "Line above the big words",
+        "statusQ": "Status question",
+        "statusA": "Answer 1",
+        "statusB": "Answer 2",
+        "statusC": "Answer 3 (ticked)",
+        "moodTop": "Before the word",
+        "moodBottom": "After the word",
+        "hook": "Video's first words",
+        "caption": "Caption"
+      },
+      "post": "Make this post",
+      "errors": {
+        "notAllowed": "Only the owner or a manager can make posts.",
+        "aiOff": "AI is not switched on for Xedine yet. Type the words yourself.",
+        "number": "The AI wrote a number that isn't in your words, so it was stopped. Tap again for new words.",
+        "failed": "The AI couldn't write the words just now. Try again in a minute."
+      }
+    },
+    "designs": {
+      "band": {
+        "name": "Launch band",
+        "hint": "A slanted headline with your dishes riding a bold band."
+      },
+      "centre": {
+        "name": "Spotlight",
+        "hint": "The dish in the middle of your colour, the headline above."
+      },
+      "frame": {
+        "name": "Insta frame",
+        "hint": "An Instagram post card over your photo, the plate breaking out of it."
+      },
+      "split": {
+        "name": "Playful",
+        "hint": "Bold colour, flying leaves and your phone number, big."
+      },
+      "status": {
+        "name": "Status joke",
+        "hint": "Single? Taken? Hungry ✓ — a joke people share."
+      },
+      "mood": {
+        "name": "Mood letters",
+        "hint": "Your dishes become the O's of a word (English posters)."
+      },
+      "giant": {
+        "name": "Giant word",
+        "hint": "The dish's name huge and sideways, the dish in front."
+      },
+      "menu": {
+        "name": "Menu drop",
+        "hint": "Two or three dishes with their prices."
+      },
+      "breakout": {
+        "name": "Phone break-out",
+        "hint": "Your profile on a phone, the dish bursting out of it."
+      },
+      "minimal": {
+        "name": "Premium",
+        "hint": "A calm cream page with an elegant headline."
+      }
     }
   },
   "memberSettings": {

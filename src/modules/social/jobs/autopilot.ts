@@ -5,7 +5,16 @@ import { aiConfigured } from '@/lib/llm-gateway';
 import { addDays, businessDate } from '@/lib/time/business-date';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
-import { improveDishPhoto } from '../image-ai';
+import {
+  type ArtRow,
+  artRows,
+  bestCut,
+  downloadPhoto,
+  ensureStudio,
+  menuPrices,
+  type Photo,
+  prepareDish,
+} from './art';
 import {
   createInstagramContainer,
   instagramContainerStatus,
@@ -24,26 +33,34 @@ import {
 } from '../tiktok';
 import {
   angleForDay,
+  dayNumber,
+  DESIGN_EXTRAS,
   designForDay,
   formatForDay,
   isPostingDay,
+  isPosterDesign,
   pickDish,
-  slotAt,
   type PostAngle,
+  type PosterDesign,
+  slotAt,
   type SocialFormat,
 } from '../schedule';
-import type { PostContent } from '../templates';
+import type { DishArt, PostContent } from '../templates';
+import { ApprovedWordsSchema, posterLang, posterWords, type SocialWords } from '../words';
 import { checkDishPhoto, SOCIAL_POST_PROMPT, writeSocialPost } from '../writer';
 
 /**
- * The social autopilot's 10-minute tick (ADR 0040), run by pg_cron through /api/jobs/social_tick:
+ * The social autopilot's 10-minute tick (ADR 0040, 0057), run by GitHub Actions (ADR 0044):
  *
  *  1. plan     today's and tomorrow's autopilot post for every org with the switch on;
- *  2. make     posts due within 3 hours: pick the dish, check its photo, write the words, improve the
- *              picture, render the poster (and the reel) and store them;
+ *  2. make     posts due within 3 hours: pick the dish, check its photo, choose the design and the other
+ *              dishes it shows, write the words (or take the owner's), lift the dishes off their photos,
+ *              render the poster (and the reel) and store them;
  *  3. publish  posts whose time has come, to the connected Facebook Page, Instagram and TikTok
  *              (TikTok always gets the video; ADR 0041);
- *  4. clean    delete the media of posts that went out (or failed) 3+ days ago, so free storage never fills.
+ *  4. clean    delete the media of posts that went out (or failed) 3+ days ago, so free storage never fills;
+ *  5. prepare  with time left over, cut out dishes that have no art yet, so the owner's preview on Growth
+ *              shows them lifted off their photos.
  *
  * Nothing waits for a person: the owner chose fully automatic posting. Every step is idempotent, so a
  * slow run or a double fire never posts twice (fb_id / ig_id are written as each platform succeeds).
@@ -52,7 +69,6 @@ type Supabase = ReturnType<typeof createServiceRoleClient>;
 type Daypart = 'breakfast' | 'lunch' | 'snacks' | 'dinner' | 'late';
 
 const MEDIA_BUCKET = 'social-media';
-const PHOTO_BUCKET = 'menu-photos';
 const MAKE_AHEAD_MS = 3 * 60 * 60_000;
 const KEEP_MEDIA_MS = 3 * 24 * 60 * 60_000;
 const MAX_ATTEMPTS = 3;
@@ -72,6 +88,8 @@ interface Settings {
   area: string | null;
   phone: string | null;
   never_item_ids: string[];
+  designs: string[];
+  show_price: boolean;
 }
 
 interface Post {
@@ -85,6 +103,9 @@ interface Post {
   scheduled_at: string;
   status: string;
   own_text: string | null;
+  template: string | null;
+  design_words: unknown;
+  extra_item_ids: string[] | null;
   caption_bn: string | null;
   caption_en: string | null;
   poster_path: string | null;
@@ -99,9 +120,9 @@ interface Post {
 }
 
 const SETTINGS_COLUMNS =
-  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids';
+  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, designs, show_price';
 const POST_COLUMNS =
-  'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
+  'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, template, design_words, extra_item_ids, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
 
 export interface TickResult {
   planned: number;
@@ -109,6 +130,7 @@ export interface TickResult {
   published: number;
   failed: number;
   cleaned: number;
+  prepared: number;
 }
 
 export async function runSocialTick(
@@ -122,7 +144,14 @@ export async function runSocialTick(
     const t0 = performance.now();
     return () => performance.now() - t0;
   })();
-  const result: TickResult = { planned: 0, made: 0, published: 0, failed: 0, cleaned: 0 };
+  const result: TickResult = {
+    planned: 0,
+    made: 0,
+    published: 0,
+    failed: 0,
+    cleaned: 0,
+    prepared: 0,
+  };
 
   result.planned = await planAhead(sb, at);
   // Publishing first: a post that is due must not wait behind a slow render.
@@ -150,6 +179,7 @@ export async function runSocialTick(
   result.published += again.published;
   result.failed += again.failed;
   result.cleaned = await cleanMedia(sb, at);
+  result.prepared = await prepareArt(sb, at, () => elapsed() < budgetMs - 30_000);
   return result;
 }
 
@@ -234,6 +264,24 @@ async function fail(sb: Supabase, post: Post, message: string, final = false): P
   return false;
 }
 
+interface Dish {
+  id: string;
+  name: string;
+  name_bn: string | null;
+  photo_path: string;
+  description: string | null;
+  base_price_poisha: number;
+}
+
+/** A dish whose photo is in hand and (when the AI is on) passed the photo check. */
+interface ReadyDish {
+  dish: Dish;
+  row: ArtRow;
+  photo: Photo;
+  /** The photo shrunk to ≤500 px: the AI checks it and the studio plate is drawn from it. */
+  small: Uint8Array;
+}
+
 async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
   try {
     const [{ data: settingsRow }, { data: org }, { data: profile }, { data: tiktok }] =
@@ -258,54 +306,61 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
     }
     const restaurant = s.display_name || (org?.name as string) || '';
     const area = s.area || [profile?.area, profile?.city].filter(Boolean).join(', ') || null;
-    const locale = s.language === 'en' ? 'en' : 'bn';
+    // Words the owner approved in the preview are used as they are; the AI fills whatever is missing.
+    const approved = ApprovedWordsSchema.safeParse(post.design_words ?? undefined);
+    const { poster_lang: previewLang, ...ownWords } = approved.success ? approved.data : {};
+    const own = approved.success ? ownWords : null;
+    // One language per poster (the one the owner previewed, if any); the caption carries both when the
+    // owner chose both.
+    const lang = previewLang ?? posterLang(s.language, dayNumber(post.plan_date));
     const t = createTranslator({
-      locale,
-      messages: locale === 'bn' ? bn : en,
+      locale: lang,
+      messages: lang === 'bn' ? bn : en,
       namespace: 'social.poster',
     });
 
     // The dishes this post may show: active, with a photo, not on the owner's "never" list.
     const { data: items } = await sb
       .from('menu_items')
-      .select('id, name, name_bn, photo_path')
+      .select('id, name, name_bn, photo_path, description, base_price_poisha')
       .eq('org_id', post.org_id)
       .eq('is_active', true)
       .not('photo_path', 'is', null);
-    const allowed = (
-      (items ?? []) as {
-        id: string;
-        name: string;
-        name_bn: string | null;
-        photo_path: string;
-      }[]
-    ).filter((i) => post.source === 'owner' || !s.never_item_ids.includes(i.id));
+    const all = (items ?? []) as Dish[];
+    const allowed = all.filter((i) => post.source === 'owner' || !s.never_item_ids.includes(i.id));
     if (allowed.length === 0) return fail(sb, post, 'no_dish_photos', true);
 
     const { data: history } = await sb
       .from('social_posts')
-      .select('menu_item_id, scheduled_at')
+      .select('menu_item_id, scheduled_at, template')
       .eq('org_id', post.org_id)
       .in('status', ['ready', 'publishing', 'posted'])
-      .not('menu_item_id', 'is', null)
       .order('scheduled_at', { ascending: false })
       .limit(200);
+    const past = (history ?? []) as {
+      menu_item_id: string | null;
+      scheduled_at: string;
+      template: string | null;
+    }[];
     const last = new Map<string, string>();
-    for (const h of (history ?? []) as { menu_item_id: string; scheduled_at: string }[])
-      if (!last.has(h.menu_item_id)) last.set(h.menu_item_id, h.scheduled_at);
-    const lastPostedId = ((history ?? [])[0] as { menu_item_id?: string } | undefined)
-      ?.menu_item_id;
+    for (const h of past)
+      if (h.menu_item_id && !last.has(h.menu_item_id)) last.set(h.menu_item_id, h.scheduled_at);
+    const lastPostedId = past.find((h) => h.menu_item_id)?.menu_item_id;
+    const recentDesigns = past
+      .slice(0, 3)
+      .map((h) => h.template)
+      .filter((d): d is string => Boolean(d));
 
     const inputs =
       post.angle === 'star' || post.angle === 'quiet_time'
         ? await growthInputs(sb, post.org_id, at)
         : null;
     let angle = post.angle;
-    const candidates: typeof allowed = [];
+    const candidates: Dish[] = [];
     if (angle === 'own') {
-      const own = allowed.find((i) => i.id === post.menu_item_id);
-      if (!own) return fail(sb, post, 'dish_photo_missing', true);
-      candidates.push(own);
+      const ownDish = allowed.find((i) => i.id === post.menu_item_id);
+      if (!ownDish) return fail(sb, post, 'dish_photo_missing', true);
+      candidates.push(ownDish);
     } else {
       if (angle === 'star') {
         const star = allowed.find((i) => i.name === inputs?.top_item_name);
@@ -329,31 +384,85 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       }
     }
 
+    const arts = await artRows(
+      sb,
+      post.org_id,
+      allowed.map((i) => i.id),
+    );
+
     return await withBrowser(async (browser) => {
-      let chosen: (typeof allowed)[number] | null = null;
-      let photo: { bytes: Uint8Array; mime: string } | null = null;
-      let small: Uint8Array | null = null;
-      for (const item of candidates) {
-        const { data: blob } = await sb.storage.from(PHOTO_BUCKET).download(item.photo_path);
-        if (!blob) continue;
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        const mime = blob.type || 'image/webp';
-        const reference = await shrinkPhoto(browser, bytes, mime, 500);
-        if (aiConfigured()) {
-          const verdict = await checkDishPhoto({
-            orgId: post.org_id,
-            dish: item.name,
-            jpeg: reference,
-          });
-          if (verdict !== 'ok') continue;
-        }
-        chosen = item;
-        photo = { bytes, mime };
-        small = reference;
-        break;
+      /**
+       * Download the dish's photo, run the AI photo check once per photo (kept in social_dish_art) and,
+       * when asked, make its cut-out. Null when the photo is missing or is not food.
+       */
+      const ready = async (dish: Dish, cut: boolean): Promise<ReadyDish | null> => {
+        const photo = await downloadPhoto(sb, dish.photo_path);
+        if (!photo) return null;
+        const small = await shrinkPhoto(browser, photo.bytes, photo.mime, 500);
+        const row = await prepareDish(sb, post.org_id, dish, photo, at, {
+          known: arts.get(dish.id),
+          check: aiConfigured()
+            ? () => checkDishPhoto({ orgId: post.org_id, dish: dish.name, jpeg: small })
+            : undefined,
+          cut,
+        });
+        arts.set(dish.id, row);
+        if (aiConfigured() && row.photo_check !== 'ok') return null;
+        return { dish, row, photo, small };
+      };
+
+      let main: ReadyDish | null = null;
+      for (const dish of candidates) {
+        main = await ready(dish, true);
+        if (main) break;
       }
       // The same photos would fail the same way again, so this is final.
-      if (!chosen || !photo || !small) return fail(sb, post, 'photo_not_food', true);
+      if (!main) return fail(sb, post, 'photo_not_food', true);
+      const chosen = main.dish;
+
+      // The design: the owner's choice, else the day's turn among the designs the owner allows.
+      let design: PosterDesign =
+        post.template && isPosterDesign(post.template)
+          ? post.template
+          : designForDay(post.plan_date, {
+              tone: s.tone,
+              allowed: s.designs.filter(isPosterDesign),
+              needs: { english: lang === 'en', dishes: allowed.length },
+              recent: recentDesigns,
+              offset: post.source === 'owner' ? 1 : 0,
+            });
+
+      // The other dishes the design shows: the owner's picks, else the ones posted longest ago.
+      const extras: ReadyDish[] = [];
+      const names: Dish[] = [];
+      const want = DESIGN_EXTRAS[design];
+      const ownExtras = (post.extra_item_ids ?? [])
+        .map((id) => all.find((i) => i.id === id))
+        .filter((d): d is Dish => Boolean(d) && d!.id !== chosen.id);
+      if (ownExtras.length) {
+        for (const d of ownExtras) {
+          const r = await ready(d, want?.need !== 'photo');
+          if (r) extras.push(r);
+        }
+      } else if (want?.need === 'name') {
+        names.push(...allowed.filter((i) => i.id !== chosen.id).slice(0, want.count));
+      } else if (want) {
+        const pool = allowed.filter((i) => i.id !== chosen.id);
+        while (extras.length < want.count && pool.length > 0) {
+          const pick = pickDish(
+            pool.map((i) => ({ id: i.id, name: i.name, lastPostedAt: last.get(i.id) ?? null })),
+          );
+          if (!pick) break;
+          const dish = pool.splice(
+            pool.findIndex((i) => i.id === pick.id),
+            1,
+          )[0]!;
+          const r = await ready(dish, want.need === 'cut');
+          if (r) extras.push(r);
+        }
+      }
+      // A menu of one dish is just a spotlight.
+      if (design === 'menu' && extras.length === 0) design = 'centre';
 
       const daypart = angle === 'quiet_time' && inputs?.weak_daypart ? inputs.weak_daypart : null;
       const fact =
@@ -365,47 +474,89 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
               ? `The owner wants to tell people about ${chosen.name}.`
               : `A spotlight on ${chosen.name} from the menu.`;
 
-      const words = await writeSocialPost({
-        orgId: post.org_id,
-        restaurant,
+      let words: Partial<SocialWords> = own ?? {};
+      let model: string | null = null;
+      let promptVersion: string | null = null;
+      if (!own?.caption_bn || !own?.caption_en) {
+        const ai = await writeSocialPost({
+          orgId: post.org_id,
+          restaurant,
+          dish: chosen.name,
+          fact,
+          ownNote: post.own_text,
+          tone: s.tone,
+          area,
+        });
+        words = { ...ai, ...(own ?? {}) };
+        model = ai.model;
+        promptVersion = `${SOCIAL_POST_PROMPT.key}@${ai.promptVersion}`;
+      }
+
+      // The dish about to be posted gets the AI studio plate when the free quota allows.
+      const mainRow = await ensureStudio(sb, main.row, {
         dish: chosen.name,
-        fact,
-        ownNote: post.own_text,
-        tone: s.tone,
-        area,
+        reference: main.small,
+        seed: Number.parseInt(post.id.slice(0, 8), 16) % 1_000_000,
+        at,
       });
 
-      const folder = `${post.org_id}/${post.id}`;
-      let picture = dataUrl(photo.bytes, photo.mime);
-      let aiPath: string | null = null;
-      try {
-        const improved = await improveDishPhoto({
-          reference: small,
-          dish: chosen.name,
-          colour: s.color_main,
-          seed: Number.parseInt(post.id.slice(0, 8), 16) % 1_000_000,
+      const prices = s.show_price
+        ? await menuPrices(
+            sb,
+            post.org_id,
+            [chosen, ...extras.map((e) => e.dish)],
+            lang,
+            t('plusVat'),
+          )
+        : new Map<string, string | null>();
+      const nameOf = (d: Dish) => (lang === 'bn' && d.name_bn?.trim() ? d.name_bn.trim() : d.name);
+      const art = async (
+        r: ReadyDish,
+        row: ArtRow,
+        cut: boolean,
+        edge: number,
+      ): Promise<DishArt> => {
+        const cutBytes = cut ? await bestCut(sb, row) : null;
+        const photo = await shrinkPhoto(browser, r.photo.bytes, r.photo.mime, edge);
+        return {
+          name: nameOf(r.dish),
+          cutUrl: cutBytes ? dataUrl(cutBytes, 'image/webp') : null,
+          photoUrl: dataUrl(photo, 'image/jpeg'),
+          price: prices.get(r.dish.id) ?? null,
+          note: r.dish.description?.trim() || null,
+        };
+      };
+      const mainArt = await art(main, mainRow, true, 1200);
+      const more: DishArt[] = [];
+      for (const r of extras) more.push(await art(r, r.row, want?.need !== 'photo', 700));
+      for (const d of names)
+        more.push({
+          name: nameOf(d),
+          cutUrl: null,
+          photoUrl: mainArt.photoUrl,
+          price: null,
+          note: null,
         });
-        if (improved) {
-          picture = dataUrl(improved, 'image/jpeg');
-          aiPath = `${folder}/dish.jpg`;
-          await upload(sb, aiPath, improved, 'image/jpeg');
-        }
-      } catch {
-        // The free image quota can run out for the day; the real photo is still a good post.
-      }
 
       let logoUrl: string | null = null;
       if (s.logo_path) {
-        const { data: logo } = await sb.storage.from(PHOTO_BUCKET).download(s.logo_path);
-        if (logo)
-          logoUrl = dataUrl(new Uint8Array(await logo.arrayBuffer()), logo.type || 'image/webp');
+        const logo = await downloadPhoto(sb, s.logo_path);
+        if (logo) logoUrl = dataUrl(logo.bytes, logo.mime);
       }
 
       const content: PostContent = {
-        design: designForDay(post.plan_date, post.source === 'owner' ? 1 : 0),
-        hook: s.language === 'en' ? words.hook_en : words.hook_bn,
-        headline: s.language === 'bn' ? words.headline_bn : words.headline_en,
-        tagline: s.language === 'en' ? words.tagline_en : words.tagline_bn,
+        design,
+        lang,
+        words: posterWords(words, lang, nameOf(chosen), {
+          kicker: t('defaults.kicker'),
+          tagline: t('defaults.tagline'),
+          statusQ: t('defaults.statusQ'),
+          statusA: t('defaults.statusA'),
+          statusB: t('defaults.statusB'),
+          statusC: t('defaults.statusC'),
+          moodTop: t('defaults.moodTop'),
+          moodBottom: t('defaults.moodBottom'),
+        }),
         cta: t('cta'),
         badge:
           angle === 'star'
@@ -418,9 +569,17 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
         phone: s.phone,
         colorMain: s.color_main,
         colorAccent: s.color_accent,
-        imageUrl: picture,
+        dish: mainArt,
+        more,
         logoUrl,
+        labels: {
+          orderNow: t('labels.orderNow'),
+          follow: t('labels.follow'),
+          message: t('labels.message'),
+          callUs: t('labels.callUs'),
+        },
       };
+      const folder = `${post.org_id}/${post.id}`;
       const posterPath = `${folder}/poster.jpg`;
       await upload(sb, posterPath, await renderPoster(browser, content), 'image/jpeg');
       let videoPath: string | null = null;
@@ -437,16 +596,18 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
           menu_item_id: chosen.id,
           angle,
           fact,
-          headline: content.headline,
-          tagline: content.tagline,
-          caption_bn: words.caption_bn,
-          caption_en: words.caption_en,
-          template: content.design,
-          ai_image_path: aiPath,
+          headline: content.words.headline,
+          tagline: content.words.tagline,
+          caption_bn: words.caption_bn || words.caption_en || null,
+          caption_en: words.caption_en || words.caption_bn || null,
+          template: design,
+          extra_item_ids: extras.map((e) => e.dish.id),
+          // The studio plate is kept with the dish's art (ADR 0057), not with the post.
+          ai_image_path: null,
           poster_path: posterPath,
           video_path: videoPath,
-          model: words.model,
-          prompt_version: `${SOCIAL_POST_PROMPT.key}@${words.promptVersion}`,
+          model: model ?? 'owner',
+          prompt_version: promptVersion,
           error: null,
         })
         .eq('id', post.id)
@@ -715,4 +876,45 @@ async function cleanMedia(sb: Supabase, at: Date): Promise<number> {
     cleaned++;
   }
   return cleaned;
+}
+
+// ---------------------------------------------------------------------------------------------
+// 5. Prepare
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Cut out dishes that have no art for their current photo yet, while time is left in this run, so the
+ * owner's preview on Growth shows them lifted off their photos. Only orgs that use Social (they have a
+ * social_settings row). No AI calls here: the photo check waits until a dish is about to be posted.
+ */
+async function prepareArt(sb: Supabase, at: Date, more: () => boolean): Promise<number> {
+  if (!more()) return 0;
+  const { data: orgs } = await sb.from('social_settings').select('org_id').limit(500);
+  let prepared = 0;
+  for (const { org_id: orgId } of (orgs ?? []) as { org_id: string }[]) {
+    if (!more()) break;
+    const { data: items } = await sb
+      .from('menu_items')
+      .select('id, photo_path')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .not('photo_path', 'is', null)
+      .limit(300);
+    const dishes = (items ?? []) as { id: string; photo_path: string }[];
+    const known = await artRows(
+      sb,
+      orgId,
+      dishes.map((d) => d.id),
+    );
+    for (const dish of dishes) {
+      if (!more()) break;
+      const row = known.get(dish.id);
+      if (row && row.source_path === dish.photo_path) continue;
+      const photo = await downloadPhoto(sb, dish.photo_path);
+      if (!photo) continue;
+      await prepareDish(sb, orgId, dish, photo, at, { known: row });
+      prepared++;
+    }
+  }
+  return prepared;
 }

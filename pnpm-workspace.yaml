@@ -6,6 +6,11 @@ allowBuilds:
   esbuild: false
   # Downloads the ffmpeg binary that renders the social autopilot's reels (ADR 0040).
   ffmpeg-static: true
+  # The CPU builds for every platform ship inside the package; the script only fetches optional CUDA files
+  # (dish cut-outs run on the CPU, ADR 0057).
+  onnxruntime-node: false
+  # Only a version notice.
+  protobufjs: false
   unrs-resolver: false
   # Platform binary ships as an optionalDependency; the script only re-verifies it (Cloudflare move).
   workerd: false

@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { posterPrice } from './prices';
+import { cutoutUsable, maskStats } from './cutout';
 import { captionFor } from './jobs/autopilot';
 import { makeState, readState } from './meta';
+import { contrast, cssUrl, readable, rgbOf, PAPER } from './poster-kit';
 import {
   angleForDay,
+  designFits,
   designForDay,
   formatForDay,
   isPostingDay,
   pickDish,
+  POSTER_DESIGNS,
   slotAt,
 } from './schedule';
 import {
@@ -15,10 +20,19 @@ import {
   inkOn,
   posterHtml,
   reelHtml,
+  type DishArt,
   type PostContent,
 } from './templates';
-import { asciiDigits, inventedNumber, type SocialWords } from './writer';
-import { describeColour } from './image-ai';
+import {
+  ApprovedWordsSchema,
+  asciiDigits,
+  inventedNumber,
+  moodWord,
+  posterLang,
+  posterWords,
+  type SocialWords,
+} from './words';
+import { describeColour, dishPrompt } from './image-ai';
 import {
   makeTikTokState,
   pickPrivacy,
@@ -71,11 +85,40 @@ describe('social autopilot schedule (ADR 0040)', () => {
     expect(pickDish([])).toBeNull();
   });
 
-  it('rotates poster designs', () => {
+  it('rotates through every design the owner allows, never repeating a recent one (ADR 0057)', () => {
+    const needs = { english: true, dishes: 5 };
+    const days = Array.from({ length: 10 }, (_, i) => `2026-11-${String(10 + i).padStart(2, '0')}`);
     const seen = new Set(
-      ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29'].map((d) => designForDay(d)),
+      days.map((d) => designForDay(d, { tone: 'friendly', allowed: POSTER_DESIGNS, needs })),
     );
-    expect(seen.size).toBe(4);
+    expect(seen.size).toBe(10);
+    const day = '2026-11-20';
+    const first = designForDay(day, { tone: 'fun', allowed: POSTER_DESIGNS, needs });
+    const next = designForDay(day, {
+      tone: 'fun',
+      allowed: POSTER_DESIGNS,
+      needs,
+      recent: [first],
+    });
+    expect(next).not.toBe(first);
+    // Only the designs the owner allows.
+    expect(designForDay(day, { tone: 'premium', allowed: ['frame'], needs })).toBe('frame');
+  });
+
+  it('leaves out designs the restaurant cannot fill', () => {
+    expect(designFits('mood', { english: false, dishes: 5 })).toBe(false); // the O's are English letters
+    expect(designFits('menu', { english: true, dishes: 1 })).toBe(false); // a menu needs two dishes
+    expect(designFits('status', { english: false, dishes: 1 })).toBe(true);
+    const onlyBangla = new Set(
+      ['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13'].map((d) =>
+        designForDay(d, {
+          tone: 'fun',
+          allowed: ['mood', 'menu'],
+          needs: { english: false, dishes: 1 },
+        }),
+      ),
+    );
+    expect(onlyBangla).toEqual(new Set(['centre'])); // nothing fits: the safe spotlight
   });
 });
 
@@ -87,9 +130,58 @@ describe('social post words', () => {
     headline_bn: 'আসল স্বাদ',
     tagline_en: 'Slow cooked',
     tagline_bn: 'ধীরে রান্না',
+    kicker_en: 'The best is here',
+    kicker_bn: 'সেরা স্বাদ',
+    status_q_en: "What's your status?",
+    status_a_en: 'Single',
+    status_b_en: 'Taken',
+    status_c_en: 'Hungry',
+    status_q_bn: 'আপনার স্ট্যাটাস কী?',
+    status_a_bn: 'সিঙ্গেল',
+    status_b_bn: 'কমিটেড',
+    status_c_bn: 'ক্ষুধার্ত',
+    mood_top_en: "What's your",
+    mood_word: 'food',
+    mood_bottom_en: 'today?',
     caption_bn: 'আজই আসুন',
     caption_en: 'Come today',
   };
+  const defaults = {
+    kicker: 'K',
+    tagline: 'T',
+    statusQ: 'Q',
+    statusA: 'A',
+    statusB: 'B',
+    statusC: 'C',
+    moodTop: 'top',
+    moodBottom: 'bottom',
+  };
+
+  it('maps the words into one poster language, with plain defaults for anything missing', () => {
+    const bn = posterWords(words, 'bn', 'Kacchi', defaults);
+    expect(bn.headline).toBe('আসল স্বাদ');
+    expect(bn.statusC).toBe('ক্ষুধার্ত');
+    expect(bn.moodWord).toBe('FOOD'); // normalised from the AI's lower case
+    const empty = posterWords({}, 'en', 'Kacchi', defaults);
+    expect(empty.headline).toBe('Kacchi');
+    expect(empty.hook).toBe('Kacchi');
+    expect(empty.statusQ).toBe('Q');
+    expect(moodWord('nonsense')).toBe('MOOD');
+  });
+
+  it('alternates the poster language day by day when the owner chose both, and keeps a single choice', () => {
+    expect(new Set([posterLang('both', 10), posterLang('both', 11)])).toEqual(
+      new Set(['bn', 'en']),
+    );
+    expect(posterLang('bn', 11)).toBe('bn');
+    expect(posterLang('en', 10)).toBe('en');
+  });
+
+  it('accepts only known, short words back from the preview', () => {
+    expect(ApprovedWordsSchema.safeParse({ headline_bn: 'আসল স্বাদ' }).success).toBe(true);
+    expect(ApprovedWordsSchema.safeParse({ headline_bn: 'x'.repeat(81) }).success).toBe(false);
+    expect(ApprovedWordsSchema.safeParse({ script: 'x' }).success).toBe(false);
+  });
 
   it('reads Bangla digits as numbers', () => {
     expect(asciiDigits('১০% ছাড়')).toBe('10% ছাড়');
@@ -113,11 +205,30 @@ describe('social post words', () => {
 });
 
 describe('poster and reel templates', () => {
+  const evil = '<script>alert(1)</script>';
+  const dishArt = (name: string, cut: boolean): DishArt => ({
+    name,
+    cutUrl: cut ? 'data:image/webp;base64,CUT0' : null,
+    photoUrl: 'data:image/jpeg;base64,PHOTO0',
+    price: '৳৩৫০',
+    note: evil,
+  });
   const content: PostContent = {
     design: 'band',
-    hook: 'Hungry?',
-    headline: '<script>alert(1)</script>',
-    tagline: 'ধীরে রান্না',
+    lang: 'bn',
+    words: {
+      hook: 'Hungry?',
+      headline: evil,
+      tagline: 'ধীরে রান্না',
+      kicker: evil,
+      statusQ: evil,
+      statusA: 'Single',
+      statusB: 'Taken',
+      statusC: evil,
+      moodTop: evil,
+      moodWord: 'MOOD',
+      moodBottom: evil,
+    },
     cta: 'আজই আসুন',
     badge: 'Best seller',
     restaurant: 'Kacchi & Co',
@@ -125,21 +236,56 @@ describe('poster and reel templates', () => {
     phone: '01700000000',
     colorMain: '#C8102E',
     colorAccent: '#FFC72C',
-    imageUrl: 'data:image/jpeg;base64,AAAA',
+    dish: dishArt(evil, true),
+    more: [dishArt('Borhani', true), dishArt('Firni', false)],
     logoUrl: null,
+    labels: { orderNow: 'Order now', follow: 'Follow', message: 'Message', callUs: 'Call us' },
   };
 
-  it('escapes every piece of text it is given', () => {
+  it('escapes every piece of text in every design, with and without cut-outs', () => {
     expect(escapeHtml(`<a href="x">'&'</a>`)).toBe(
       '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;',
     );
-    for (const design of ['band', 'centre', 'frame', 'split'] as const) {
-      const html = posterHtml({ ...content, design });
-      expect(html).not.toContain('<script>alert');
-      expect(html).toContain('Kacchi &amp; Co');
-      expect(html).toContain('ধীরে রান্না');
-    }
+    for (const design of POSTER_DESIGNS)
+      for (const cut of [true, false]) {
+        const html = posterHtml({ ...content, design, dish: dishArt(evil, cut) });
+        expect(html, design).not.toContain('<script>alert');
+        expect(html, design).toContain('<!doctype html>');
+        expect(html, design).toContain('data-fit');
+      }
+    expect(posterHtml({ ...content, design: 'band' })).toContain('Kacchi &amp; Co');
+    expect(posterHtml({ ...content, design: 'centre' })).toContain('ধীরে রান্না');
     expect(reelHtml(content)).not.toContain('<script>alert');
+  });
+
+  it('stands a clean cut-out on the poster and frames the photo when there is none', () => {
+    const withCut = posterHtml({ ...content, design: 'status', dish: dishArt('Kacchi', true) });
+    expect(withCut).toContain('class="cut"');
+    expect(withCut).toContain('CUT0');
+    const withPhoto = posterHtml({ ...content, design: 'status', dish: dishArt('Kacchi', false) });
+    expect(withPhoto).not.toContain('class="cut"');
+    expect(withPhoto).toContain('border-radius:50%');
+  });
+
+  it('draws the dishes as the O letters of the MOOD word', () => {
+    const html = posterHtml({ ...content, design: 'mood', lang: 'en' });
+    const word = html.slice(html.indexOf('data-fit style="left:90px'));
+    expect(word.split('CUT0').length - 1).toBeGreaterThanOrEqual(2);
+  });
+
+  it('only lets data and https pictures into styles', () => {
+    expect(cssUrl('https://x.supabase.co/storage/v1/object/public/a/b.webp')).toBe(
+      'https://x.supabase.co/storage/v1/object/public/a/b.webp',
+    );
+    expect(cssUrl("https://x/a.webp') ;background:url('evil")).toBe('about:blank');
+    expect(cssUrl('javascript:alert(1)')).toBe('about:blank');
+    expect(cssUrl('data:image/png;base64,AAAA')).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('keeps the brand colour readable on paper', () => {
+    const yellow = rgbOf('#FFC72C');
+    expect(contrast(yellow, PAPER)).toBeLessThan(2);
+    expect(contrast(readable(yellow, PAPER, 4.5), PAPER)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('picks readable ink for the background colour', () => {
@@ -158,6 +304,63 @@ describe('poster and reel templates', () => {
     expect(describeColour('#C8102E')).toContain('red');
     expect(describeColour('#FFC72C')).toContain('yellow');
     expect(describeColour('#FFFFFF')).toBe('white');
+  });
+
+  it('asks the image model for the whole plate on a plain background, never for words', () => {
+    const prompt = dishPrompt('Kacchi');
+    expect(prompt).toContain('Kacchi');
+    expect(prompt).toContain('whole plate');
+    expect(prompt).toContain('No text');
+  });
+});
+
+describe('dish cut-outs (ADR 0057)', () => {
+  /** An RGBA image whose alpha is 255 inside the given rectangle. */
+  const image = (w: number, h: number, box: [number, number, number, number]) => {
+    const data = new Uint8Array(w * h * 4);
+    for (let y = box[1]; y < box[3]; y++)
+      for (let x = box[0]; x < box[2]; x++) data[(y * w + x) * 4 + 3] = 255;
+    return data;
+  };
+
+  it('measures how much of the photo is dish, its box, and whether it touches the edge', () => {
+    const s = maskStats(image(100, 100, [20, 30, 80, 70]), 100, 100, 4);
+    expect(s.coverage).toBeCloseTo(0.24, 5);
+    expect(s.edge).toBe(0);
+    expect(s.box).toEqual({ x: 0.2, y: 0.3, w: 0.6, h: 0.4 });
+    expect(cutoutUsable(s)).toBe(true);
+  });
+
+  it('refuses a close-up whose plate runs off the frame, an empty mask and a whole-photo mask', () => {
+    const closeUp = maskStats(image(100, 100, [0, 10, 100, 100]), 100, 100, 4);
+    expect(closeUp.edge).toBeGreaterThan(0.5);
+    expect(cutoutUsable(closeUp)).toBe(false);
+    expect(cutoutUsable(maskStats(image(50, 50, [0, 0, 0, 0]), 50, 50, 4))).toBe(false);
+    expect(cutoutUsable(maskStats(image(50, 50, [1, 1, 49, 49]), 50, 50, 4))).toBe(false);
+  });
+});
+
+describe('prices on posters (ADR 0057)', () => {
+  const vat = { included: true, plusVat: '+VAT' };
+
+  it('prints the menu price with the shared formatter, Bangla digits in Bangla', () => {
+    expect(posterPrice({ basePoisha: 35000, branchPoisha: [] }, 'en', vat)).toBe('৳350');
+    expect(posterPrice({ basePoisha: 35000, branchPoisha: [35000] }, 'bn', vat)).toBe('৳৩৫০');
+    expect(posterPrice({ basePoisha: 125050, branchPoisha: [] }, 'en', vat)).toBe('৳1,250.50');
+  });
+
+  it('says nothing when branches charge differently, or the dish has no price', () => {
+    expect(posterPrice({ basePoisha: 35000, branchPoisha: [38000] }, 'en', vat)).toBeNull();
+    expect(posterPrice({ basePoisha: 0, branchPoisha: [] }, 'en', vat)).toBeNull();
+  });
+
+  it('adds +VAT when menu prices do not include it', () => {
+    expect(
+      posterPrice({ basePoisha: 35000, branchPoisha: [] }, 'en', {
+        included: false,
+        plusVat: '+VAT',
+      }),
+    ).toBe('৳350 +VAT');
   });
 });
 

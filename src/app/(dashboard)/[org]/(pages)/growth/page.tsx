@@ -3,27 +3,42 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { ActionForm } from '@/components/action-form';
+import { SocialStudio, type StudioDish, type StudioPosterText } from '@/components/social-studio';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-  Alert,
-  Card,
-  CardTitle,
-  EmptyState,
-  Hint,
-  Input,
-  Label,
-  PageTitle,
-  Select,
-  Textarea,
-} from '@/components/ui/form';
+import { Alert, Card, CardTitle, EmptyState, Hint, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDateTime, type Locale } from '@/lib/i18n/format';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
-import { requestSocialPostAction, skipSocialPostAction } from '@/modules/social/actions';
+import { skipSocialPostAction } from '@/modules/social/actions';
+import { branchPricesByItem, posterPrice } from '@/modules/social/prices';
 import { getOrgContext } from '@/modules/tenancy/context';
+
+/** The poster's own words in one language (button labels, fallback lines), for the live preview. */
+async function posterText(locale: Locale): Promise<StudioPosterText & { plusVat: string }> {
+  const t = await getTranslations({ locale, namespace: 'social.poster' });
+  return {
+    plusVat: t('plusVat'),
+    cta: t('cta'),
+    labels: {
+      orderNow: t('labels.orderNow'),
+      follow: t('labels.follow'),
+      message: t('labels.message'),
+      callUs: t('labels.callUs'),
+    },
+    defaults: {
+      kicker: t('defaults.kicker'),
+      tagline: t('defaults.tagline'),
+      statusQ: t('defaults.statusQ'),
+      statusA: t('defaults.statusA'),
+      statusB: t('defaults.statusB'),
+      statusC: t('defaults.statusC'),
+      moodTop: t('defaults.moodTop'),
+      moodBottom: t('defaults.moodBottom'),
+    },
+  };
+}
 
 const STATUS_TONE: Record<string, 'neutral' | 'info' | 'success' | 'danger'> = {
   planned: 'neutral',
@@ -82,16 +97,24 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     { data: items },
     { data: upcoming },
     { data: past },
+    { data: arts },
+    { data: branchPrices },
+    { data: orgSettings },
+    { data: profile },
+    posterBn,
+    posterEn,
   ] = await Promise.all([
     supabase
       .from('social_settings')
-      .select('autopilot, post_time')
+      .select(
+        'autopilot, post_time, language, color_main, color_accent, logo_path, display_name, area, phone, show_price',
+      )
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     supabase.from('social_accounts').select('platform, name').eq('org_id', ctx.org.id),
     supabase
       .from('menu_items')
-      .select('id, name, photo_path')
+      .select('id, name, name_bn, photo_path, description, base_price_poisha')
       .eq('org_id', ctx.org.id)
       .eq('is_active', true)
       .not('photo_path', 'is', null)
@@ -114,9 +137,91 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
       .in('status', ['posted', 'failed', 'skipped'])
       .order('scheduled_at', { ascending: false })
       .limit(30),
+    supabase
+      .from('social_dish_art')
+      .select('menu_item_id, source_path, cutout_path, cutout_usable, studio_path, studio_usable')
+      .eq('org_id', ctx.org.id),
+    supabase
+      .from('branch_item_prices')
+      .select('menu_item_id, price_poisha')
+      .eq('org_id', ctx.org.id)
+      .is('variant_id', null)
+      .eq('is_available', true),
+    supabase
+      .from('org_settings')
+      .select('price_includes_vat')
+      .eq('org_id', ctx.org.id)
+      .maybeSingle(),
+    supabase.from('org_profile').select('area, city').eq('org_id', ctx.org.id).maybeSingle(),
+    posterText('bn'),
+    posterText('en'),
   ]);
+  // The poster's colours and contact live in social_settings; the owner's first visit makes the row (the
+  // database holds the default colours), a manager waits for the owner.
+  let look = settings;
+  if (!look && ctx.isOwner) {
+    await supabase.from('social_settings').insert({ org_id: ctx.org.id });
+    ({ data: look } = await supabase
+      .from('social_settings')
+      .select(
+        'autopilot, post_time, language, color_main, color_accent, logo_path, display_name, area, phone, show_price',
+      )
+      .eq('org_id', ctx.org.id)
+      .maybeSingle());
+  }
   const dishes = items ?? [];
   const dishName = new Map(dishes.map((d) => [d.id as string, d.name as string]));
+  const mediaUrl = (bucket: string, path: string) =>
+    supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  // The live preview stands each dish the way the job will: its cut-out (the AI studio plate first).
+  const artFor = new Map(
+    (arts ?? []).map((a) => [
+      a.menu_item_id as string,
+      a as {
+        source_path: string;
+        cutout_path: string | null;
+        cutout_usable: boolean;
+        studio_path: string | null;
+        studio_usable: boolean;
+      },
+    ]),
+  );
+  const perBranch = branchPricesByItem(
+    (branchPrices ?? []) as { menu_item_id: string; price_poisha: number }[],
+  );
+  const vatIncluded = (orgSettings?.price_includes_vat as boolean | undefined) ?? true;
+  const price = (d: { id: string; base_price_poisha: number }, locale: Locale) =>
+    look?.show_price === false
+      ? null
+      : posterPrice(
+          { basePoisha: Number(d.base_price_poisha), branchPoisha: perBranch.get(d.id) ?? [] },
+          locale,
+          { included: vatIncluded, plusVat: (locale === 'bn' ? posterBn : posterEn).plusVat },
+        );
+  const studioDishes: StudioDish[] = dishes.map((d) => {
+    const a = artFor.get(d.id as string);
+    const current = a && a.source_path === d.photo_path ? a : null;
+    const cut = current
+      ? current.studio_usable && current.studio_path
+        ? current.studio_path
+        : current.cutout_usable && current.cutout_path
+          ? current.cutout_path
+          : null
+      : null;
+    return {
+      id: d.id as string,
+      name: d.name as string,
+      nameBn: (d.name_bn as string | null) ?? null,
+      photoUrl: mediaUrl('menu-photos', d.photo_path as string),
+      cutUrl: cut ? mediaUrl('social-media', cut) : null,
+      pending: !current,
+      price: {
+        bn: price(d as { id: string; base_price_poisha: number }, 'bn'),
+        en: price(d as { id: string; base_price_poisha: number }, 'en'),
+      },
+      note: ((d.description as string | null) ?? '').trim() || null,
+    };
+  });
   const fb = (accounts ?? []).find((a) => a.platform === 'facebook');
   const ig = (accounts ?? []).find((a) => a.platform === 'instagram');
   const media = (path: string | null) =>
@@ -269,98 +374,62 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-        <Card className="self-start">
-          <CardTitle>{t('makeTitle')}</CardTitle>
-          <p className="-mt-2 mb-4 text-sm text-secondary">{t('makeBody')}</p>
-          {dishes.length === 0 ? (
-            <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
-          ) : (
-            <ActionForm
-              action={requestSocialPostAction}
-              successKey="social.growth.requested"
-              className="space-y-3"
-            >
-              {hidden}
-              <div>
-                <Label htmlFor="sp-item">{t('dish')}</Label>
-                <Select id="sp-item" name="itemId" required>
-                  {dishes.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="sp-format">{t('format')}</Label>
-                <Select id="sp-format" name="format" defaultValue="image">
-                  <option value="image">{t('formats.image')}</option>
-                  <option value="video">{t('formats.video')}</option>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="sp-text">{t('ownText')}</Label>
-                <Textarea
-                  id="sp-text"
-                  name="ownText"
-                  rows={3}
-                  maxLength={300}
-                  placeholder={t('ownTextExample')}
-                />
-              </div>
-              <fieldset className="space-y-2">
-                <legend className="mb-1 text-sm font-semibold">{t('when')}</legend>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="when"
-                    value="now"
-                    defaultChecked
-                    className="size-4 accent-purple"
-                  />
-                  {t('whenNow')}
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" name="when" value="later" className="size-4 accent-purple" />
-                  {t('whenLater')}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input name="date" type="date" aria-label={t('date')} />
-                  <Input name="time" type="time" aria-label={t('time')} />
-                </div>
-              </fieldset>
-              <Button type="submit">
-                <Sparkles aria-hidden className="size-4" />
-                {t('make')}
-              </Button>
-              <Hint>{t('makeHint')}</Hint>
-            </ActionForm>
-          )}
-        </Card>
+      <Card className="mb-6">
+        <CardTitle>
+          <span className="inline-flex items-center gap-2">
+            <Sparkles aria-hidden className="size-5 text-purple" />
+            {t('makeTitle')}
+          </span>
+        </CardTitle>
+        <p className="-mt-2 mb-4 text-sm text-secondary">{t('makeBody')}</p>
+        {dishes.length === 0 ? (
+          <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
+        ) : !look ? (
+          <EmptyState title={t('noLook')} body={t('noLookBody')} />
+        ) : (
+          <SocialStudio
+            orgId={ctx.org.id}
+            orgSlug={ctx.org.slug}
+            dishes={studioDishes}
+            brand={{
+              restaurant: (look.display_name as string | null) || ctx.org.name,
+              area:
+                (look.area as string | null) ||
+                [profile?.area, profile?.city].filter(Boolean).join(', ') ||
+                null,
+              phone: (look.phone as string | null) ?? null,
+              colorMain: look.color_main as string,
+              colorAccent: look.color_accent as string,
+              logoUrl: look.logo_path ? mediaUrl('menu-photos', look.logo_path as string) : null,
+            }}
+            language={(look.language as 'bn' | 'en' | 'both' | undefined) ?? 'both'}
+            poster={{ bn: posterBn, en: posterEn }}
+            aiOn={aiConfigured()}
+          />
+        )}
+      </Card>
 
-        <div className="space-y-6">
-          <section>
-            <h2 className="mb-3 text-lg font-bold">{t('upcoming')}</h2>
-            {(upcoming ?? []).length === 0 ? (
-              <EmptyState title={t('noUpcoming')} body={t('noUpcomingBody')} />
-            ) : (
-              <div className="space-y-3">
-                {((upcoming ?? []) as PostRow[]).map((p) => card(p, p.status !== 'publishing'))}
-              </div>
-            )}
-          </section>
-          <section>
-            <h2 className="mb-3 text-lg font-bold">{t('past')}</h2>
-            {(past ?? []).length === 0 ? (
-              <EmptyState title={t('noPast')} />
-            ) : (
-              <div className="space-y-3">
-                {((past ?? []) as PostRow[]).map((p) => card(p, false))}
-              </div>
-            )}
-          </section>
-        </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section>
+          <h2 className="mb-3 text-lg font-bold">{t('upcoming')}</h2>
+          {(upcoming ?? []).length === 0 ? (
+            <EmptyState title={t('noUpcoming')} body={t('noUpcomingBody')} />
+          ) : (
+            <div className="space-y-3">
+              {((upcoming ?? []) as PostRow[]).map((p) => card(p, p.status !== 'publishing'))}
+            </div>
+          )}
+        </section>
+        <section>
+          <h2 className="mb-3 text-lg font-bold">{t('past')}</h2>
+          {(past ?? []).length === 0 ? (
+            <EmptyState title={t('noPast')} />
+          ) : (
+            <div className="space-y-3">
+              {((past ?? []) as PostRow[]).map((p) => card(p, false))}
+            </div>
+          )}
+        </section>
       </div>
       <Hint className="mt-6">{t('footnote', { at: formatDhakaDateTime(at, loc) })}</Hint>
     </>

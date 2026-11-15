@@ -32,6 +32,7 @@
     "metrics:validate": "tsx scripts/validate-metrics.ts",
     "ai:evals": "vitest run --project ai-evals",
     "social:tick": "tsx --import ./scripts/stub-server-only.mjs --env-file-if-exists=.env.local scripts/social-tick.ts",
+    "social:preview": "tsx --import ./scripts/stub-server-only.mjs --env-file-if-exists=.env.local scripts/social-preview.ts",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -40,6 +41,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
+    "@huggingface/transformers": "4.3.2",
     "@opennextjs/cloudflare": "1.20.16",
     "@sparticuz/chromium": "153.0.0",
     "@supabase/ssr": "^0.12.7",

@@ -104,6 +104,7 @@ Star = high popularity, high margin · Plowhorse = high, low · Puzzle = low, hi
 ## Growth (ADR 0023, optional)
 - `growth.top_item` = a menu-matrix `star` if one exists (needs recipe costs), else the top seller by units, over the last 28 days.
 - `growth.daypart_share` = each configured daypart's share of the last 28 days' net sales; the weakest and strongest are surfaced. Revenue only — no cost or margin, so no money gate.
+- `growth.best_sellers` (ADR 0058) = the top 5 dishes by `items.qty_sold` over last_30d with any sales; the social autopilot takes turns among them when the owner marked no dish.
 
 ## Stock Guard (ADR 0028)
 `metric_stock_guard(org, branch, now)`: fixed rules over the stock records, one row per thing a person should look at. No AI, no thresholds per org yet. "Today" is the org's business date at the injected now; scope is the caller's stock branches.

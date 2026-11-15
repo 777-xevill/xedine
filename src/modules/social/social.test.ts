@@ -6,14 +6,22 @@ import { makeState, readState } from './meta';
 import { contrast, cssUrl, readable, rgbOf, PAPER } from './poster-kit';
 import {
   angleForDay,
-  designFits,
-  designForDay,
+  autopilotOrder,
+  bestSellers,
   formatForDay,
   isPostingDay,
-  pickDish,
-  POSTER_DESIGNS,
   slotAt,
 } from './schedule';
+import {
+  fitLook,
+  LAYOUTS,
+  layoutFits,
+  type Look,
+  lookForPost,
+  lookPage,
+  LookSchema,
+  resolveLook,
+} from './look';
 import {
   escapeHtml,
   headlineSize,
@@ -73,55 +81,89 @@ describe('social autopilot schedule (ADR 0040)', () => {
       expect(angleForDay(d, { star: false, quietTime: false })).toBe('spotlight');
   });
 
-  it('shows the dish posted longest ago, never-posted first, and not the same dish twice in a row', () => {
+  const dish = (id: string, sold: number, lastPostedAt: string | null) => ({
+    id,
+    name: id,
+    sold,
+    lastPostedAt,
+  });
+
+  it('posts only the dishes the owner marked, taking turns (ADR 0058)', () => {
     const dishes = [
-      { id: 'a', name: 'Kacchi', lastPostedAt: '2026-10-20T07:00:00Z' },
-      { id: 'b', name: 'Borhani', lastPostedAt: '2026-10-10T07:00:00Z' },
-      { id: 'c', name: 'Firni', lastPostedAt: null },
+      dish('kacchi', 90, '2026-11-10T07:00:00Z'),
+      dish('borhani', 5, '2026-11-01T07:00:00Z'),
+      dish('firni', 0, null),
     ];
-    expect(pickDish(dishes)?.id).toBe('c');
-    expect(pickDish(dishes, 'c')?.id).toBe('b');
-    expect(pickDish([dishes[0]!], 'a')?.id).toBe('a'); // only one dish: still post it
-    expect(pickDish([])).toBeNull();
+    const order = autopilotOrder(dishes, new Set(['kacchi', 'borhani']));
+    expect(order.map((o) => o.dish.id)).toEqual(['borhani', 'kacchi']);
+    expect(order.every((o) => o.reason === 'marked')).toBe(true);
+    // The dish of the last post goes last when another can go.
+    expect(autopilotOrder(dishes, new Set(['kacchi', 'firni']), 'firni')[0]!.dish.id).toBe('kacchi');
   });
 
-  it('rotates through every design the owner allows, never repeating a recent one (ADR 0057)', () => {
-    const needs = { english: true, dishes: 5 };
-    const days = Array.from({ length: 10 }, (_, i) => `2026-11-${String(10 + i).padStart(2, '0')}`);
-    const seen = new Set(
-      days.map((d) => designForDay(d, { tone: 'friendly', allowed: POSTER_DESIGNS, needs })),
-    );
-    expect(seen.size).toBe(10);
-    const day = '2026-11-20';
-    const first = designForDay(day, { tone: 'fun', allowed: POSTER_DESIGNS, needs });
-    const next = designForDay(day, {
-      tone: 'fun',
-      allowed: POSTER_DESIGNS,
-      needs,
-      recent: [first],
+  it('with nothing marked, takes turns among the five best sellers, then the rest', () => {
+    const dishes = [
+      ...['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => dish(id, 100 - i * 10, null)),
+      dish('g', 0, null),
+    ];
+    expect([...bestSellers(dishes)].sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
+    const order = autopilotOrder(dishes, new Set());
+    expect(order[0]).toEqual({ dish: dishes[0], reason: 'best_seller' });
+    expect(order.slice(0, 5).every((o) => o.reason === 'best_seller')).toBe(true);
+    expect(order.slice(5).map((o) => o.reason)).toEqual(['turn', 'turn']);
+    // Posted yesterday: the next best seller goes first.
+    const posted = dishes.map((d) => (d.id === 'a' ? { ...d, lastPostedAt: '2026-11-14T07:00:00Z' } : d));
+    expect(autopilotOrder(posted, new Set())[0]!.dish.id).toBe('b');
+    // No sales at all: the whole menu in turn.
+    expect(autopilotOrder([dish('x', 0, '2026-11-01T00:00:00Z'), dish('y', 0, null)], new Set())[0]).toEqual({
+      dish: dish('y', 0, null),
+      reason: 'turn',
     });
-    expect(next).not.toBe(first);
-    // Only the designs the owner allows.
-    expect(designForDay(day, { tone: 'premium', allowed: ['frame'], needs })).toBe('frame');
-  });
-
-  it('leaves out designs the restaurant cannot fill', () => {
-    expect(designFits('mood', { english: false, dishes: 5 })).toBe(false); // the O's are English letters
-    expect(designFits('menu', { english: true, dishes: 1 })).toBe(false); // a menu needs two dishes
-    expect(designFits('status', { english: false, dishes: 1 })).toBe(true);
-    const onlyBangla = new Set(
-      ['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13'].map((d) =>
-        designForDay(d, {
-          tone: 'fun',
-          allowed: ['mood', 'menu'],
-          needs: { english: false, dishes: 1 },
-        }),
-      ),
-    );
-    expect(onlyBangla).toEqual(new Set(['centre'])); // nothing fits: the safe spotlight
+    expect(autopilotOrder([], new Set())).toEqual([]);
   });
 });
 
+describe('poster looks (ADR 0058)', () => {
+  const ctx = { tone: 'friendly' as const, english: true, others: 3, hasCut: true };
+
+  it('draws the same look from the same seed, and many different ones from others', () => {
+    expect(resolveLook(42, ctx)).toEqual(resolveLook(42, ctx));
+    const looks = Array.from({ length: 60 }, (_, i) => resolveLook(i, ctx));
+    expect(new Set(looks.map((l) => l.layout)).size).toBeGreaterThanOrEqual(15);
+    expect(new Set(looks.map((l) => JSON.stringify(l))).size).toBe(60);
+    for (const l of looks) expect(LookSchema.safeParse(l).success).toBe(true);
+  });
+
+  it('shows new layouts on every "More designs" page until all were shown', () => {
+    const seen = new Set<string>();
+    for (let page = 0; page < 3; page++)
+      for (const l of lookPage(page, 6, ctx, 7)) seen.add(l.layout);
+    expect(seen.size).toBe(18);
+    expect(lookPage(9, 6, ctx, 7)).toHaveLength(6);
+  });
+
+  it('leaves out layouts the restaurant cannot fill', () => {
+    const bangla = { ...ctx, english: false, others: 0 };
+    expect(layoutFits('mood', bangla)).toBe(false); // the O's are English letters
+    expect(layoutFits('menu', bangla)).toBe(false); // a menu needs another dish
+    expect(layoutFits('collage', bangla)).toBe(false);
+    for (let i = 0; i < 40; i++) expect(layoutFits(resolveLook(i, bangla).layout, bangla)).toBe(true);
+    const menu = resolveLook(1, ctx, 'menu');
+    expect(fitLook(menu, bangla).layout).not.toBe('menu');
+  });
+
+  it("the autopilot avoids the layouts of its last posts", () => {
+    const recent = LAYOUTS.slice(0, 10);
+    for (let i = 0; i < 20; i++)
+      expect(recent).not.toContain(lookForPost('org:' + String(i), ctx, recent).layout);
+  });
+
+  it('refuses a look with unknown parts', () => {
+    const l = resolveLook(3, ctx);
+    expect(LookSchema.safeParse({ ...l, layout: 'evil' }).success).toBe(false);
+    expect(LookSchema.safeParse({ ...l, extra: 1 }).success).toBe(false);
+  });
+});
 describe('social post words', () => {
   const words: SocialWords = {
     hook_en: 'Hungry?',
@@ -213,8 +255,10 @@ describe('poster and reel templates', () => {
     price: '৳৩৫০',
     note: evil,
   });
+  const look = (layout: Look['layout'], seed = 5): Look =>
+    resolveLook(seed, { tone: 'fun', english: true, others: 2, hasCut: true }, layout);
   const content: PostContent = {
-    design: 'band',
+    look: look('band'),
     lang: 'bn',
     words: {
       hook: 'Hungry?',
@@ -246,30 +290,32 @@ describe('poster and reel templates', () => {
     expect(escapeHtml(`<a href="x">'&'</a>`)).toBe(
       '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;',
     );
-    for (const design of POSTER_DESIGNS)
-      for (const cut of [true, false]) {
-        const html = posterHtml({ ...content, design, dish: dishArt(evil, cut) });
-        expect(html, design).not.toContain('<script>alert');
-        expect(html, design).toContain('<!doctype html>');
-        expect(html, design).toContain('data-fit');
-      }
-    expect(posterHtml({ ...content, design: 'band' })).toContain('Kacchi &amp; Co');
-    expect(posterHtml({ ...content, design: 'centre' })).toContain('ধীরে রান্না');
+    for (const layout of LAYOUTS)
+      for (const seed of [1, 2, 3])
+        for (const cut of [true, false]) {
+          const html = posterHtml({ ...content, look: look(layout, seed), dish: dishArt(evil, cut) });
+          expect(html, layout).not.toContain('<script>alert');
+          expect(html, layout).toContain('<!doctype html>');
+          expect(html, layout).toContain('data-fit');
+          expect(html, layout).not.toMatch(/undefined|NaN/);
+        }
+    expect(posterHtml({ ...content, look: look('band') })).toContain('Kacchi &amp; Co');
+    expect(posterHtml({ ...content, look: look('spotlight') })).toContain('ধীরে রান্না');
     expect(reelHtml(content)).not.toContain('<script>alert');
   });
 
   it('stands a clean cut-out on the poster and frames the photo when there is none', () => {
-    const withCut = posterHtml({ ...content, design: 'status', dish: dishArt('Kacchi', true) });
+    const withCut = posterHtml({ ...content, look: { ...look('status'), plate: 'float' }, dish: dishArt('Kacchi', true) });
     expect(withCut).toContain('class="cut"');
     expect(withCut).toContain('CUT0');
-    const withPhoto = posterHtml({ ...content, design: 'status', dish: dishArt('Kacchi', false) });
+    const withPhoto = posterHtml({ ...content, look: { ...look('status'), plate: 'float' }, dish: dishArt('Kacchi', false) });
     expect(withPhoto).not.toContain('class="cut"');
     expect(withPhoto).toContain('border-radius:50%');
   });
 
   it('draws the dishes as the O letters of the MOOD word', () => {
-    const html = posterHtml({ ...content, design: 'mood', lang: 'en' });
-    const word = html.slice(html.indexOf('data-fit style="left:90px'));
+    const html = posterHtml({ ...content, look: look('mood'), lang: 'en' });
+    const word = html.slice(html.indexOf('data-fit style="left:90px;top:515px'));
     expect(word.split('CUT0').length - 1).toBeGreaterThanOrEqual(2);
   });
 

@@ -1,17 +1,15 @@
-import { DESIGNS } from './poster-designs';
+import { LAYOUT_DRAW } from './poster-layouts';
 import {
   css,
   cssUrl,
-  dish,
   escapeHtml,
   hasBangla,
-  inkOn,
   INK,
   page,
-  palette,
+  plate,
   type PostContent,
   REEL_SIZE,
-  stack,
+  styleOf,
   WHITE,
   contactLine,
 } from './poster-kit';
@@ -33,11 +31,12 @@ export {
 
 /**
  * The autopilot's posters (1080×1350, 4:5) and reels (1080×1920, 9:16), drawn by a real Chromium so Bangla
- * joins correctly (ADR 0040). The poster designs live in poster-designs.ts (ADR 0057); this file picks one
- * and draws the reel. Pure: the owner's live preview runs the same code in the browser.
+ * joins correctly (ADR 0040). A poster is its look's layout (poster-layouts.ts) in its look's colours,
+ * type, background, dish treatment and decorations (ADR 0058). Pure: the owner's live preview runs the
+ * same code in the browser.
  */
 export function posterHtml(c: PostContent): string {
-  return DESIGNS[c.design](c);
+  return LAYOUT_DRAW[c.look.layout](c, styleOf(c));
 }
 
 /** Headline size that keeps long (or Bangla) headlines inside the reel. */
@@ -56,17 +55,19 @@ export function hookSize(text: string): number {
 }
 
 /**
- * A 9:16 reel, 8 seconds. Scene 1 (0–3 s): the hook, huge, over the dish blurred and dark. Scene 2
- * (3–6 s): the dish slides in with the headline and tagline. Scene 3 (6–8 s): the call to action with logo
- * and contact. Every animation is paused and stepped frame by frame by the renderer
- * (document.getAnimations()), so the video is identical however slow the machine is.
+ * A 9:16 reel, 8 seconds, in the post's look (its colours and typeface). Scene 1 (0–3 s): the hook, huge,
+ * over the dish blurred and dark. Scene 2 (3–6 s): the dish slides in with the headline and tagline.
+ * Scene 3 (6–8 s): the call to action with logo and contact. Every animation is paused and stepped frame
+ * by frame by the renderer (document.getAnimations()), so the video is identical however slow the machine is.
  */
 export function reelHtml(c: PostContent): string {
-  const p = palette(c);
-  const ink = inkOn(c.colorMain);
-  const accent = css(p.accent);
+  const s = styleOf(c);
+  const { k } = s;
+  const ink = css(k.ink);
+  const accent = css(k.accent);
   const w = c.words;
-  const bn = (s: string) => (hasBangla(s) ? ' bn' : '');
+  const bn = (t: string) => (hasBangla(t) ? ' bn' : '');
+  const display = (t: string) => (s.font.upper && !hasBangla(t) ? t.toUpperCase() : t);
   const animations = `
 @keyframes kb{from{transform:scale(1.05)}to{transform:scale(1.25)}}
 @keyframes fadeOut{to{opacity:0}}
@@ -81,27 +82,27 @@ export function reelHtml(c: PostContent): string {
 @keyframes cardUp{from{transform:translateY(700px)}to{transform:none}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 .a{animation-fill-mode:both;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
-.display{font-family:${stack('anton')};text-transform:uppercase;line-height:.95;letter-spacing:.5px}
+.display{font-family:${s.font.stack};font-weight:${s.font.weight};line-height:${Math.max(0.95, s.font.lineHeight)};letter-spacing:.5px}
 `;
   // A clean cut-out floats on the band; a photo spins in as a round plate.
-  const plate = c.dish.cutUrl
+  const dishEl = c.dish.cutUrl
     ? `<div class="a" style="position:absolute;left:60px;top:560px;width:960px;height:900px;animation:plateIn .9s 3.05s both">
-  <div class="a" style="position:absolute;inset:0;animation:float 2.4s ease-in-out 3.9s 2 both">${dish(c.dish, { left: 0, top: 0, width: 960, height: 900 }, { anchor: 'center', shadow: 'drop-shadow(0 40px 46px rgb(0 0 0 / .45))' })}</div>
+  <div class="a" style="position:absolute;inset:0;animation:float 2.4s ease-in-out 3.9s 2 both">${plate(c.dish, { left: 0, top: 0, width: 960, height: 900 }, 'float', k, s.rnd, { anchor: 'center', shadow: 'drop-shadow(0 40px 46px rgb(0 0 0 / .45))' })}</div>
 </div>`
     : `<div class="a" style="position:absolute;left:150px;top:640px;width:780px;height:780px;animation:plateIn .9s 3.05s both">
   <div class="a" style="position:absolute;inset:0;border-radius:50%;background-image:url('${cssUrl(c.dish.photoUrl)}');background-size:cover;background-position:center;box-shadow:0 40px 80px rgb(0 0 0 / .35),0 0 0 14px rgb(255 255 255 / .9);animation:spin 5s linear 3s both"></div>
 </div>`;
   return page(
     REEL_SIZE,
-    ['anton', 'poppins'],
-    css(p.main),
+    [s.font.key],
+    css(k.bg),
     ink,
     animations,
     `<div class="a" style="position:absolute;inset:-60px;background-image:url('${cssUrl(c.dish.photoUrl)}');background-size:cover;background-position:center;filter:blur(6px) brightness(.45);animation:kb 8s linear 0s both,fadeOut .5s ease 2.9s both"></div>
-<div class="display a${bn(w.hook)}" style="position:absolute;left:60px;right:60px;top:560px;text-align:center;font-size:${hookSize(w.hook)}px;line-height:1.35;animation:pop .6s 0s both,hookOut .4s ease-in 2.8s both"><span style="background:${accent};color:${p.onAccent};padding:4px 22px;border-radius:18px;box-decoration-break:clone;-webkit-box-decoration-break:clone">${escapeHtml(w.hook)}</span></div>
-<div class="a" style="position:absolute;left:-400px;top:960px;width:1900px;height:380px;background:${accent};animation:bandIn .6s 3s both"></div>
-${plate}
-<div class="display a${bn(w.headline)}" style="position:absolute;left:60px;right:60px;top:170px;font-size:${headlineSize(w.headline, 150)}px;color:${ink};animation:slideL .5s 3.4s both">${escapeHtml(w.headline)}</div>
+<div class="display a${bn(w.hook)}" style="position:absolute;left:60px;right:60px;top:560px;text-align:center;font-size:${Math.round(hookSize(w.hook) * s.font.scale)}px;line-height:1.35;animation:pop .6s 0s both,hookOut .4s ease-in 2.8s both"><span style="background:${accent};color:${css(k.onAccent)};padding:4px 22px;border-radius:18px;box-decoration-break:clone;-webkit-box-decoration-break:clone">${escapeHtml(display(w.hook))}</span></div>
+<div class="a" style="position:absolute;left:-400px;top:960px;width:1900px;height:380px;background:${css(k.band)};animation:bandIn .6s 3s both"></div>
+${dishEl}
+<div class="display a${bn(w.headline)}" style="position:absolute;left:60px;right:60px;top:170px;font-size:${Math.round(headlineSize(w.headline, 150) * s.font.scale)}px;color:${css(k.head)};animation:slideL .5s 3.4s both">${escapeHtml(display(w.headline))}</div>
 <div class="a${bn(w.tagline)}" style="position:absolute;left:66px;right:60px;top:420px;font-size:44px;font-weight:700;color:${ink};animation:up .5s 3.8s both">${escapeHtml(w.tagline)}</div>
 ${c.badge ? `<div class="a${bn(c.badge)}" style="position:absolute;right:90px;top:560px;padding:12px 30px;border-radius:999px;font-weight:700;font-size:34px;background:${css(WHITE)};color:${css(INK)};box-shadow:0 10px 30px rgb(0 0 0 / .2);animation:up .4s 4.3s both">${escapeHtml(c.badge)}</div>` : ''}
 <div class="a" style="position:absolute;left:0;right:0;bottom:0;height:470px;background:${css(WHITE)};border-radius:60px 60px 0 0;color:${css(INK)};padding:60px 70px;animation:cardUp .6s 6s both">
@@ -110,7 +111,7 @@ ${c.badge ? `<div class="a${bn(c.badge)}" style="position:absolute;right:90px;to
     <div><div class="${bn(c.restaurant)}" style="font-weight:800;font-size:46px">${escapeHtml(c.restaurant)}</div>
     <div class="${bn(contactLine(c))}" style="font-size:34px;opacity:.85">${escapeHtml(contactLine(c))}</div></div>
   </div>
-  <div style="margin-top:46px"><span class="pill a${bn(c.cta)}" style="font-size:44px;padding:24px 56px;background:${accent};color:${p.onAccent};animation:pulse 1s ease-in-out 6.6s 2 both">${escapeHtml(c.cta)}</span></div>
+  <div style="margin-top:46px"><span class="pill a${bn(c.cta)}" style="font-size:44px;padding:24px 56px;background:${accent};color:${css(k.onAccent)};animation:pulse 1s ease-in-out 6.6s 2 both">${escapeHtml(c.cta)}</span></div>
 </div>`,
   );
 }

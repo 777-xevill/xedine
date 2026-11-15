@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Sparkles, Wand2 } from 'lucide-react';
+import { Check, Shuffle, Sparkles, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -11,7 +11,7 @@ import { Alert, Hint, Input, Label, Textarea } from '@/components/ui/form';
 import { Segmented } from '@/components/ui/segmented';
 import { cn } from '@/lib/utils';
 import { draftSocialWordsAction, requestSocialPostAction } from '@/modules/social/actions';
-import { DESIGN_EXTRAS, POSTER_DESIGNS, type PosterDesign } from '@/modules/social/schedule';
+import { LAYOUT_INFO, type Look, lookPage, seedOf, type SocialTone } from '@/modules/social/look';
 import {
   type DishArt,
   type PosterLabels,
@@ -106,6 +106,7 @@ export function SocialStudio({
   language,
   poster,
   aiOn,
+  tone,
 }: {
   orgId: string;
   orgSlug: string;
@@ -121,11 +122,13 @@ export function SocialStudio({
   language: 'bn' | 'en' | 'both';
   poster: Record<PosterLang, StudioPosterText>;
   aiOn: boolean;
+  tone: SocialTone;
 }) {
   const t = useTranslations('social');
   const [mainId, setMainId] = useState(dishes[0]?.id ?? '');
   const [alsoIds, setAlsoIds] = useState<string[]>([]);
-  const [design, setDesign] = useState<PosterDesign>('status');
+  const [page, setPage] = useState(0);
+  const [pick, setPick] = useState(0);
   const [lang, setLang] = useState<PosterLang>(language === 'en' ? 'en' : 'bn');
   const [words, setWords] = useState<Partial<SocialWords>>({});
   const [aiWords, setAiWords] = useState<Partial<SocialWords>>({});
@@ -140,8 +143,17 @@ export function SocialStudio({
   const byId = useMemo(() => new Map(dishes.map((d) => [d.id, d])), [dishes]);
   const main = byId.get(mainId) ?? dishes[0];
   if (!main) return null;
-  const want = DESIGN_EXTRAS[design];
   const others = dishes.filter((d) => d.id !== main.id);
+  const english0 = lang === 'en';
+  // A page of six looks for this dish ("More designs" turns the page; there is no last page).
+  const looks: Look[] = lookPage(
+    page,
+    6,
+    { tone, english: english0, others: others.length, hasCut: Boolean(main.cutUrl) },
+    seedOf(main.id),
+  );
+  const look = looks[Math.min(pick, looks.length - 1)]!;
+  const want = LAYOUT_INFO[look.layout].extras;
   // The other dishes the owner picked for this style, else the next ones on the menu.
   const picked = alsoIds
     .filter((id) => id !== main.id)
@@ -150,7 +162,6 @@ export function SocialStudio({
     .slice(0, want?.count ?? 0);
   const shown = picked.length ? picked : others.slice(0, want?.count ?? 0);
   const english = lang === 'en';
-  const designs = POSTER_DESIGNS.filter((d) => d !== 'mood' || english);
 
   const art = (d: StudioDish): DishArt => ({
     name: lang === 'bn' && d.nameBn ? d.nameBn : d.name,
@@ -159,8 +170,8 @@ export function SocialStudio({
     price: d.price[lang],
     note: d.note,
   });
-  const content = (w: Partial<SocialWords>, d: PosterDesign): PostContent => ({
-    design: d,
+  const content = (w: Partial<SocialWords>, d: Look): PostContent => ({
+    look: d,
     lang,
     words: posterWords(w, lang, art(main).name, poster[lang].defaults),
     cta: poster[lang].cta,
@@ -175,9 +186,9 @@ export function SocialStudio({
     logoUrl: brand.logoUrl,
     labels: poster[lang].labels,
   });
-  const big = posterHtml(content(words, design));
+  const big = posterHtml(content(words, look));
   // The small previews follow the dish, the language and the AI's words, not every key press.
-  const minis = designs.map((d) => ({ design: d, html: posterHtml(content(aiWords, d)) }));
+  const minis = looks.map((d, i) => ({ i, html: posterHtml(content(aiWords, d)) }));
 
   const toggleAlso = (id: string) =>
     setAlsoIds((c) =>
@@ -266,7 +277,6 @@ export function SocialStudio({
               value={lang}
               onChange={(v) => {
                 setLang(v);
-                if (v === 'bn' && design === 'mood') setDesign('status');
               }}
               options={[
                 { value: 'bn', label: 'বাংলা' },
@@ -275,26 +285,38 @@ export function SocialStudio({
             />
           ) : null}
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
           {minis.map((m) => (
             <button
-              key={m.design}
+              key={`${page}-${m.i}`}
               type="button"
-              onClick={() => setDesign(m.design)}
-              aria-pressed={design === m.design}
+              onClick={() => setPick(m.i)}
+              aria-pressed={pick === m.i}
+              aria-label={t('studio.designN', { n: m.i + 1 })}
               className={cn(
-                'shrink-0 rounded-input border-2 p-1 text-left transition',
-                design === m.design ? 'border-purple' : 'border-transparent hover:border-line',
+                'rounded-input border-2 p-1 transition',
+                pick === m.i ? 'border-purple' : 'border-transparent hover:border-line',
               )}
             >
-              <PosterFrame html={m.html} width={112} title={t(`designs.${m.design}.name`)} />
-              <span className="mt-1 block w-28 text-xs font-semibold">
-                {t(`designs.${m.design}.name`)}
-              </span>
+              <PosterFrame html={m.html} width={104} title={t('studio.designN', { n: m.i + 1 })} />
             </button>
           ))}
         </div>
-        <Hint>{t(`designs.${design}.hint`)}</Hint>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setPage((p) => p + 1);
+              setPick(0);
+            }}
+          >
+            <Shuffle aria-hidden className="size-4" />
+            {t('studio.moreDesigns')}
+          </Button>
+          <Hint>{t('studio.designsHint')}</Hint>
+        </div>
         {want?.need === 'cut' && others.length ? (
           <div className="mt-3">
             <h4 className="mb-1 text-xs font-semibold text-secondary">
@@ -417,7 +439,7 @@ export function SocialStudio({
             <input type="hidden" name="orgId" value={orgId} />
             <input type="hidden" name="orgSlug" value={orgSlug} />
             <input type="hidden" name="itemId" value={main.id} />
-            <input type="hidden" name="design" value={design} />
+            <input type="hidden" name="spec" value={JSON.stringify(look)} />
             <input type="hidden" name="words" value={approved} />
             <input type="hidden" name="ownText" value={idea} />
             <input type="hidden" name="format" value={format} />

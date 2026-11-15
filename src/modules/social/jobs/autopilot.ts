@@ -31,17 +31,16 @@ import {
   tiktokPublishStatus,
   type TikTokMode,
 } from '../tiktok';
+import { fitLook, LAYOUT_INFO, type Look, lookForPost, LookSchema } from '../look';
 import {
   angleForDay,
+  autopilotOrder,
+  bestSellers,
   dayNumber,
-  DESIGN_EXTRAS,
-  designForDay,
+  type DishCandidate,
   formatForDay,
   isPostingDay,
-  isPosterDesign,
-  pickDish,
   type PostAngle,
-  type PosterDesign,
   slotAt,
   type SocialFormat,
 } from '../schedule';
@@ -88,7 +87,7 @@ interface Settings {
   area: string | null;
   phone: string | null;
   never_item_ids: string[];
-  designs: string[];
+  post_item_ids: string[];
   show_price: boolean;
 }
 
@@ -105,6 +104,7 @@ interface Post {
   own_text: string | null;
   template: string | null;
   design_words: unknown;
+  design_spec: unknown;
   extra_item_ids: string[] | null;
   caption_bn: string | null;
   caption_en: string | null;
@@ -120,9 +120,9 @@ interface Post {
 }
 
 const SETTINGS_COLUMNS =
-  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, designs, show_price';
+  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price';
 const POST_COLUMNS =
-  'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, template, design_words, extra_item_ids, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
+  'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, template, design_words, design_spec, extra_item_ids, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
 
 export interface TickResult {
   planned: number;
@@ -352,37 +352,39 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       .filter((d): d is string => Boolean(d));
 
     const inputs =
-      post.angle === 'star' || post.angle === 'quiet_time'
-        ? await growthInputs(sb, post.org_id, at)
-        : null;
+      post.angle === 'quiet_time' ? await growthInputs(sb, post.org_id, at) : null;
     let angle = post.angle;
+    // Units sold in the last 30 days (items.qty_sold, last_30d): the autopilot posts what sells (ADR 0058).
+    const { data: qty } = await sb.rpc('metric_item_qty', {
+      p_org: post.org_id,
+      p_branch: null,
+      p_window: 'last_30d',
+      p_now: at.toISOString(),
+    });
+    const sold = new Map(
+      ((qty ?? []) as { menu_item_id: string | null; qty: number }[])
+        .filter((r) => r.menu_item_id)
+        .map((r) => [r.menu_item_id!, Number(r.qty)]),
+    );
+    const pool: DishCandidate[] = allowed.map((i) => ({
+      id: i.id,
+      name: i.name,
+      sold: sold.get(i.id) ?? 0,
+      lastPostedAt: last.get(i.id) ?? null,
+    }));
+    const top = bestSellers(pool);
     const candidates: Dish[] = [];
     if (angle === 'own') {
       const ownDish = allowed.find((i) => i.id === post.menu_item_id);
       if (!ownDish) return fail(sb, post, 'dish_photo_missing', true);
       candidates.push(ownDish);
     } else {
-      if (angle === 'star') {
-        const star = allowed.find((i) => i.name === inputs?.top_item_name);
-        if (star) candidates.push(star);
-        else angle = 'spotlight';
-      }
-      const rest = allowed.filter((i) => !candidates.includes(i));
       // Up to three tries: a photo that is not food (or too blurry) moves on to the next dish.
-      for (let n = 0; n < 3 && rest.length > 0; n++) {
-        const pick = pickDish(
-          rest.map((i) => ({ id: i.id, name: i.name, lastPostedAt: last.get(i.id) ?? null })),
-          lastPostedId,
-        );
-        if (!pick) break;
-        candidates.push(
-          rest.splice(
-            rest.findIndex((i) => i.id === pick.id),
-            1,
-          )[0]!,
-        );
-      }
+      const order = autopilotOrder(pool, new Set(s.post_item_ids ?? []), lastPostedId);
+      for (const { dish } of order.slice(0, 3))
+        candidates.push(allowed.find((i) => i.id === dish.id)!);
     }
+    if (candidates.length === 0) return fail(sb, post, 'no_dish_photos', true);
 
     const arts = await artRows(
       sb,
@@ -420,22 +422,26 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       if (!main) return fail(sb, post, 'photo_not_food', true);
       const chosen = main.dish;
 
-      // The design: the owner's choice, else the day's turn among the designs the owner allows.
-      let design: PosterDesign =
-        post.template && isPosterDesign(post.template)
-          ? post.template
-          : designForDay(post.plan_date, {
-              tone: s.tone,
-              allowed: s.designs.filter(isPosterDesign),
-              needs: { english: lang === 'en', dishes: allowed.length },
-              recent: recentDesigns,
-              offset: post.source === 'owner' ? 1 : 0,
-            });
+      // A best seller tells the best-seller story; any other dish is a spotlight (ADR 0058).
+      if (angle === 'star' && !top.has(chosen.id)) angle = 'spotlight';
+      if (angle === 'spotlight' && top.has(chosen.id) && post.source === 'autopilot') angle = 'star';
 
-      // The other dishes the design shows: the owner's picks, else the ones posted longest ago.
+      // The look: the one the owner previewed, else a fresh one whose layout the last posts did not use.
+      const ctx = {
+        tone: s.tone,
+        english: lang === 'en',
+        others: allowed.length - 1,
+        hasCut: Boolean(main.row.cutout_usable || main.row.studio_usable),
+      };
+      const previewed = LookSchema.safeParse(post.design_spec ?? undefined);
+      let look: Look = previewed.success
+        ? fitLook(previewed.data, ctx)
+        : lookForPost(`${post.org_id}:${post.id}`, ctx, recentDesigns);
+
+      // The other dishes the layout shows: the owner's picks, else the ones posted longest ago.
       const extras: ReadyDish[] = [];
       const names: Dish[] = [];
-      const want = DESIGN_EXTRAS[design];
+      const want = LAYOUT_INFO[look.layout].extras;
       const ownExtras = (post.extra_item_ids ?? [])
         .map((id) => all.find((i) => i.id === id))
         .filter((d): d is Dish => Boolean(d) && d!.id !== chosen.id);
@@ -447,22 +453,19 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       } else if (want?.need === 'name') {
         names.push(...allowed.filter((i) => i.id !== chosen.id).slice(0, want.count));
       } else if (want) {
-        const pool = allowed.filter((i) => i.id !== chosen.id);
-        while (extras.length < want.count && pool.length > 0) {
-          const pick = pickDish(
-            pool.map((i) => ({ id: i.id, name: i.name, lastPostedAt: last.get(i.id) ?? null })),
-          );
-          if (!pick) break;
-          const dish = pool.splice(
-            pool.findIndex((i) => i.id === pick.id),
-            1,
-          )[0]!;
-          const r = await ready(dish, want.need === 'cut');
+        // Best sellers first, so a menu or collage shows what people order.
+        const others = pool
+          .filter((d) => d.id !== chosen.id)
+          .sort((a, b) => b.sold - a.sold || a.name.localeCompare(b.name));
+        for (const o of others) {
+          if (extras.length >= want.count) break;
+          const r = await ready(allowed.find((i) => i.id === o.id)!, want.need === 'cut');
           if (r) extras.push(r);
         }
       }
-      // A menu of one dish is just a spotlight.
-      if (design === 'menu' && extras.length === 0) design = 'centre';
+      // A layout that needs other dishes but got none is redrawn as one that does not.
+      if (want?.min && extras.length < want.min)
+        look = lookForPost(`${post.org_id}:${post.id}:alone`, { ...ctx, others: 0 }, recentDesigns);
 
       const daypart = angle === 'quiet_time' && inputs?.weak_daypart ? inputs.weak_daypart : null;
       const fact =
@@ -545,7 +548,7 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       }
 
       const content: PostContent = {
-        design,
+        look,
         lang,
         words: posterWords(words, lang, nameOf(chosen), {
           kicker: t('defaults.kicker'),
@@ -600,7 +603,8 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
           tagline: content.words.tagline,
           caption_bn: words.caption_bn || words.caption_en || null,
           caption_en: words.caption_en || words.caption_bn || null,
-          template: design,
+          template: look.layout,
+          design_spec: look,
           extra_item_ids: extras.map((e) => e.dish.id),
           // The studio plate is kept with the dish's art (ADR 0057), not with the post.
           ai_image_path: null,

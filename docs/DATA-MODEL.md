@@ -220,6 +220,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `log_waste` | `p_org uuid, p_branch uuid, p_ingredient uuid, p_menu_item uuid, p_qty numeric, p_reason uuid, p_note text DEFAULT NULL::text, p_source waste_source DEFAULT 'mobile'::waste_source, p_device uuid DEFAULT NULL::uuid, p_staff uuid DEFAULT NULL::uuid` |
 | `mark_attendance` | `p_staff uuid, p_date date, p_status attendance_status` |
 | `mark_growth_posted` | `p_draft uuid` |
+| `mark_social_dish` | `p_org uuid, p_item uuid, p_mark text` |
 | `member_card_link` | `p_org uuid, p_customer uuid` |
 | `member_card_view` | `p_token text` |
 | `member_for_till` | `p_org uuid, p_branch uuid, p_order uuid` |
@@ -299,7 +300,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `remove_membership` | `p_membership uuid` |
 | `reopen_incident` | `p_org uuid, p_incident uuid, p_reason text` |
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
-| `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date, p_design text DEFAULT NULL::text, p_words jsonb DEFAULT NULL::jsonb, p_extra_items uuid[] DEFAULT '{}'::uuid[]` |
+| `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date, p_design text DEFAULT NULL::text, p_words jsonb DEFAULT NULL::jsonb, p_extra_items uuid[] DEFAULT '{}'::uuid[], p_spec jsonb DEFAULT NULL::jsonb` |
 | `reset_complaint_link` | `p_org uuid, p_branch uuid` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |
 | `reset_table_link` | `p_org uuid, p_table uuid` |

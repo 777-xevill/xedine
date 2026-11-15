@@ -2875,7 +2875,6 @@
       "displayName": "Restaurant name on posts",
       "area": "Area (e.g. Dhanmondi, Dhaka)",
       "phone": "Phone on posts",
-      "never": "Never post these dishes",
       "save": "Save",
       "logoTitle": "Logo",
       "logoBody": "Printed on every poster and video. A PNG with a clear background looks best.",
@@ -2909,9 +2908,7 @@
       },
       "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password.",
       "showPrice": "Show prices on posters",
-      "showPriceHint": "The menu price goes on posters that have room for it, only when every branch charges the same.",
-      "designs": "Poster styles the autopilot may use",
-      "designsHint": "It takes turns, so your page never repeats itself. Untick a style you never want."
+      "showPriceHint": "The menu price goes on posters that have room for it, only when every branch charges the same."
     },
     "growth": {
       "title": "Growth",
@@ -2926,7 +2923,7 @@
       "photoCount": "{count} dishes have a photo Xedine can use.",
       "setup": "Set up",
       "makeTitle": "Make a post",
-      "makeBody": "Pick a dish and a style — you see the real poster before it goes out. Say what it is about and let the AI write the words, or type your own.",
+      "makeBody": "Pick a dish, then a design. Tap \"More designs\" for new ones — there is no end. Let the AI write the words or type your own.",
       "noPhotos": "No dish photos yet",
       "noPhotosBody": "Add a photo to a dish on the Menu page. Posts are made only from your real dishes.",
       "dish": "Dish",
@@ -2984,7 +2981,32 @@
       "onTikTok": "On TikTok",
       "inTikTokInbox": "In your TikTok inbox",
       "noLook": "Social is not set up yet",
-      "noLookBody": "The owner sets the colours and contact once in Settings → Social; then posts can be made here."
+      "noLookBody": "The owner sets the colours and contact once in Settings → Social; then posts can be made here.",
+      "autopilotOnLine": "Autopilot is on · posts every posting day at {time}",
+      "nextUp": "Next: {dish}",
+      "reasons": {
+        "marked": "you marked it",
+        "best_seller": "one of your best sellers",
+        "turn": "its turn on the menu"
+      },
+      "tabsLabel": "Social sections",
+      "tabs": {
+        "make": "Make a post",
+        "dishes": "Dishes",
+        "upcoming": "Coming up",
+        "posted": "Posted"
+      },
+      "marks": {
+        "post": "Post this",
+        "auto": "Xedine decides",
+        "never": "Never"
+      },
+      "modeMarked": "The autopilot posts only the {count} dishes you marked, taking turns.",
+      "modeSales": "No dish marked: the autopilot posts your 5 best sellers of the last 30 days, taking turns.",
+      "dishesBody": "Tap \"Post this\" on the dishes you want on Facebook and Instagram. Leave all on \"Xedine decides\" and it picks by sales. \"Never\" keeps a dish off.",
+      "sold30": "Sold {n} in 30 days",
+      "bestSeller": "Best seller",
+      "nextBadge": "Next post"
     },
     "studio": {
       "dish": "Dish",
@@ -3021,49 +3043,10 @@
         "aiOff": "AI is not switched on for Xedine yet. Type the words yourself.",
         "number": "The AI wrote a number that isn't in your words, so it was stopped. Tap again for new words.",
         "failed": "The AI couldn't write the words just now. Try again in a minute."
-      }
-    },
-    "designs": {
-      "band": {
-        "name": "Launch band",
-        "hint": "A slanted headline with your dishes riding a bold band."
       },
-      "centre": {
-        "name": "Spotlight",
-        "hint": "The dish in the middle of your colour, the headline above."
-      },
-      "frame": {
-        "name": "Insta frame",
-        "hint": "An Instagram post card over your photo, the plate breaking out of it."
-      },
-      "split": {
-        "name": "Playful",
-        "hint": "Bold colour, flying leaves and your phone number, big."
-      },
-      "status": {
-        "name": "Status joke",
-        "hint": "Single? Taken? Hungry ✓ — a joke people share."
-      },
-      "mood": {
-        "name": "Mood letters",
-        "hint": "Your dishes become the O's of a word (English posters)."
-      },
-      "giant": {
-        "name": "Giant word",
-        "hint": "The dish's name huge and sideways, the dish in front."
-      },
-      "menu": {
-        "name": "Menu drop",
-        "hint": "Two or three dishes with their prices."
-      },
-      "breakout": {
-        "name": "Phone break-out",
-        "hint": "Your profile on a phone, the dish bursting out of it."
-      },
-      "minimal": {
-        "name": "Premium",
-        "hint": "A calm cream page with an elegant headline."
-      }
+      "designN": "Design {n}",
+      "moreDesigns": "More designs",
+      "designsHint": "Every tap shows six new designs in your colours."
     }
   },
   "memberSettings": {

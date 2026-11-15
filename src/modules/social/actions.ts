@@ -6,7 +6,8 @@ import { createClient } from '@/lib/db/supabase-server';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
-import { isPosterDesign, slotAt } from '@/modules/social/schedule';
+import { LookSchema, type Look } from '@/modules/social/look';
+import { slotAt } from '@/modules/social/schedule';
 import { connectPendingPage } from '@/modules/social/connect';
 import {
   ApprovedWordsSchema,
@@ -59,16 +60,7 @@ export async function saveSocialSettingsAction(
     .getAll('days')
     .map(Number)
     .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
-  const never = formData.getAll('never').filter((v): v is string => typeof v === 'string');
-  const designs = [...new Set(formData.getAll('designs'))];
-  if (
-    !parsed.success ||
-    days.length === 0 ||
-    !never.every((v) => z.uuid().safeParse(v).success) ||
-    designs.length === 0 ||
-    !designs.every(isPosterDesign)
-  )
-    return { error: 'invalidInput' };
+  if (!parsed.success || days.length === 0) return { error: 'invalidInput' };
   const d = parsed.data;
   const supabase = await createClient();
   const { error } = await supabase.from('social_settings').upsert({
@@ -84,8 +76,6 @@ export async function saveSocialSettingsAction(
     display_name: d.displayName,
     area: d.area,
     phone: d.phone,
-    never_item_ids: never,
-    designs,
     show_price: d.showPrice === 'on',
   });
   if (error) return { error: mapDbError(error) };
@@ -134,13 +124,22 @@ export async function requestSocialPostAction(
       when: z.enum(['now', 'later']),
       date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]).optional(),
       time: z.union([z.string().regex(/^\d{2}:\d{2}$/), z.literal('')]).optional(),
-      design: z.string().max(20).optional(),
+      spec: z.string().max(2000).optional(),
       words: z.string().max(8000).optional(),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
   const d = parsed.data;
-  if (d.design && !isPosterDesign(d.design)) return { error: 'invalidInput' };
+  let look: Look | null = null;
+  if (d.spec) {
+    try {
+      const checked = LookSchema.safeParse(JSON.parse(d.spec));
+      if (!checked.success) return { error: 'invalidInput' };
+      look = checked.data;
+    } catch {
+      return { error: 'invalidInput' };
+    }
+  }
   let words: ApprovedWords | null = null;
   if (d.words) {
     let json: unknown;
@@ -175,7 +174,8 @@ export async function requestSocialPostAction(
     p_own_text: d.ownText ?? '',
     p_when: when.toISOString(),
     p_plan_date: planDate,
-    p_design: d.design || null,
+    p_design: look?.layout ?? null,
+    p_spec: look,
     p_words: words,
     p_extra_items: extra.filter((id) => id !== d.itemId),
   });
@@ -240,6 +240,22 @@ export async function draftSocialWordsAction(input: {
       error: e instanceof Error && e.message === 'invented_number' ? 'number' : 'failed',
     };
   }
+}
+
+/** Owner or manager marks a dish for the autopilot: post (only marked dishes go), never, or auto (ADR 0058). */
+export async function markSocialDishAction(formData: FormData): Promise<void> {
+  const parsed = base
+    .extend({ itemId: z.uuid(), mark: z.enum(['post', 'never', 'auto']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('mark_social_dish', {
+    p_org: parsed.data.orgId,
+    p_item: parsed.data.itemId,
+    p_mark: parsed.data.mark,
+  });
+  if (error) console.error('mark social dish', error.code);
+  refresh(parsed.data.orgSlug);
 }
 
 export async function skipSocialPostAction(formData: FormData): Promise<void> {

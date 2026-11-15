@@ -1,4 +1,4 @@
-import { Clapperboard, ImageIcon, Settings, Sparkles } from 'lucide-react';
+import { Ban, Clapperboard, ImageIcon, Settings, Sparkles, Star, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -7,12 +7,15 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { SocialStudio, type StudioDish, type StudioPosterText } from '@/components/social-studio';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Alert, Card, CardTitle, EmptyState, Hint, PageTitle } from '@/components/ui/form';
+import { Alert, Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDateTime, type Locale } from '@/lib/i18n/format';
+import { formatDhakaDateTime, formatNumber, type Locale } from '@/lib/i18n/format';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
-import { skipSocialPostAction } from '@/modules/social/actions';
+import { markSocialDishAction, skipSocialPostAction } from '@/modules/social/actions';
+import { autopilotOrder, bestSellers, type DishCandidate } from '@/modules/social/schedule';
+import type { SocialTone } from '@/modules/social/look';
+import { PillNav } from '@/components/ui/pill-nav';
 import { branchPricesByItem, posterPrice } from '@/modules/social/prices';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
@@ -94,8 +97,18 @@ interface PostRow {
  * by itself every posting day; this page shows what is coming and what went out, lets the owner or a
  * manager add a post of their own, and skip one before it goes.
  */
-export default async function GrowthPage({ params }: { params: Promise<{ org: string }> }) {
-  const { org } = await params;
+const TABS = ['make', 'dishes', 'upcoming', 'posted'] as const;
+type Tab = (typeof TABS)[number];
+
+export default async function GrowthPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ org: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [{ org }, { tab: tabParam }] = await Promise.all([params, searchParams]);
+  const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? '') ? (tabParam as Tab) : 'make';
   const ctx = await getOrgContext(org);
   if (!ctx.roles.includes('owner') && !ctx.roles.includes('manager')) notFound();
   const [t, locale] = await Promise.all([getTranslations('social.growth'), getLocale()]);
@@ -112,11 +125,12 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     { data: branchPrices },
     { data: orgSettings },
     { data: profile },
+    { data: qtyRows },
   ] = await Promise.all([
     supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, color_main, color_accent, logo_path, display_name, area, phone, show_price',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
@@ -162,6 +176,13 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     supabase.from('org_profile').select('area, city').eq('org_id', ctx.org.id).maybeSingle(),
+    // items.qty_sold over the last 30 days (METRICS.md): the autopilot posts what sells (ADR 0058).
+    supabase.rpc('metric_item_qty', {
+      p_org: ctx.org.id,
+      p_branch: null,
+      p_window: 'last_30d',
+      p_now: at.toISOString(),
+    }),
   ]);
   const posterBn = posterText('bn');
   const posterEn = posterText('en');
@@ -173,7 +194,7 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     ({ data: look } = await supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, color_main, color_accent, logo_path, display_name, area, phone, show_price',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle());
@@ -341,35 +362,81 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
     );
   };
 
+  // Which dishes the autopilot posts (ADR 0058): the marked ones, else the best sellers, taking turns.
+  const marked = new Set(((look?.post_item_ids as string[] | undefined) ?? []).map(String));
+  const never = new Set(((look?.never_item_ids as string[] | undefined) ?? []).map(String));
+  const sold = new Map(
+    ((qtyRows ?? []) as { menu_item_id: string | null; qty: number }[])
+      .filter((r) => r.menu_item_id)
+      .map((r) => [r.menu_item_id as string, Number(r.qty)]),
+  );
+  const lastPosted = new Map<string, string>();
+  for (const p of (past ?? []) as PostRow[])
+    if (p.status === 'posted' && p.menu_item_id && !lastPosted.has(p.menu_item_id))
+      lastPosted.set(p.menu_item_id, p.scheduled_at);
+  const candidates: DishCandidate[] = dishes
+    .filter((d) => !never.has(d.id as string))
+    .map((d) => ({
+      id: d.id as string,
+      name: d.name as string,
+      sold: sold.get(d.id as string) ?? 0,
+      lastPostedAt: lastPosted.get(d.id as string) ?? null,
+    }));
+  const top = bestSellers(candidates);
+  const next = autopilotOrder(candidates, marked)[0] ?? null;
+  const markedCount = candidates.filter((d) => marked.has(d.id)).length;
+  const sortedDishes = [...dishes].sort(
+    (a, b) =>
+      (sold.get(b.id as string) ?? 0) - (sold.get(a.id as string) ?? 0) ||
+      String(a.name).localeCompare(String(b.name)),
+  );
+  const tabHref = (k: Tab) => `/${ctx.org.slug}/growth?tab=${k}`;
+  const markButton = (id: string, mark: 'post' | 'auto' | 'never', on: boolean) => (
+    <form action={markSocialDishAction}>
+      {hidden}
+      <input type="hidden" name="itemId" value={id} />
+      <input type="hidden" name="mark" value={mark} />
+      <Button type="submit" size="sm" variant={on ? 'primary' : 'ghost'} aria-pressed={on}>
+        {mark === 'post' ? (
+          <Star aria-hidden className="size-4" />
+        ) : mark === 'never' ? (
+          <Ban aria-hidden className="size-4" />
+        ) : (
+          <Wand2 aria-hidden className="size-4" />
+        )}
+        {t(`marks.${mark}`)}
+      </Button>
+    </form>
+  );
+
   return (
     <>
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       {!aiConfigured() ? (
-        <Alert tone="warning" className="mb-6">
+        <Alert tone="warning" className="mb-4">
           {t('aiNotConfigured')}
         </Alert>
       ) : null}
 
-      <Card className="mb-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+      <Card className="mb-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <p className="flex items-center gap-2 font-bold">
               <Sparkles aria-hidden className="size-5 text-purple" />
-              <span className="text-lg font-bold">
-                {settings?.autopilot ? t('autopilotOn') : t('autopilotOff')}
-              </span>
-            </div>
-            <p className="text-sm text-secondary">
               {settings?.autopilot
-                ? t('autopilotOnBody', { time: String(settings.post_time).slice(0, 5) })
-                : t('autopilotOffBody')}
+                ? t('autopilotOnLine', { time: String(settings.post_time).slice(0, 5) })
+                : t('autopilotOff')}
             </p>
             <p className="text-sm text-secondary">
               {fb
                 ? t('connectedTo', { page: fb.name as string, ig: ig ? `@${ig.name}` : '—' })
                 : t('notConnected')}
             </p>
-            <p className="text-sm text-secondary">{t('photoCount', { count: dishes.length })}</p>
+            {settings?.autopilot && next ? (
+              <p className="text-sm text-secondary">
+                {t('nextUp', { dish: next.dish.name })} · {t(`reasons.${next.reason}`)}
+              </p>
+            ) : null}
           </div>
           {ctx.isOwner ? (
             <Link
@@ -383,63 +450,121 @@ export default async function GrowthPage({ params }: { params: Promise<{ org: st
         </div>
       </Card>
 
-      <Card className="mb-6">
-        <CardTitle>
-          <span className="inline-flex items-center gap-2">
-            <Sparkles aria-hidden className="size-5 text-purple" />
-            {t('makeTitle')}
-          </span>
-        </CardTitle>
-        <p className="-mt-2 mb-4 text-sm text-secondary">{t('makeBody')}</p>
-        {dishes.length === 0 ? (
-          <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
-        ) : !look ? (
-          <EmptyState title={t('noLook')} body={t('noLookBody')} />
-        ) : (
-          <SocialStudio
-            orgId={ctx.org.id}
-            orgSlug={ctx.org.slug}
-            dishes={studioDishes}
-            brand={{
-              restaurant: (look.display_name as string | null) || ctx.org.name,
-              area:
-                (look.area as string | null) ||
-                [profile?.area, profile?.city].filter(Boolean).join(', ') ||
-                null,
-              phone: (look.phone as string | null) ?? null,
-              colorMain: look.color_main as string,
-              colorAccent: look.color_accent as string,
-              logoUrl: look.logo_path ? mediaUrl('menu-photos', look.logo_path as string) : null,
-            }}
-            language={(look.language as 'bn' | 'en' | 'both' | undefined) ?? 'both'}
-            poster={{ bn: posterBn, en: posterEn }}
-            aiOn={aiConfigured()}
-          />
-        )}
-      </Card>
+      <PillNav
+        label={t('tabsLabel')}
+        className="mb-4"
+        items={TABS.map((k) => ({
+          href: tabHref(k),
+          active: tab === k,
+          label:
+            k === 'upcoming' && (upcoming ?? []).length
+              ? `${t(`tabs.${k}`)} (${(upcoming ?? []).length})`
+              : t(`tabs.${k}`),
+        }))}
+      />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section>
-          <h2 className="mb-3 text-lg font-bold">{t('upcoming')}</h2>
-          {(upcoming ?? []).length === 0 ? (
-            <EmptyState title={t('noUpcoming')} body={t('noUpcomingBody')} />
+      {tab === 'make' ? (
+        <Card>
+          <p className="mb-4 text-sm text-secondary">{t('makeBody')}</p>
+          {dishes.length === 0 ? (
+            <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
+          ) : !look ? (
+            <EmptyState title={t('noLook')} body={t('noLookBody')} />
           ) : (
-            <div className="space-y-3">
-              {((upcoming ?? []) as PostRow[]).map((p) => card(p, p.status !== 'publishing'))}
-            </div>
+            <SocialStudio
+              orgId={ctx.org.id}
+              orgSlug={ctx.org.slug}
+              dishes={studioDishes}
+              brand={{
+                restaurant: (look.display_name as string | null) || ctx.org.name,
+                area:
+                  (look.area as string | null) ||
+                  [profile?.area, profile?.city].filter(Boolean).join(', ') ||
+                  null,
+                phone: (look.phone as string | null) ?? null,
+                colorMain: look.color_main as string,
+                colorAccent: look.color_accent as string,
+                logoUrl: look.logo_path ? mediaUrl('menu-photos', look.logo_path as string) : null,
+              }}
+              language={(look.language as 'bn' | 'en' | 'both' | undefined) ?? 'both'}
+              poster={{ bn: posterBn, en: posterEn }}
+              aiOn={aiConfigured()}
+              tone={((look.tone as SocialTone | undefined) ?? 'friendly') as SocialTone}
+            />
           )}
-        </section>
-        <section>
-          <h2 className="mb-3 text-lg font-bold">{t('past')}</h2>
-          {(past ?? []).length === 0 ? (
-            <EmptyState title={t('noPast')} />
+        </Card>
+      ) : null}
+
+      {tab === 'dishes' ? (
+        <Card>
+          <p className="mb-1 font-semibold">
+            {markedCount ? t('modeMarked', { count: markedCount }) : t('modeSales')}
+          </p>
+          <p className="mb-4 text-sm text-secondary">{t('dishesBody')}</p>
+          {dishes.length === 0 ? (
+            <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
           ) : (
-            <div className="space-y-3">
-              {((past ?? []) as PostRow[]).map((p) => card(p, false))}
-            </div>
+            <ul className="divide-y divide-line">
+              {sortedDishes.map((d) => {
+                const id = d.id as string;
+                const mark = marked.has(id) ? 'post' : never.has(id) ? 'never' : 'auto';
+                const studio = studioDishes.find((x) => x.id === id);
+                return (
+                  <li key={id} className="flex flex-wrap items-center gap-3 py-3">
+                    <span className="relative size-14 shrink-0 overflow-hidden rounded-input bg-surface-elevated">
+                      <Image
+                        src={studio?.cutUrl ?? mediaUrl('menu-photos', d.photo_path as string)}
+                        alt=""
+                        fill
+                        unoptimized
+                        sizes="56px"
+                        className={studio?.cutUrl ? 'object-contain' : 'object-cover'}
+                      />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">
+                        {loc === 'bn' && d.name_bn ? (d.name_bn as string) : (d.name as string)}
+                      </p>
+                      <p className="flex flex-wrap items-center gap-1.5 text-sm text-secondary">
+                        <span className="tabular-nums">
+                          {t('sold30', { n: formatNumber(sold.get(id) ?? 0, loc) })}
+                        </span>
+                        {top.has(id) ? <Badge tone="success">{t('bestSeller')}</Badge> : null}
+                        {next?.dish.id === id ? <Badge tone="accent">{t('nextBadge')}</Badge> : null}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {markButton(id, 'post', mark === 'post')}
+                      {markButton(id, 'auto', mark === 'auto')}
+                      {markButton(id, 'never', mark === 'never')}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </section>
-      </div>
+        </Card>
+      ) : null}
+
+      {tab === 'upcoming' ? (
+        (upcoming ?? []).length === 0 ? (
+          <EmptyState title={t('noUpcoming')} body={t('noUpcomingBody')} />
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {((upcoming ?? []) as PostRow[]).map((p) => card(p, p.status !== 'publishing'))}
+          </div>
+        )
+      ) : null}
+
+      {tab === 'posted' ? (
+        (past ?? []).length === 0 ? (
+          <EmptyState title={t('noPast')} />
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {((past ?? []) as PostRow[]).map((p) => card(p, false))}
+          </div>
+        )
+      ) : null}
       <Hint className="mt-6">{t('footnote', { at: formatDhakaDateTime(at, loc) })}</Hint>
     </>
   );

@@ -22,7 +22,6 @@ import { pendingPageNames } from '@/modules/social/connect';
 import { imageAiConfigured } from '@/modules/social/image-ai';
 import { now } from '@/lib/time/clock';
 import { metaConfigured } from '@/modules/social/meta';
-import { POSTER_DESIGNS } from '@/modules/social/schedule';
 import { tiktokConfigured } from '@/modules/social/tiktok';
 import {
   disconnectSocialAction,
@@ -68,14 +67,13 @@ export default async function SocialSettingsPage({
   const [{ org }, { meta, tiktok }] = await Promise.all([params, searchParams]);
   const ctx = await getOrgContext(org);
   if (!ctx.isOwner) notFound();
-  const [t, tw, td] = await Promise.all([
+  const [t, tw] = await Promise.all([
     getTranslations('social.settings'),
     getTranslations('weekdays'),
-    getTranslations('social.designs'),
   ]);
   const supabase = await createClient();
   const columns =
-    'autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, tiktok_mode, designs, show_price';
+    'autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, tiktok_mode, show_price';
   // The first visit makes the row, so the form starts from the database defaults (colours included).
   const read = () =>
     supabase.from('social_settings').select(columns).eq('org_id', ctx.org.id).maybeSingle();
@@ -106,8 +104,6 @@ export default async function SocialSettingsPage({
   const dishes = items ?? [];
   const withPhoto = dishes.filter((d) => d.photo_path);
   const days: number[] = (s?.post_days as number[] | undefined) ?? [0, 1, 2, 3, 4, 5, 6];
-  const never = new Set((s?.never_item_ids as string[] | undefined) ?? []);
-  const designs = new Set((s?.designs as string[] | undefined) ?? POSTER_DESIGNS);
   const hidden = (
     <>
       <input type="hidden" name="orgId" value={ctx.org.id} />
@@ -434,47 +430,6 @@ export default async function SocialSettingsPage({
               <span className="text-sm text-secondary">{t('showPriceHint')}</span>
             </span>
           </label>
-          <fieldset className="sm:col-span-2">
-            <legend className="mb-1 text-sm font-semibold">{t('designs')}</legend>
-            <p className="mb-2 text-sm text-secondary">{t('designsHint')}</p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {POSTER_DESIGNS.map((d) => (
-                <label key={d} className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="designs"
-                    value={d}
-                    defaultChecked={designs.has(d)}
-                    className="mt-0.5 size-4 accent-purple"
-                  />
-                  <span>
-                    <span className="block font-semibold">{td(`${d}.name`)}</span>
-                    <span className="text-secondary">{td(`${d}.hint`)}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          {withPhoto.length > 0 ? (
-            <fieldset className="sm:col-span-2">
-              <legend className="mb-2 text-sm font-semibold">{t('never')}</legend>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {withPhoto.map((d) => (
-                  <label key={d.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name="never"
-                      value={d.id}
-                      defaultChecked={never.has(d.id)}
-                      className="size-4 accent-purple"
-                    />
-                    {d.name}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ) : null}
           <div className="sm:col-span-2">
             <Button type="submit">{t('save')}</Button>
           </div>

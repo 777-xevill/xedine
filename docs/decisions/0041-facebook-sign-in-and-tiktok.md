@@ -28,6 +28,11 @@ post to every platform the restaurant has, TikTok included. ADR 0003 made sign-i
    expect from an audited app; `'direct'` posts with no tap, public if TikTok allows it, and privately
    (`SELF_ONLY`) while TikTok has not audited Xedine (the app retries once as private on TikTok's
    `unaudited_client…` error). Facebook and Instagram stay fully automatic.
+   **Amended 2026-11-15:** TikTok refuses even a private post from an unaudited app unless the creator's
+   *account* is private (`unaudited_client_can_only_post_to_private_accounts`, seen on the first real
+   test). On that refusal the video now goes to the owner's inbox instead, so the day is not lost; direct
+   posting starts by itself once TikTok audits the app. Sandbox keys are live (test account: Xegency);
+   xedine.org is a verified domain on the TikTok app.
 5. Publishing keeps ADR 0040's rule: each platform's id is written as it succeeds (`tiktok_publish_id`
    while TikTok processes, `tiktok_id` when done — `inbox:<id>` for a draft), so a retry never posts twice.
 

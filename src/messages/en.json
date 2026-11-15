@@ -2888,7 +2888,7 @@
       },
       "tiktokModeHints": {
         "draft": "The video waits in your TikTok app. Tap it, check it and post with one tap. Posts are public.",
-        "direct": "Xedine posts with no tap. Until TikTok approves Xedine, these posts are private: only you can see them."
+        "direct": "Xedine posts with no tap once TikTok approves Xedine. Until then, each video waits in your TikTok inbox for one tap."
       },
       "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password."
     },

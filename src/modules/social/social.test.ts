@@ -245,6 +245,23 @@ describe('TikTok (ADR 0041)', () => {
     expect(privacy(2)).toBe('SELF_ONLY');
   });
 
+  it('sends the video to the inbox when TikTok refuses even a private post from an unaudited app', async () => {
+    const refused = {
+      status: 403,
+      body: { error: { code: 'unaudited_client_can_only_post_to_private_accounts' } },
+    };
+    const { calls, impl } = fakeTikTok([
+      ok({ privacy_level_options: ['PUBLIC_TO_EVERYONE', 'SELF_ONLY'] }),
+      refused,
+      refused,
+      ok({ publish_id: 'p-3', upload_url: 'https://upload.example/u' }),
+      { status: 201 },
+    ]);
+    expect(await startTikTokPost('tok', 'direct', video, 'Hello', impl)).toBe('p-3');
+    expect(calls[3]!.url).toContain('/post/publish/inbox/video/init/');
+    expect(calls[4]!.init.method).toBe('PUT');
+  });
+
   it('does not hide other TikTok errors behind the private fallback', async () => {
     const { impl } = fakeTikTok([
       ok({ privacy_level_options: ['PUBLIC_TO_EVERYONE'] }),

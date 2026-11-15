@@ -242,6 +242,7 @@ export async function startTikTokPost(
           fetchImpl,
         );
 
+  const unaudited = (e: unknown) => e instanceof TikTokError && /unaudited/i.test(e.code ?? '');
   let started: { publish_id: string; upload_url: string };
   if (mode === 'draft') started = await init(null);
   else {
@@ -249,14 +250,22 @@ export async function startTikTokPost(
     try {
       started = await init(privacy);
     } catch (e) {
-      // An app TikTok has not audited yet may only post privately: try once more as SELF_ONLY.
-      if (
-        !(e instanceof TikTokError) ||
-        privacy === 'SELF_ONLY' ||
-        !/unaudited/i.test(e.code ?? '')
-      )
-        throw e;
-      started = await init('SELF_ONLY');
+      if (!unaudited(e)) throw e;
+      // An app TikTok has not audited yet may only post privately, and only to a private account
+      // (`unaudited_client_can_only_post_to_private_accounts`): try once as SELF_ONLY, and if TikTok
+      // still refuses, send the video to the owner's inbox so the day's post is not lost.
+      try {
+        if (privacy === 'SELF_ONLY') throw e;
+        started = await init('SELF_ONLY');
+      } catch (e2) {
+        if (!unaudited(e2)) throw e2;
+        started = await api<{ publish_id: string; upload_url: string }>(
+          '/post/publish/inbox/video/init/',
+          token,
+          { source_info },
+          fetchImpl,
+        );
+      }
     }
   }
 

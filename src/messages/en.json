@@ -125,7 +125,8 @@
     "confirmFailed": "This confirmation link has expired or was already used. Sign in with your email and password; if that fails, create the account again.",
     "resendWait": "Please wait one minute, then tap Send again.",
     "noteInvalid": "Write something in the note first.",
-    "memberNeedsBranch": "Choose at least one branch."
+    "memberNeedsBranch": "Choose at least one branch.",
+    "socialFacebookLink": "Please paste a Facebook link, like facebook.com/yourname."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -2606,6 +2607,37 @@
       "approved": "Approved",
       "declined": "Declined",
       "cancelled": "Cancelled"
+    },
+    "facebook": {
+      "title": "Facebook connect requests",
+      "empty": "No requests.",
+      "ways": {
+        "page_access": "Gave Page access",
+        "tester": "Wants a Tester invite"
+      },
+      "statuses": {
+        "waiting": "Waiting",
+        "invited": "Invited",
+        "done": "Done"
+      },
+      "link": "Their link",
+      "connectFor": "Connect for this restaurant",
+      "acceptFirst": "First accept their Page invite in Facebook's notifications on Xedine's account, then connect.",
+      "openTesters": "Open Meta Testers",
+      "markInvited": "Mark invited",
+      "markDone": "Mark done",
+      "reopen": "Reopen",
+      "pickTitle": "Which Page is {org}'s?",
+      "usePage": "Use this Page",
+      "connectedPage": "Connected: {page}",
+      "notice": {
+        "pick": "Pick the Page that belongs to this restaurant.",
+        "no_pages": "Facebook showed no Pages. Accept the restaurant's Page invite first, and tick that Page when Facebook asks.",
+        "failed": "Facebook didn't accept the connection. Try again.",
+        "cancelled": "Connecting was cancelled.",
+        "wrong_user": "Finish connecting in the same browser and account that started it.",
+        "not_configured": "Facebook connection is not set up on Xedine yet."
+      }
     }
   },
   "features": {
@@ -2906,9 +2938,32 @@
         "draft": "The video waits in your TikTok app. Tap it, check it and post with one tap. Posts are public.",
         "direct": "Xedine posts with no tap once TikTok approves Xedine. Until then, each video waits in your TikTok inbox for one tap."
       },
-      "earlyAccess": "Early access: before you connect, send Xedine the name or email of the Facebook account that runs your Page. We add it as a Tester, then you accept the invite on Facebook (Notifications, or facebook.com/settings → Business integrations). Until then Facebook will say the app is not available. You never share your password.",
       "showPrice": "Show prices on posters",
-      "showPriceHint": "The menu price goes on posters that have room for it, only when every branch charges the same."
+      "showPriceHint": "The menu price goes on posters that have room for it, only when every branch charges the same.",
+      "help": {
+        "choose": "Pick the way that is easier for you. This is needed only until Meta fully approves Xedine.",
+        "pageTitle": "Easiest: Xedine connects it for you",
+        "pageStep1": "On Facebook, open your restaurant's Page and switch into it. Tap Settings → Page access → Add new.",
+        "pageStep2": "Search for {name} and give Facebook access. Turn on full control so Instagram comes too. You can remove it any time.",
+        "pageProfile": "See this account",
+        "pageStep3": "Paste your Page link below (not required) and tap the button.",
+        "pageLink": "Your Page link (not required)",
+        "pageSend": "I've added Xedine",
+        "selfTitle": "Or connect it yourself",
+        "selfBody": "Paste the link to your own Facebook profile. Xedine adds you as a tester, then an Accept button appears here, usually within a day.",
+        "selfLink": "Your Facebook profile link",
+        "selfSend": "Send",
+        "linkHint": "Example: facebook.com/kacchihouse",
+        "already": "Already got an invite from Xedine?",
+        "waitingPage": "Done! Xedine will connect your Page and Instagram, usually within a day. You don't need to do anything else.",
+        "waitingTester": "Sent! Xedine is adding you. The Accept button appears here, usually within a day.",
+        "invitedTitle": "Your invite is ready: two steps left",
+        "invitedStep1": "Accept the invite on Facebook.",
+        "invitedAccept": "Open the invite",
+        "invitedHint": "If Facebook asks you to register first, agree and confirm your phone number. It is free.",
+        "invitedStep2": "Then come back here and connect.",
+        "cancel": "Cancel request"
+      }
     },
     "growth": {
       "title": "Growth",
@@ -3016,7 +3071,7 @@
         "look": "Add your logo and phone number",
         "lookBody": "Every poster uses your colours, logo and contact. Pick your two colours there too.",
         "connect": "Connect Facebook and Instagram",
-        "connectBody": "Until then you can still make posters here and download them.",
+        "connectBody": "Xedine can do it for you: open it to see how. Until then you can still make posters here and download them.",
         "autopilot": "Switch the autopilot on",
         "autopilotBody": "Xedine then posts by itself on your posting days."
       }

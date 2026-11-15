@@ -21,7 +21,8 @@ import { createClient } from '@/lib/db/supabase-server';
 import { pendingPageNames } from '@/modules/social/connect';
 import { imageAiConfigured } from '@/modules/social/image-ai';
 import { now } from '@/lib/time/clock';
-import { metaConfigured } from '@/modules/social/meta';
+import { metaConfigured, pageHelper } from '@/modules/social/meta';
+import { SocialConnectHelp } from '@/components/social-connect-help';
 import { tiktokConfigured } from '@/modules/social/tiktok';
 import {
   disconnectSocialAction,
@@ -82,7 +83,7 @@ export default async function SocialSettingsPage({
     await supabase.from('social_settings').insert({ org_id: ctx.org.id });
     ({ data: s } = await read());
   }
-  const [{ data: accounts }, { data: items }] = await Promise.all([
+  const [{ data: accounts }, { data: items }, { data: helpRow }] = await Promise.all([
     supabase.from('social_accounts').select('platform, name').eq('org_id', ctx.org.id),
     supabase
       .from('menu_items')
@@ -90,7 +91,19 @@ export default async function SocialSettingsPage({
       .eq('org_id', ctx.org.id)
       .eq('is_active', true)
       .order('name'),
+    supabase
+      .from('social_connect_requests')
+      .select('way, status')
+      .eq('org_id', ctx.org.id)
+      .maybeSingle(),
   ]);
+  const help =
+    helpRow && helpRow.status !== 'done'
+      ? {
+          way: helpRow.way as 'page_access' | 'tester',
+          status: helpRow.status as 'waiting' | 'invited',
+        }
+      : null;
   const notice = meta && meta in NOTICES ? (meta as Notice) : null;
   const tiktokNotice = tiktok && tiktok in TIKTOK_NOTICES ? (tiktok as TikTokNotice) : null;
 
@@ -168,18 +181,12 @@ export default async function SocialSettingsPage({
             </div>
           </div>
         ) : metaConfigured() ? (
-          <>
-            <Alert tone="info" className="mb-4">
-              {t('earlyAccess')}
-            </Alert>
-            <a
-              href={`/api/social/meta/start?org=${ctx.org.slug}`}
-              className={buttonVariants({ variant: 'primary' })}
-            >
-              <Share2 aria-hidden className="size-4" />
-              {t('connect')}
-            </a>
-          </>
+          <SocialConnectHelp
+            orgId={ctx.org.id}
+            orgSlug={ctx.org.slug}
+            request={help}
+            helper={pageHelper()}
+          />
         ) : (
           <Alert tone="warning">{t('metaNotConfigured')}</Alert>
         )}

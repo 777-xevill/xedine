@@ -45,6 +45,21 @@ export async function connectPage(orgId: string, userId: string, page: PendingPa
     if (tokenError) throw tokenError;
   }
   await sb.from('social_connect_pending').delete().eq('org_id', orgId).eq('user_id', userId);
+  // A help request (ADR 0059) is finished once the Page is in.
+  await sb.from('social_connect_requests').update({ status: 'done' }).eq('org_id', orgId);
+}
+
+/**
+ * Does this org exist? For a platform admin connecting a restaurant's Page (ADR 0059): the admin is not a
+ * member, so their session cannot read the org. The caller has already checked am_platform_admin().
+ */
+export async function orgExistsForAdmin(orgId: string): Promise<boolean> {
+  const { data } = await createServiceRoleClient()
+    .from('organizations')
+    .select('id')
+    .eq('id', orgId)
+    .maybeSingle();
+  return Boolean(data);
 }
 
 /** A TikTok account replaces the org's previous one; its tokens go to the service-only table. */

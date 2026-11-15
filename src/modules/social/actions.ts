@@ -8,7 +8,9 @@ import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
 import { LookSchema, type Look } from '@/modules/social/look';
 import { slotAt } from '@/modules/social/schedule';
+import { pingAdmin } from '@/lib/messaging/admin-ping';
 import { connectPendingPage } from '@/modules/social/connect';
+import { normalizeFacebookLink } from '@/modules/social/facebook-link';
 import {
   ApprovedWordsSchema,
   type ApprovedWords,
@@ -301,6 +303,86 @@ export async function saveTikTokModeAction(
     .upsert({ org_id: parsed.data.orgId, tiktok_mode: parsed.data.tiktokMode });
   if (error) return { error: mapDbError(error) };
   refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+/**
+ * "Help me connect" (ADR 0059): the owner asks Xedine to connect Facebook for them — either they gave
+ * Xedine's Facebook account access to their Page (`page_access`, Page link optional), or they send their
+ * own profile link to be added as a Tester (`tester`). The operator gets a Telegram ping.
+ */
+export async function requestSocialConnectAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ way: z.enum(['page_access', 'tester']), link: z.string().max(400).optional() })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const d = parsed.data;
+  const link = d.link?.trim() ? normalizeFacebookLink(d.link) : null;
+  if (d.link?.trim() && !link) return { error: 'socialFacebookLink' };
+  if (d.way === 'tester' && !link) return { error: 'socialFacebookLink' };
+  const ctx = await getOrgContext(d.orgSlug);
+  if (ctx.org.id !== d.orgId || !ctx.isOwner) return { error: 'notAllowed' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('request_social_connect', {
+    p_org: d.orgId,
+    p_way: d.way,
+    p_link: link,
+  });
+  if (error) return { error: mapDbError(error) };
+  await pingAdmin(
+    `Facebook help: ${ctx.org.name} (${ctx.org.slug}) — ${
+      d.way === 'page_access' ? 'gave Page access, connect it' : 'add as Tester'
+    }${link ? `\n${link}` : ''}\nhttps://xedine.org/admin#facebook`,
+  );
+  refresh(d.orgSlug);
+  return { ok: true };
+}
+
+export async function cancelSocialConnectAction(formData: FormData): Promise<void> {
+  const parsed = base.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('cancel_social_connect', { p_org: parsed.data.orgId });
+  if (error) console.error('cancel social connect', error.code);
+  refresh(parsed.data.orgSlug);
+}
+
+/** Admin console: a Tester invite was sent (or a request is reopened / closed) (ADR 0059). */
+export async function adminMarkSocialConnectAction(formData: FormData): Promise<void> {
+  const parsed = z
+    .object({ orgId: z.uuid(), status: z.enum(['waiting', 'invited', 'done']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('admin_mark_social_connect', {
+    p_org: parsed.data.orgId,
+    p_status: parsed.data.status,
+  });
+  if (error) console.error('admin mark social connect', error.code);
+  revalidatePath('/admin');
+}
+
+/** Admin console: the Page (of those the admin's Facebook offered) that belongs to this restaurant. */
+export async function adminPickSocialPageAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = z
+    .object({ orgId: z.uuid(), pageId: z.string().regex(/^[0-9]{1,40}$/) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: isAdmin } = await supabase.rpc('am_platform_admin');
+  if (!user || isAdmin !== true) return { error: 'notAllowed' };
+  const ok = await connectPendingPage(parsed.data.orgId, user.id, parsed.data.pageId, now());
+  if (!ok) return { error: 'socialConnectExpired' };
+  revalidatePath('/admin');
   return { ok: true };
 }
 

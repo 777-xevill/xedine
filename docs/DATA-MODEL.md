@@ -12,7 +12,7 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (124)
+## Tables (125)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
@@ -118,6 +118,7 @@
 | `shifts` | Cash shifts: opening float, expected vs counted, over/short. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, devices, staff | pos · P1 |
 | `social_accounts` | The Facebook Page, Instagram and TikTok account an org connected for posting (ids and names only). | org | read: owner, manager; write: owner (insert by the connect callback (service role); owner may disconnect (ADR 0040)) | PK id | social · P11 |
 | `social_connect_pending` | Facebook Pages offered during Connect, kept for 30 minutes until the owner picks one. | org · service only | no client access | PK id | social · P11 |
+| `social_connect_requests` | A restaurant's ask for help connecting Facebook (Page access or Tester invite), handled by a platform admin. | org | custom — select: owner; writes only via request_social_connect / cancel_social_connect / admin_mark_social_connect (ADR 0059) | PK org_id | social · P11 |
 | `social_dish_art` | Each dish photo lifted off its background (and the AI studio plate), for posters. | org | read: owner, manager; write: service role only (written by the social job (service role); read by the Growth preview (ADR 0057)) | PK org_id, menu_item_id · → menu_items | social · P11 |
 | `social_posts` | Facebook/Instagram/TikTok posts the autopilot planned, made and published. | org | read: owner, manager; write: service role only (written by the social job (service role) and request_social_post / skip_social_post (ADR 0040)) | PK id · → menu_items | social · P11 |
 | `social_settings` | How the social autopilot posts for this org: switch, time, days, colours, logo, contact. | org | read: owner, manager; write: owner (the owner sets up the autopilot; managers can see it (ADR 0040)) | PK org_id | social · P11 |
@@ -141,7 +142,7 @@
 | `weather_hours` | Weather forecast per branch per hour (MET Norway). | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: service role only (weather for the branch; everyone at the branch reads, only the weather job writes (ADR 0051)) | PK org_id, branch_id, at · → branches | forecasting · P11 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (188)
+## RPC functions (193)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -154,8 +155,10 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `adjust_points` | `p_org uuid, p_customer uuid, p_points integer, p_note text` |
 | `admin_branch_requests` | `p_now timestamp with time zone` |
 | `admin_decide_branch_request` | `p_request uuid, p_approve boolean, p_note text DEFAULT NULL::text` |
+| `admin_mark_social_connect` | `p_org uuid, p_status text` |
 | `admin_orgs` | `p_now timestamp with time zone` |
 | `admin_set_subscription` | `p_org uuid, p_plan text, p_status subscription_status, p_discount_bps integer, p_period_end date` |
+| `admin_social_connect_requests` | `p_now timestamp with time zone` |
 | `advance_order_status` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
 | `am_platform_admin` | `` |
 | `apply_discount_code` | `p_org uuid, p_branch uuid, p_order uuid, p_code text, p_device uuid, p_staff uuid` |
@@ -172,6 +175,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `can_record_purchase` | `p_org uuid, p_branch uuid` |
 | `cancel_branch_request` | `p_request uuid` |
 | `cancel_order` | `p_org uuid, p_branch uuid, p_order uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
+| `cancel_social_connect` | `p_org uuid` |
 | `chat_confirm_purchase_draft` | `p_channel chat_channel, p_external_id text, p_draft uuid` |
 | `chat_create_purchase_draft` | `p_channel chat_channel, p_external_id text, p_source purchase_source, p_raw_text text, p_extracted jsonb, p_confidence jsonb` |
 | `chat_discard_purchase_draft` | `p_channel chat_channel, p_external_id text, p_draft uuid` |
@@ -300,6 +304,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `remove_membership` | `p_membership uuid` |
 | `reopen_incident` | `p_org uuid, p_incident uuid, p_reason text` |
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
+| `request_social_connect` | `p_org uuid, p_way text, p_link text DEFAULT NULL::text` |
 | `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date, p_design text DEFAULT NULL::text, p_words jsonb DEFAULT NULL::jsonb, p_extra_items uuid[] DEFAULT '{}'::uuid[], p_spec jsonb DEFAULT NULL::jsonb` |
 | `reset_complaint_link` | `p_org uuid, p_branch uuid` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |

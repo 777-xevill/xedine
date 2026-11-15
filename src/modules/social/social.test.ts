@@ -3,6 +3,7 @@ import { posterPrice } from './prices';
 import { cutoutUsable, maskStats } from './cutout';
 import { captionFor } from './jobs/autopilot';
 import { makeState, readState } from './meta';
+import { normalizeFacebookLink } from './facebook-link';
 import { contrast, cssUrl, readable, rgbOf, PAPER } from './poster-kit';
 import {
   angleForDay,
@@ -98,7 +99,9 @@ describe('social autopilot schedule (ADR 0040)', () => {
     expect(order.map((o) => o.dish.id)).toEqual(['borhani', 'kacchi']);
     expect(order.every((o) => o.reason === 'marked')).toBe(true);
     // The dish of the last post goes last when another can go.
-    expect(autopilotOrder(dishes, new Set(['kacchi', 'firni']), 'firni')[0]!.dish.id).toBe('kacchi');
+    expect(autopilotOrder(dishes, new Set(['kacchi', 'firni']), 'firni')[0]!.dish.id).toBe(
+      'kacchi',
+    );
   });
 
   it('with nothing marked, takes turns among the five best sellers, then the rest', () => {
@@ -112,10 +115,14 @@ describe('social autopilot schedule (ADR 0040)', () => {
     expect(order.slice(0, 5).every((o) => o.reason === 'best_seller')).toBe(true);
     expect(order.slice(5).map((o) => o.reason)).toEqual(['turn', 'turn']);
     // Posted yesterday: the next best seller goes first.
-    const posted = dishes.map((d) => (d.id === 'a' ? { ...d, lastPostedAt: '2026-11-14T07:00:00Z' } : d));
+    const posted = dishes.map((d) =>
+      d.id === 'a' ? { ...d, lastPostedAt: '2026-11-14T07:00:00Z' } : d,
+    );
     expect(autopilotOrder(posted, new Set())[0]!.dish.id).toBe('b');
     // No sales at all: the whole menu in turn.
-    expect(autopilotOrder([dish('x', 0, '2026-11-01T00:00:00Z'), dish('y', 0, null)], new Set())[0]).toEqual({
+    expect(
+      autopilotOrder([dish('x', 0, '2026-11-01T00:00:00Z'), dish('y', 0, null)], new Set())[0],
+    ).toEqual({
       dish: dish('y', 0, null),
       reason: 'turn',
     });
@@ -147,12 +154,13 @@ describe('poster looks (ADR 0058)', () => {
     expect(layoutFits('mood', bangla)).toBe(false); // the O's are English letters
     expect(layoutFits('menu', bangla)).toBe(false); // a menu needs another dish
     expect(layoutFits('collage', bangla)).toBe(false);
-    for (let i = 0; i < 40; i++) expect(layoutFits(resolveLook(i, bangla).layout, bangla)).toBe(true);
+    for (let i = 0; i < 40; i++)
+      expect(layoutFits(resolveLook(i, bangla).layout, bangla)).toBe(true);
     const menu = resolveLook(1, ctx, 'menu');
     expect(fitLook(menu, bangla).layout).not.toBe('menu');
   });
 
-  it("the autopilot avoids the layouts of its last posts", () => {
+  it('the autopilot avoids the layouts of its last posts', () => {
     const recent = LAYOUTS.slice(0, 10);
     for (let i = 0; i < 20; i++)
       expect(recent).not.toContain(lookForPost('org:' + String(i), ctx, recent).layout);
@@ -293,7 +301,11 @@ describe('poster and reel templates', () => {
     for (const layout of LAYOUTS)
       for (const seed of [1, 2, 3])
         for (const cut of [true, false]) {
-          const html = posterHtml({ ...content, look: look(layout, seed), dish: dishArt(evil, cut) });
+          const html = posterHtml({
+            ...content,
+            look: look(layout, seed),
+            dish: dishArt(evil, cut),
+          });
           expect(html, layout).not.toContain('<script>alert');
           expect(html, layout).toContain('<!doctype html>');
           expect(html, layout).toContain('data-fit');
@@ -313,7 +325,13 @@ describe('poster and reel templates', () => {
       area: null,
       phone: null,
       logoUrl: null,
-      dish: { name: 'Khichuri', cutUrl: null, photoUrl: 'data:image/jpeg;base64,P', price: null, note: null },
+      dish: {
+        name: 'Khichuri',
+        cutUrl: null,
+        photoUrl: 'data:image/jpeg;base64,P',
+        price: null,
+        note: null,
+      },
       more: [],
     };
     for (const tone of ['friendly', 'premium', 'fun'] as const)
@@ -337,10 +355,18 @@ describe('poster and reel templates', () => {
   });
 
   it('stands a clean cut-out on the poster and frames the photo when there is none', () => {
-    const withCut = posterHtml({ ...content, look: { ...look('status'), plate: 'float' }, dish: dishArt('Kacchi', true) });
+    const withCut = posterHtml({
+      ...content,
+      look: { ...look('status'), plate: 'float' },
+      dish: dishArt('Kacchi', true),
+    });
     expect(withCut).toContain('class="cut"');
     expect(withCut).toContain('CUT0');
-    const withPhoto = posterHtml({ ...content, look: { ...look('status'), plate: 'float' }, dish: dishArt('Kacchi', false) });
+    const withPhoto = posterHtml({
+      ...content,
+      look: { ...look('status'), plate: 'float' },
+      dish: dishArt('Kacchi', false),
+    });
     expect(withPhoto).not.toContain('class="cut"');
     expect(withPhoto).toContain('border-radius:50%');
   });
@@ -447,10 +473,51 @@ describe('Facebook connect state', () => {
     process.env.META_APP_SECRET = 'test-secret-test-secret';
     const t0 = Date.parse('2026-10-26T07:00:00Z');
     const state = makeState('org-1', 'user-1', t0);
-    expect(readState(state, t0 + 60_000)).toEqual({ orgId: 'org-1', userId: 'user-1' });
+    expect(readState(state, t0 + 60_000)).toEqual({
+      orgId: 'org-1',
+      userId: 'user-1',
+      admin: false,
+    });
     expect(readState(state, t0 + 31 * 60_000)).toBeNull();
     expect(readState(state.replace('org-1', 'org-2'), t0 + 60_000)).toBeNull();
     expect(readState('garbage', t0)).toBeNull();
+  });
+
+  it('marks an admin connect, and an owner state cannot be turned into one (ADR 0059)', () => {
+    process.env.META_APP_SECRET = 'test-secret-test-secret';
+    const t0 = Date.parse('2026-11-16T07:00:00Z');
+    const admin = makeState('org-1', 'user-1', t0, 'admin');
+    expect(readState(admin, t0 + 60_000)).toEqual({
+      orgId: 'org-1',
+      userId: 'user-1',
+      admin: true,
+    });
+    const owner = makeState('org-1', 'user-1', t0);
+    const [o, u, i, sig] = owner.split('.');
+    expect(readState(`${o}.${u}.${i}.a.${sig}`, t0 + 60_000)).toBeNull();
+    expect(readState(`${o}.${u}.${i}.b.${sig}`, t0 + 60_000)).toBeNull();
+  });
+});
+
+describe('Facebook link an owner pastes (ADR 0059)', () => {
+  it('keeps Facebook links as https and refuses anything else', () => {
+    expect(normalizeFacebookLink('facebook.com/kacchihouse')).toBe(
+      'https://facebook.com/kacchihouse',
+    );
+    expect(normalizeFacebookLink(' http://m.facebook.com/profile.php?id=1000 ')).toBe(
+      'https://m.facebook.com/profile.php?id=1000',
+    );
+    expect(normalizeFacebookLink('https://web.facebook.com/kacchi')).toBe(
+      'https://web.facebook.com/kacchi',
+    );
+    expect(normalizeFacebookLink('https://fb.me/kacchi')).toBe('https://fb.me/kacchi');
+    expect(normalizeFacebookLink('javascript:alert(1)')).toBeNull();
+    expect(normalizeFacebookLink('https://evilfacebook.com/x')).toBeNull();
+    expect(normalizeFacebookLink('https://facebook.com.evil.io/x')).toBeNull();
+    expect(normalizeFacebookLink('https://facebook.com/')).toBeNull();
+    expect(normalizeFacebookLink('https://user:pw@facebook.com/x')).toBeNull();
+    expect(normalizeFacebookLink('facebook.com/a b')).toBeNull();
+    expect(normalizeFacebookLink('')).toBeNull();
   });
 });
 

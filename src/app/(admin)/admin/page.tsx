@@ -9,6 +9,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { now } from '@/lib/time/clock';
 import { formatBDT, type Locale } from '@/lib/i18n/format';
 import { decideBranchRequestAction, setSubscriptionAction } from '@/modules/billing/actions';
+import { FacebookRequests } from './facebook-requests';
 
 const TONE = {
   trialing: 'info',
@@ -23,13 +24,21 @@ const TONE = {
  * operational metadata — plan, status, branches, trading days — and never a tenant's sales, costs or
  * customers (ARCHITECTURE.md). Subscriptions are set here until a payment provider exists.
  */
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ meta?: string; org?: string }>;
+}) {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect('/sign-in?next=/admin');
   const { data: isAdmin } = await supabase.rpc('am_platform_admin');
   if (isAdmin !== true) notFound();
-  const [t, locale] = await Promise.all([getTranslations('admin'), getLocale()]);
+  const [t, locale, { meta, org: metaOrg }] = await Promise.all([
+    getTranslations('admin'),
+    getLocale(),
+    searchParams,
+  ]);
   const { data } = await supabase.rpc('admin_orgs', { p_now: now().toISOString() });
   const { data: requestData } = await supabase.rpc('admin_branch_requests', {
     p_now: now().toISOString(),
@@ -65,6 +74,7 @@ export default async function AdminPage() {
         <LocaleSwitcher />
       </div>
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
+      <FacebookRequests userId={auth.user.id} meta={meta} metaOrg={metaOrg} />
       <Card className="mb-6 p-4">
         <p className="mb-3 font-semibold">{t('branchRequestsTitle')}</p>
         {requests.length === 0 ? (

@@ -26,6 +26,17 @@ export function metaConfigured(): boolean {
   return Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET);
 }
 
+/**
+ * The Facebook account restaurants give access to their Page so Xedine can connect it for them (ADR 0059),
+ * from META_HELPER_NAME and META_HELPER_URL (its profile link). Unset → that way is not offered.
+ */
+export function pageHelper(): { name: string; url: string | null } | null {
+  const name = process.env.META_HELPER_NAME?.trim();
+  if (!name) return null;
+  const url = process.env.META_HELPER_URL?.trim();
+  return { name, url: url && /^https:\/\/(www\.)?facebook\.com\//.test(url) ? url : null };
+}
+
 export class MetaError extends Error {
   constructor(
     message: string,
@@ -67,21 +78,33 @@ function sign(payload: string): string {
     .digest('base64url');
 }
 
-/** state = orgId.userId.issuedAtMs.signature — valid for 30 minutes. */
-export function makeState(orgId: string, userId: string, issuedAtMs: number): string {
-  const payload = `${orgId}.${userId}.${issuedAtMs}`;
+/**
+ * state = orgId.userId.issuedAtMs[.a].signature — valid for 30 minutes. The `a` marks a platform admin
+ * connecting a restaurant's Page for it (ADR 0059); the callback then checks the admin, not the owner.
+ */
+export function makeState(
+  orgId: string,
+  userId: string,
+  issuedAtMs: number,
+  by: 'owner' | 'admin' = 'owner',
+): string {
+  const payload = `${orgId}.${userId}.${issuedAtMs}${by === 'admin' ? '.a' : ''}`;
   return `${payload}.${sign(payload)}`;
 }
 
-export function readState(state: string, nowMs: number): { orgId: string; userId: string } | null {
+export function readState(
+  state: string,
+  nowMs: number,
+): { orgId: string; userId: string; admin: boolean } | null {
   const parts = state.split('.');
-  if (parts.length !== 4) return null;
-  const [orgId, userId, issued, sig] = parts as [string, string, string, string];
-  const expected = Buffer.from(sign(`${orgId}.${userId}.${issued}`));
+  if (parts.length !== 4 && !(parts.length === 5 && parts[3] === 'a')) return null;
+  const sig = parts.pop()!;
+  const [orgId, userId, issued] = parts as [string, string, string];
+  const expected = Buffer.from(sign(parts.join('.')));
   const given = Buffer.from(sig);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   if (!(nowMs - Number(issued) >= 0 && nowMs - Number(issued) < 30 * 60_000)) return null;
-  return { orgId, userId };
+  return { orgId, userId, admin: parts.length === 4 };
 }
 
 export function oauthUrl(state: string, redirectUri: string): string {

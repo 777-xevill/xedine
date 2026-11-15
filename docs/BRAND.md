@@ -84,6 +84,14 @@ No fonts, weights, size scale or numeral style are specified in the guideline. U
 - Raster, dark-background only. On the light UI it always sits in **its own rounded app-icon tile** (`src/components/brand-mark.tsx`), never directly on a light surface. The wordmark next to it is navy text.
 - Still needed: SVG, favicon/app-icon set, clear space, minimum size, and a 1-bit monochrome variant for 58/80mm thermal receipts.
 
+## Landing page palette (ADR 0056)
+
+The public landing page (`src/app/page.tsx`) uses only the founder's three colours plus white, scoped by the `.landing` wrapper in `globals.css`:
+- **Grey `--landing-grey` #2B2D31:** text, dark bands, icon tiles.
+- **Silver `--landing-silver` #D9DADC:** the page background (mixed with white), lines, chart bars, text on grey.
+- **Yellow `--landing-yellow` #FFC93C:** buttons (grey words) and small marks only.
+- Logo on this page: the chef tile, `public/brand/logo-chef-{64,192,512}.png` (source `Brand_assets/logo-chef-source.jpeg`). The app inside still uses `logo.png`.
+
 ## Surface personalities
 
 | Surface | Treatment |

@@ -39,6 +39,22 @@ describe('brand tokens (ADR 0009, docs/BRAND.md)', () => {
     }
   });
 
+  it('the landing page has its own palette (ADR 0056): grey, silver and yellow, used only inside .landing', () => {
+    for (const [name, hex] of Object.entries({
+      '--landing-grey': '#2b2d31',
+      '--landing-silver': '#d9dadc',
+      '--landing-yellow': '#ffc93c',
+    }))
+      expect(css, `${name} should be ${hex}`).toContain(`${name}: ${hex};`);
+    // Buttons on the landing page are yellow with grey words.
+    const block = css.slice(css.indexOf('.landing {'));
+    const landing = block.slice(0, block.indexOf('\n}'));
+    expect(landing).toContain('--on-action: var(--landing-grey);');
+    expect(landing).toContain(
+      '--action-gradient: linear-gradient(var(--landing-yellow), var(--landing-yellow));',
+    );
+  });
+
   it('the light theme is built on the guideline palette (ADR 0024)', () => {
     for (const mapping of [
       '--bg: var(--palette-mist);',

@@ -7,19 +7,26 @@ const COUNT = 560;
 
 /**
  * A slowly turning globe of brand-coloured dots behind the hero, drawn on a 2D canvas with a simple
- * perspective projection (no 3D library). Colours come from the brand tokens; one still frame for
- * reduced motion.
+ * perspective projection (no 3D library). Colours come from the brand tokens (CSS variable names, one
+ * band each); one still frame for reduced motion.
  */
-export function ParticleGlobe({ className }: { className?: string }) {
+export function ParticleGlobe({
+  className,
+  colors: colorVars = ACCENTS,
+}: {
+  className?: string;
+  colors?: readonly string[];
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const key = colorVars.join(',');
 
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     const css = getComputedStyle(document.documentElement);
-    const colors = ACCENTS.map((v) => css.getPropertyValue(v).trim() || 'currentColor');
-    // A Fibonacci sphere spreads the dots evenly; the colour bands run pink at the top to cyan below.
+    const colors = key.split(',').map((v) => css.getPropertyValue(v).trim() || 'currentColor');
+    // A Fibonacci sphere spreads the dots evenly, in colour bands from top to bottom.
     const points = Array.from({ length: COUNT }, (_, i) => {
       const y = 1 - (2 * (i + 0.5)) / COUNT;
       const r = Math.sqrt(1 - y * y);
@@ -86,7 +93,7 @@ export function ParticleGlobe({ className }: { className?: string }) {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, []);
+  }, [key]);
 
   return <canvas ref={ref} aria-hidden className={className} />;
 }

@@ -32,6 +32,15 @@
   --info: #4a9aff;
 
   /*
+   * 1b. The landing page palette (the founder's choice, 2026-11-15, ADR 0056): grey, silver, and yellow
+   *     for buttons and small accents only. Only the landing page (.landing below) uses these; the app
+   *     inside keeps the guideline palette for now.
+   */
+  --landing-grey: #2b2d31;
+  --landing-silver: #d9dadc;
+  --landing-yellow: #ffc93c;
+
+  /*
    * 2. The light theme (ADR 0024: the founder asked for a clean, light UI with no black background).
    *    Built from the guideline: the guideline's primary-text mist is the page, its navy card colour is
    *    the text, its slate greys are secondary text. Neutrals in between are mixes of those, not new hues.
@@ -228,6 +237,9 @@
   --color-cyan-bright: var(--accent-cyan);
   --color-pink-bright: var(--accent-pink);
   --color-on-action: var(--on-action);
+  --color-landing-grey: var(--landing-grey);
+  --color-landing-silver: var(--landing-silver);
+  --color-landing-yellow: var(--landing-yellow);
   --radius-input: var(--radius-input);
   --radius-card: var(--radius-card);
   --radius-sheet: var(--radius-sheet);
@@ -701,18 +713,103 @@ body {
   opacity: 1;
 }
 
+/* A yellow block with a grey-shaded side, so it reads as a raised 3D key. */
 .landing-block {
   transform: rotateX(18deg) rotateZ(-8deg);
+  background: var(--landing-yellow);
+  color: var(--landing-grey);
   box-shadow:
-    0 1px 0 color-mix(in srgb, var(--accent-purple) 80%, var(--palette-navy)),
-    0 2px 0 color-mix(in srgb, var(--accent-purple) 76%, var(--palette-navy)),
-    0 3px 0 color-mix(in srgb, var(--accent-purple) 72%, var(--palette-navy)),
-    0 4px 0 color-mix(in srgb, var(--accent-purple) 68%, var(--palette-navy)),
-    0 5px 0 color-mix(in srgb, var(--accent-purple) 64%, var(--palette-navy)),
-    0 6px 0 color-mix(in srgb, var(--accent-purple) 60%, var(--palette-navy)),
-    0 7px 0 color-mix(in srgb, var(--accent-purple) 56%, var(--palette-navy)),
-    0 8px 0 color-mix(in srgb, var(--accent-purple) 52%, var(--palette-navy)),
-    0 22px 30px -8px color-mix(in srgb, var(--accent-purple) 45%, transparent);
+    0 1px 0 color-mix(in srgb, var(--landing-yellow) 80%, var(--landing-grey)),
+    0 2px 0 color-mix(in srgb, var(--landing-yellow) 76%, var(--landing-grey)),
+    0 3px 0 color-mix(in srgb, var(--landing-yellow) 72%, var(--landing-grey)),
+    0 4px 0 color-mix(in srgb, var(--landing-yellow) 68%, var(--landing-grey)),
+    0 5px 0 color-mix(in srgb, var(--landing-yellow) 64%, var(--landing-grey)),
+    0 6px 0 color-mix(in srgb, var(--landing-yellow) 60%, var(--landing-grey)),
+    0 7px 0 color-mix(in srgb, var(--landing-yellow) 56%, var(--landing-grey)),
+    0 8px 0 color-mix(in srgb, var(--landing-yellow) 52%, var(--landing-grey)),
+    0 22px 30px -8px color-mix(in srgb, var(--landing-grey) 40%, transparent);
+}
+
+/*
+ * The landing page wears the founder's palette (ADR 0056): the shared tokens are remapped inside .landing,
+ * so the buttons and the language switch follow without changing them for the app inside. Light parts:
+ * a pale silver page, white cards, grey text. Yellow only fills buttons and small marks, never text on
+ * a light surface (it would not be readable there).
+ */
+.landing {
+  --bg: color-mix(in srgb, var(--landing-silver) 28%, var(--white));
+  --bg-secondary: color-mix(in srgb, var(--landing-silver) 50%, var(--white));
+  --surface: var(--white);
+  --surface-elevated: color-mix(in srgb, var(--landing-silver) 38%, var(--white));
+  /* 12.5:1 on the page. */
+  --text: var(--landing-grey);
+  /* 7.4:1 on the page. */
+  --text-secondary: color-mix(in srgb, var(--landing-grey) 80%, var(--landing-silver));
+  /* 5.2:1 on the page. */
+  --text-muted: color-mix(in srgb, var(--landing-grey) 66%, var(--landing-silver));
+  --border: color-mix(in srgb, var(--landing-silver) 75%, var(--white));
+  --border-strong: var(--landing-silver);
+  --glass-edge: var(--border);
+  --glass-fill-soft: color-mix(in srgb, var(--landing-silver) 45%, transparent);
+  /* Yellow buttons with grey words: 9:1. */
+  --action-gradient: linear-gradient(var(--landing-yellow), var(--landing-yellow));
+  --on-action: var(--landing-grey);
+  --glow-action: 0 10px 24px -12px color-mix(in srgb, var(--landing-yellow) 85%, transparent);
+  --shadow-soft:
+    0 1px 2px color-mix(in srgb, var(--landing-grey) 6%, transparent),
+    0 8px 24px -14px color-mix(in srgb, var(--landing-grey) 20%, transparent);
+  --shadow-lift:
+    0 1px 2px color-mix(in srgb, var(--landing-grey) 8%, transparent),
+    0 22px 48px -22px color-mix(in srgb, var(--landing-grey) 34%, transparent);
+  background: var(--bg);
+  color: var(--text);
+}
+/* Dark bands on the landing page: grey with silver words (9.9:1) and the same yellow buttons. */
+.landing-dark {
+  --surface: color-mix(in srgb, var(--landing-silver) 8%, var(--landing-grey));
+  --surface-elevated: color-mix(in srgb, var(--landing-silver) 14%, var(--landing-grey));
+  --text: var(--landing-silver);
+  --text-secondary: color-mix(in srgb, var(--landing-silver) 82%, var(--landing-grey));
+  /* 4.7:1 on a raised card. */
+  --text-muted: color-mix(in srgb, var(--landing-silver) 70%, var(--landing-grey));
+  --border: color-mix(in srgb, var(--landing-silver) 16%, var(--landing-grey));
+  --border-strong: color-mix(in srgb, var(--landing-silver) 28%, var(--landing-grey));
+  --shadow-soft: none;
+  --shadow-lift: 0 0 0 1px var(--border);
+  background: var(--landing-grey);
+  color: var(--text);
+}
+/* Behind the landing page: no app background light, and the page colour reaches the edges. */
+html:has(.landing),
+html:has(.landing) body {
+  background: color-mix(in srgb, var(--landing-silver) 28%, var(--white));
+}
+html:has(.landing) .aurora {
+  display: none;
+}
+@layer base {
+  .landing :focus-visible {
+    outline-color: var(--landing-grey);
+  }
+  .landing-dark :focus-visible {
+    outline-color: var(--landing-yellow);
+  }
+}
+.landing ::selection {
+  background: color-mix(in srgb, var(--landing-yellow) 55%, transparent);
+  color: var(--landing-grey);
+}
+/* A yellow marker stroke behind a few words of a heading; wraps cleanly across lines. */
+.landing-mark {
+  background-image: linear-gradient(
+    transparent 58%,
+    var(--landing-yellow) 58%,
+    var(--landing-yellow) 92%,
+    transparent 92%
+  );
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding-inline: 0.12em;
 }
 
 @media (prefers-reduced-motion: reduce) {

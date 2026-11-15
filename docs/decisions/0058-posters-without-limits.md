@@ -30,6 +30,10 @@ and the Growth page must be easier to understand.
 5. **Growth** is one status line (autopilot, accounts, next dish and why) and four tabs: Make a post ·
    Dishes (sales, best-seller and next badges, the three marks) · Coming up · Posted. The never list and
    the design checkboxes left Settings → Social.
+6. **A new restaurant starts on its own.** Growth is always in the owner's and manager's sidebar (no longer
+   behind the Customers switch), and until they are done the owner sees four steps at the top: dish photos,
+   logo and phone, Facebook and Instagram, autopilot on. Checked live with a throwaway restaurant
+   (sign-up → onboarding → Growth → one dish → More designs → mark → Make this post), then deleted.
 
 ## Consequences
 - Thousands of combinations at no cost; all still pure HTML/CSS rendered by Chromium.

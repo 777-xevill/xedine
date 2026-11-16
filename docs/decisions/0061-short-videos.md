@@ -85,6 +85,16 @@ preview, the founder's choice). Video settings, making a video and adding a high
 settings, the studio (pick dishes, kind, special day, language, idea, AI words, offer price, another look, a
 live preview that is the real video page playing in the browser) and the photo list.
 
+**Every video opens differently** (added 2026-11-16, after the founder saw "Still thinking about lunch?" on
+every sample). Each video draws a hook style from its seed: craving, meal moment, bold claim, invitation,
+teaser, taste words, everyday mood, dare, POV (no dare or POV for a premium tone, POV only for fun; the meal
+moment only when the posting time is known, named from the Dhaka hour: breakfast, lunch, evening snack,
+dinner, late night). The AI gets the style (with an English and a Bangla example it must not copy) and the
+restaurant's last 8 posts' headline and tagline, and may not name a mealtime outside the meal-moment style. A
+hook word for word like a recent one is dropped for the app's fixed line in the same style. The fixed lines
+(AI off or failed) are one per style and per meal moment, with four taglines and four questions taking turns.
+"Write with AI" in the studio draws a new style on every press. Prompt `social_video` v2.
+
 ## Consequences
 
 - One video takes about 25 s to render on the founder's PC; the GitHub runner is slower. The tick never starts a

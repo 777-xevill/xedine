@@ -68,6 +68,99 @@ export function occasionOfCalendarKey(key: string): Occasion | null {
   return map[prefix] ?? null;
 }
 
+/**
+ * The kind of opening line a video gets, so a restaurant's videos do not all open the same way (the
+ * founder saw "Still thinking about lunch?" on every sample). One is drawn per video; the AI writes in it
+ * and the app's fixed lines have one per style.
+ */
+export const HOOK_STYLES = [
+  'craving',
+  'moment',
+  'claim',
+  'invite',
+  'tease',
+  'senses',
+  'mood',
+  'dare',
+  'pov',
+] as const;
+export type HookStyle = (typeof HOOK_STYLES)[number];
+
+/** What each style asks of the AI (English instructions; the AI writes both languages). */
+export const HOOK_STYLE_GUIDE: Record<HookStyle, string> = {
+  craving:
+    'a craving question about how the dish tastes or feels (like "Craving something smoky?" / "ঝাল ঝাল কিছু খেতে মন চাইছে?")',
+  moment: 'the meal moment given below (like "Evening snack, sorted" / "বিকেলের নাস্তা রেডি!")',
+  claim:
+    'a bold line the facts support (like "The plate everyone orders" / "সবাই এটাই অর্ডার করে")',
+  invite:
+    'a direct, warm invitation (like "Bring the whole family" / "পুরো পরিবার নিয়ে চলে আসুন")',
+  tease:
+    'a teaser that makes people keep watching (like "Wait for the last one" / "শেষেরটা মিস করবেন না")',
+  senses:
+    'two or three quick taste, smell or texture words (like "Hot. Juicy. Fresh." / "গরম। রসালো। টাটকা।")',
+  mood: 'a relatable everyday feeling food fixes (like "Long day? Eat well." / "মন খারাপ? ভালো কিছু খান।")',
+  dare: 'a playful dare (like "Bet you can\'t share this" / "একা খেতে পারবেন তো?")',
+  pov: 'a "POV:" line, Gen Z style (like "POV: you found your new favourite" / "POV: নতুন ফেভারিট পেয়ে গেলেন")',
+};
+
+/**
+ * The style for one video: drawn from the seed, never the one before it, and only styles that fit the
+ * tone (no dares or POV lines for a premium restaurant) and what is known (a meal moment needs a time).
+ */
+export function hookStyleFor(
+  seed: number,
+  tone: 'friendly' | 'premium' | 'fun',
+  opts: { hasMoment: boolean; avoid?: readonly string[] },
+): HookStyle {
+  const fits = HOOK_STYLES.filter(
+    (s) =>
+      (s !== 'moment' || opts.hasMoment) &&
+      (tone !== 'premium' || (s !== 'dare' && s !== 'pov')) &&
+      (s !== 'pov' || tone === 'fun'),
+  );
+  const fresh = fits.filter((s) => !(opts.avoid ?? []).includes(s));
+  const pool = fresh.length ? fresh : fits;
+  return pool[Math.abs(Math.trunc(seed)) % pool.length]!;
+}
+
+export type MealMoment = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'late';
+/** The meal people are thinking of at a posting hour (0–23, the restaurant's local time). */
+export function mealMoment(hour: number): MealMoment {
+  if (hour >= 5 && hour < 11) return 'breakfast';
+  if (hour >= 11 && hour < 16) return 'lunch';
+  if (hour >= 16 && hour < 19) return 'snack';
+  if (hour >= 19 && hour < 23) return 'dinner';
+  return 'late';
+}
+
+/**
+ * The app's own lines (translation keys under social.video.defaults) when the AI is off or failed: the
+ * hook in the video's style, a tagline and a question taking turns by the seed.
+ */
+export function fallbackWordKeys(
+  style: HookStyle,
+  moment: MealMoment | null,
+  seed: number,
+): { hook: string; tagline: string; question: string } {
+  const n = Math.abs(Math.trunc(seed));
+  return {
+    hook:
+      style === 'moment' && moment
+        ? `video.defaults.moments.${moment}`
+        : `video.defaults.hooks.${style === 'moment' ? 'craving' : style}`,
+    tagline: `video.defaults.taglines.t${(n % 4) + 1}`,
+    question: `video.defaults.questions.q${(Math.trunc(n / 4) % 4) + 1}`,
+  };
+}
+
+/** A line repeated from the restaurant's recent posts (same words, ignoring case, marks and spaces). */
+export function isRepeatLine(line: string, recent: readonly string[]): boolean {
+  const norm = (x: string) => x.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '');
+  const n = norm(line);
+  return n.length > 0 && recent.some((r) => norm(r) === n);
+}
+
 /** What the AI returns for a video: every line any video kind may use, in both languages, and captions. */
 export const VideoWordsSchema = z.object({
   hook_en: z.string(),

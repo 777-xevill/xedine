@@ -59,7 +59,13 @@ import {
   type VideoWords,
 } from '@/modules/social/video';
 import { resolveVideoLook, VIDEO_KINDS, type VideoKind } from '@/modules/social/video-look';
-import { type Occasion, OCCASION_THEME } from '@/modules/social/video-words';
+import {
+  fallbackWordKeys,
+  hookStyleFor,
+  type Occasion,
+  OCCASION_THEME,
+} from '@/modules/social/video-words';
+import { writeSocialVideo } from '@/modules/social/writer';
 import { pickTrack, scoreVideo, speak } from '@/modules/social/sound';
 
 function arg(name: string): string | undefined {
@@ -253,23 +259,6 @@ async function posters(files: string[], out: string) {
   });
 }
 
-const VIDEO_SAMPLE: Record<'en' | 'bn', VideoWords> = {
-  en: {
-    hook: 'Still thinking about lunch?',
-    punch: "It's two!",
-    question: 'What are you picking?',
-    tagline: 'Fresh from our kitchen today',
-    cta: 'Order now',
-  },
-  bn: {
-    hook: 'আজ দুপুরে কী খাবেন?',
-    punch: 'দুটোই নিন!',
-    question: 'আপনি কোনটা নেবেন?',
-    tagline: 'আজ আমাদের রান্নাঘর থেকে টাটকা',
-    cta: 'এখনই অর্ডার করুন',
-  },
-};
-
 /**
  * Sample videos (ADR 0061) from cut-outs or photos: --count videos, the kinds taking turns (or --kind),
  * each with as many dishes as its kind needs, taken in turn from the files given.
@@ -313,6 +302,7 @@ async function videos(files: string[], out: string) {
   };
   const salt = arg('seed') ?? 'sample';
   const occasion = (arg('occasion') ?? null) as Occasion | null;
+  const said: string[] = [];
   await withBrowser(async (browser) => {
     for (let i = 0; i < count; i++) {
       const kind = only ?? VIDEO_KINDS[i % VIDEO_KINDS.length]!;
@@ -323,12 +313,54 @@ async function videos(files: string[], out: string) {
         { tone, dishes: n, offer: kind === 'offer', hot: true },
         kind,
       );
+      // Words as a restaurant gets them: a hook style per video; --ai <org id> asks the real AI (its use is
+      // logged to that org), otherwise the app's fixed lines in that style.
+      const seed = seedOf(`${salt}:${i}:words`);
+      const style = hookStyleFor(seed, tone, { hasMoment: true });
+      const moment = (['lunch', 'snack', 'dinner'] as const)[i % 3]!;
+      const fixed = fallbackWordKeys(style, moment, seed);
+      let words: VideoWords = {
+        hook: t(fixed.hook as 'video.defaults.hook'),
+        punch: t('video.defaults.punch'),
+        question: t(fixed.question as 'video.defaults.question'),
+        tagline: t(fixed.tagline as 'video.defaults.tagline'),
+        cta: t('poster.cta'),
+      };
+      const aiOrg = arg('ai');
+      if (aiOrg) {
+        const w = await writeSocialVideo({
+          orgId: aiOrg,
+          restaurant: 'Kacchi Ghor',
+          dishes: picked.map((d) => d.name),
+          kind,
+          fact: `A spotlight on ${picked.map((d) => d.name).join(' and ')} from the menu.`,
+          occasion: !occasion
+            ? null
+            : occasion === 'custom'
+              ? (arg('occasion-text') ?? null)
+              : t(`video.occasions.${occasion}`),
+          ownNote: null,
+          tone,
+          area: 'Dhanmondi',
+          hookStyle: style,
+          moment,
+          recentLines: said,
+        }).catch(() => null);
+        if (w) {
+          words = {
+            hook: w[`hook_${lang}`] || words.hook,
+            punch: w[`punch_${lang}`] || words.punch,
+            question: w[`question_${lang}`] || words.question,
+            tagline: w[`tagline_${lang}`] || words.tagline,
+            cta: words.cta,
+          };
+          said.unshift(words.hook, words.tagline);
+        }
+      }
+      console.log(`words     ${style}: ${words.hook} | ${words.tagline}`);
       const content: VideoContent = {
         look,
-        words:
-          kind === 'showcase'
-            ? { ...VIDEO_SAMPLE[lang], punch: lang === 'bn' ? 'আসল স্বাদ' : 'Taste the legend' }
-            : VIDEO_SAMPLE[lang],
+        words,
         labels: { or: t('video.or'), onlyAt: t('video.onlyAt'), now: t('video.now') },
         restaurant: lang === 'bn' ? 'কাচ্চি ঘর' : 'Kacchi Ghor',
         area: lang === 'bn' ? 'ধানমন্ডি, ঢাকা' : 'Dhanmondi, Dhaka',

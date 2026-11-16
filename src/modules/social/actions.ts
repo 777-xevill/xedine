@@ -21,6 +21,7 @@ import { VideoLookSchema, VIDEO_KINDS, type VideoLook } from '@/modules/social/v
 import {
   ApprovedVideoWordsSchema,
   type ApprovedVideoWords,
+  hookStyleFor,
   OCCASIONS,
   VideoWordsSchema,
   type AiVideoWords,
@@ -561,14 +562,22 @@ export async function draftSocialVideoWordsAction(input: {
     return { ok: false, error: 'notAllowed' };
   if (!aiConfigured()) return { ok: false, error: 'aiOff' };
   const supabase = await createClient();
-  const [{ data: dishes }, { data: settings }] = await Promise.all([
+  const [{ data: dishes }, { data: settings }, { data: recent }] = await Promise.all([
     supabase.from('menu_items').select('id, name').eq('org_id', d.orgId).in('id', d.itemIds),
     supabase
       .from('social_settings')
       .select('tone, display_name, area')
       .eq('org_id', d.orgId)
       .maybeSingle(),
+    supabase
+      .from('social_posts')
+      .select('headline, tagline')
+      .eq('org_id', d.orgId)
+      .in('status', ['ready', 'publishing', 'posted'])
+      .order('scheduled_at', { ascending: false })
+      .limit(8),
   ]);
+  const tone = (settings?.tone as 'friendly' | 'premium' | 'fun' | undefined) ?? 'friendly';
   const names = d.itemIds
     .map((id) => (dishes ?? []).find((x) => x.id === id)?.name as string | undefined)
     .filter((x): x is string => Boolean(x));
@@ -582,8 +591,15 @@ export async function draftSocialVideoWordsAction(input: {
       fact: `The owner wants to tell people about ${names.join(' and ')}.`,
       occasion: d.occasion,
       ownNote: d.idea || null,
-      tone: (settings?.tone as 'friendly' | 'premium' | 'fun' | undefined) ?? 'friendly',
+      tone,
       area: (settings?.area as string | null) ?? null,
+      // Each press of "Write with AI" tries another kind of opening line (no time here, so no meal moment).
+      hookStyle: hookStyleFor(crypto.getRandomValues(new Uint32Array(1))[0]!, tone, {
+        hasMoment: false,
+      }),
+      recentLines: ((recent ?? []) as { headline: string | null; tagline: string | null }[])
+        .flatMap((r) => [r.headline, r.tagline])
+        .filter((l): l is string => Boolean(l?.trim())),
     });
     return { ok: true, words: VideoWordsSchema.parse(written) };
   } catch (e) {

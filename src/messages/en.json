@@ -3215,7 +3215,36 @@
         "punch": "Better together!",
         "question": "Which one is yours?",
         "tagline": "Made fresh in our kitchen today",
-        "caption": "{dishes} at {restaurant}. Come hungry, leave happy. Order now! 🍽️"
+        "caption": "{dishes} at {restaurant}. Come hungry, leave happy. Order now! 🍽️",
+        "hooks": {
+          "craving": "Craving something good?",
+          "claim": "Made the way you love it",
+          "invite": "Come hungry, leave happy",
+          "tease": "Wait till you see this",
+          "senses": "Hot. Fresh. Delicious.",
+          "mood": "Long day? Treat yourself.",
+          "dare": "Bet you can't stop at one",
+          "pov": "POV: you found your new favourite"
+        },
+        "moments": {
+          "breakfast": "Start your morning right",
+          "lunch": "Your lunch break, sorted",
+          "snack": "Evening snack time!",
+          "dinner": "Tonight's dinner is here",
+          "late": "Late-night cravings? We got you"
+        },
+        "taglines": {
+          "t1": "Made fresh in our kitchen today",
+          "t2": "Cooked with care, served hot",
+          "t3": "Real flavour, every single time",
+          "t4": "Good food, good mood"
+        },
+        "questions": {
+          "q1": "Which one is yours?",
+          "q2": "Which would you pick first?",
+          "q3": "Tag who you'd share with",
+          "q4": "Your pick? Tell us below"
+        }
       },
       "kinds": {
         "showcase": "One dish, big",

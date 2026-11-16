@@ -28,12 +28,17 @@ import {
   type AiVideoWords,
   type ApprovedVideoWords,
   ApprovedVideoWordsSchema,
+  fallbackWordKeys,
+  hookStyleFor,
+  isRepeatLine,
+  mealMoment,
   type Occasion,
   OCCASION_THEME,
   occasionOfCalendarKey,
   OCCASIONS,
   videoWordsFor,
 } from '../video-words';
+import { zonedParts } from '@/lib/time/business-date';
 import { MIN_VIDEO_PHOTO_PX } from '../video-rules';
 import { agreedPoisha, posterPrice } from '../prices';
 import { ApprovedWordsSchema, posterLang } from '../words';
@@ -70,6 +75,7 @@ export interface VideoPostRow {
   angle: string;
   plan_date: string;
   slot: number;
+  scheduled_at: string | null;
   own_text: string | null;
   design_words: unknown;
   video_kind: string | null;
@@ -82,7 +88,7 @@ export interface VideoPostRow {
 }
 
 export const VIDEO_POST_COLUMNS =
-  'id, org_id, menu_item_id, extra_item_ids, source, angle, plan_date, slot, own_text, design_words, video_kind, video_spec, occasion, occasion_text, offer_poisha, attempts, status';
+  'id, org_id, menu_item_id, extra_item_ids, source, angle, plan_date, slot, scheduled_at, own_text, design_words, video_kind, video_spec, occasion, occasion_text, offer_poisha, attempts, status';
 
 interface VideoSettings {
   autopilot: boolean;
@@ -245,7 +251,7 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     }),
     sb
       .from('social_posts')
-      .select('menu_item_id, extra_item_ids, scheduled_at, music')
+      .select('menu_item_id, extra_item_ids, scheduled_at, music, headline, tagline')
       .eq('org_id', post.org_id)
       .in('status', ['ready', 'publishing', 'posted'])
       .order('scheduled_at', { ascending: false })
@@ -267,7 +273,14 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     extra_item_ids: string[] | null;
     scheduled_at: string;
     music: string | null;
+    headline: string | null;
+    tagline: string | null;
   }[];
+  // The restaurant's last lines, so a new video does not open the way the last ones did.
+  const recentLines = past
+    .slice(0, 8)
+    .flatMap((h) => [h.headline, h.tagline])
+    .filter((l): l is string => Boolean(l?.trim()));
   const last = new Map<string, string>();
   for (const h of past)
     for (const id of [h.menu_item_id, ...(h.extra_item_ids ?? [])])
@@ -417,6 +430,14 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
           ? `The owner wants to tell people about ${picked.map((p) => p.dish.name).join(' and ')}.`
           : `A spotlight on ${picked.map((p) => p.dish.name).join(' and ')} from the menu.`;
 
+    // A different kind of opening line per video (craving, meal moment, dare…), drawn from the post's seed.
+    const wordSeed = seedOf(`${post.id}:words`);
+    const moment = post.scheduled_at
+      ? mealMoment(zonedParts(new Date(post.scheduled_at)).hour)
+      : null;
+    const hookStyle = hookStyleFor(wordSeed, s.tone, { hasMoment: moment !== null });
+    const fixed = fallbackWordKeys(hookStyle, moment, wordSeed);
+
     let ai: (AiVideoWords & { model: string; promptVersion: number }) | null = null;
     if (aiConfigured() && !(own?.hook && own?.tagline && own?.caption_bn && own?.caption_en)) {
       try {
@@ -430,7 +451,13 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
           ownNote: post.own_text,
           tone: s.tone,
           area,
+          hookStyle,
+          moment,
+          recentLines,
         });
+        // A hook word for word like a recent one is dropped (the fixed line in the style takes its place).
+        for (const l of ['bn', 'en'] as const)
+          if (isRepeatLine(ai[`hook_${l}`], recentLines)) ai[`hook_${l}`] = '';
       } catch {
         // An answer with a made-up number (or none at all) falls back to the app's own fixed lines.
         ai = null;
@@ -441,10 +468,10 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
       ai,
       own,
       {
-        hook: t('video.defaults.hook'),
+        hook: t(fixed.hook as 'video.defaults.hook'),
         punch: t('video.defaults.punch'),
-        question: t('video.defaults.question'),
-        tagline: t('video.defaults.tagline'),
+        question: t(fixed.question as 'video.defaults.question'),
+        tagline: t(fixed.tagline as 'video.defaults.tagline'),
       },
       t('poster.cta'),
     );

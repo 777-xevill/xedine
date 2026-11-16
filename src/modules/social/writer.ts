@@ -1,7 +1,21 @@
 import 'server-only';
 import { z } from 'zod';
 import { gateway, type PromptVersion } from '@/lib/llm-gateway';
-import { type AiVideoWords, VideoWordsSchema } from './video-words';
+import {
+  type AiVideoWords,
+  HOOK_STYLE_GUIDE,
+  type HookStyle,
+  type MealMoment,
+  VideoWordsSchema,
+} from './video-words';
+
+const MOMENT_WORDS: Record<MealMoment, string> = {
+  breakfast: 'breakfast',
+  lunch: 'lunch',
+  snack: 'evening snack (bikeler nasta)',
+  dinner: 'dinner',
+  late: 'late-night food',
+};
 import { inventedNumber, SocialWordsSchema, type SocialWords } from './words';
 
 export { asciiDigits, inventedNumber, type SocialWords } from './words';
@@ -117,7 +131,7 @@ export async function writeSocialPost(args: {
  */
 export const SOCIAL_VIDEO_PROMPT: PromptVersion = {
   key: 'social_video',
-  version: 1,
+  version: 2,
   body: [
     'You are the social media manager of a restaurant. Write the words for ONE 10-second food video',
     '(Facebook/Instagram Reels, TikTok). It is published as is, so it must be safe and true.',
@@ -125,9 +139,17 @@ export const SOCIAL_VIDEO_PROMPT: PromptVersion = {
     '- Use only the facts given (and the owner note, if any). Never invent prices, discounts, offers, ratings,',
     '  awards, ingredients, delivery promises or opening hours. Never write a number unless it is in the facts',
     '  or the owner note.',
-    '- *_en fields are English; *_bn fields are natural spoken Bangla in Bangla script.',
+    '- *_en fields are English; *_bn fields are natural spoken Bangla in Bangla script, the way people in',
+    '  Dhaka talk (polite আপনি, everyday words, correct spelling). Write the Bangla fresh, not a word-for-word',
+    '  translation; if a phrase sounds odd, use a simpler one.',
     '- hook_*: max 6 words. It is read aloud in the first 2 seconds, so it must be easy to say and stop the',
-    '  scroll: a craving question, a bold claim the facts support, or an invitation. No hashtags, no emojis.',
+    '  scroll. Write it in the HOOK STYLE you are given; the example there only shows the style, never copy',
+    '  it. Make it about these dishes. No hashtags, no emojis.',
+    '- Every video must feel new. Never repeat or closely echo the recent lines you are given, and avoid',
+    '  tired openings like "Still thinking about lunch?", "Hungry?" or "What will you eat today?"',
+    '  ("আজ কী খাবেন?").',
+    '- Do not mention breakfast, lunch, dinner or a time of day in any line or caption, unless the hook',
+    '  style is the meal moment (then use the moment given) or the special day is about a meal (iftar).',
     '- punch_*: max 3 words, the answer to a "what is better than one?" style hook (e.g. "It\'s two!").',
     '- question_*: max 5 words, asks the viewer to choose or comment (e.g. "Grilled or fried?",',
     '  "Which one is yours?").',
@@ -150,7 +172,11 @@ export async function writeSocialVideo(args: {
   ownNote: string | null;
   tone: 'friendly' | 'premium' | 'fun';
   area: string | null;
+  hookStyle: HookStyle;
+  moment?: MealMoment | null;
+  recentLines?: readonly string[];
 }): Promise<AiVideoWords & { model: string; promptVersion: number }> {
+  const recent = (args.recentLines ?? []).filter((l) => l.trim()).slice(0, 12);
   const lines = [
     `Restaurant: ${args.restaurant}${args.area ? ` (${args.area})` : ''}`,
     `Dishes in the video: ${args.dishes.join(', ')}`,
@@ -159,6 +185,11 @@ export async function writeSocialVideo(args: {
     args.occasion ? `Special day: ${args.occasion}` : null,
     args.ownNote ? `Owner note (must be the main message): ${args.ownNote}` : null,
     `Tone: ${args.tone}`,
+    `HOOK STYLE: ${HOOK_STYLE_GUIDE[args.hookStyle]}`,
+    args.hookStyle === 'moment' && args.moment ? `Meal moment: ${MOMENT_WORDS[args.moment]}` : null,
+    recent.length
+      ? `Recent lines (do not repeat): ${recent.map((l) => `"${l}"`).join('; ')}`
+      : null,
   ].filter(Boolean);
   const result = await gateway().run({
     orgId: args.orgId,

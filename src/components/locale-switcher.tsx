@@ -15,7 +15,7 @@ export async function LocaleSwitcher({ className }: { className?: string }) {
         className={cn(
           'min-h-8 rounded-full px-3 text-sm font-semibold transition',
           locale === value
-            ? 'bg-surface text-foreground shadow-soft'
+            ? 'bg-surface-hover text-foreground shadow-soft'
             : 'text-secondary hover:text-foreground',
         )}
       >

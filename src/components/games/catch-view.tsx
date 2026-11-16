@@ -284,7 +284,7 @@ function CatchRound({ locale, onDone }: { locale: Locale; onDone: (points: numbe
             style={{ left: `${d.x * 100}%`, top: `${d.y * 100}%` }}
           >
             {d.kind === 'bad' ? (
-              <span className="flex size-full items-center justify-center rounded-full bg-foreground/80">
+              <span className="flex size-full items-center justify-center rounded-full bg-brand-grey/85 ring-2 ring-danger">
                 <Flame aria-hidden className="size-7 fill-danger-bright text-danger" />
               </span>
             ) : d.kind === 'gold' ? (
@@ -314,7 +314,7 @@ function CatchRound({ locale, onDone }: { locale: Locale; onDone: (points: numbe
           style={{ left: `${view.x * 100}%` }}
         >
           <Mascot mood={view.mood} bob={false} className="w-full" />
-          <span className="absolute top-[30%] left-1/2 h-2 w-28 -translate-x-1/2 rounded-full bg-white shadow-soft ring-1 ring-line-strong" />
+          <span className="absolute top-[30%] left-1/2 h-2 w-28 -translate-x-1/2 rounded-full bg-brand-silver shadow-soft ring-1 ring-line-strong" />
         </span>
         {over ? (
           <span className="game-pop absolute inset-0 flex items-center justify-center text-3xl font-black">

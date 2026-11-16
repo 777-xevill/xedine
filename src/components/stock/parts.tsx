@@ -12,28 +12,28 @@ import { cn } from '@/lib/utils';
 export type Tone = 'info' | 'success' | 'warning' | 'danger' | 'neutral';
 
 const ICON_BOX: Record<Tone, string> = {
-  info: 'bg-purple/15 text-purple',
+  info: 'bg-surface-hover text-info',
   success: 'bg-success/15 text-success',
   warning: 'bg-warning/18 text-warning',
   danger: 'bg-danger/15 text-danger',
   neutral: 'bg-surface-elevated text-secondary',
 };
 const TEXT: Record<Tone, string> = {
-  info: 'text-purple',
+  info: 'text-info',
   success: 'text-success',
   warning: 'text-warning',
   danger: 'text-danger',
   neutral: 'text-secondary',
 };
 const CARD: Record<Tone, string> = {
-  info: 'border-purple/25 bg-purple/8',
+  info: 'border-edge bg-surface-elevated',
   success: 'border-success/30 bg-success/10',
   warning: 'border-warning/35 bg-warning/10',
   danger: 'border-danger/30 bg-danger/8',
-  neutral: 'border-line bg-surface',
+  neutral: 'border-edge bg-surface',
 };
 const BAR: Record<Tone, string> = {
-  info: 'bg-purple',
+  info: 'bg-info',
   success: 'bg-success-bright',
   warning: 'bg-warning-bright',
   danger: 'bg-danger-bright',

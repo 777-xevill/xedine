@@ -4,7 +4,6 @@ import { getTranslations } from 'next-intl/server';
 import { Suspense } from 'react';
 import { BrandMark } from '@/components/brand-mark';
 import { LocaleSwitcher } from '@/components/locale-switcher';
-import { ThemeSwitcher } from '@/components/theme';
 import { cn } from '@/lib/utils';
 import { setBranchAction, signOutAction } from '@/modules/tenancy/actions';
 import type { OrgContext } from '@/modules/tenancy/context';
@@ -13,7 +12,7 @@ import { ChatHistory, type ChatSummary } from './chat-history';
 import { SidebarNav, sidebarItem, type SidebarLink } from './sidebar-nav';
 
 const menuItem =
-  'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-surface-elevated';
+  'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-surface-hover';
 
 /** The sidebar's contents (ADR 0024): workspace, new chat, core sections, chats, account. */
 export async function Sidebar({
@@ -62,7 +61,7 @@ export async function Sidebar({
 
         {/* Restaurant and branch in one compact switcher. <details>: no client JS needed. */}
         <details className="group relative mt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 shadow-soft hover:border-line-strong [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-edge bg-surface-elevated px-3 py-2 shadow-soft hover:border-edge-strong hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold" data-testid="org-name">
                 {ctx.org.name}
@@ -71,9 +70,12 @@ export async function Sidebar({
                 {selectedBranch?.name ?? t('allBranches')}
               </span>
             </span>
-            <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-muted" />
+            <ChevronsUpDown
+              aria-hidden
+              className="size-4 shrink-0 text-muted transition-[rotate] duration-300 group-open:rotate-180"
+            />
           </summary>
-          <div className="absolute inset-x-0 z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-lift">
+          <div className="glass-strong absolute inset-x-0 z-50 mt-1.5 max-h-80 overflow-y-auto rounded-xl p-1.5">
             <p className="px-2.5 pt-1 pb-1 text-xs font-medium text-muted">{t('organization')}</p>
             {ctx.allOrgs.map((o) => (
               <Link key={o.slug} href={`/${o.slug}`} className={menuItem}>
@@ -83,7 +85,7 @@ export async function Sidebar({
                 ) : null}
               </Link>
             ))}
-            <p className="mt-1 border-t border-line px-2.5 pt-2 pb-1 text-xs font-medium text-muted">
+            <p className="mt-1 border-t border-edge px-2.5 pt-2 pb-1 text-xs font-medium text-muted">
               {t('branch')}
             </p>
             {ctx.branches.length > 1 ? (
@@ -114,7 +116,7 @@ export async function Sidebar({
         {nav.canChat ? (
           <Link
             href={`${base}/assistant`}
-            className="mt-3 flex min-h-10 items-center gap-2.5 rounded-xl bg-action px-3 text-sm font-semibold text-on-action glow-action transition hover:brightness-110"
+            className="mt-3 flex min-h-10 items-center gap-2.5 rounded-xl bg-action px-3 text-sm font-semibold text-on-action glow-action transition duration-300 hover:-translate-y-px hover:brightness-[1.06] active:scale-[0.97]"
           >
             <SquarePen aria-hidden className="size-4" />
             {t('newChat')}
@@ -153,7 +155,7 @@ export async function Sidebar({
         ) : null}
       </div>
 
-      <div className="space-y-2 border-t border-line px-3 pt-2.5 pb-3">
+      <div className="space-y-2 border-t border-edge px-3 pt-2.5 pb-3">
         <SidebarNav links={settingsLink} label={t('settings')} />
         <div className="flex items-center gap-2.5 px-1">
           <span
@@ -179,14 +181,13 @@ export async function Sidebar({
               type="submit"
               aria-label={tc('signOut')}
               title={tc('signOut')}
-              className="inline-flex size-8 items-center justify-center rounded-full text-secondary hover:bg-surface hover:text-foreground"
+              className="inline-flex size-8 items-center justify-center rounded-full text-secondary hover:bg-surface-hover hover:text-foreground"
             >
               <LogOut aria-hidden className="size-4" />
             </button>
           </form>
         </div>
         <LocaleSwitcher className="w-full [&>form]:flex-1 [&_button]:w-full" />
-        <ThemeSwitcher className="w-full" />
       </div>
     </div>
   );
@@ -206,7 +207,9 @@ function ChatHistoryStatic({
 }) {
   return (
     <nav aria-label={label}>
-      <p className="px-2.5 pt-4 pb-1.5 text-xs font-medium text-muted">{label}</p>
+      <p className="px-2.5 pt-5 pb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-muted uppercase">
+        {label}
+      </p>
       {chats.length === 0 ? (
         <p className="px-2.5 py-1 text-sm text-muted">{empty}</p>
       ) : (

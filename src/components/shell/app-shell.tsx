@@ -45,7 +45,7 @@ export function AppShell({
       <aside
         id="app-sidebar"
         className={cn(
-          'fixed inset-y-0 start-0 z-40 flex w-[min(var(--sidebar-width),86vw)] flex-col border-e border-line bg-background-secondary transition-[transform,visibility] duration-200 ease-out lg:w-[var(--sidebar-width)] lg:translate-x-0',
+          'fixed inset-y-0 start-0 z-40 flex w-[min(var(--sidebar-width),86vw)] flex-col border-e border-edge bg-background-secondary/90 backdrop-blur-2xl transition-[transform,visibility] duration-500 ease-smooth lg:w-[var(--sidebar-width)] lg:translate-x-0',
           open
             ? 'translate-x-0 shadow-lift'
             : 'max-lg:invisible max-lg:-translate-x-full rtl:max-lg:translate-x-full',
@@ -55,7 +55,7 @@ export function AppShell({
           type="button"
           onClick={() => setOpen(false)}
           aria-label={closeLabel}
-          className="absolute end-2 top-3 inline-flex size-9 items-center justify-center rounded-full text-secondary hover:bg-surface lg:hidden"
+          className="absolute end-2 top-3 inline-flex size-9 items-center justify-center rounded-full text-secondary hover:bg-surface-elevated hover:text-foreground lg:hidden"
         >
           <X aria-hidden className="size-4" />
         </button>
@@ -66,11 +66,11 @@ export function AppShell({
         <div
           aria-hidden
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-30 bg-foreground/20 backdrop-blur-[1px] lg:hidden"
+          className="fixed inset-0 z-30 animate-[fade-in_0.3s_var(--ease-smooth)_both] bg-scrim backdrop-blur-sm lg:hidden"
         />
       ) : null}
 
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-background/85 px-2 backdrop-blur-md lg:hidden">
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-edge bg-background/70 px-2 backdrop-blur-xl backdrop-saturate-150 lg:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}

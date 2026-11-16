@@ -39,10 +39,10 @@ export function DialogShell({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-30 flex items-end justify-center bg-foreground/25 p-3 backdrop-blur-[2px] sm:items-center"
+      className="fixed inset-0 z-30 flex animate-[fade-in_0.25s_var(--ease-smooth)_both] items-end justify-center bg-scrim p-3 backdrop-blur-md sm:items-center"
     >
       <div
-        className={`glass-strong max-h-[90dvh] w-full space-y-3 overflow-y-auto rounded-sheet p-5 ${wide ? 'max-w-lg' : 'max-w-sm'}`}
+        className={`glass-strong max-h-[90dvh] w-full animate-[sheet-in_0.45s_var(--ease-spring)_both] space-y-3 overflow-y-auto rounded-sheet p-5 ${wide ? 'max-w-lg' : 'max-w-sm'}`}
       >
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-lg font-bold">{title}</h3>

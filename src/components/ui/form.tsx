@@ -11,8 +11,9 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
   );
 }
 
+/** Fields are a step lighter than their card; focus lights the edge yellow with a soft glow. */
 const field =
-  'w-full min-h-11 rounded-input border border-line bg-surface px-3.5 text-foreground transition placeholder:text-muted hover:border-line-strong focus:border-purple focus:outline-none focus:ring-4 focus:ring-purple/10 disabled:opacity-50';
+  'w-full min-h-11 rounded-input border border-edge bg-surface-elevated px-3.5 text-foreground placeholder:text-muted hover:border-edge-strong focus:border-brand-yellow/70 focus:bg-surface-hover focus:outline-none focus:glow-focus disabled:opacity-50';
 
 export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(field, className)} {...props} />;
@@ -39,11 +40,12 @@ const TONE_ICON = {
   warning: AlertTriangle,
 } as const;
 
+/** Danger carries a solid yellow edge; warning a yellow tint; success and info stay silver. */
 const TONE_CLASS: Record<Tone, string> = {
-  danger: 'border-danger/25 bg-danger/5 text-danger',
-  success: 'border-success/25 bg-success/5 text-success',
-  info: 'border-info/25 bg-info/5 text-info',
-  warning: 'border-warning/30 bg-warning/5 text-warning',
+  danger: 'border-danger/70 bg-danger/12 text-danger shadow-[inset_3px_0_0_var(--danger)]',
+  success: 'border-success/25 bg-success/6 text-success',
+  info: 'border-edge bg-surface-elevated text-info',
+  warning: 'border-warning/40 bg-warning/8 text-warning',
 };
 
 /** Status text is never colour alone (BRAND.md): every alert carries an icon and a text label. */
@@ -58,7 +60,7 @@ export function Alert({
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
       className={cn(
-        'flex items-start gap-2.5 rounded-input border px-3.5 py-3 text-sm',
+        'animate-rise-in flex items-start gap-2.5 rounded-input border px-3.5 py-3 text-sm',
         TONE_CLASS[tone],
         className,
       )}
@@ -70,19 +72,33 @@ export function Alert({
   );
 }
 
+/** A card: smoked glass with a hairline silver rim; rises in as it scrolls into view. */
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('rounded-card border border-line bg-surface p-6 shadow-soft', className)}
+      data-reveal=""
+      className={cn(
+        'rounded-card border border-edge bg-surface bg-[image:var(--glass-sheen)] p-6 shadow-soft',
+        className,
+      )}
       {...props}
     />
   );
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('mb-4 text-base font-semibold tracking-tight', className)} {...props} />;
+  return (
+    <h2
+      className={cn(
+        'mb-4 text-[0.9375rem] font-semibold tracking-tight text-foreground',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
+/** A big, quiet page title (Apple's large title): bold, tight, with the explanation below in grey. */
 export function PageTitle({
   title,
   subtitle,
@@ -93,17 +109,26 @@ export function PageTitle({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
+    <header className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-9">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">{title}</h1>
-        {subtitle ? <p className="mt-1.5 max-w-2xl text-secondary">{subtitle}</p> : null}
+        <h1 className="text-[1.75rem] leading-tight font-bold tracking-[-0.03em] sm:text-[2.125rem]">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-2 max-w-2xl text-[0.9375rem] leading-relaxed text-secondary">
+            {subtitle}
+          </p>
+        ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>
   );
 }
 
-/** A labelled figure. Figures always use the primary text token, never the gradient (ADR 0009). */
+/**
+ * A labelled figure. Figures always use the primary text token, never the gradient (ADR 0009), and
+ * arrive out of a soft blur.
+ */
 export function Stat({
   label,
   value,
@@ -116,9 +141,14 @@ export function Stat({
   testId?: string;
 }) {
   return (
-    <div className={cn('rounded-input bg-surface-elevated px-4 py-3', className)}>
+    <div
+      className={cn('rounded-input border border-edge bg-surface-elevated px-4 py-3.5', className)}
+    >
       <p className="text-xs font-medium text-secondary">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-foreground tabular-nums" data-testid={testId}>
+      <p
+        className="animate-figure mt-1 text-[1.375rem] leading-tight font-semibold tracking-tight text-foreground tabular-nums"
+        data-testid={testId}
+      >
         {value}
       </p>
     </div>
@@ -137,10 +167,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'rounded-card border border-dashed border-line-strong bg-surface/70 px-6 py-10 text-center',
+        'animate-rise-in rounded-card border border-dashed border-edge-strong bg-surface/60 px-6 py-12 text-center',
         className,
       )}
     >
+      <span
+        aria-hidden
+        className="mx-auto mb-3 block size-2 rounded-full bg-brand-yellow shadow-[0_0_18px_var(--brand-yellow)]"
+      />
       <p className="font-semibold">{title}</p>
       {body ? <p className="mx-auto mt-1 max-w-md text-sm text-secondary">{body}</p> : null}
     </div>

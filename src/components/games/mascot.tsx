@@ -20,7 +20,7 @@ export function Mascot({
     <svg viewBox="0 0 120 130" aria-hidden className={cn('overflow-visible', className)}>
       <g className={bob ? 'game-bob' : undefined} style={{ transformOrigin: '60px 120px' }}>
         {/* shadow */}
-        <ellipse cx="60" cy="124" rx="30" ry="4" className="fill-foreground opacity-10" />
+        <ellipse cx="60" cy="124" rx="30" ry="4" className="fill-brand-grey opacity-10" />
         {/* arms */}
         <path
           d={armsUp ? 'M22 78 Q8 60 14 44' : 'M22 82 Q8 92 14 104'}
@@ -39,13 +39,13 @@ export function Mascot({
         />
         <path
           d="M34 64 Q40 56 48 58"
-          className="fill-none stroke-white stroke-[4] opacity-60"
+          className="fill-none stroke-brand-silver stroke-[4] opacity-60"
           strokeLinecap="round"
         />
         {/* chef's hat */}
         <path
           d="M38 42 C26 40 26 20 40 20 C42 8 58 4 64 14 C72 4 92 10 86 24 C98 26 96 44 82 42 Z"
-          className="fill-white stroke-line-strong stroke-[2.5]"
+          className="fill-brand-silver stroke-line-strong stroke-[2.5]"
         />
         <rect
           x="38"
@@ -53,7 +53,7 @@ export function Mascot({
           width="44"
           height="10"
           rx="4"
-          className="fill-white stroke-line-strong stroke-[2.5]"
+          className="fill-brand-silver stroke-line-strong stroke-[2.5]"
         />
         {/* cheeks */}
         <ellipse cx="36" cy="92" rx="7" ry="4.5" className="fill-pink-bright opacity-50" />
@@ -63,12 +63,12 @@ export function Mascot({
           <>
             <path
               d="M38 78 Q45 70 52 78"
-              className="fill-none stroke-foreground stroke-[4]"
+              className="fill-none stroke-brand-grey stroke-[4]"
               strokeLinecap="round"
             />
             <path
               d="M68 78 Q75 70 82 78"
-              className="fill-none stroke-foreground stroke-[4]"
+              className="fill-none stroke-brand-grey stroke-[4]"
               strokeLinecap="round"
             />
           </>
@@ -79,17 +79,17 @@ export function Mascot({
               cy={mood === 'think' ? 74 : 77}
               rx="5.5"
               ry={mood === 'wow' ? 8 : 6.5}
-              className="fill-foreground"
+              className="fill-brand-grey"
             />
             <ellipse
               cx="75"
               cy={mood === 'think' ? 74 : 77}
               rx="5.5"
               ry={mood === 'wow' ? 8 : 6.5}
-              className="fill-foreground"
+              className="fill-brand-grey"
             />
-            <circle cx={mood === 'think' ? 47 : 47} cy="74" r="1.8" className="fill-white" />
-            <circle cx={mood === 'think' ? 77 : 77} cy="74" r="1.8" className="fill-white" />
+            <circle cx={mood === 'think' ? 47 : 47} cy="74" r="1.8" className="fill-brand-silver" />
+            <circle cx={mood === 'think' ? 77 : 77} cy="74" r="1.8" className="fill-brand-silver" />
           </>
         )}
         {/* brows for sad and think */}
@@ -97,12 +97,12 @@ export function Mascot({
           <>
             <path
               d="M37 70 L51 65"
-              className="stroke-foreground stroke-[3]"
+              className="stroke-brand-grey stroke-[3]"
               strokeLinecap="round"
             />
             <path
               d="M83 70 L69 65"
-              className="stroke-foreground stroke-[3]"
+              className="stroke-brand-grey stroke-[3]"
               strokeLinecap="round"
             />
           </>
@@ -110,25 +110,25 @@ export function Mascot({
         {mood === 'think' ? (
           <path
             d="M68 64 Q76 60 84 64"
-            className="fill-none stroke-foreground stroke-[3]"
+            className="fill-none stroke-brand-grey stroke-[3]"
             strokeLinecap="round"
           />
         ) : null}
         {/* mouth */}
         {mood === 'wow' ? (
-          <ellipse cx="60" cy="100" rx="6" ry="7.5" className="fill-foreground" />
+          <ellipse cx="60" cy="100" rx="6" ry="7.5" className="fill-brand-grey" />
         ) : mood === 'sad' ? (
           <path
             d="M50 104 Q60 96 70 104"
-            className="fill-none stroke-foreground stroke-[4]"
+            className="fill-none stroke-brand-grey stroke-[4]"
             strokeLinecap="round"
           />
         ) : mood === 'think' ? (
-          <path d="M53 101 L68 99" className="stroke-foreground stroke-[4]" strokeLinecap="round" />
+          <path d="M53 101 L68 99" className="stroke-brand-grey stroke-[4]" strokeLinecap="round" />
         ) : (
           <path
             d="M48 96 Q60 110 72 96 Z"
-            className="fill-danger stroke-foreground stroke-[3]"
+            className="fill-danger stroke-brand-grey stroke-[3]"
             strokeLinejoin="round"
           />
         )}

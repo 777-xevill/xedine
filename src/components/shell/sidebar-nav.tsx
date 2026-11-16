@@ -71,7 +71,7 @@ export interface SidebarLink {
 }
 
 export const sidebarItem =
-  'flex min-h-9 items-center gap-2.5 rounded-[0.625rem] px-2.5 text-sm font-medium transition';
+  'relative flex min-h-9 items-center gap-2.5 rounded-[0.625rem] px-2.5 text-sm font-medium transition duration-300';
 
 function isActive(pathname: string, link: SidebarLink): boolean {
   const match = (href: string, exact?: boolean) =>
@@ -94,7 +94,9 @@ export function SidebarNav({
   return (
     <nav aria-label={label}>
       {heading ? (
-        <p className="px-2.5 pt-4 pb-1.5 text-xs font-medium text-muted">{heading}</p>
+        <p className="px-2.5 pt-5 pb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-muted uppercase">
+          {heading}
+        </p>
       ) : null}
       <ul className="space-y-0.5">
         {links.map((link) => {
@@ -107,14 +109,20 @@ export function SidebarNav({
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   sidebarItem,
+                  'group/nav',
                   active
-                    ? 'bg-surface text-foreground shadow-soft'
-                    : 'text-secondary hover:bg-surface/70 hover:text-foreground',
+                    ? 'nav-active bg-surface-elevated text-foreground shadow-soft'
+                    : 'text-secondary hover:bg-surface hover:text-foreground',
                 )}
               >
                 <Icon
                   aria-hidden
-                  className={cn('size-4 shrink-0', active ? 'text-purple' : 'text-muted')}
+                  className={cn(
+                    'size-4 shrink-0 transition-[color,scale] duration-300 ease-spring',
+                    active
+                      ? 'text-brand-yellow'
+                      : 'text-muted group-hover/nav:scale-110 group-hover/nav:text-secondary',
+                  )}
                 />
                 <span className="truncate">{link.label}</span>
               </Link>

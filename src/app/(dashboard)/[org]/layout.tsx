@@ -5,7 +5,6 @@ import { BrandMark } from '@/components/brand-mark';
 import { GlobalAgent } from '@/components/chat/global-agent';
 import { AppShell } from '@/components/shell/app-shell';
 import { Sidebar } from '@/components/shell/sidebar';
-import { ThemeApplier, ThemeScript } from '@/components/theme';
 import { PlaceProvider } from '@/components/place-provider';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { getOrgContext } from '@/modules/tenancy/context';
@@ -32,8 +31,6 @@ export default async function OrgLayout({
 
   return (
     <>
-      <ThemeScript />
-      <ThemeApplier />
       <AppShell
         openLabel={t('openMenu')}
         closeLabel={t('closeMenu')}
@@ -47,7 +44,7 @@ export default async function OrgLayout({
               <Link
                 href={`/${ctx.org.slug}/assistant`}
                 aria-label={t('newChat')}
-                className="inline-flex size-10 items-center justify-center rounded-full text-foreground hover:bg-surface-elevated"
+                className="inline-flex size-10 items-center justify-center rounded-full text-foreground hover:bg-surface-elevated active:scale-95"
               >
                 <SquarePen aria-hidden className="size-5" />
               </Link>

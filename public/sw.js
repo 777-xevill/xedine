@@ -63,8 +63,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: typeof note.body === 'string' ? note.body : '',
-      icon: '/brand/logo-192.png',
-      badge: '/brand/logo-64.png',
+      icon: '/brand/logo-chef-192.png',
+      badge: '/brand/logo-chef-64.png',
       tag: typeof note.tag === 'string' ? note.tag : undefined,
       data: { url: typeof note.url === 'string' ? note.url : '/' },
     }),

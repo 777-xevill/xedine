@@ -16,7 +16,7 @@ export function PillNav({
     <nav
       aria-label={label}
       className={cn(
-        'inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-elevated p-1',
+        'glass-tile inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1',
         className,
       )}
     >
@@ -26,10 +26,10 @@ export function PillNav({
           href={item.href}
           aria-current={item.active ? 'page' : undefined}
           className={cn(
-            'inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition',
+            'inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition duration-300',
             item.active
-              ? 'bg-surface text-foreground shadow-soft'
-              : 'text-secondary hover:text-foreground',
+              ? 'bg-surface-hover text-foreground shadow-soft [&_svg]:text-brand-yellow'
+              : 'text-secondary hover:bg-surface-elevated hover:text-foreground',
           )}
         >
           {item.icon ? (

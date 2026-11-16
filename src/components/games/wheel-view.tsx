@@ -9,12 +9,8 @@ import { wheelAngle, type WheelState } from '@/modules/games/wheel';
 import { HostSays } from './mascot';
 import { PLAYER_BG, useLater, type GameProps } from './parts';
 
-const SLICE_FILL = [
-  'fill-pink-bright',
-  'fill-cyan-bright',
-  'fill-success-bright',
-  'fill-warning-bright',
-];
+/** Four steps between the brand's yellow and silver (ADR 0063), grey words on each. */
+const SLICE_FILL = ['fill-brand-yellow', 'fill-brand-silver', 'fill-gold', 'fill-gold-pale'];
 const SPIN_MS = 4200;
 const R = 100;
 
@@ -68,7 +64,7 @@ export function WheelView(props: GameProps<WheelState>) {
       <div className="relative mx-auto aspect-square w-full max-w-72">
         <Triangle
           aria-hidden
-          className="absolute start-1/2 -top-1 z-10 size-8 -translate-x-1/2 rotate-180 fill-foreground text-foreground drop-shadow"
+          className="absolute start-1/2 -top-1 z-10 size-8 -translate-x-1/2 rotate-180 fill-brand-yellow text-brand-yellow drop-shadow"
         />
         <div
           className="size-full rounded-full shadow-soft"

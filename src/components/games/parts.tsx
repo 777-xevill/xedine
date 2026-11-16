@@ -11,16 +11,29 @@ import type { Player } from '@/modules/games/catalog';
 import { PICTURES } from '@/modules/games/pictures';
 import { HostSays, type Mood } from './mascot';
 
-/** Each player's colour, from the brand's bright accents. */
-export const PLAYER_BG = [
-  'bg-pink-bright',
-  'bg-cyan-bright',
-  'bg-success-bright',
-  'bg-warning-bright',
+/**
+ * Each player's colour: four steps between the brand's yellow and silver (ADR 0063), all light enough
+ * for grey words on top.
+ */
+export const PLAYER_BG = ['bg-brand-yellow', 'bg-brand-silver', 'bg-gold', 'bg-gold-pale'];
+export const PLAYER_RING = [
+  'ring-brand-yellow',
+  'ring-brand-silver',
+  'ring-gold',
+  'ring-gold-pale',
 ];
-export const PLAYER_RING = ['ring-pink', 'ring-cyan', 'ring-success', 'ring-warning'];
-export const PLAYER_TEXT = ['text-pink', 'text-cyan', 'text-success', 'text-warning'];
-export const PLAYER_SOFT = ['bg-pink/15', 'bg-cyan/15', 'bg-success/15', 'bg-warning/15'];
+export const PLAYER_TEXT = [
+  'text-brand-yellow',
+  'text-brand-silver',
+  'text-gold',
+  'text-gold-pale',
+];
+export const PLAYER_SOFT = [
+  'bg-brand-yellow/15',
+  'bg-brand-silver/15',
+  'bg-gold/15',
+  'bg-gold-pale/15',
+];
 
 /** What every game screen gets from the games shell. */
 export interface GameProps<S extends GameState> {

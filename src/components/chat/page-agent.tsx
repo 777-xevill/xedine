@@ -133,9 +133,9 @@ export function PageAgent({
     <section
       role="dialog"
       aria-label={labels.title}
-      className="fixed inset-x-0 bottom-0 z-40 flex h-[85dvh] flex-col rounded-t-sheet border border-line bg-surface shadow-lift sm:inset-x-auto sm:end-6 sm:bottom-6 sm:h-[min(40rem,80dvh)] sm:w-[26rem] sm:rounded-card"
+      className="glass-strong fixed inset-x-0 bottom-0 z-40 flex h-[85dvh] animate-[sheet-in_0.45s_var(--ease-spring)_both] flex-col rounded-t-sheet sm:inset-x-auto sm:end-6 sm:bottom-6 sm:h-[min(40rem,80dvh)] sm:w-[26rem] sm:rounded-card"
     >
-      <header className="flex items-center gap-3 border-b border-line px-4 py-3">
+      <header className="flex items-center gap-3 border-b border-edge px-4 py-3">
         <AssistantAvatar />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{labels.title}</p>
@@ -240,7 +240,7 @@ export function PageAgent({
         <div ref={endRef} />
       </div>
 
-      <div className="border-t border-line px-3 pt-3 pb-3">
+      <div className="border-t border-edge px-3 pt-3 pb-3">
         {error ? (
           <Alert tone="danger" className="mb-2">
             {te(error)}

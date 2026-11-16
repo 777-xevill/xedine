@@ -1,110 +1,119 @@
-# Brand — STATUS: READY (colour & surfaces, light theme) · PENDING (typography, logo usage)
+# Brand — STATUS: READY (colour, surfaces, motion, typography, logo) · ADR 0063
 
-Source: `Brand_assets/brand_guidline.png`, `Brand_assets/logo.png`. Decisions: [ADR 0009](decisions/0009-brand-tokens.md), [ADR 0024](decisions/0024-light-workspace-redesign.md) (light theme).
+Decisions: [ADR 0063](decisions/0063-grey-silver-yellow-everywhere.md) (the whole app in the founder's three
+colours, motion, font, logo), [ADR 0056](decisions/0056-landing-page-palette-and-chef-logo.md) (where the palette started),
+[ADR 0009](decisions/0009-brand-tokens.md) (tokens only, never a hex in a component). ADR 0024's light theme
+and ADR 0034's light/dark switch are superseded.
 
-**What you may use now:** every colour below, as CSS variables. **What is still pending:** typography (no fonts specified — and the `bn` locale needs a Bangla face), logo usage rules and an SVG/favicon set.
+**Never hardcode a colour in a component.** All colour reaches the UI through CSS variables in
+`src/app/globals.css`, so rebranding stays a token swap. `src/lib/brand-tokens.test.ts` fails on a hex in a
+component, and on any colour in `globals.css` other than the three below plus white.
 
-**Never hardcode a hex value in a component.** All colour reaches the UI through CSS variables on `:root`, so rebranding stays a token swap.
+## The three colours
 
-## Theme
+| Colour | Token | Hex | Role |
+|---|---|---|---|
+| **Grey** | `--brand-grey` | `#2B2D31` | **The primary colour.** The page everywhere, the words on yellow |
+| **Silver** | `--brand-silver` | `#D9DADC` | The words, hairline edges, calm statuses, the second chart colour |
+| **Yellow** | `--brand-yellow` | `#FFC93C` | Actions (buttons, switches, the current page), focus, attention |
 
-**Light is the only theme (ADR 0024 — the founder asked for a clean, light UI with no black background).** The guideline's colours below are kept verbatim as raw `--palette-*` / accent / status tokens in `globals.css`, and the light theme maps onto them:
+Every other shade is a `color-mix()` of these three. White appears only on paper (receipts, printed QR
+cards), inside QR codes (scanners need it) and on the landing page's light parts.
 
-| Semantic token | Light value | From the guideline |
-|---|---|---|
-| `--bg` | `#F7F8FC` | "Primary text" mist, used as the page |
-| `--surface` | white | — (cards, sheets, inputs) |
-| `--surface-elevated` | white + 14% slate | hover / selected fills, stat tiles |
-| `--text` | `#0D1120` (17.9 : 1 on white) | "Card background" navy, used as text |
-| `--text-secondary` | `#41485A` (9.3 : 1) | "Disabled text" slate |
-| `--text-muted` | `#687087` (4.9 : 1 — passes AA on white) | "Muted text" slate |
-| `--border` / `--border-strong` | slate `#A7ADBF` mixed into white (32% / 58%) | — |
+## Surfaces (Apple-style elevation: what is closer is lighter)
 
-**Ink variants.** The accent and status colours are bright by design (made for a dark page) and fail AA as text on white. The Tailwind colour utilities therefore resolve to *ink* variants — each brand colour mixed with the guideline navy (success 50%, warning 52%, danger 62%, info 70%, cyan 55%, blue 82%, pink 72%), all ≥ 4.5 : 1 on white. The bright originals stay reachable as `*-bright` for dots, bars and fills. Purple `#7C3CFF` (5.6 : 1 on white) is the interactive accent as-is.
-
-## Colour tokens
-
-### Backgrounds & surfaces
 | Token | Value | Use |
 |---|---|---|
-| `--bg` | `#05060A` | Main background |
-| `--bg-secondary` | `#080B16` | Secondary background |
-| `--surface` | `#0D1120` | Card background |
-| `--surface-elevated` | `#12182A` | Elevated surface (modals, popovers, sheets) |
+| `--bg` | grey | The page |
+| `--bg-secondary` | grey + 3.5% silver | The sidebar (as frosted glass) |
+| `--surface` | grey + 5.5% silver | Cards, sheets |
+| `--surface-elevated` | grey + 9% silver | Fields, stat tiles, the current sidebar item |
+| `--surface-hover` | grey + 13% silver | Hover and the selected tab |
+| `--border` / `--border-strong` | grey + 12% / 22% silver | Lines |
+| `--glass-edge` | silver at 13% | The hairline rim on glass |
+| `--scrim` | grey at 72% | Behind dialogs and the phone menu |
 
-### Text
-| Token | Value | Contrast on `--surface` | Use |
+Glass (`glass`, `glass-strong`) is translucent grey with a 22px blur, a hairline silver rim and a faint top
+light (`--rim`). Depth comes from lighter fills and rims, not from black shadows. The page has a faint
+yellow glow from the top corner and a silver one from the bottom, drifting over half a minute (`.aurora`).
+
+## Text (worst case on the lightest surface, all pass WCAG AA)
+
+| Token | Value | Contrast | Use |
 |---|---|---|---|
-| `--text` | `#F7F8FC` | 17.7 : 1 | Primary text, **all ৳ figures and metric values** |
-| `--text-secondary` | `#A7ADBF` | 8.4 : 1 | Secondary text, body copy, table cells |
-| `--text-muted` | `#687087` | **3.8 : 1 — fails AA for normal text** | Large labels only (≥ 24px, or ≥ 18.66px bold). Never for a figure or the sole source of a fact |
-| `--text-disabled` | `#41485A` | 2.1 : 1 | Disabled controls only (WCAG-exempt) |
+| `--text` | silver | 7.9 : 1 (9.9 on the page) | Primary text, **every figure** |
+| `--text-secondary` | silver 86% | 6.1 : 1 | Body copy, table cells |
+| `--text-muted` | silver 76% | 5.1 : 1 | Labels, metadata |
+| `--text-disabled` | silver 45% | — | Disabled controls only |
+| yellow as text | yellow | 9.0 : 1 on the page | Links, attention words, active icons |
 
-### Borders
-| Token | Value | Use |
-|---|---|---|
-| `--border` | `#1B2133` | Normal border |
-| `--border-strong` | `#2A3248` | Strong border, focus rings, active states |
+## Meaning with three colours
 
-### Brand gradient & accents
-| Token | Value | Contrast on `--surface` |
-|---|---|---|
-| `--accent-pink` | `#E84CFF` | 6.2 : 1 |
-| `--accent-purple` | `#7C3CFF` | 3.5 : 1 — large text only |
-| `--accent-blue` | `#267BFF` | 4.8 : 1 |
-| `--accent-cyan` | `#17D9FF` | 11.1 : 1 |
-| `--brand-gradient` | `linear-gradient(135deg, #E84CFF, #7C3CFF, #267BFF, #17D9FF)` | — |
+Status is **never colour alone**: always an icon and words too (BRAND rule since ADR 0009).
+- **Yellow is attention.** Warning = a yellow tint; danger = solid yellow (badges) or a yellow edge
+  (alerts) — the loudest thing on the screen. Negative money is yellow with a minus sign.
+- **Silver is calm.** Success, done and information are silver with their icon.
+- Charts: yellow for the main series or the peak, silver (or yellow at half strength) for the rest.
+- Four-way colour (game players, the wheel): yellow, silver, gold (yellow 60% + silver) and pale gold.
+- The old accent names (`purple`, `pink`, `cyan`, `success`, `warning`, `danger`, `info`) still exist as
+  utilities and resolve to the above, so every screen follows without a rewrite.
 
-### Status
-Always paired with an icon **and** a text label — colour is never the only signal.
+## Actions
 
-| Token | Value | Contrast on `--surface` | Meaning |
-|---|---|---|---|
-| `--success` | `#3DDA9A` | 10.5 : 1 | 🟢 healthy |
-| `--warning` | `#FFBE55` | 11.4 : 1 | 🟡 watch |
-| `--danger` | `#FF667A` | 6.7 : 1 | 🔴 problem, negative money |
-| `--info` | `#4A9AFF` `TODO(verify)` | — | informational (hex partly obscured in the guideline — confirm) |
+- **Primary:** yellow pill with a soft top light and grey words (9 : 1), a yellow glow underneath.
+- **Secondary:** a raised grey pill with a silver rim. **Ghost:** words only. **Danger:** outlined yellow.
+- **Focus:** a 2px yellow ring; fields glow yellow when focused.
+- `--brand-gradient` (yellow → gold → silver) is for the composer's halo and decoration only, never
+  behind a figure.
 
-## Accessibility rules that follow from these values
+## Motion (ADR 0063)
 
-1. **`--text-muted` (`#687087`) is for labels and metadata.** On the light theme it passes AA (4.9 : 1 on white, 4.6 : 1 on `--bg`), but every BDT figure, metric and finding still uses `--text` (figures) or `--text-secondary` (body).
-2. **White text does not pass AA on the bright half of the gradient** (pink 3.2:1, cyan ~1.4:1, blue 4.0:1 against white). **Decision (ADR 0024, `src/components/ui/button.tsx`, tokens in `globals.css`):** the primary action is **purple → deepened blue** (`--action-gradient`: `#7C3CFF` → blue mixed 30% with navy) with **white text** (`--on-action`): 5.6 : 1 and 6.4 : 1, so it passes AA at body size. The full four-colour `--brand-gradient` is reserved for the logo tile, the assistant composer's halo and decorative glow — never behind body-size text or a figure.
-3. **Radius / spacing / shadows are inferred, not specified:** 12px inputs, 20px cards, 24px sheets, full-round pills; soft navy shadows on white cards; a purple glow on the primary action. Marked inferred until the founder confirms.
+Apple-style: smooth deceleration for what arrives (`--ease-smooth`), a gentle spring (≈4% overshoot,
+`--ease-spring`) for what you touch.
+- **Pages** arrive in a 45 ms cascade: the title out of a soft blur, then each block rising (`.page-enter`,
+  via each section's `template.tsx`). A grey-glass skeleton with a silver sheen shows while a page loads.
+- **Cards** further down rise in as they scroll into view (`data-reveal`, scroll timelines where the
+  browser has them). Clickable cards lift 2px on hover.
+- **Everything pressable** sinks to 97% while held. Dialogs and the till's sheets rise on a spring;
+  menus drop in; the sidebar marker grows in; figures arrive out of a blur (`animate-figure`).
+- **The till and the kitchen screen** keep only the press feedback: no page cascade, no aurora, no blur.
+- **Reduced motion:** every animation stops (`prefers-reduced-motion`); reduced transparency gets solid
+  surfaces.
 
-## Typography — PENDING
+## Typography (ADR 0063)
 
-No fonts, weights, size scale or numeral style are specified in the guideline. Until they arrive:
-- Use a neutral system stack. Do not choose a display font and call it the brand.
-- **The `bn` locale is blocked on this.** Bangla needs a real Bengali face (Hind Siliguri or Noto Sans Bengali) paired with the Latin UI font; system fallbacks render Bangla badly. This is a Phase 0 blocker for `bn` UI review, not for `bn` string extraction.
-- Numerals: Latin by default, Bangla digits when locale is `bn`, via the shared formatter — a typography choice only insofar as the chosen face must have Bangla digits.
+**Inter** for Latin letters and digits, **Noto Sans Bengali** for Bangla, both self-hosted by `next/font`
+(`src/app/layout.tsx`). Large page titles are bold with tight tracking; figures use tabular digits; Bangla
+digits when the locale is `bn`, via the shared formatters.
 
-## Logo — PENDING usage rules
+## Logo
 
-`Brand_assets/logo.png`: knife and fork crossed into an X under a chef's hat, above a plate, in the brand gradient on near-black.
-- Raster, dark-background only. On the light UI it always sits in **its own rounded app-icon tile** (`src/components/brand-mark.tsx`), never directly on a light surface. The wordmark next to it is navy text.
-- Still needed: SVG, favicon/app-icon set, clear space, minimum size, and a 1-bit monochrome variant for 58/80mm thermal receipts.
+The chef tile: `public/brand/logo-chef-{64,192,512}.png` (source `Brand_assets/logo-chef-source.jpeg`), a
+white app-icon tile with the grey chef and a yellow hat band. It sits on the grey as it is, with a hairline
+rim, everywhere: the sidebar, the phone bar, sign-in, the assistant's avatar, the browser tab
+(`src/app/icon.png`), the phone home screen (`src/app/apple-icon.png`) and notifications. One component:
+`src/components/brand-mark.tsx`. Still needed: an SVG and a 1-bit version for thermal receipts.
 
-## Landing page palette (ADR 0056)
+## Landing page (ADR 0056)
 
-The public landing page (`src/app/page.tsx`) uses only the founder's three colours plus white, scoped by the `.landing` wrapper in `globals.css`:
-- **Grey `--landing-grey` #2B2D31:** text, dark bands, icon tiles.
-- **Silver `--landing-silver` #D9DADC:** the page background (mixed with white), lines, chart bars, text on grey.
-- **Yellow `--landing-yellow` #FFC93C:** buttons (grey words) and small marks only.
-- Logo on this page: the chef tile, `public/brand/logo-chef-{64,192,512}.png` (source `Brand_assets/logo-chef-source.jpeg`). The app inside still uses `logo.png`.
+The public landing page keeps its light parts (a pale silver page, white cards, grey words) inside the
+`.landing` wrapper, with grey bands (`.landing-dark`) like the app. Yellow is never text on its light parts.
 
 ## Surface personalities
 
 | Surface | Treatment |
 |---|---|
-| **POS** | Light palette with solid (unblurred) surfaces, big touch targets, maximum contrast — better in a bright dining room than the old neon-on-black. Still verify on a real 10" Android tablet |
-| **KDS** | Light, solid surfaces, readable at 2m. Status colour + icon + label; ticket age drives warning → danger |
-| **Dashboard** | Sidebar + one workspace (ADR 0024). Calm, few charts; home answers "how are we doing" and "what needs attention". Gradient only on the primary action, the logo tile and the assistant composer |
-| **Receipts / KOT** | **Brand does not apply.** Pure black on white, 58/80mm, no gradient, no colour |
-| **WhatsApp brief** | Plain text. No colour; emoji carry status per the fixed rules below |
+| **Dashboard** | Frosted sidebar + one workspace (ADR 0024's layout). Glass cards on the grey page |
+| **POS** | Same grey, **solid** surfaces (no blur), big touch targets; press feedback only |
+| **KDS** | Same grey, solid surfaces, readable at 2 m; ticket age drives silver → yellow + icon + words |
+| **Customer pages** (table QR, card, games) | Same grey; games use the four-step yellow/silver set |
+| **Receipts / KOT** | **Brand does not apply.** Pure black on white, 58/80 mm |
+| **WhatsApp / Telegram** | Plain text. Emoji carry status per the fixed rules below |
 
-## Fixed semantic rules (keep after branding)
+## Fixed semantic rules
 
 - 🟢 / 🟡 / 🔴 statuses always pair colour with an icon and a text label.
-- Money: ৳ prefix, lakh grouping (1,23,456); negative values use `--danger` and a minus sign.
-- Findings show ৳ impact first, then evidence, then actions.
-- **The gradient and the "AI Generated" badge mark narrative, drafts and suggested actions — never a number.** A figure is rendered in plain text tokens because it came from a metric function, not a model. The badge is the draft→approve affordance, not decoration. (The guideline's own "AI Insight" card pairs the badge with a percentage; Xedine does not copy that.)
+- Money via `formatMoney` in the restaurant's currency; negative values use `--danger` and a minus sign.
+- Findings show the money impact first, then evidence, then actions.
+- **The gradient and the "AI Generated" badge mark narrative, drafts and suggested actions — never a
+  number.** A figure is rendered in plain text tokens because it came from a metric function, not a model.

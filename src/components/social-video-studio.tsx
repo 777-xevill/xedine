@@ -53,7 +53,7 @@ const BD_ONLY: readonly Occasion[] = ['boishakh', 'victory_day', 'independence_d
 function Step({ n, title }: { n: number; title: string }) {
   return (
     <p className="mb-2 flex items-center gap-2 font-semibold">
-      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-purple text-xs font-bold text-white tabular-nums">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand-yellow text-xs font-bold text-on-action tabular-nums">
         {n}
       </span>
       {title}
@@ -272,7 +272,7 @@ export function SocialVideoStudio({
                 </span>
                 <span className="block truncate px-2 py-1 text-xs font-medium">{d.name}</span>
                 {at >= 0 ? (
-                  <span className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-purple text-xs font-bold text-white">
+                  <span className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-brand-yellow text-xs font-bold text-on-action">
                     {at + 1}
                   </span>
                 ) : null}

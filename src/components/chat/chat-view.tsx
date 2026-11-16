@@ -67,11 +67,11 @@ function Hidden({
 export function AssistantAvatar() {
   return (
     <Image
-      src="/brand/logo-64.png"
+      src="/brand/logo-chef-64.png"
       alt=""
       width={28}
       height={28}
-      className="mt-0.5 size-7 shrink-0 rounded-lg shadow-soft"
+      className="mt-0.5 size-7 shrink-0 rounded-[24%] shadow-soft ring-1 ring-edge"
     />
   );
 }

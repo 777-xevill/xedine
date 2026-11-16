@@ -2,184 +2,159 @@
 @import 'tw-animate-css';
 
 /*
- * Brand tokens (docs/BRAND.md, ADR 0009, ADR 0024). Components never hardcode a colour: everything
- * reads these variables, so a rebrand is a token swap.
- *
- * 1. The guideline palette, exactly as specified (Brand_assets/brand_guidline.png). Raw values only:
- *    components use the semantic tokens in step 2, never these.
+ * Brand tokens (docs/BRAND.md, ADR 0063). The founder's three colours and nothing else: grey is the
+ * primary colour and the page, silver is the words and the edges, yellow is for actions and attention.
+ * Every other colour in the app is a mix of these three. Components never hardcode a colour: they
+ * read the semantic tokens below, so a rebrand is still a token swap.
  */
 :root {
-  --palette-night: #05060a;
-  --palette-night-2: #080b16;
-  --palette-navy: #0d1120;
-  --palette-navy-2: #12182a;
-  --palette-mist: #f7f8fc;
-  --palette-slate-300: #a7adbf;
-  --palette-slate-500: #687087;
-  --palette-slate-700: #41485a;
-  --palette-line-dark: #1b2133;
-  --palette-line-dark-2: #2a3248;
+  --brand-grey: #2b2d31;
+  --brand-silver: #d9dadc;
+  --brand-yellow: #ffc93c;
 
-  --accent-pink: #e84cff;
-  --accent-purple: #7c3cff;
-  --accent-blue: #267bff;
-  --accent-cyan: #17d9ff;
-  --brand-gradient: linear-gradient(135deg, #e84cff, #7c3cff, #267bff, #17d9ff);
-
-  --success: #3dda9a;
-  --warning: #ffbe55;
-  --danger: #ff667a;
-  --info: #4a9aff;
-
-  /*
-   * 1b. The landing page palette (the founder's choice, 2026-11-15, ADR 0056): grey, silver, and yellow
-   *     for buttons and small accents only. Only the landing page (.landing below) uses these; the app
-   *     inside keeps the guideline palette for now.
-   */
-  --landing-grey: #2b2d31;
-  --landing-silver: #d9dadc;
-  --landing-yellow: #ffc93c;
-
-  /*
-   * 2. The light theme (ADR 0024: the founder asked for a clean, light UI with no black background).
-   *    Built from the guideline: the guideline's primary-text mist is the page, its navy card colour is
-   *    the text, its slate greys are secondary text. Neutrals in between are mixes of those, not new hues.
-   */
+  /* The landing page (ADR 0056) came first and names them its own way. */
+  --landing-grey: var(--brand-grey);
+  --landing-silver: var(--brand-silver);
+  --landing-yellow: var(--brand-yellow);
+  /* White: only for the landing page's light cards, QR codes and paper (receipts, printed cards). */
   --white: #ffffff;
-  --bg: var(--palette-mist);
-  --bg-secondary: color-mix(in srgb, var(--palette-mist) 88%, var(--palette-slate-300));
-  --surface: var(--white);
-  /* Hover / selected fills and nested panels: a whisper of slate on white. */
-  --surface-elevated: color-mix(in srgb, var(--white) 86%, var(--palette-slate-300));
-
-  --text: var(--palette-navy);
-  /* 9.3:1 on white. */
-  --text-secondary: var(--palette-slate-700);
-  /* 4.9:1 on white, 4.6:1 on --bg: passes AA on light, unlike on the dark theme. */
-  --text-muted: var(--palette-slate-500);
-  --text-disabled: var(--palette-slate-300);
-
-  --border: color-mix(in srgb, var(--palette-slate-300) 32%, white);
-  --border-strong: color-mix(in srgb, var(--palette-slate-300) 58%, white);
 
   /*
-   * Status and accent colours are bright on purpose (made for a dark page); on white they fail AA as
-   * text. "Ink" variants mix each with the guideline navy so labels read (all ≥ 4.5:1 on white). The
-   * bright originals stay for dots, bars and fills.
+   * Surfaces: the grey page, and silver mixed into it for each step up (Apple-style elevation: what is
+   * closer is lighter). Contrast of the text tokens, worst case on the lightest surface: text 7.9:1,
+   * secondary 6.1:1, muted 5.1:1 (all pass AA).
    */
-  --success-ink: color-mix(in srgb, var(--success) 50%, var(--palette-navy));
-  --warning-ink: color-mix(in srgb, var(--warning) 52%, var(--palette-navy));
-  --danger-ink: color-mix(in srgb, var(--danger) 62%, var(--palette-navy));
-  --info-ink: color-mix(in srgb, var(--info) 70%, var(--palette-navy));
-  --cyan-ink: color-mix(in srgb, var(--accent-cyan) 55%, var(--palette-navy));
-  --blue-ink: color-mix(in srgb, var(--accent-blue) 82%, var(--palette-navy));
-  --pink-ink: color-mix(in srgb, var(--accent-pink) 72%, var(--palette-navy));
+  --bg: var(--brand-grey);
+  --bg-secondary: color-mix(in srgb, var(--brand-silver) 3.5%, var(--brand-grey));
+  --surface: color-mix(in srgb, var(--brand-silver) 5.5%, var(--brand-grey));
+  --surface-elevated: color-mix(in srgb, var(--brand-silver) 9%, var(--brand-grey));
+  --surface-hover: color-mix(in srgb, var(--brand-silver) 13%, var(--brand-grey));
+
+  --text: var(--brand-silver);
+  --text-secondary: color-mix(in srgb, var(--brand-silver) 86%, var(--brand-grey));
+  --text-muted: color-mix(in srgb, var(--brand-silver) 76%, var(--brand-grey));
+  --text-disabled: color-mix(in srgb, var(--brand-silver) 45%, var(--brand-grey));
+
+  --border: color-mix(in srgb, var(--brand-silver) 12%, var(--brand-grey));
+  --border-strong: color-mix(in srgb, var(--brand-silver) 22%, var(--brand-grey));
 
   /*
-   * Primary action: purple into a deepened blue, white text — 5.6:1 at the purple end and 6.4:1 at the
-   * blue end, so it passes AA at body size. The full four-colour gradient stays for the brand mark and
-   * decorative glow, never behind body text.
+   * Meaning without new colours: yellow is attention (warning, danger, the one thing to act on), silver
+   * is calm (fine, done, information). Danger differs from warning by weight (a solid yellow badge or
+   * alert edge) and always by its icon and words (BRAND.md: colour is never the only signal).
    */
-  --action-gradient: linear-gradient(
+  --gold: color-mix(in srgb, var(--brand-yellow) 60%, var(--brand-silver));
+  --gold-pale: color-mix(in srgb, var(--brand-yellow) 28%, var(--brand-silver));
+  --success: var(--brand-silver);
+  --warning: var(--brand-yellow);
+  --danger: var(--brand-yellow);
+  --info: color-mix(in srgb, var(--brand-silver) 86%, var(--brand-grey));
+
+  /* The old accent names stay as aliases so every screen follows without a rewrite. */
+  --accent-purple: var(--brand-yellow);
+  --accent-pink: var(--gold);
+  --accent-blue: var(--gold-pale);
+  --accent-cyan: var(--brand-silver);
+  --brand-gradient: linear-gradient(
     135deg,
-    var(--accent-purple),
-    color-mix(in srgb, var(--accent-blue) 70%, var(--palette-navy))
+    var(--brand-yellow),
+    var(--gold) 45%,
+    var(--brand-silver)
   );
-  --on-action: var(--white);
-  /* Purple as text, icons and chart fills. Light: the brand purple as is. */
-  --accent-purple-ink: var(--accent-purple);
 
-  /* Light glass: frosted white over a faint brand glow, a hairline rim and a soft navy shadow. */
-  --glass-fill: color-mix(in srgb, var(--white) 82%, transparent);
-  --glass-fill-strong: color-mix(in srgb, var(--white) 94%, transparent);
-  --glass-fill-soft: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
-  --glass-edge: var(--border);
-  --glass-edge-strong: var(--border-strong);
-  --glass-sheen: linear-gradient(
-    180deg,
-    color-mix(in srgb, white 60%, transparent),
-    transparent 40%
-  );
-  --shadow-soft:
-    0 1px 2px color-mix(in srgb, var(--palette-navy) 5%, transparent),
-    0 8px 24px -14px color-mix(in srgb, var(--palette-navy) 16%, transparent);
-  --shadow-lift:
-    0 1px 2px color-mix(in srgb, var(--palette-navy) 6%, transparent),
-    0 22px 48px -22px color-mix(in srgb, var(--palette-navy) 28%, transparent);
-  --glass-shadow: var(--shadow-soft);
-  --glass-blur: 18px;
-  --glow-action: 0 10px 24px -12px color-mix(in srgb, var(--accent-purple) 60%, transparent);
-  --glow-danger: 0 0 0 1px color-mix(in srgb, var(--danger) 55%, transparent);
-
-  /* Soft, rounded geometry (ADR 0015's references), a touch tighter for a calmer SaaS feel. */
-  --radius-input: 0.75rem;
-  --radius-card: 1.25rem;
-  --radius-sheet: 1.5rem;
-
-  --sidebar-width: 16.5rem;
-
-  color-scheme: light;
-}
-
-/*
- * 2b. The dark theme (ADR 0034): an opt-in switch in the sidebar, never the default. The same semantic
- * tokens, remapped onto the guideline's navy (not black): navy page, navy-2 cards, mist text. The status
- * and accent colours are bright by design, so on navy they are used as they are (the light theme mixes
- * them with navy to get "ink"). Set on <html> by the theme script; the till and kitchen screens never
- * get it (their layouts sit outside the dashboard).
- */
-[data-theme='dark'] {
-  --bg: var(--palette-navy);
-  --bg-secondary: var(--palette-night-2);
-  --surface: var(--palette-navy-2);
-  --surface-elevated: color-mix(in srgb, var(--palette-navy-2) 88%, var(--palette-slate-300));
-
-  --text: var(--palette-mist);
-  /* 8.4:1 on the page, 7.9:1 on a card. */
-  --text-secondary: var(--palette-slate-300);
-  /* 5.9:1 on a card, 4.8:1 on a raised panel. */
-  --text-muted: color-mix(in srgb, var(--palette-slate-300) 86%, var(--palette-navy));
-  --text-disabled: var(--palette-slate-500);
-
-  --border: var(--palette-line-dark-2);
-  --border-strong: color-mix(in srgb, var(--palette-slate-500) 60%, var(--palette-navy));
-
+  /* Text-coloured status and accents ("ink"). On grey every one of them reads (≥ 7:1). */
   --success-ink: var(--success);
   --warning-ink: var(--warning);
   --danger-ink: var(--danger);
   --info-ink: var(--info);
   --cyan-ink: var(--accent-cyan);
+  --blue-ink: var(--accent-blue);
   --pink-ink: var(--accent-pink);
-  --blue-ink: color-mix(in srgb, var(--accent-blue) 80%, white);
-  /* 6.4:1 on a card: the brand purple itself is 3.4:1 there. */
-  --accent-purple-ink: color-mix(in srgb, var(--accent-purple) 62%, white);
+  --accent-purple-ink: var(--brand-yellow);
 
-  --glass-fill: color-mix(in srgb, var(--palette-navy-2) 80%, transparent);
-  --glass-fill-strong: color-mix(in srgb, var(--palette-navy-2) 94%, transparent);
-  --glass-fill-soft: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
+  /* Primary action: yellow with a soft top light, grey words (9:1). */
+  --action-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-yellow) 80%, var(--brand-silver)),
+    var(--brand-yellow) 60%
+  );
+  --on-action: var(--brand-grey);
+
+  /*
+   * Glass and glow: translucent grey over the page, a hairline silver rim and a light top edge, like a
+   * pane of smoked glass. Depth comes from lighter fills and rims, not from black shadows.
+   */
+  --rim: inset 0 1px 0 color-mix(in srgb, var(--brand-silver) 9%, transparent);
+  --glass-fill: color-mix(in srgb, var(--surface) 74%, transparent);
+  --glass-fill-strong: color-mix(in srgb, var(--surface-elevated) 90%, transparent);
+  --glass-fill-soft: color-mix(in srgb, var(--brand-silver) 6%, transparent);
+  --glass-edge: color-mix(in srgb, var(--brand-silver) 13%, transparent);
+  --glass-edge-strong: color-mix(in srgb, var(--brand-silver) 24%, transparent);
   --glass-sheen: linear-gradient(
     180deg,
-    color-mix(in srgb, white 7%, transparent),
+    color-mix(in srgb, var(--brand-silver) 7%, transparent),
     transparent 40%
   );
   --shadow-soft:
-    0 1px 2px color-mix(in srgb, var(--palette-night) 50%, transparent),
-    0 8px 24px -14px color-mix(in srgb, var(--palette-night) 80%, transparent);
+    var(--rim), 0 1px 2px color-mix(in srgb, var(--brand-grey) 70%, transparent),
+    0 12px 32px -20px color-mix(in srgb, var(--brand-grey) 95%, transparent);
   --shadow-lift:
-    0 1px 2px color-mix(in srgb, var(--palette-night) 60%, transparent),
-    0 22px 48px -22px color-mix(in srgb, var(--palette-night) 90%, transparent);
-  --glow-action: 0 10px 28px -12px color-mix(in srgb, var(--accent-purple) 75%, transparent);
+    var(--rim), 0 0 0 1px var(--glass-edge),
+    0 28px 64px -28px color-mix(in srgb, var(--brand-grey) 95%, transparent);
+  --glass-shadow: var(--shadow-soft);
+  --glass-blur: 22px;
+  --glow-action:
+    0 10px 30px -12px color-mix(in srgb, var(--brand-yellow) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--brand-silver) 45%, transparent);
+  --glow-danger: 0 0 0 1px color-mix(in srgb, var(--danger) 55%, transparent);
+  --glow-focus: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 18%, transparent);
+  /* Behind dialogs and the phone menu: the page dims to grey glass. */
+  --scrim: color-mix(in srgb, var(--brand-grey) 72%, transparent);
+
+  /*
+   * Motion (ADR 0063): Apple-style. Smooth deceleration for things arriving, a gentle spring (about 4%
+   * overshoot) for things you touch. Short enough never to slow anyone down.
+   */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: linear(
+    0,
+    0.084 4%,
+    0.266 8%,
+    0.471 12%,
+    0.657 17%,
+    0.805 21%,
+    0.911 25%,
+    0.979 29%,
+    1.017 33%,
+    1.035 38%,
+    1.038 42%,
+    1.034 46%,
+    1.027 50%,
+    1.019 54%,
+    1.012 58%,
+    1.007 62%,
+    1.003 67%,
+    1.001 71%,
+    1
+  );
+
+  /* Soft, rounded geometry. */
+  --radius-input: 0.875rem;
+  --radius-card: 1.375rem;
+  --radius-sheet: 1.75rem;
+
+  --sidebar-width: 16.5rem;
 
   color-scheme: dark;
 }
 
 /*
  * The POS and KDS run on cheap tablets in bright dining rooms (BRAND.md "surface personalities"):
- * solid fills and no blur — legibility beats translucency there.
+ * solid fills and no blur — legibility and speed beat translucency there.
  */
 [data-surface='till'] {
   --glass-fill: var(--surface);
-  --glass-fill-strong: var(--surface);
+  --glass-fill-strong: var(--surface-elevated);
   --glass-fill-soft: var(--surface-elevated);
   --glass-blur: 0px;
 }
@@ -189,7 +164,7 @@
   :root,
   [data-surface='till'] {
     --glass-fill: var(--surface);
-    --glass-fill-strong: var(--surface);
+    --glass-fill-strong: var(--surface-elevated);
     --glass-fill-soft: var(--surface-elevated);
     --glass-blur: 0px;
   }
@@ -198,14 +173,15 @@
   :root,
   [data-surface='till'] {
     --glass-fill: var(--surface);
-    --glass-fill-strong: var(--surface);
+    --glass-fill-strong: var(--surface-elevated);
   }
 }
 @media (prefers-contrast: more) {
   :root {
-    --glass-edge: var(--palette-slate-500);
-    --glass-edge-strong: var(--palette-slate-700);
-    --border: var(--palette-slate-300);
+    --glass-edge: color-mix(in srgb, var(--brand-silver) 40%, transparent);
+    --glass-edge-strong: color-mix(in srgb, var(--brand-silver) 60%, transparent);
+    --border: color-mix(in srgb, var(--brand-silver) 35%, var(--brand-grey));
+    --text-muted: var(--text-secondary);
   }
 }
 
@@ -214,6 +190,7 @@
   --color-background-secondary: var(--bg-secondary);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
   --color-foreground: var(--text);
   --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
@@ -222,7 +199,10 @@
   --color-line-strong: var(--border-strong);
   --color-edge: var(--glass-edge);
   --color-edge-strong: var(--glass-edge-strong);
-  /* Utility colours resolve to the readable ink on light; raw brights stay reachable via *-bright. */
+  --color-scrim: var(--scrim);
+  --color-gold: var(--gold);
+  --color-gold-pale: var(--gold-pale);
+  /* Utility colours resolve to the readable ink; raw fills stay reachable via *-bright. */
   --color-pink: var(--pink-ink);
   --color-purple: var(--accent-purple-ink);
   --color-blue: var(--blue-ink);
@@ -237,41 +217,85 @@
   --color-cyan-bright: var(--accent-cyan);
   --color-pink-bright: var(--accent-pink);
   --color-on-action: var(--on-action);
+  --color-brand-grey: var(--brand-grey);
+  --color-brand-silver: var(--brand-silver);
+  --color-brand-yellow: var(--brand-yellow);
   --color-landing-grey: var(--landing-grey);
   --color-landing-silver: var(--landing-silver);
   --color-landing-yellow: var(--landing-yellow);
   --radius-input: var(--radius-input);
   --radius-card: var(--radius-card);
   --radius-sheet: var(--radius-sheet);
+  --ease-smooth: var(--ease-smooth);
+  --ease-spring: var(--ease-spring);
+  /* Inter for Latin letters and digits, Noto Sans Bengali for Bangla (ADR 0063), loaded by next/font. */
   --font-sans:
-    system-ui, -apple-system, 'Segoe UI', 'Noto Sans Bengali', 'Hind Siliguri', 'Nirmala UI',
+    var(--font-inter), var(--font-bengali), system-ui, -apple-system, 'Segoe UI', 'Nirmala UI',
     Roboto, sans-serif;
+  --default-transition-duration: 240ms;
+  --default-transition-timing-function: var(--ease-smooth);
 }
 
 html,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
+  font-family:
+    var(--font-inter),
+    var(--font-bengali),
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Nirmala UI',
+    Roboto,
+    sans-serif;
 }
 
 body {
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   scrollbar-color: var(--border-strong) transparent;
 }
 
-/* In the base layer so a component's own focus style (a utility) can replace it. */
 @layer base {
+  /* In the base layer so a component's own focus style (a utility) can replace it. */
   :focus-visible {
-    outline: 2px solid var(--accent-purple);
+    outline: 2px solid var(--brand-yellow);
     outline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+  }
+  /*
+   * Everything you can press answers like glass under a finger: colours glide, and it sinks a little
+   * while held (the individual `scale` property, so it never fights a component's own transform).
+   */
+  :where(a, button, summary, [role='button'], [role='tab'], [role='radio'], [role='switch']) {
+    transition-property:
+      color, background-color, border-color, box-shadow, opacity, scale, translate, filter;
+    transition-duration: 240ms;
+    transition-timing-function: var(--ease-smooth);
+  }
+  :where(button:not(:disabled), summary, [role='button'], [role='radio'], [role='switch']):active {
+    scale: 0.97;
+    transition-duration: 90ms;
+  }
+  :where(input, select, textarea) {
+    transition:
+      border-color 200ms var(--ease-smooth),
+      box-shadow 260ms var(--ease-smooth),
+      background-color 200ms var(--ease-smooth);
   }
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent-purple) 22%, transparent);
-  color: var(--text);
+  background: color-mix(in srgb, var(--brand-yellow) 85%, transparent);
+  color: var(--brand-grey);
 }
 
 /* ------------------------------------------------------------------------------------------- */
@@ -279,18 +303,20 @@ body {
 /* ------------------------------------------------------------------------------------------- */
 @utility glass {
   background-color: var(--glass-fill);
+  background-image: var(--glass-sheen);
   border: 1px solid var(--glass-edge);
   box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
 }
 
 @utility glass-strong {
   background-color: var(--glass-fill-strong);
+  background-image: var(--glass-sheen);
   border: 1px solid var(--glass-edge);
   box-shadow: var(--shadow-lift);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
 }
 
 /* Many-per-screen surfaces (menu tiles, list rows): a flat tint, no blur, so cheap GPUs keep up. */
@@ -326,7 +352,11 @@ body {
   box-shadow: var(--glow-action);
 }
 
-/* A hairline in the brand gradient: the wave accent from the guideline, used sparingly. */
+@utility glow-focus {
+  box-shadow: var(--glow-focus);
+}
+
+/* A hairline in the brand gradient, used sparingly. */
 @utility rule-brand {
   height: 1px;
   background-image: var(--brand-gradient);
@@ -334,42 +364,71 @@ body {
 }
 
 /*
- * A barely-there wash of brand light behind the page, so white cards have something to sit on.
- * Kept very faint: the page must read as light and clean (ADR 0024).
+ * The page's light: two very faint glows, yellow from the top corner and silver from the bottom, that
+ * drift slowly (half a minute a cycle) so the grey never feels flat. Transform only, so it costs the
+ * GPU almost nothing; still for reduced motion, and gone on the till, the kitchen screen and the
+ * landing page.
  */
 .aurora {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(
-      40rem 26rem at 100% -8%,
-      color-mix(in srgb, var(--accent-purple) 7%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      34rem 24rem at -6% 104%,
-      color-mix(in srgb, var(--accent-cyan) 7%, transparent),
-      transparent 70%
-    ),
-    var(--bg);
+  overflow: hidden;
+  background: var(--bg);
 }
-[data-surface='till'] .aurora,
-.aurora[data-dim] {
-  opacity: 0.5;
+.aurora::before,
+.aurora::after {
+  content: '';
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 9999px;
+  will-change: transform;
+}
+.aurora::before {
+  top: -38vmax;
+  right: -26vmax;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--brand-yellow) 9%, transparent),
+    transparent
+  );
+  animation: aurora-drift 30s var(--ease-smooth) infinite alternate;
+}
+.aurora::after {
+  bottom: -42vmax;
+  left: -30vmax;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--brand-silver) 7%, transparent),
+    transparent
+  );
+  animation: aurora-drift 36s var(--ease-smooth) infinite alternate-reverse;
+}
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-8vmax, 6vmax, 0) scale(1.12);
+  }
+}
+html:has([data-surface='till']) .aurora::before,
+html:has([data-surface='till']) .aurora::after {
+  display: none;
 }
 
 /*
- * The assistant composer (the founder's reference video): a soft brand-gradient halo behind a white
- * card. The halo is decoration around an input, never behind a figure.
+ * The assistant composer: a soft gold-to-silver halo behind the card. The halo is decoration around
+ * an input, never behind a figure.
  */
 .composer-halo {
   position: relative;
   isolation: isolate;
   padding: 1px;
 }
-/* The ring: the gradient fills the box and the white field inside covers all but 1px of it. */
+/* The ring: the gradient fills the box and the field inside covers all but 1px of it. */
 .composer-halo::before {
   content: '';
   position: absolute;
@@ -377,8 +436,8 @@ body {
   z-index: -1;
   border-radius: inherit;
   background: var(--brand-gradient);
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
+  opacity: 0.35;
+  transition: opacity 0.3s var(--ease-smooth);
 }
 /* The glow: the same gradient, blurred, spilling out below the card. */
 .composer-halo::after {
@@ -388,15 +447,15 @@ body {
   z-index: -2;
   border-radius: inherit;
   background: var(--brand-gradient);
-  filter: blur(34px);
-  opacity: 0.14;
-  transition: opacity 0.2s ease;
+  filter: blur(38px);
+  opacity: 0.1;
+  transition: opacity 0.3s var(--ease-smooth);
 }
 .composer-halo:focus-within::before {
-  opacity: 1;
+  opacity: 0.9;
 }
 .composer-halo:focus-within::after {
-  opacity: 0.24;
+  opacity: 0.22;
 }
 @media (prefers-reduced-transparency: reduce) {
   .composer-halo::after {
@@ -405,9 +464,9 @@ body {
 }
 
 /*
- * New-chat intro (the founder's reference video): purple, pink and blue light swirling behind the
- * greeting for ~4.5 s, then slowly settling into the light page. It sits behind the content and
- * ignores the pointer, so the composer works the whole time. Never dark: the base is a lavender tint.
+ * New-chat intro: gold and silver light swirling behind the greeting for ~4.5 s, then settling into
+ * the grey page. It sits behind the content and ignores the pointer, so the composer works the whole
+ * time.
  */
 .chat-intro {
   position: fixed;
@@ -416,7 +475,7 @@ body {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  background: color-mix(in srgb, var(--accent-purple) 14%, var(--bg));
+  background: color-mix(in srgb, var(--brand-yellow) 5%, var(--bg));
   animation: chat-intro-fade 4.5s ease-in-out forwards;
 }
 .chat-intro::before,
@@ -425,7 +484,7 @@ body {
   content: '';
   position: absolute;
   border-radius: 9999px;
-  filter: blur(56px);
+  filter: blur(64px);
   will-change: transform;
 }
 .chat-intro > span {
@@ -437,8 +496,8 @@ body {
   background: linear-gradient(
     100deg,
     transparent 5%,
-    color-mix(in srgb, var(--accent-purple) 85%, transparent) 35%,
-    color-mix(in srgb, var(--accent-blue) 70%, transparent) 60%,
+    color-mix(in srgb, var(--brand-yellow) 34%, transparent) 35%,
+    color-mix(in srgb, var(--brand-silver) 26%, transparent) 60%,
     transparent 95%
   );
   animation: chat-intro-swirl 4.5s ease-in-out forwards;
@@ -448,7 +507,7 @@ body {
   top: 12%;
   width: 26rem;
   height: 20rem;
-  background: color-mix(in srgb, var(--accent-pink) 70%, transparent);
+  background: color-mix(in srgb, var(--gold) 26%, transparent);
   animation: chat-intro-drift 4.5s ease-in-out forwards;
 }
 .chat-intro::after {
@@ -456,7 +515,7 @@ body {
   bottom: 8%;
   width: 28rem;
   height: 18rem;
-  background: color-mix(in srgb, var(--accent-blue) 55%, transparent);
+  background: color-mix(in srgb, var(--brand-silver) 18%, transparent);
   animation: chat-intro-drift 4.5s ease-in-out reverse forwards;
 }
 /* In fast, hold, then a long gentle fade (about 2.8 s of the 4.5 s). */
@@ -494,29 +553,187 @@ body {
     inset-inline-start: var(--sidebar-width);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .chat-intro {
-    display: none;
-  }
-}
 
+/* ------------------------------------------------------------------------------------------- */
+/* Motion (ADR 0063)                                                                            */
+/* ------------------------------------------------------------------------------------------- */
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translate3d(0, 10px, 0) scale(0.985);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-.animate-rise-in {
-  animation: rise-in 0.28s ease-out both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-rise-in {
-    animation: none;
+@keyframes blur-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate3d(0, 6px, 0);
   }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -4px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in 0.5s var(--ease-smooth) both;
+}
+/* Figures arrive like Apple's numbers: out of a soft blur. */
+.animate-figure {
+  animation: blur-in 0.7s var(--ease-smooth) both;
+}
+
+/*
+ * Every page arrives in a short cascade: the title out of a blur, then each block rising in turn
+ * (45 ms apart). When a page is one wrapper, its children cascade instead. Runs on every navigation
+ * because the workspace template remounts.
+ */
+.page-enter > :not(:only-child),
+.page-enter > :only-child > * {
+  animation: rise-in 0.6s var(--ease-smooth) both;
+}
+.page-enter > header:first-child,
+.page-enter > :only-child > header:first-child {
+  animation-name: blur-in;
+}
+.page-enter > :nth-child(2),
+.page-enter > :only-child > :nth-child(2) {
+  animation-delay: 45ms;
+}
+.page-enter > :nth-child(3),
+.page-enter > :only-child > :nth-child(3) {
+  animation-delay: 90ms;
+}
+.page-enter > :nth-child(4),
+.page-enter > :only-child > :nth-child(4) {
+  animation-delay: 135ms;
+}
+.page-enter > :nth-child(5),
+.page-enter > :only-child > :nth-child(5) {
+  animation-delay: 180ms;
+}
+.page-enter > :nth-child(6),
+.page-enter > :only-child > :nth-child(6) {
+  animation-delay: 225ms;
+}
+.page-enter > :nth-child(n + 7),
+.page-enter > :only-child > :nth-child(n + 7) {
+  animation-delay: 270ms;
+}
+
+/* Cards further down rise in as they scroll into view (browsers that support scroll timelines). */
+@supports (animation-timeline: view()) {
+  [data-reveal] {
+    animation: rise-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+  .page-enter > [data-reveal],
+  .page-enter > :only-child > [data-reveal] {
+    animation: rise-in 0.6s var(--ease-smooth) both;
+    animation-timeline: auto;
+  }
+}
+
+/* Anything you can open as a card lifts toward you on hover and settles with a spring. */
+:where(a, button)[class*='rounded-card'],
+:where(a)[class*='glass'] {
+  transition:
+    translate 0.45s var(--ease-spring),
+    scale 0.2s var(--ease-smooth),
+    box-shadow 0.3s var(--ease-smooth),
+    border-color 0.3s var(--ease-smooth),
+    background-color 0.3s var(--ease-smooth);
+}
+@media (hover: hover) {
+  :where(a, button)[class*='rounded-card']:not(:disabled):hover,
+  :where(a)[class*='glass']:hover {
+    translate: 0 -2px;
+    border-color: var(--glass-edge-strong);
+  }
+}
+
+/* The sidebar's current page: a short yellow bar that grows in on a spring. */
+.nav-active::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.5rem;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--brand-yellow);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand-yellow) 60%, transparent);
+  animation: nav-mark 0.5s var(--ease-spring) both;
+}
+@keyframes nav-mark {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+/* Dialogs rise out of the page on a spring; the page behind dims into grey glass. */
+dialog[open] {
+  animation: sheet-in 0.5s var(--ease-spring) both;
+}
+dialog[open]::backdrop {
+  animation: fade-in 0.35s var(--ease-smooth) both;
+}
+/* Menus that open in place (the restaurant switch, "more" lists) drop in softly. */
+details[open] > :not(summary) {
+  animation: pop-in 0.28s var(--ease-smooth) both;
+}
+
+/* A loading block: grey glass with a slow silver sheen passing over it. */
+.skeleton {
+  border-radius: var(--radius-input);
+  background: linear-gradient(
+      100deg,
+      transparent 30%,
+      color-mix(in srgb, var(--brand-silver) 8%, transparent) 50%,
+      transparent 70%
+    )
+    var(--surface);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }
 
 @keyframes pulse-dot {
@@ -531,9 +748,38 @@ body {
 .animate-pulse-dot {
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
+
+/* The till and the kitchen screen move less: a cashier taps all day, so only the press feedback stays. */
+[data-surface='till'] .page-enter > *,
+[data-surface='till'] [data-reveal] {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-dot {
+  .aurora::before,
+  .aurora::after,
+  .page-enter > *,
+  .page-enter > :only-child > *,
+  [data-reveal],
+  .animate-rise-in,
+  .animate-figure,
+  .skeleton,
+  .animate-pulse-dot,
+  dialog[open],
+  dialog[open]::backdrop,
+  details[open] > :not(summary),
+  .nav-active::before {
     animation: none;
+  }
+  .chat-intro {
+    display: none;
+  }
+  :where(button, summary, [role='button'], [role='radio'], [role='switch']):active {
+    scale: none;
+  }
+  :where(a, button)[class*='rounded-card']:hover,
+  :where(a)[class*='glass']:hover {
+    translate: none;
   }
 }
 
@@ -761,6 +1007,24 @@ body {
   --shadow-lift:
     0 1px 2px color-mix(in srgb, var(--landing-grey) 8%, transparent),
     0 22px 48px -22px color-mix(in srgb, var(--landing-grey) 34%, transparent);
+  /* The root theme is grey (ADR 0063): the landing page's light parts set their own glass, inks and scheme. */
+  --surface-hover: color-mix(in srgb, var(--landing-silver) 55%, var(--white));
+  --glass-fill: color-mix(in srgb, var(--white) 82%, transparent);
+  --glass-fill-strong: color-mix(in srgb, var(--white) 94%, transparent);
+  --glass-edge-strong: var(--landing-silver);
+  --glass-sheen: none;
+  --glass-shadow: var(--shadow-soft);
+  --rim: none;
+  --scrim: color-mix(in srgb, var(--landing-grey) 30%, transparent);
+  --accent-purple-ink: var(--landing-grey);
+  --success-ink: var(--landing-grey);
+  --warning-ink: var(--landing-grey);
+  --danger-ink: var(--landing-grey);
+  --info-ink: var(--landing-grey);
+  --cyan-ink: var(--landing-grey);
+  --blue-ink: var(--landing-grey);
+  --pink-ink: var(--landing-grey);
+  color-scheme: light;
   background: var(--bg);
   color: var(--text);
 }
@@ -776,6 +1040,8 @@ body {
   --border-strong: color-mix(in srgb, var(--landing-silver) 28%, var(--landing-grey));
   --shadow-soft: none;
   --shadow-lift: 0 0 0 1px var(--border);
+  --accent-purple-ink: var(--landing-yellow);
+  color-scheme: dark;
   background: var(--landing-grey);
   color: var(--text);
 }

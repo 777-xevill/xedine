@@ -44,7 +44,7 @@ export function Dialog({
         onClose();
       }}
       className={cn(
-        'glass-strong m-auto max-h-[92dvh] w-[calc(100%-2rem)] overflow-hidden rounded-sheet p-0 text-foreground backdrop:bg-foreground/25 backdrop:backdrop-blur-[2px]',
+        'glass-strong m-auto max-h-[92dvh] w-[calc(100%-2rem)] overflow-hidden rounded-sheet p-0 text-foreground backdrop:bg-scrim backdrop:backdrop-blur-md',
         size === 'sm' && 'max-w-sm',
         size === 'md' && 'max-w-lg',
         size === 'lg' && 'max-w-2xl',
@@ -52,14 +52,14 @@ export function Dialog({
     >
       <div className="flex max-h-[92dvh] flex-col">
         <div className="flex items-center justify-between gap-3 px-5 pt-5">
-          <h2 id={titleId} className="text-lg font-bold tracking-tight">
+          <h2 id={titleId} className="text-lg font-bold tracking-[-0.02em]">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={closeLabel}
-            className="glass-tile inline-flex size-9 items-center justify-center rounded-full text-secondary hover:text-foreground"
+            className="glass-tile inline-flex size-9 items-center justify-center rounded-full text-secondary hover:bg-surface-hover hover:text-foreground"
           >
             <X aria-hidden className="size-4" />
           </button>

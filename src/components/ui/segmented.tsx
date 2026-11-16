@@ -31,7 +31,7 @@ export function Segmented<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        'inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface-elevated p-1',
+        'glass-tile inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1',
         className,
       )}
     >
@@ -46,12 +46,12 @@ export function Segmented<T extends string>({
             data-testid={o.testId}
             onClick={() => onChange(o.value)}
             className={cn(
-              'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition',
+              'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition duration-300',
               size === 'sm' ? 'min-h-7 px-2.5 text-xs' : 'px-4 text-sm',
               size === 'lg' ? 'min-h-12' : size === 'sm' ? '' : 'min-h-9',
               active
-                ? 'bg-surface text-foreground shadow-soft'
-                : 'text-secondary hover:text-foreground',
+                ? 'bg-surface-hover text-foreground shadow-soft [&_svg]:text-brand-yellow'
+                : 'text-secondary hover:bg-surface-elevated hover:text-foreground',
             )}
           >
             {o.icon ? (
@@ -96,15 +96,19 @@ export function Switch({
       data-testid={testId}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition disabled:opacity-45',
-        checked ? 'border-transparent bg-action' : 'border-line-strong bg-surface-elevated',
+        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition duration-300 disabled:opacity-45',
+        checked
+          ? 'border-transparent bg-brand-yellow glow-action'
+          : 'border-edge-strong bg-surface-hover',
       )}
     >
       <span
         aria-hidden
         className={cn(
-          'inline-block size-5 rounded-full bg-surface shadow-soft transition-transform',
-          checked ? 'translate-x-6' : 'translate-x-1',
+          'inline-block size-5 rounded-full shadow-soft transition-[translate,background-color] duration-500 ease-spring',
+          checked
+            ? 'translate-x-6 bg-brand-grey rtl:-translate-x-6'
+            : 'translate-x-1 bg-brand-silver rtl:-translate-x-1',
         )}
       />
     </button>

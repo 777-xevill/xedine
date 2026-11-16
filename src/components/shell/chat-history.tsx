@@ -29,7 +29,9 @@ export function ChatHistory({
   const current = pathname === assistantHref ? params.get('c') : null;
   return (
     <nav aria-label={label}>
-      <p className="px-2.5 pt-4 pb-1.5 text-xs font-medium text-muted">{label}</p>
+      <p className="px-2.5 pt-5 pb-1.5 text-[0.6875rem] font-semibold tracking-[0.08em] text-muted uppercase">
+        {label}
+      </p>
       {chats.length === 0 ? (
         <p className="px-2.5 py-1 text-sm text-muted">{empty}</p>
       ) : (
@@ -41,10 +43,10 @@ export function ChatHistory({
                 aria-current={c.id === current ? 'page' : undefined}
                 title={c.title}
                 className={cn(
-                  'block truncate rounded-[0.625rem] px-2.5 py-1.5 text-sm transition',
+                  'relative block truncate rounded-[0.625rem] px-2.5 py-1.5 text-sm transition duration-300',
                   c.id === current
-                    ? 'bg-surface font-medium text-foreground shadow-soft'
-                    : 'text-secondary hover:bg-surface/70 hover:text-foreground',
+                    ? 'nav-active bg-surface-elevated font-medium text-foreground shadow-soft'
+                    : 'text-secondary hover:bg-surface hover:text-foreground',
                 )}
               >
                 {c.title}

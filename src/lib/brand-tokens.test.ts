@@ -2,7 +2,11 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-/** ADR 0009 / 0024: brand colour lives in CSS variables only. A hex literal in a component defeats "rebrand = token swap". */
+/**
+ * ADR 0009 / 0063: brand colour lives in CSS variables only, and since ADR 0063 the whole app wears the
+ * founder's three colours and nothing else: grey (primary, the page), silver and yellow. A hex literal
+ * in a component defeats "rebrand = token swap".
+ */
 const SRC = join(import.meta.dirname, '..');
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((name) => {
@@ -10,80 +14,64 @@ const walk = (dir: string): string[] =>
     return statSync(p).isDirectory() ? walk(p) : [p];
   });
 
-describe('brand tokens (ADR 0009, docs/BRAND.md)', () => {
+const block = (css: string, selector: string) => {
+  const from = css.slice(css.indexOf(`${selector} {`));
+  return from.slice(0, from.indexOf('\n}'));
+};
+
+describe('brand tokens (ADR 0009, ADR 0063, docs/BRAND.md)', () => {
   const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8').toLowerCase();
 
-  it('defines every colour from the brand guideline as a CSS variable', () => {
-    // ADR 0024: the guideline palette is kept verbatim as raw tokens; the light theme maps onto it.
-    const guideline: Record<string, string> = {
-      '--palette-night': '#05060a',
-      '--palette-night-2': '#080b16',
-      '--palette-navy': '#0d1120',
-      '--palette-navy-2': '#12182a',
-      '--palette-mist': '#f7f8fc',
-      '--palette-slate-300': '#a7adbf',
-      '--palette-slate-500': '#687087',
-      '--palette-slate-700': '#41485a',
-      '--palette-line-dark': '#1b2133',
-      '--palette-line-dark-2': '#2a3248',
-      '--accent-pink': '#e84cff',
-      '--accent-purple': '#7c3cff',
-      '--accent-blue': '#267bff',
-      '--accent-cyan': '#17d9ff',
-      '--success': '#3dda9a',
-      '--warning': '#ffbe55',
-      '--danger': '#ff667a',
-    };
-    for (const [name, hex] of Object.entries(guideline)) {
-      expect(css, `${name} should be ${hex}`).toContain(`${name}: ${hex};`);
-    }
-  });
-
-  it('the landing page has its own palette (ADR 0056): grey, silver and yellow, used only inside .landing', () => {
+  it("defines the founder's three colours as CSS variables", () => {
     for (const [name, hex] of Object.entries({
-      '--landing-grey': '#2b2d31',
-      '--landing-silver': '#d9dadc',
-      '--landing-yellow': '#ffc93c',
+      '--brand-grey': '#2b2d31',
+      '--brand-silver': '#d9dadc',
+      '--brand-yellow': '#ffc93c',
     }))
       expect(css, `${name} should be ${hex}`).toContain(`${name}: ${hex};`);
-    // Buttons on the landing page are yellow with grey words.
-    const block = css.slice(css.indexOf('.landing {'));
-    const landing = block.slice(0, block.indexOf('\n}'));
+  });
+
+  it('uses no colour but grey, silver and yellow (white only for paper, QR codes and the landing page)', () => {
+    const allowed = new Set(['#2b2d31', '#d9dadc', '#ffc93c', '#ffffff']);
+    const found = new Set(css.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/g) ?? []);
+    expect([...found].filter((hex) => !allowed.has(hex))).toEqual([]);
+    // No rgb()/hsl()/oklch() side doors either: every other shade is a color-mix of the three.
+    expect(css).not.toMatch(/\b(?:rgba?|hsla?|oklch|oklab)\(/);
+  });
+
+  it('grey is the primary colour and the page; silver the words; yellow the actions', () => {
+    const root = block(css, ':root');
+    for (const mapping of [
+      '--bg: var(--brand-grey);',
+      '--text: var(--brand-silver);',
+      '--on-action: var(--brand-grey);',
+      '--accent-purple: var(--brand-yellow);',
+      'color-scheme: dark;',
+    ])
+      expect(root).toContain(mapping);
+    expect(root).toMatch(/--action-gradient: linear-gradient\([^;]*var\(--brand-yellow\)/);
+  });
+
+  it('there is one theme: the light/dark switch is gone (ADR 0063 supersedes ADR 0034)', () => {
+    expect(css).not.toContain("[data-theme='dark']");
+  });
+
+  it('the landing page keeps its light parts (ADR 0056) with yellow buttons and grey words', () => {
+    const landing = block(css, '.landing');
     expect(landing).toContain('--on-action: var(--landing-grey);');
     expect(landing).toContain(
       '--action-gradient: linear-gradient(var(--landing-yellow), var(--landing-yellow));',
     );
+    expect(landing).toContain('color-scheme: light;');
+    // Yellow text is unreadable on its light parts: inks turn grey there.
+    expect(landing).toContain('--accent-purple-ink: var(--landing-grey);');
   });
 
-  it('the light theme is built on the guideline palette (ADR 0024)', () => {
-    for (const mapping of [
-      '--bg: var(--palette-mist);',
-      '--text: var(--palette-navy);',
-      '--text-secondary: var(--palette-slate-700);',
-      '--text-muted: var(--palette-slate-500);',
-      'color-scheme: light;',
-    ])
-      expect(css).toContain(mapping);
-  });
-
-  it('the dark theme (ADR 0034) remaps every surface and text token onto the navy palette', () => {
-    const block = css.slice(css.indexOf("[data-theme='dark'] {"));
-    const dark = block.slice(0, block.indexOf('\n}'));
-    for (const token of [
-      '--bg',
-      '--surface',
-      '--surface-elevated',
-      '--text',
-      '--text-secondary',
-      '--text-muted',
-      '--border',
-      '--glass-fill',
-      '--accent-purple-ink',
-    ])
-      expect(dark, `dark theme should set ${token}`).toContain(`${token}:`);
-    expect(dark).toContain('color-scheme: dark;');
-    // Never a pure-black page (the founder's rule): the page is the guideline navy.
-    expect(dark).toContain('--bg: var(--palette-navy);');
+  it('every animation holds still for people who ask for reduced motion', () => {
+    const reduced = css.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/g) ?? [];
+    const all = reduced.join('\n');
+    for (const selector of ['.page-enter > *', '[data-reveal]', '.aurora::before', 'dialog[open]'])
+      expect(all, `${selector} should stop for reduced motion`).toContain(selector);
   });
 
   it('no component, page or module hardcodes a colour', () => {

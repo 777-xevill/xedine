@@ -27,6 +27,7 @@ import {
   type AiVideoWords,
 } from '@/modules/social/video-words';
 import { writeSocialPost, writeSocialVideo } from '@/modules/social/writer';
+import { banglaCaption, type BanglaContext, banglaWords } from '@/modules/social/bangla-lines';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
@@ -542,6 +543,8 @@ export async function draftSocialVideoWordsAction(input: {
   itemIds: string[];
   kind: string;
   occasion: string | null;
+  /** The special day picked in the studio (for the Bangla lines that match it). */
+  occasionKey?: string | null;
   idea: string;
 }): Promise<
   | { ok: true; words: AiVideoWords }
@@ -552,6 +555,7 @@ export async function draftSocialVideoWordsAction(input: {
       itemIds: z.array(z.uuid()).min(1).max(3),
       kind: z.enum(VIDEO_KINDS),
       occasion: z.string().trim().max(80).nullable(),
+      occasionKey: z.enum(OCCASIONS).nullable().optional(),
       idea: z.string().trim().max(300),
     })
     .safeParse(input);
@@ -563,7 +567,11 @@ export async function draftSocialVideoWordsAction(input: {
   if (!aiConfigured()) return { ok: false, error: 'aiOff' };
   const supabase = await createClient();
   const [{ data: dishes }, { data: settings }, { data: recent }] = await Promise.all([
-    supabase.from('menu_items').select('id, name').eq('org_id', d.orgId).in('id', d.itemIds),
+    supabase
+      .from('menu_items')
+      .select('id, name, name_bn')
+      .eq('org_id', d.orgId)
+      .in('id', d.itemIds),
     supabase
       .from('social_settings')
       .select('tone, display_name, area')
@@ -578,10 +586,17 @@ export async function draftSocialVideoWordsAction(input: {
       .limit(8),
   ]);
   const tone = (settings?.tone as 'friendly' | 'premium' | 'fun' | undefined) ?? 'friendly';
-  const names = d.itemIds
-    .map((id) => (dishes ?? []).find((x) => x.id === id)?.name as string | undefined)
-    .filter((x): x is string => Boolean(x));
+  const rows = d.itemIds
+    .map((id) => (dishes ?? []).find((x) => x.id === id))
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+  const names = rows.map((x) => x.name as string);
   if (names.length === 0) return { ok: false, error: 'failed' };
+  // Each press of "Write with AI" tries another kind of opening line (no time here, so no meal moment).
+  const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+  const hookStyle = hookStyleFor(seed, tone, { hasMoment: false });
+  const recentLines = ((recent ?? []) as { headline: string | null; tagline: string | null }[])
+    .flatMap((r) => [r.headline, r.tagline])
+    .filter((l): l is string => Boolean(l?.trim()));
   try {
     const written = await writeSocialVideo({
       orgId: d.orgId,
@@ -593,15 +608,42 @@ export async function draftSocialVideoWordsAction(input: {
       ownNote: d.idea || null,
       tone,
       area: (settings?.area as string | null) ?? null,
-      // Each press of "Write with AI" tries another kind of opening line (no time here, so no meal moment).
-      hookStyle: hookStyleFor(crypto.getRandomValues(new Uint32Array(1))[0]!, tone, {
-        hasMoment: false,
-      }),
-      recentLines: ((recent ?? []) as { headline: string | null; tagline: string | null }[])
-        .flatMap((r) => [r.headline, r.tagline])
-        .filter((l): l is string => Boolean(l?.trim())),
+      hookStyle,
+      recentLines,
     });
-    return { ok: true, words: VideoWordsSchema.parse(written) };
+    const words = VideoWordsSchema.parse(written);
+    if (d.idea) return { ok: true, words };
+    // Without the owner's own idea, the Bangla is the hand-written lines matched to this video (ADR 0061).
+    const restaurant = (settings?.display_name as string | null) || ctx.org.name;
+    const bnContext: BanglaContext = {
+      style: hookStyle,
+      moment: null,
+      tone,
+      dishes: rows.length,
+      occasion: d.occasionKey ?? null,
+      fact: null,
+      dishName: (rows[0]?.name_bn as string | null)?.trim() || null,
+    };
+    const bn = banglaWords(bnContext, seed, recentLines);
+    return {
+      ok: true,
+      words: {
+        ...words,
+        hook_bn: bn.hook,
+        punch_bn: bn.punch,
+        question_bn: bn.question,
+        tagline_bn: bn.tagline,
+        caption_bn: banglaCaption(
+          {
+            ...bnContext,
+            restaurant,
+            dishNames: rows.map((x) => (x.name_bn as string | null)?.trim() || x.name).join(', '),
+            greeting: d.occasion,
+          },
+          seed,
+        ),
+      },
+    };
   } catch (e) {
     return {
       ok: false,

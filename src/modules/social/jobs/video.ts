@@ -39,6 +39,7 @@ import {
   videoWordsFor,
 } from '../video-words';
 import { zonedParts } from '@/lib/time/business-date';
+import { banglaCaption, type BanglaContext, banglaWords } from '../bangla-lines';
 import { MIN_VIDEO_PHOTO_PX } from '../video-rules';
 import { agreedPoisha, posterPrice } from '../prices';
 import { ApprovedWordsSchema, posterLang } from '../words';
@@ -437,9 +438,27 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
       : null;
     const hookStyle = hookStyleFor(wordSeed, s.tone, { hasMoment: moment !== null });
     const fixed = fallbackWordKeys(hookStyle, moment, wordSeed);
+    // Bangla comes from the hand-written lines (the free AI's Bangla was too often wrong), matched to this
+    // video; only an owner's own idea goes to the AI in Bangla, since the lines cannot carry it.
+    const bnContext: BanglaContext = {
+      style: hookStyle,
+      moment,
+      tone: s.tone,
+      dishes: picked.length,
+      occasion,
+      fact: together ? 'pair' : top.has(main.id) ? 'best' : null,
+      dishName: main.name_bn?.trim() || null,
+    };
+    const bnFixed = banglaWords(bnContext, wordSeed, recentLines);
+    const bnByAi = Boolean(post.own_text?.trim());
+    const needAi = lang === 'en' || s.language !== 'bn' || bnByAi;
 
     let ai: (AiVideoWords & { model: string; promptVersion: number }) | null = null;
-    if (aiConfigured() && !(own?.hook && own?.tagline && own?.caption_bn && own?.caption_en)) {
+    if (
+      needAi &&
+      aiConfigured() &&
+      !(own?.hook && own?.tagline && own?.caption_bn && own?.caption_en)
+    ) {
       try {
         ai = await writeSocialVideo({
           orgId: post.org_id,
@@ -463,18 +482,23 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
         ai = null;
       }
     }
-    const words = videoWordsFor(
-      lang,
-      ai,
-      own,
-      {
-        hook: t(fixed.hook as 'video.defaults.hook'),
-        punch: t('video.defaults.punch'),
-        question: t(fixed.question as 'video.defaults.question'),
-        tagline: t(fixed.tagline as 'video.defaults.tagline'),
-      },
-      t('poster.cta'),
-    );
+    const words =
+      lang === 'bn' && !bnByAi
+        ? videoWordsFor('bn', null, own, bnFixed, t('poster.cta'))
+        : videoWordsFor(
+            lang,
+            ai,
+            own,
+            lang === 'bn'
+              ? bnFixed
+              : {
+                  hook: t(fixed.hook as 'video.defaults.hook'),
+                  punch: t('video.defaults.punch'),
+                  question: t(fixed.question as 'video.defaults.question'),
+                  tagline: t(fixed.tagline as 'video.defaults.tagline'),
+                },
+            t('poster.cta'),
+          );
 
     // An offer is the owner's own price, shown only below the menu price every branch agrees on (the
     // poster rule); otherwise the video is a plain showcase and says no price it cannot stand behind.
@@ -605,8 +629,15 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     await upload(sb, videoPath, mp4, 'video/mp4');
     await upload(sb, coverPath, made.cover, 'image/jpeg');
 
+    const bnDishNames = picked.map((p) => p.dish.name_bn?.trim() || p.dish.name).join(', ');
     const caption = (l: 'bn' | 'en') =>
       own?.[`caption_${l}`]?.trim() ||
+      (l === 'bn' && !bnByAi
+        ? banglaCaption(
+            { ...bnContext, restaurant, dishNames: bnDishNames, greeting: greeting || null },
+            wordSeed,
+          )
+        : '') ||
       ai?.[`caption_${l}`]?.trim() ||
       createTranslator({ locale: l, messages: l === 'bn' ? bn : en, namespace: 'social.video' })(
         'defaults.caption',

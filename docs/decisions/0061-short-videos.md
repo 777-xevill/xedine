@@ -95,6 +95,16 @@ hook word for word like a recent one is dropped for the app's fixed line in the 
 (AI off or failed) are one per style and per meal moment, with four taglines and four questions taking turns.
 "Write with AI" in the studio draws a new style on every press. Prompt `social_video` v2.
 
+**Bangla is hand-written, not AI-written** (the founder's choice, same day: the free AI wrote odd Bangla such as
+"একসাথে খেলে অপবাদ নেই", and the autopilot posts unread). `bangla-lines.ts` holds 208 hooks (by style, meal
+moment and special day) plus taglines, questions, combo lines and captions, each tagged by tone, dish count,
+and a sales fact ("সবাই এটাই অর্ডার করে" only for a real best seller, "এই জুটিই সবার পছন্দ" only for a real
+pair). A Bangla video's screen lines, voice and Bangla caption are picked from these to match the video,
+skipping the restaurant's recent lines; a special day's lines come on about two videos in three. Lines name a
+dish only by its Bangla name and promise no price, delivery, hours, ingredients, heat or "best in town", so
+they fit any dish. The AI is asked only for English, and for Bangla only when the owner wrote their own idea
+(the lines cannot carry it; the studio shows those words for editing). Adding lines is editing that file.
+
 ## Consequences
 
 - One video takes about 25 s to render on the founder's PC; the GitHub runner is slower. The tick never starts a

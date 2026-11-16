@@ -66,6 +66,7 @@ import {
   OCCASION_THEME,
 } from '@/modules/social/video-words';
 import { writeSocialVideo } from '@/modules/social/writer';
+import { banglaWords } from '@/modules/social/bangla-lines';
 import { pickTrack, scoreVideo, speak } from '@/modules/social/sound';
 
 function arg(name: string): string | undefined {
@@ -327,7 +328,24 @@ async function videos(files: string[], out: string) {
         cta: t('poster.cta'),
       };
       const aiOrg = arg('ai');
-      if (aiOrg) {
+      if (lang === 'bn') {
+        // Bangla is the hand-written lines matched to the video, as restaurants get it.
+        const bn = banglaWords(
+          {
+            style,
+            moment,
+            tone,
+            dishes: n,
+            occasion,
+            fact: null,
+            dishName: picked[0]!.name,
+          },
+          seed,
+          said,
+        );
+        words = { ...bn, cta: words.cta };
+        said.unshift(bn.hook, bn.tagline);
+      } else if (aiOrg) {
         const w = await writeSocialVideo({
           orgId: aiOrg,
           restaurant: 'Kacchi Ghor',

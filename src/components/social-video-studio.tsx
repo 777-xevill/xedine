@@ -189,6 +189,7 @@ export function SocialVideoStudio({
       itemIds: picked,
       kind: realKind,
       occasion: greeting || null,
+      occasionKey: occasion || null,
       idea,
     });
     setBusy(false);

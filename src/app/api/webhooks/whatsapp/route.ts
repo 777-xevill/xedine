@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       const at = now();
       const { data: settings } = await sb
         .from('org_settings')
-        .select('default_cutoff_minutes')
+        .select('default_cutoff_minutes, timezone')
         .eq('org_id', orgId)
         .maybeSingle();
       const { data: rules } = await sb
@@ -130,7 +130,11 @@ export async function POST(request: NextRequest) {
         orgId,
         question: question.slice(0, 1000),
         nowIso: at.toISOString(),
-        businessDate: businessDate(at, settings?.default_cutoff_minutes ?? 240),
+        businessDate: businessDate(
+          at,
+          settings?.default_cutoff_minutes ?? 240,
+          (settings?.timezone as string | undefined) ?? 'Asia/Dhaka',
+        ),
         ownerRules: (rules ?? []).map((r) => r.body as string),
         translate: async (locale) =>
           createTranslator({

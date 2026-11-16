@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createTranslator } from 'next-intl';
-import { formatDhakaDate, isLocale, type Locale } from '@/lib/i18n/format';
+import { formatDate, isLocale, type Locale } from '@/lib/i18n/format';
 import { aiConfigured, aiErrorKey, gateway, speechConfigured } from '@/lib/llm-gateway';
 import type { TelegramApi, TelegramUpdate } from '@/lib/messaging/telegram';
 import { businessDate } from '@/lib/time/business-date';
@@ -145,12 +145,16 @@ async function renderDraft(
       .maybeSingle(),
     sb
       .from('org_settings')
-      .select('default_cutoff_minutes')
+      .select('default_cutoff_minutes, timezone, currency')
       .eq('org_id', session.orgId)
       .maybeSingle(),
   ]);
   const ingredients = new Map(refs.map((i) => [i.id, i]));
-  const day = businessDate(draft.createdAt, settings?.default_cutoff_minutes ?? 240);
+  const day = businessDate(
+    draft.createdAt,
+    settings?.default_cutoff_minutes ?? 240,
+    (settings?.timezone as string | undefined) ?? 'Asia/Dhaka',
+  );
   const summary = draftSummary({
     lines: draft.lines,
     ingredients,
@@ -158,7 +162,8 @@ async function renderDraft(
     t,
     unit,
     branch: (branch?.name as string | undefined) ?? '',
-    date: formatDhakaDate(new Date(`${day}T12:00:00+06:00`), session.locale),
+    date: formatDate(new Date(`${day}T12:00:00Z`), session.locale, 'UTC'),
+    currency: (settings?.currency as string | undefined) ?? 'BDT',
   });
   const text = [draft.heard ? t('heard', { text: draft.heard.slice(0, 500) }) : '', summary.text]
     .filter(Boolean)

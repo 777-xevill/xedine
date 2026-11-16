@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { BaseUnit } from '@/modules/purchasing/lines';
+import { businessDayBounds } from '@/lib/time/business-date';
 import { findPages, type Access } from './app-guide';
 import { qtyText } from './for-model';
 import { matchItem, type MenuRef, type Window } from './router';
@@ -19,6 +20,9 @@ export interface ToolContext {
   branches: { id: string; name: string }[];
   /** Who is asking and which sections they have, for the app guide. */
   access?: Access;
+  /** The restaurant's currency (ISO 4217) and time zone (ADR 0062). */
+  currency: string;
+  tz: string;
 }
 
 export type ToolResult =
@@ -955,7 +959,7 @@ export async function runTool(
             .from('reviews')
             .select('themes')
             .eq('org_id', ctx.orgId)
-            .gte('reviewed_at', `${from}T00:00:00+06:00`)
+            .gte('reviewed_at', businessDayBounds(from, 0, ctx.tz).start.toISOString())
             .limit(500),
         ]);
         if (ratings.error) return fail(ratings.error);

@@ -9,7 +9,7 @@ import { Card, CardTitle, EmptyState, Input, Label, PageTitle } from '@/componen
 import { PillNav } from '@/components/ui/pill-nav';
 import { PurchaseEntry } from '@/components/purchase-entry';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
@@ -49,7 +49,7 @@ export default async function PurchasesPage({
     getLocale(),
   ]);
   const loc = locale as Locale;
-  const money = (p: number) => formatBDT(p, loc);
+  const money = (p: number) => formatMoney(p, loc, ctx.place.currency);
   const { date: today } = await businessToday(ctx.org.id);
   const supabase = await createClient();
   const [{ data: ingredients }, { data: suppliers }, { data: aliases }] = await Promise.all([

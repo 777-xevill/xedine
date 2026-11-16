@@ -10,10 +10,10 @@ import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
 import { aiConfigured } from '@/lib/llm-gateway';
 import {
-  formatBDT,
-  formatDhakaDate,
-  formatDhakaDay,
-  formatDhakaDayMonth,
+  formatMoney,
+  formatDate,
+  formatDay,
+  formatDayMonth,
   formatNumber,
   type Locale,
 } from '@/lib/i18n/format';
@@ -27,7 +27,8 @@ import {
 } from '@/modules/metrics/queries';
 import { getOrgContext } from '@/modules/tenancy/context';
 
-const asDate = (d: string) => new Date(`${d}T06:00:00Z`);
+/** A business date drawn as itself: noon UTC, shown in UTC (the same day in every zone). */
+const asDate = (d: string) => new Date(`${d}T12:00:00Z`);
 const UUID = /^[0-9a-f-]{36}$/;
 const METHODS = ['cash', 'card', 'bkash', 'nagad', 'rocket', 'upay', 'bank'];
 const TOP_ITEMS = 10;
@@ -72,7 +73,7 @@ export default async function SalesPage({
     getLocale(),
   ]);
   const loc = locale as Locale;
-  const money = (p: number) => formatBDT(p, loc, { poisha: 'never' });
+  const money = (p: number) => formatMoney(p, loc, ctx.place.currency, { poisha: 'never' });
   const window: VelocityWindow = (WINDOWS as readonly string[]).includes(sp.window ?? '')
     ? (sp.window as VelocityWindow)
     : 'today';
@@ -180,7 +181,7 @@ export default async function SalesPage({
         {bestDay ? (
           <p className="text-sm font-medium text-foreground">
             {t('charts.bestDay', {
-              day: formatDhakaDay(asDate(bestDay), loc),
+              day: formatDay(asDate(bestDay), loc, 'UTC'),
               amount: money(dayPoints.find((d) => d.date === bestDay)?.net ?? 0),
             })}
           </p>
@@ -190,8 +191,8 @@ export default async function SalesPage({
           peak={bestDay}
           items={dayPoints.map((d) => ({
             key: d.date,
-            axisLabel: formatDhakaDayMonth(asDate(d.date), loc),
-            label: formatDhakaDay(asDate(d.date), loc),
+            axisLabel: formatDayMonth(asDate(d.date), loc, 'UTC'),
+            label: formatDay(asDate(d.date), loc, 'UTC'),
             value: d.net,
             display: money(d.net),
           }))}
@@ -267,10 +268,10 @@ export default async function SalesPage({
         {from && to ? (
           <p className="ms-auto text-sm text-secondary">
             {from === to
-              ? formatDhakaDate(asDate(from), loc)
+              ? formatDate(asDate(from), loc, 'UTC')
               : t('range', {
-                  from: formatDhakaDate(asDate(from), loc),
-                  to: formatDhakaDate(asDate(to), loc),
+                  from: formatDate(asDate(from), loc, 'UTC'),
+                  to: formatDate(asDate(to), loc, 'UTC'),
                 })}
           </p>
         ) : null}

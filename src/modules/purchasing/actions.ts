@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT } from '@/lib/i18n/format';
+import { formatMoney } from '@/lib/i18n/format';
 import { aiConfigured, aiErrorKey } from '@/lib/llm-gateway';
 import { parseTakaToPoisha } from '@/lib/money';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
@@ -219,7 +219,9 @@ export async function sayBazarAction(input: {
     qty: String(l.qty),
     unit: l.unit,
     total:
-      l.line_total_poisha === null ? '' : formatBDT(l.line_total_poisha, 'en', { symbol: false }),
+      l.line_total_poisha === null
+        ? ''
+        : formatMoney(l.line_total_poisha, 'en', 'BDT', { symbol: false }),
     days: validDays(l.for_days) ? l.for_days : null,
   }));
   // The form has one "for how many days" for the whole purchase (ADR 0029): the list's own words, else

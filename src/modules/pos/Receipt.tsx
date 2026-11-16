@@ -2,7 +2,9 @@
 
 import { useTranslations } from 'next-intl';
 import { QrCode } from '@/components/qr-code';
-import { formatBDT, formatDhakaDateTime, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatDateTime, type Locale } from '@/lib/i18n/format';
+import { tillPlace } from './till-place';
+import { taxKindOf } from '@/modules/social/culture';
 import type { OrderLine, OrderRow, ReceiptInfo } from './client';
 import { useTill } from './till-context';
 
@@ -33,8 +35,10 @@ export function Receipt({
   memberUrl?: string | null;
 }) {
   const t = useTranslations('pos');
+  const tp = useTranslations('place');
   const { device } = useTill();
-  const money = (poisha: number) => formatBDT(poisha, locale, { poisha: 'always' });
+  const money = (poisha: number) =>
+    formatMoney(poisha, locale, tillPlace().currency, { poisha: 'always' });
   const activeLines = lines.filter((l) => l.status === 'active');
   const number =
     order.order_number !== null ? t('orderNumber', { number: order.order_number }) : null;
@@ -47,7 +51,13 @@ export function Receipt({
           <p className="center">{device.branchName}</p>
           {info.address ? <p className="center">{info.address}</p> : null}
           {info.phone ? <p className="center">{info.phone}</p> : null}
-          {info.bin ? <p className="center">{t('receiptBin', { bin: info.bin })}</p> : null}
+          {info.bin ? (
+            <p className="center">
+              {tillPlace().country === 'BD'
+                ? t('receiptBin', { bin: info.bin })
+                : t('receiptTaxNo', { bin: info.bin })}
+            </p>
+          ) : null}
         </>
       ) : (
         <>
@@ -57,7 +67,7 @@ export function Receipt({
       )}
       {number ? <p className="center bold">{number}</p> : null}
       {tableName ? <p className="center">{tableName}</p> : null}
-      <p className="center">{formatDhakaDateTime(new Date(order.placed_at), locale)}</p>
+      <p className="center">{formatDateTime(new Date(order.placed_at), locale, tillPlace().tz)}</p>
       <div className="rule" />
       {activeLines.map((l) => (
         <div key={l.id}>
@@ -84,7 +94,7 @@ export function Receipt({
             </div>
           ) : null}
           <div className="row">
-            <span>{t('vat')}</span>
+            <span>{t('vat', { tax: tp(`taxNames.${taxKindOf(tillPlace().country)}`) })}</span>
             <span>{money(order.vat_poisha)}</span>
           </div>
           {order.service_charge_poisha > 0 ? (

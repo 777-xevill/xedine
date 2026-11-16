@@ -134,13 +134,16 @@ export class AiError extends Error {
   }
 }
 
-// +880 1XXXXXXXXX / 01XXXXXXXXX (Bangla or Latin digits) and e-mail addresses.
+// +880 1XXXXXXXXX / 01XXXXXXXXX (Bangla or Latin digits), any number written with its country code
+// (+44 7700 900123, a restaurant abroad, ADR 0062) and e-mail addresses. A bare local number abroad is not
+// masked: it cannot be told from an amount, and the model must see amounts.
 const PHONE = /(?:\+?(?:88|৮৮)\s?)?(?:0|০)(?:1|১)[3-9৩-৯][\d০-৯]{2}[\s-]?[\d০-৯]{6}/g;
+const INTL_PHONE = /\+[1-9](?:[\s-]?\d){7,14}/g;
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 /** CLAUDE.md #8: phone numbers and e-mails never reach a model. */
 export function maskPii(text: string): string {
-  return text.replace(EMAIL, '[email]').replace(PHONE, '[phone]');
+  return text.replace(EMAIL, '[email]').replace(PHONE, '[phone]').replace(INTL_PHONE, '[phone]');
 }
 
 export function costUsdMicros(

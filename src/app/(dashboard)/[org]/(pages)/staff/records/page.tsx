@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import { businessToday } from '@/modules/metrics/queries';
 import { addNoteAction, markAllPresentAction, markAttendanceAction } from '@/modules/staff/actions';
@@ -263,7 +263,7 @@ export default async function StaffRecordsPage({
                         {n.staff_id && names.get(n.staff_id as string)
                           ? t('aboutPerson', { name: names.get(n.staff_id as string) ?? '' })
                           : t('aboutRestaurant')}
-                        {` · ${formatDhakaDate(new Date(n.created_at as string), loc)}`}
+                        {` · ${formatDate(new Date(n.created_at as string), loc, ctx.place.tz)}`}
                       </p>
                       <p className="mt-1 text-sm whitespace-pre-wrap">{n.body as string}</p>
                     </div>

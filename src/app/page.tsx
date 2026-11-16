@@ -17,11 +17,13 @@ import {
   TrendingUp,
   Users,
   WifiOff,
+  Globe,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { countryName, TARGET_COUNTRIES } from '@/modules/social/culture';
 import type { CSSProperties, ReactNode } from 'react';
 import { ParticleGlobe } from '@/components/landing/particle-globe';
 import { Layer, Stage3D } from '@/components/landing/stage-3d';
@@ -71,10 +73,11 @@ export default async function HomePage() {
     redirect(first ? `/${first.slug}` : '/onboarding');
   }
 
-  const [t, tl, tlegal] = await Promise.all([
+  const [t, tl, tlegal, locale] = await Promise.all([
     getTranslations('common'),
     getTranslations('landing'),
     getTranslations('legal'),
+    getLocale(),
   ]);
 
   const platforms = [
@@ -158,6 +161,7 @@ export default async function HomePage() {
                 { icon: <WifiOff />, label: tl('chipOffline') },
                 { icon: <Languages />, label: tl('chipLanguage') },
                 { icon: <ShieldCheck />, label: tl('chipBdt') },
+                { icon: <Globe />, label: tl('chipCountries') },
               ].map((chip) => (
                 <li key={chip.label} className="inline-flex items-center gap-2">
                   <span
@@ -363,6 +367,25 @@ export default async function HomePage() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section id="countries" className="scroll-mt-20 pb-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <SectionHead eyebrow={tl('countriesEyebrow')} title={tl('countriesTitle')} />
+            <p className="mx-auto mt-3 max-w-2xl text-center text-balance text-secondary">
+              {tl('countriesBody')}
+            </p>
+            <ul className="mt-10 flex flex-wrap justify-center gap-3">
+              {TARGET_COUNTRIES.map((code) => (
+                <li
+                  key={code}
+                  className="rounded-full bg-surface px-4 py-2 text-sm font-semibold ring-1 ring-line"
+                >
+                  {countryName(code, locale)}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 

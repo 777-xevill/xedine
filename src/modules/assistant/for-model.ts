@@ -57,10 +57,10 @@ export function plain(text: string): string {
 
 /**
  * The model's answer as the owner reads it, after the numeric check: plain text, taka never written as
- * rupees (the model sometimes writes ₹), and a Bangla answer in Bangla digits like the rest of the
- * app. Only the script changes, never a value; the validator reads both digit sets.
+ * rupees (the model sometimes writes ₹ for a Bangladeshi restaurant), and a Bangla answer in Bangla digits
+ * like the rest of the app. Only the script changes, never a value; the validator reads both digit sets.
  */
-export function forReader(text: string, locale: 'bn' | 'en'): string {
-  const out = plain(text).replace(/₹/g, '৳');
+export function forReader(text: string, locale: 'bn' | 'en', currency: string = 'BDT'): string {
+  const out = currency === 'BDT' ? plain(text).replace(/₹/g, '৳') : plain(text);
   return locale === 'bn' ? toBanglaDigits(out) : out;
 }

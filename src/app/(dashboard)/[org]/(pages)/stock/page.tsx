@@ -58,10 +58,10 @@ import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
 import { aiConfigured } from '@/lib/llm-gateway';
 import {
-  formatBDT,
+  formatMoney,
   formatBps,
-  formatDhakaDate,
-  formatDhakaDay,
+  formatDate,
+  formatDay,
   formatNumber,
   type Locale,
 } from '@/lib/i18n/format';
@@ -143,9 +143,9 @@ export default async function StockPage({
   const qtyFull = (q: number, b: BaseUnit) => formatQuantity(q, b, loc, unit);
   const label = (name: string, nameBn: string | null) => (loc === 'bn' && nameBn ? nameBn : name);
   // A business day as a date in the reader's language and digits (06:00Z is midday in Dhaka).
-  const day = (d: string) => formatDhakaDate(new Date(`${d}T06:00:00Z`), loc);
+  const day = (d: string) => formatDate(new Date(`${d}T12:00:00Z`), loc, 'UTC');
   // The same, short and with its weekday, for a lot's countdown ("Sat, 28 Sept").
-  const shortDay = (d: string) => formatDhakaDay(new Date(`${d}T06:00:00Z`), loc);
+  const shortDay = (d: string) => formatDay(new Date(`${d}T12:00:00Z`), loc, 'UTC');
   const title = (
     <PageTitle title={t('title')} subtitle={t('subtitle')} actions={<LocaleSwitcher />} />
   );
@@ -693,7 +693,7 @@ export default async function StockPage({
               const over = kind === 'loss' || kind === 'small';
               const money =
                 over && canSeeMoney && r.over_poisha !== null
-                  ? formatBDT(r.over_poisha, loc)
+                  ? formatMoney(r.over_poisha, loc, ctx.place.currency)
                   : null;
               // ADR 0029: staff food is written-down waste kept out of over-usage, shown on its own.
               const staff = r.staff_food_qty > 0;
@@ -841,7 +841,7 @@ export default async function StockPage({
                           {canSeeMoney && r.staff_food_poisha !== null
                             ? t('loss.staffFoodMoney', {
                                 qty: qtyFull(r.staff_food_qty, r.base),
-                                amount: formatBDT(r.staff_food_poisha, loc),
+                                amount: formatMoney(r.staff_food_poisha, loc, ctx.place.currency),
                               })
                             : t('loss.staffFood', { qty: qtyFull(r.staff_food_qty, r.base) })}
                         </span>
@@ -955,7 +955,9 @@ export default async function StockPage({
                     icon={groups.loss.length > 0 ? <CircleAlert /> : <TriangleAlert />}
                     title={
                       canSeeMoney
-                        ? t('loss.titleMoney', { amount: formatBDT(total, loc) })
+                        ? t('loss.titleMoney', {
+                            amount: formatMoney(total, loc, ctx.place.currency),
+                          })
                         : t('loss.titleItems', { count: overCount })
                     }
                     body={canSeeMoney ? t('loss.bodyItems', { count: overCount }) : t('loss.body')}
@@ -975,7 +977,9 @@ export default async function StockPage({
                     icon={<Soup />}
                     title={
                       canSeeMoney
-                        ? t('loss.staffTitleMoney', { amount: formatBDT(staffTotal, loc) })
+                        ? t('loss.staffTitleMoney', {
+                            amount: formatMoney(staffTotal, loc, ctx.place.currency),
+                          })
                         : t('loss.staffTitleItems', { count: staffItems })
                     }
                     body={t('loss.staffBody')}
@@ -1093,20 +1097,20 @@ export default async function StockPage({
                               className={`font-semibold tabular-nums ${signed && v > 0 ? 'text-danger' : ''}`}
                             >
                               {signed && v > 0 ? '+' : ''}
-                              {formatBDT(v, loc)}
+                              {formatMoney(v, loc, ctx.place.currency)}
                             </dd>
                           </div>
                         ))}
                         <div className="flex justify-between gap-2 rounded-input border-t border-line px-4 pt-3">
                           <dt className="font-bold">{t('bridge.actual')}</dt>
                           <dd className="text-lg font-extrabold tabular-nums">
-                            {formatBDT(bridge.cogs_actual_poisha, loc)}
+                            {formatMoney(bridge.cogs_actual_poisha, loc, ctx.place.currency)}
                           </dd>
                         </div>
                       </dl>
                       <p className="mt-3 text-sm text-secondary">
                         {t('bridgeFoot', {
-                          band: formatBDT(bridge.uncertainty_poisha, loc),
+                          band: formatMoney(bridge.uncertainty_poisha, loc, ctx.place.currency),
                           pct:
                             bridge.cogs_pct_of_sales_bps === null
                               ? '—'
@@ -1251,7 +1255,7 @@ export default async function StockPage({
                   </div>
                   {canSeeMoney && board.length > 0 ? (
                     <p className="mb-3 text-sm">
-                      {t('wasteTotal', { amount: formatBDT(total, loc) })}
+                      {t('wasteTotal', { amount: formatMoney(total, loc, ctx.place.currency) })}
                     </p>
                   ) : null}
                   {board.length === 0 ? (
@@ -1289,7 +1293,9 @@ export default async function StockPage({
                                 : t('portionCount', { count: r.qty_portions ?? 0 })}
                             </p>
                             {r.value_poisha !== null ? (
-                              <p className="font-semibold">{formatBDT(r.value_poisha, loc)}</p>
+                              <p className="font-semibold">
+                                {formatMoney(r.value_poisha, loc, ctx.place.currency)}
+                              </p>
                             ) : null}
                           </div>
                         </li>

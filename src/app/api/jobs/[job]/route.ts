@@ -2,7 +2,14 @@ import { timingSafeEqual } from 'node:crypto';
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { now } from '@/lib/time/clock';
-import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, weekday } from '@/lib/time/business-date';
+import {
+  addDays,
+  businessDate,
+  DEFAULT_CUTOFF_MINUTES,
+  DHAKA_TZ,
+  weekday,
+  zonedParts,
+} from '@/lib/time/business-date';
 import { queueBrief } from '@/modules/briefs/jobs/briefs';
 import { sendComplianceReminders } from '@/modules/compliance/jobs/reminders';
 import { runAutoCampaigns, sendFeedbackRequests } from '@/modules/customers/jobs/retention';
@@ -39,10 +46,14 @@ function authorized(request: NextRequest): boolean {
 
 type Supabase = ReturnType<typeof createServiceRoleClient>;
 
+/** The local hours the morning brief and the evening close are due (the restaurant's own clock). */
+const MORNING_HOUR = 9;
+const EVENING_HOUR = 23;
+
 async function closeEveryOrg(supabase: Supabase, at: Date) {
   const { data: orgs, error } = await supabase
     .from('organizations')
-    .select('id, org_settings(default_cutoff_minutes)');
+    .select('id, org_settings(default_cutoff_minutes, timezone)');
   if (error) throw error;
   const outcomes: { org: string; status: string }[] = [];
   for (const org of orgs ?? []) {
@@ -50,9 +61,16 @@ async function closeEveryOrg(supabase: Supabase, at: Date) {
     const embedded = org.org_settings as unknown;
     const settings = (Array.isArray(embedded) ? embedded[0] : embedded) as {
       default_cutoff_minutes: number;
+      timezone: string;
     } | null;
+    // Runs every hour (ADR 0062): the day just ended on the restaurant's own clock is closed once (the claim
+    // below), at the first run after its cutoff.
     const closed = addDays(
-      businessDate(at, settings?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES),
+      businessDate(
+        at,
+        settings?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES,
+        settings?.timezone ?? DHAKA_TZ,
+      ),
       -1,
     );
     const { data: runId } = await supabase.rpc('job_run_begin', {
@@ -79,13 +97,15 @@ async function closeEveryOrg(supabase: Supabase, at: Date) {
 }
 
 /**
- * Morning (09:00 Dhaka): refresh each org's insights for today, then queue its brief — with the weekly
- * review on the org's first day of the week. Evening (23:00): the day's close. Per-org claims, as above.
+ * Morning (from 09:00 on the restaurant's own clock): refresh each org's insights for today, then queue its
+ * brief — with the weekly review on the org's first day of the week. Evening (from 23:00): the day's close.
+ * The jobs run every hour (ADR 0062) and each org takes its turn once its local hour comes; the per-org claim
+ * keeps it to once a day.
  */
 async function briefEveryOrg(supabase: Supabase, at: Date, kind: 'morning' | 'evening') {
   const { data: orgs, error } = await supabase
     .from('organizations')
-    .select('id, org_settings(default_cutoff_minutes, week_start)');
+    .select('id, org_settings(default_cutoff_minutes, week_start, timezone)');
   if (error) throw error;
   const outcomes: { org: string; status: string }[] = [];
   for (const org of orgs ?? []) {
@@ -93,8 +113,15 @@ async function briefEveryOrg(supabase: Supabase, at: Date, kind: 'morning' | 'ev
     const settings = (Array.isArray(embedded) ? embedded[0] : embedded) as {
       default_cutoff_minutes: number;
       week_start: number;
+      timezone: string;
     } | null;
-    const today = businessDate(at, settings?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES);
+    const tz = settings?.timezone ?? DHAKA_TZ;
+    const hour = zonedParts(at, tz).hour;
+    if (kind === 'morning' ? hour < MORNING_HOUR : hour < EVENING_HOUR) {
+      outcomes.push({ org: org.id as string, status: 'not_due' });
+      continue;
+    }
+    const today = businessDate(at, settings?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES, tz);
     const job = kind === 'morning' ? 'morning_brief' : 'evening_close';
     const { data: runId } = await supabase.rpc('job_run_begin', {
       p_job: job,

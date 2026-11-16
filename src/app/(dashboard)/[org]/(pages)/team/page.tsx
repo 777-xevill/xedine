@@ -6,7 +6,7 @@ import { ConfirmTeamButton, InviteForm } from '@/components/team-forms';
 import { Button } from '@/components/ui/button';
 import { Card, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
+import { formatDate, type Locale } from '@/lib/i18n/format';
 import {
   removeMemberAction,
   revokeInvitationAction,
@@ -106,7 +106,7 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
                       t('allBranchesScope')}{' '}
                     ·{' '}
                     {t('expires', {
-                      date: formatDhakaDate(new Date(inv.expires_at), locale as Locale),
+                      date: formatDate(new Date(inv.expires_at), locale as Locale, ctx.place.tz),
                     })}
                   </p>
                 </div>

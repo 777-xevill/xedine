@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatBDT,
+  formatMoney,
   formatBps,
-  formatDhakaDateTime,
-  formatDhakaTime,
+  formatDateTime,
+  formatTime,
   formatNumber,
   groupLakh,
   toBanglaDigits,
@@ -24,41 +24,41 @@ describe('groupLakh (ROADMAP Phase 0 Done-when: 1,23,45,678)', () => {
   });
 });
 
-describe('formatBDT', () => {
+describe('formatMoney in taka', () => {
   it('formats taka with lakh grouping in English', () => {
-    expect(formatBDT(12_345_600, 'en')).toBe('৳1,23,456');
-    expect(formatBDT(1_234_567_800, 'en')).toBe('৳1,23,45,678');
-    expect(formatBDT(0, 'en')).toBe('৳0');
+    expect(formatMoney(12_345_600, 'en', 'BDT')).toBe('৳1,23,456');
+    expect(formatMoney(1_234_567_800, 'en', 'BDT')).toBe('৳1,23,45,678');
+    expect(formatMoney(0, 'en', 'BDT')).toBe('৳0');
   });
 
   it("'auto' shows poisha only when non-zero", () => {
-    expect(formatBDT(30_050, 'en')).toBe('৳300.50');
-    expect(formatBDT(30_005, 'en')).toBe('৳300.05');
-    expect(formatBDT(30_000, 'en')).toBe('৳300');
+    expect(formatMoney(30_050, 'en', 'BDT')).toBe('৳300.50');
+    expect(formatMoney(30_005, 'en', 'BDT')).toBe('৳300.05');
+    expect(formatMoney(30_000, 'en', 'BDT')).toBe('৳300');
   });
 
   it("'always' and 'never'", () => {
-    expect(formatBDT(30_000, 'en', { poisha: 'always' })).toBe('৳300.00');
-    expect(formatBDT(30_049, 'en', { poisha: 'never' })).toBe('৳300');
-    expect(formatBDT(30_050, 'en', { poisha: 'never' })).toBe('৳301');
+    expect(formatMoney(30_000, 'en', 'BDT', { poisha: 'always' })).toBe('৳300.00');
+    expect(formatMoney(30_049, 'en', 'BDT', { poisha: 'never' })).toBe('৳300');
+    expect(formatMoney(30_050, 'en', 'BDT', { poisha: 'never' })).toBe('৳301');
   });
 
   it('uses Bangla digits when the locale is bn', () => {
-    expect(formatBDT(12_345_600, 'bn')).toBe('৳১,২৩,৪৫৬');
-    expect(formatBDT(30_050, 'bn')).toBe('৳৩০০.৫০');
+    expect(formatMoney(12_345_600, 'bn', 'BDT')).toBe('৳১,২৩,৪৫৬');
+    expect(formatMoney(30_050, 'bn', 'BDT')).toBe('৳৩০০.৫০');
   });
 
   it('negative values carry a minus sign; zero is never negative', () => {
-    expect(formatBDT(-2_500_000, 'en')).toBe('-৳25,000');
-    expect(formatBDT(-49, 'en', { poisha: 'never' })).toBe('৳0');
+    expect(formatMoney(-2_500_000, 'en', 'BDT')).toBe('-৳25,000');
+    expect(formatMoney(-49, 'en', 'BDT', { poisha: 'never' })).toBe('৳0');
   });
 
   it('can omit the symbol', () => {
-    expect(formatBDT(30_000, 'en', { symbol: false })).toBe('300');
+    expect(formatMoney(30_000, 'en', 'BDT', { symbol: false })).toBe('300');
   });
 
   it('rejects non-integer poisha', () => {
-    expect(() => formatBDT(1.5, 'en')).toThrow(RangeError);
+    expect(() => formatMoney(1.5, 'en', 'BDT')).toThrow(RangeError);
   });
 });
 
@@ -86,15 +86,43 @@ describe('Dhaka date/time formatting', () => {
   const instant = new Date('2026-09-21T22:00:00Z');
 
   it('renders Dhaka wall-clock time, not UTC or the server zone', () => {
-    expect(formatDhakaTime(instant, 'en')).toBe('04:00');
+    expect(formatTime(instant, 'en', 'Asia/Dhaka')).toBe('04:00');
   });
 
   it('localizes to Bangla digits for bn', () => {
-    expect(formatDhakaTime(instant, 'bn')).toMatch(/^[০-৯]{2}[:.][০-৯]{2}$/);
-    expect(formatDhakaDateTime(instant, 'bn')).toMatch(/[০-৯]/);
+    expect(formatTime(instant, 'bn', 'Asia/Dhaka')).toMatch(/^[০-৯]{2}[:.][০-৯]{2}$/);
+    expect(formatDateTime(instant, 'bn', 'Asia/Dhaka')).toMatch(/[০-৯]/);
   });
 
   it('date part is the Dhaka date', () => {
-    expect(formatDhakaDateTime(instant, 'en')).toContain('22');
+    expect(formatDateTime(instant, 'en', 'Asia/Dhaka')).toContain('22');
+  });
+});
+
+describe('formatMoney in the restaurant’s own currency (ADR 0062)', () => {
+  it('groups by thousands outside South Asia, with the currency’s own sign', () => {
+    expect(formatMoney(12_345_600, 'en', 'USD')).toBe('$123,456');
+    expect(formatMoney(125_050, 'en', 'GBP')).toBe('£1,250.50');
+    expect(formatMoney(125_000, 'en', 'AED')).toBe('AED 1,250');
+    expect(formatMoney(125_000, 'en', 'SAR')).toBe('SAR 1,250');
+    expect(formatMoney(125_000, 'en', 'MYR')).toBe('RM1,250');
+    expect(formatMoney(125_000, 'en', 'SGD')).toBe('S$1,250');
+    expect(formatMoney(-2_500_000, 'en', 'USD')).toBe('-$25,000');
+  });
+
+  it('keeps lakh grouping for the rupees and taka', () => {
+    expect(formatMoney(12_345_600, 'en', 'INR')).toBe('₹1,23,456');
+    expect(formatMoney(12_345_600, 'en', 'PKR')).toBe('Rs 1,23,456');
+    expect(formatMoney(12_345_600, 'bn', 'BDT')).toBe('৳১,২৩,৪৫৬');
+  });
+});
+
+describe('times on the restaurant’s own clock (ADR 0062)', () => {
+  it('shows the same instant in each zone', () => {
+    const instant = new Date('2026-11-16T09:00:00Z');
+    expect(formatTime(instant, 'en', 'Asia/Dhaka')).toBe('15:00');
+    expect(formatTime(instant, 'en', 'Asia/Dubai')).toBe('13:00');
+    expect(formatTime(instant, 'en', 'Europe/London')).toBe('09:00');
+    expect(formatTime(instant, 'en', 'America/New_York')).toBe('04:00');
   });
 });

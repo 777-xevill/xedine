@@ -478,6 +478,23 @@ export type CountryCode = keyof typeof COUNTRIES;
 export const COUNTRY_CODES = Object.keys(COUNTRIES) as CountryCode[];
 export const DEFAULT_COUNTRY: CountryCode = 'BD';
 
+/**
+ * The ten markets Xedine is pitched to first (the founder, ADR 0062): South Asian and halal restaurant
+ * culture, Bangladeshi and South Asian owners abroad, English or Bangla screens, currencies in hundredths.
+ */
+export const TARGET_COUNTRIES = [
+  'BD',
+  'IN',
+  'PK',
+  'AE',
+  'SA',
+  'QA',
+  'MY',
+  'SG',
+  'GB',
+  'US',
+] as const satisfies readonly CountryCode[];
+
 export function isCountry(code: unknown): code is CountryCode {
   return typeof code === 'string' && Object.prototype.hasOwnProperty.call(COUNTRIES, code);
 }
@@ -516,8 +533,8 @@ export const timezonesOf = (code: string): readonly string[] => profile(code).tz
 export const defaultTimezone = (code: string): string => profile(code).tz[0]!;
 export const nationalDayOf = (code: string) => profile(code).national ?? null;
 
-/** Each country's own currency (ISO 4217): the one a new restaurant there starts with. */
-const CURRENCY: Record<CountryCode, string> = {
+/** Each country's own currency (ISO 4217). */
+const OWN_CURRENCY: Record<CountryCode, string> = {
   BD: 'BDT',
   IN: 'INR',
   PK: 'PKR',
@@ -563,11 +580,43 @@ const CURRENCY: Record<CountryCode, string> = {
   AU: 'AUD',
   NZ: 'NZD',
 };
+/**
+ * Currencies that do not count in hundredths (ISO 4217 minor units): the yen, won and dong have none, the
+ * dinars of Kuwait, Bahrain, Oman and Jordan thousandths. Every amount the app stores is hundredths (ADR 0005,
+ * 0062), so these are not offered yet. (The browser's own list shows the Pakistani rupee without paisa, but
+ * it counts in hundredths.)
+ */
+const NOT_HUNDREDTHS = new Set(['JPY', 'KRW', 'VND', 'KWD', 'BHD', 'OMR', 'JOD']);
+const inHundredths = (code: string) => !NOT_HUNDREDTHS.has(code);
+
+/**
+ * The currency a new restaurant in a country starts with: its own when it counts in hundredths, else US
+ * dollars (the yen and won have no hundredths, the Gulf dinars have thousandths; TODO(verify) a decision
+ * before Japan, Korea, Vietnam, Iran, Kuwait, Bahrain, Oman or Jordan are offered their own).
+ */
+const CURRENCY = Object.fromEntries(
+  COUNTRY_CODES.map((c) => [c, inHundredths(OWN_CURRENCY[c]) ? OWN_CURRENCY[c] : 'USD']),
+) as Record<CountryCode, string>;
 export const currencyOf = (code: unknown): string => CURRENCY[countryOf(code)];
-/** Every currency a restaurant can keep its books in (each country's own, once). */
+/** Every currency a restaurant can keep its books in (each country's own that counts in hundredths). */
 export const CURRENCIES: readonly string[] = [...new Set(Object.values(CURRENCY))].sort();
 export const isCurrency = (c: unknown): c is string =>
   typeof c === 'string' && CURRENCIES.includes(c);
+
+/**
+ * What the sales tax is called where the restaurant is (ADR 0062): the rate is always the owner's own
+ * (ADR 0005), only the name changes. TODO(verify) with an accountant in each market.
+ */
+export type TaxKind = 'vat' | 'gst' | 'sales_tax' | 'sst' | 'tax';
+const GST: readonly string[] = ['IN', 'PK', 'SG', 'AU', 'NZ', 'CA'];
+export function taxKindOf(country: unknown): TaxKind {
+  const c = countryOf(country);
+  if (GST.includes(c)) return 'gst';
+  if (c === 'US') return 'sales_tax';
+  if (c === 'MY') return 'sst';
+  if (c === 'QA' || c === 'KW') return 'tax';
+  return 'vat';
+}
 
 /** A currency's name in a language ("US Dollar", "মার্কিন ডলার"). */
 export function currencyName(code: string, locale: string = 'en'): string {
@@ -579,11 +628,10 @@ export function currencyName(code: string, locale: string = 'en'): string {
 }
 
 /**
- * Prices are shown only in taka for now: every amount the app formats is taka (ADR 0005), so a restaurant
- * keeping its books in another currency shows no price in a post or video and makes no offer video, rather
- * than printing "৳" for someone's dollars. A later step formats each restaurant's own currency.
+ * Whether posts and videos may show prices: in any currency the app formats (ADR 0062). Every stored amount is
+ * hundredths, so only currencies with two decimals are offered (none for the yen, three for the Kuwaiti dinar).
  */
-export const pricesSupported = (currency: string): boolean => currency === 'BDT';
+export const pricesSupported = (currency: string): boolean => CURRENCIES.includes(currency);
 
 // ---------------------------------------------------------------------------------------------
 // Dates
@@ -897,4 +945,61 @@ export function placeOptions(locale: string, at: Date): PlaceOptions {
     })),
     currencyOf: Object.fromEntries(COUNTRY_CODES.map((code) => [code, currencyOf(code)])),
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The country's calendar for the Plan page and the forecast (ADR 0062)
+// ---------------------------------------------------------------------------------------------
+
+export interface CountryDay {
+  /** Stable per country, day and festival, so a day the owner deleted is not added again. */
+  key: string;
+  occasion: Occasion;
+  kind: 'holiday' | 'eid' | 'ramadan';
+  starts_on: BusinessDate;
+  ends_on: BusinessDate;
+}
+
+/** Festivals that are not a day off or a sales day of their own (the weekly greeting, every iftar). */
+const NOT_ON_CALENDAR: readonly Occasion[] = ['jummah', 'weekend', 'iftar', 'ramadan'];
+
+/**
+ * The special days of a country (not Bangladesh, which keeps BD_CALENDAR) from `today` for `aheadDays`: each
+ * festival as one event over its days (a moon-sighted Eid spans its window), and Ramadan as one event where
+ * it is kept. Pure; the weather job adds them to the restaurant's calendar once each.
+ */
+export function countryCalendar(code: string, today: BusinessDate, aheadDays = 120): CountryDay[] {
+  const c = countryOf(code);
+  const out: CountryDay[] = [];
+  const until = addDays(today, aheadDays);
+  let open: CountryDay | null = null;
+  for (let d = today; d <= until; d = addDays(d, 1)) {
+    const o = occasionOnDate(c, d);
+    const keep = o && !NOT_ON_CALENDAR.includes(o) ? o : null;
+    if (open && keep === open.occasion && addDays(open.ends_on, 1) === d) {
+      open.ends_on = d;
+      continue;
+    }
+    if (keep) {
+      open = {
+        key: `${c}-${keep}-${d}`,
+        occasion: keep,
+        kind: keep === 'eid_fitr' || keep === 'eid_adha' ? 'eid' : 'holiday',
+        starts_on: d,
+        ends_on: d,
+      };
+      out.push(open);
+    } else open = null;
+  }
+  if ((profile(c).festivals as readonly Occasion[]).includes('iftar'))
+    for (const [from, to] of RAMADAN)
+      if (to >= today && from <= until)
+        out.push({
+          key: `${c}-ramadan-${from}`,
+          occasion: 'ramadan',
+          kind: 'ramadan',
+          starts_on: from,
+          ends_on: to,
+        });
+  return out.sort((a, b) => a.starts_on.localeCompare(b.starts_on));
 }

@@ -143,7 +143,7 @@ async function ask({
   const at = now();
   const { data: settings } = await supabase
     .from('org_settings')
-    .select('default_cutoff_minutes')
+    .select('default_cutoff_minutes, timezone')
     .eq('org_id', orgId)
     .maybeSingle();
   const answer = await askAssistant({
@@ -151,7 +151,11 @@ async function ask({
     orgId,
     question,
     nowIso: at.toISOString(),
-    businessDate: businessDate(at, settings?.default_cutoff_minutes ?? 240),
+    businessDate: businessDate(
+      at,
+      settings?.default_cutoff_minutes ?? 240,
+      (settings?.timezone as string | undefined) ?? 'Asia/Dhaka',
+    ),
     ownerRules: (rules ?? []).map((r) => r.body as string),
     history,
     access,

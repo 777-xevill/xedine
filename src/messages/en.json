@@ -1,7 +1,7 @@
 {
   "common": {
     "appName": "Xedine",
-    "tagline": "See where your money is leaking — in taka, with proof.",
+    "tagline": "See where your money is leaking — in your own currency, with proof.",
     "signIn": "Sign in",
     "signUp": "Create account",
     "signOut": "Sign out",
@@ -72,7 +72,7 @@
     "aiNotConfigured": "AI drafting is not switched on yet.",
     "aiCapExceeded": "Today's AI allowance for this restaurant is used up. Try again tomorrow.",
     "aiFailed": "The AI did not work this time. Try again, or write it by hand.",
-    "phoneInvalid": "Enter a Bangladeshi mobile number, e.g. 01712345678.",
+    "phoneInvalid": "Enter a mobile number, like 01712345678, or with its country code, like +44 7700 900123.",
     "purchaseLinesInvalid": "Check the lines: each needs an ingredient, a quantity in a unit that fits it, and what was paid.",
     "purchaseInputRequired": "Add a photo of the chit, or type or say what was bought.",
     "quantityInvalid": "That quantity does not fit — use numbers, and a unit that suits the ingredient.",
@@ -95,8 +95,8 @@
     "facebookNoEmail": "Your Facebook account has no email address, so it can't be used to sign in. Please create an account with your email instead.",
     "facebookCancelled": "Facebook sign-in was cancelled. Nothing changed.",
     "facebookFailed": "Facebook sign-in didn't work. Please try again, or sign in with email.",
-    "memberEarnRule": "Write the points as a whole number from 1 to 1000, and the taka as an amount from ৳1.",
-    "memberPointValue": "Write what one point is worth, from ৳0.01 to ৳1,000.",
+    "memberEarnRule": "Write the points as a whole number from 1 to 1000, and the bill amount as 1 or more.",
+    "memberPointValue": "Write what one point is worth, from 0.01 to 1,000.",
     "memberMinRedeem": "Write the fewest points a customer can use as a whole number, 1 or more.",
     "memberPoints": "Write the points as a whole number, 1 or more.",
     "memberReason": "Write a reason, so you know later why the points changed.",
@@ -133,7 +133,7 @@
     "socialVideoPickDish": "Pick at least one dish.",
     "socialVideoTooMany": "Pick at most three dishes.",
     "socialOfferPrice": "Type an offer price lower than the menu price.",
-    "socialOfferNoPrices": "Offer videos need menu prices in taka, so they work only for restaurants in Bangladesh for now.",
+    "socialOfferNoPrices": "Offer videos are not available in this currency yet.",
     "socialVideoKindCount": "This kind of video needs a different number of dishes.",
     "socialOccasionText": "Write your special day.",
     "currencyLocked": "The currency cannot change after your first sale: every amount is already saved in it."
@@ -191,7 +191,7 @@
     "confirmedSignIn": "Your email is confirmed. Sign in with the email and password you just chose."
   },
   "landing": {
-    "eyebrow": "The restaurant app made for Bangladesh",
+    "eyebrow": "The restaurant app for Bangladesh, South Asia, the Gulf and beyond",
     "headline": "See where your money is leaking.",
     "headlineAccent": "Fix it from one app.",
     "heroBody": "Till, kitchen, stock, menu profit and social media in one place — in Bangla or English, even when the internet drops.",
@@ -201,7 +201,7 @@
     "navHow": "How it works",
     "chipOffline": "Works offline",
     "chipLanguage": "Bangla & English",
-    "chipBdt": "Every number in BDT",
+    "chipBdt": "Your own currency and clock",
     "mockSales": "Today's sales",
     "mockSalesValue": "৳ 48,920",
     "mockSalesDelta": "+12% vs last Friday",
@@ -229,7 +229,7 @@
         "body": "Orders reach the kitchen the moment they're taken; cooks tap when a dish is ready."
       },
       "leaks": {
-        "title": "Money leaks, in BDT",
+        "title": "Money leaks, in your currency",
         "body": "Voids, discounts and delivery commission, ranked by what they cost you — with proof."
       },
       "menuProfit": {
@@ -277,7 +277,11 @@
     "step3Body": "Take orders on the till and watch sales, profit and leaks live.",
     "ctaTitle": "Ready to stop the leaks?",
     "ctaBody": "Create your account and set up your first branch today.",
-    "footer": "Made for restaurants in Bangladesh."
+    "footer": "Made in Bangladesh, for restaurants everywhere.",
+    "chipCountries": "10 countries and counting",
+    "countriesEyebrow": "Where Xedine works",
+    "countriesTitle": "Built for restaurants in these countries",
+    "countriesBody": "Each restaurant runs on its own clock, money and tax name, greets its own festivals and takes its customers' local phone numbers."
   },
   "onboarding": {
     "title": "Set up your restaurant",
@@ -549,11 +553,11 @@
     "title": "Settings",
     "subtitle": "How your prices, taxes and business day work.",
     "priceBasis": "Menu prices",
-    "priceInclusive": "Include VAT (customer pays the menu price)",
-    "priceExclusive": "Exclude VAT (VAT is added at the till)",
+    "priceInclusive": "Include {tax} (customer pays the menu price)",
+    "priceExclusive": "Exclude {tax} ({tax} is added at the till)",
     "priceBasisHelp": "Locked after your first order, so your history stays comparable.",
-    "priceBasisLockedNow": "Locked: you already have sales, so this stays as it is. You can still change the VAT rate and everything else.",
-    "vatRate": "VAT rate (%)",
+    "priceBasisLockedNow": "Locked: you already have sales, so this stays as it is. You can still change the {tax} rate and everything else.",
+    "vatRate": "{tax} rate (%)",
     "serviceCharge": "Service charge (%)",
     "regulatoryNote": "Tax rules change. Enter the rates your accountant confirms — Xedine never assumes them.",
     "cutoff": "Business day starts at",
@@ -566,7 +570,7 @@
     "receiptTitle": "Receipt details",
     "receiptSubtitle": "Printed on receipts and KOTs. Mushak 6.3 fields — TODO(verify) with your accountant.",
     "legalName": "Legal / trade name",
-    "bin": "BIN",
+    "bin": "Tax number (BIN in Bangladesh, GSTIN in India, TRN in the UAE…)",
     "binHelp": "Business Identification Number — TODO(verify) with your accountant.",
     "address": "Address",
     "receiptPhone": "Phone (on receipt)",
@@ -592,10 +596,10 @@
     "editCommission": "Edit commission",
     "setCommission": "Set commission",
     "commissionPct": "Cut taken from each order (%)",
-    "commissionHint": "The share of the bill this platform keeps. Example: 30 means foodpanda keeps ৳30 of every ৳100 order. Dine-in and own delivery: 0.",
-    "fixedFee": "Extra charge per order (৳)",
+    "commissionHint": "The share of the bill this platform keeps. Example: 30 means foodpanda keeps 30 of every 100 spent. Dine-in and own delivery: 0.",
+    "fixedFee": "Extra charge per order",
     "fixedFeeHint": "A flat amount the platform charges on every order, whatever the bill. Leave empty if there is none.",
-    "packaging": "Box and bag cost per order (৳)",
+    "packaging": "Box and bag cost per order",
     "packagingHint": "What you spend on boxes, bags and cutlery for one delivery order. Leave empty if there is none.",
     "commissionIntro": "This helps us show your real profit on each channel.",
     "closeCommission": "Close",
@@ -618,7 +622,8 @@
     "whatsappHint": "To receive on WhatsApp, first send \"hi\" to the Xedine WhatsApp number from this phone. The brief arrives after that. Prefer not to? Connect Telegram in Settings: it needs no setup and costs nothing.",
     "whatsappNumber": "Your WhatsApp number",
     "briefLanguage": "Language",
-    "whatsappConsent": "Yes, send my briefs and answers to this number on WhatsApp."
+    "whatsappConsent": "Yes, send my briefs and answers to this number on WhatsApp.",
+    "receiptSubtitleOther": "Printed on receipts and kitchen tickets. Check the details your country asks for with your accountant."
   },
   "weekdays": {
     "0": "Sunday",
@@ -654,7 +659,7 @@
     "table": "Table",
     "noTable": "No table",
     "subtotal": "Subtotal",
-    "vat": "VAT",
+    "vat": "{tax}",
     "serviceCharge": "Service charge",
     "discount": "Discount",
     "total": "Total",
@@ -829,7 +834,7 @@
     "noPin": "{name} has no PIN yet. A manager sets it on the Staff page (Set PIN), then {name} can sign in here.",
     "shiftTitle": "Start your shift",
     "shiftExplain": "A shift is your working time on this till. Open it before you take the first order, and close it at the end of the day to count the cash.",
-    "floatHint": "The cash already in the drawer now, for giving change. Count it and type the amount in ৳.",
+    "floatHint": "The cash already in the drawer now, for giving change. Count it and type the amount.",
     "member": "Member",
     "memberPoints": "{points} points",
     "memberDiscountOn": "{percent} member discount",
@@ -866,7 +871,8 @@
     "newCashierName": "Cashier's name",
     "newCashierPin": "PIN (4 to 6 numbers)",
     "newCashierPinHint": "The cashier types this PIN to open the till. They are added to your Staff page too.",
-    "newCashierSaving": "Adding…"
+    "newCashierSaving": "Adding…",
+    "receiptTaxNo": "Tax no.: {bin}"
   },
   "kds": {
     "allStations": "All stations",
@@ -909,7 +915,7 @@
     "itemsTitle": "Items",
     "addItem": "Add item",
     "itemName": "Item name",
-    "basePrice": "Price (৳)",
+    "basePrice": "Price",
     "categoryLabel": "Category",
     "uncategorised": "No category",
     "activate": "Show again",
@@ -918,7 +924,7 @@
     "variantsTitle": "Sizes and types",
     "addVariant": "Add size",
     "variantName": "Size or type",
-    "priceDelta": "Price difference (৳)",
+    "priceDelta": "Price difference",
     "addOnGroupsTitle": "Extras and choices",
     "addOnGroupsBody": "Things a customer can add or choose with a dish, like Extras or Spice level. Step 1: make a group (for example Extras). Step 2: add choices inside it (for example Extra egg, ৳20). Step 3: open a dish above and tick the group.",
     "noGroupsYet": "Nothing here yet. Start with a group, like \"Extras\", then add choices inside it.",
@@ -927,7 +933,7 @@
     "maxSelect": "Can pick up to",
     "addGroup": "Add group",
     "modifierName": "Choice name",
-    "modifierPrice": "Extra price (৳)",
+    "modifierPrice": "Extra price",
     "addModifier": "Add choice",
     "saveGroups": "Save",
     "selectRange": "pick {min}–{max}",
@@ -952,7 +958,7 @@
     "itemExtras": "{count, plural, one {# extras group} other {# extras groups}}",
     "variantsBody": "Only if this dish comes in more than one size, like Half and Full. Type the size name and what it costs. Skip this if the dish has one price.",
     "variantPlaceholder": "e.g. Half",
-    "sizePrice": "Price of this size (৳)",
+    "sizePrice": "Price of this size",
     "sizePricePlaceholder": "e.g. 180",
     "sizePriceHint": "Type the full price the customer pays for this size. Leave empty to charge the dish price.",
     "itemExtrasTitle": "Extras for this dish",
@@ -1112,7 +1118,7 @@
   },
   "leaks": {
     "title": "Where am I losing money?",
-    "subtitle": "Found from your till data alone, ranked by taka and confidence. Every one shows its evidence.",
+    "subtitle": "Found from your till data alone, ranked by money and confidence. Every one shows its evidence.",
     "scanNow": "Scan the last 4 weeks",
     "scanned": "Scan finished.",
     "filter": "Show",
@@ -1311,15 +1317,15 @@
       "other": "Other"
     },
     "label": "Note",
-    "monthly": "Per month (৳)",
+    "monthly": "Per month",
     "addFixed": "Add cost",
     "noFixed": "No rent or bills added yet. Add your rent first: it is usually the biggest.",
     "perMonth": "{amount}/month",
     "end": "End",
     "salaryBody": "Type what each person is paid for the month, then mark it paid when you pay. \"Extra pay\" is anything on top, like food, travel or a bonus. Xedine uses the pay to work out your daily staff cost; marking paid does not change your profit.",
     "noStaff": "Add staff first (Settings → Team).",
-    "salary": "Monthly pay (৳)",
-    "allowances": "Extra pay, if any (৳)",
+    "salary": "Monthly pay",
+    "allowances": "Extra pay, if any",
     "allowancesPlaceholder": "Food, travel, bonus",
     "fixedBody": "Costs that stay about the same each month. Add each one once. When it stops, press End.",
     "addTitle": "Add a cost",
@@ -1361,7 +1367,7 @@
     "partLine": "{paid} of {total} paid on {date} · {method}",
     "owedLine": "Still to pay: {amount}",
     "markPaid": "Mark as paid",
-    "amountPaid": "Amount paid (৳)",
+    "amountPaid": "Amount paid",
     "amountPaidHint": "The full pay is filled in. Change it if you paid only part.",
     "undoPaid": "Mark as not paid",
     "note": "Private note",
@@ -1469,7 +1475,7 @@
     "simTitle": "What if I change a price?",
     "simBody": "Pick a dish, type a new price, and see what you would earn on it. Uses the last 28 days of sales.",
     "chooseItem": "Choose a dish",
-    "newPrice": "New price (৳)",
+    "newPrice": "New price",
     "portionPct": "Plate size %",
     "simulate": "Show me",
     "portionToggle": "Change the plate size too (optional)",
@@ -1756,7 +1762,7 @@
       "sellTitle": "You sell",
       "sellBody": "Each dish ordered takes what one plate needs out of stock, as written in Dish ingredients.",
       "countTitle": "You count",
-      "countBody": "Once a week, count your shelf. If more went than the recipes needed, we show you the loss in ৳."
+      "countBody": "Once a week, count your shelf. If more went than the recipes needed, we show you the loss in money."
     },
     "count": {
       "title": "Count what is left on your shelf",
@@ -1821,7 +1827,7 @@
     },
     "show": "Show",
     "bridgeTitle": "Why food cost differs from the recipes",
-    "bridgeBody": "What the recipes say the food should cost, and what made the real cost different. In taka, and the parts add up.",
+    "bridgeBody": "What the recipes say the food should cost, and what made the real cost different. In money, and the parts add up.",
     "bridge": {
       "tfc": "Food should cost (by the recipes)",
       "waste": "Waste you wrote down",
@@ -1895,7 +1901,7 @@
       "lossMoney": "Loss: {amount}",
       "underExplain": "{qty} less than the recipes. This is not counted as profit.",
       "onRecipeExplain": "Exactly what the recipes needed.",
-      "rule": "Counted as a loss to act on at {pct} or more over the recipe. Every gram over is counted in ৳.",
+      "rule": "Counted as a loss to act on at {pct} or more over the recipe. Every gram over is counted in money.",
       "checksTitle": "Things to check",
       "checks": {
         "over": {
@@ -1971,7 +1977,7 @@
     "chooseIngredient": "Choose ingredient…",
     "qty": "Quantity",
     "unit": "Unit",
-    "lineTotal": "Paid ৳",
+    "lineTotal": "Paid",
     "recordTitle": "What did you buy today?",
     "date": "Date",
     "lines": "Items",
@@ -2093,7 +2099,7 @@
       "other": "Other"
     },
     "total": "Total",
-    "forecastHint": "Units, not taka. Closed days forecast zero; flagged days and salary week are taken into account.",
+    "forecastHint": "Units, not money. Closed days forecast zero; flagged days and salary week are taken into account.",
     "batches": "{count} {unit}",
     "batchUnits": {
       "deg": "deg",
@@ -2886,7 +2892,7 @@
         "dinner": "dinner",
         "late": "late night"
       },
-      "plusVat": "+VAT",
+      "plusVat": "+{tax}",
       "labels": {
         "orderNow": "Order now",
         "follow": "Follow",
@@ -2962,7 +2968,7 @@
       "colorMain": "Main colour",
       "colorAccent": "Second colour",
       "displayName": "Restaurant name on posts",
-      "area": "Area (e.g. Dhanmondi, Dhaka)",
+      "area": "Area (e.g. Dhanmondi, Dhaka or Soho, London)",
       "phone": "Phone on posts",
       "save": "Save",
       "logoTitle": "Logo",
@@ -3299,7 +3305,7 @@
         "occasionNone": "No special day",
         "occasionText": "Your special day",
         "occasionTextExample": "e.g. Our 5th birthday",
-        "offerPrice": "Offer price (৳)",
+        "offerPrice": "Offer price",
         "offerHint": "Must be lower than the menu price. The menu price shows crossed out.",
         "idea": "Your idea (optional)",
         "ideaExample": "e.g. Family packs for the weekend",
@@ -3344,7 +3350,7 @@
         "autopilotOff": "The autopilot is off: switch it on in Settings → Social for daily videos. Your own videos still go out.",
         "ownDays": "Special days in {country}",
         "otherDays": "More special days",
-        "priceNote": "Prices and offers in videos are only for Bangladesh at the moment.",
+        "priceNote": "Prices and offers in videos are not available in this currency yet.",
         "now": "Your video settings now",
         "change": "Change video settings",
         "videosTitle": "Daily videos",
@@ -3380,8 +3386,8 @@
     "pointsTitle": "Points",
     "give": "Give",
     "pointsForEvery": "points for every",
-    "takaOnBill": "৳ on the bill",
-    "pointValue": "1 point is worth (৳)",
+    "takaOnBill": "Amount on the bill",
+    "pointValue": "1 point is worth",
     "pointValueHint": "The money off when a customer uses points.",
     "minRedeem": "Fewest points to use",
     "minRedeemHint": "Below this, points keep adding up.",
@@ -3674,7 +3680,7 @@
       "known": "This number is already with us. Ask at the counter and they will show your card QR.",
       "off": "The member card is not available right now.",
       "busy": "Many people are joining right now. Please try again in a few minutes.",
-      "invalid": "Please type a Bangladeshi mobile number, like 01712345678.",
+      "invalid": "Please type your mobile number, like 01712345678, or with its country code, like +44 7700 900123.",
       "failed": "Something went wrong. Please try again.",
       "gone": "This QR code is not working. Please ask the staff."
     },
@@ -4579,7 +4585,7 @@
     "updated": "Last updated: 12 November 2026",
     "privacy": {
       "title": "Privacy policy",
-      "intro": "Xedine is a restaurant app for Bangladesh. This page says, in plain words, what we keep about you and why.",
+      "intro": "Xedine is a restaurant app made in Bangladesh. This page says, in plain words, what we keep about you and why.",
       "collect": {
         "title": "What we keep",
         "body": "Your account: your name, email address and, if you sign in with a phone, your phone number. Your restaurant's records that you or your staff enter: menu, orders, stock, purchases, staff and settings. Customer names and phone numbers only when the restaurant adds them; offers reach a customer only after they agree."
@@ -4716,10 +4722,16 @@
     "timezone": "Time zone",
     "currency": "Currency",
     "currencyLocked": "Fixed after your first sale.",
-    "hint": "Your country sets your special days and greetings; the time zone sets when your posts go out.",
-    "hintOtherCurrency": "For now Xedine shows amounts in taka (৳). Your own currency on bills and reports is coming next; until then posts and videos show no prices.",
+    "hint": "Your country sets your special days, holidays and phone numbers; the time zone sets your business day and when posts go out; the currency is how every amount is shown.",
     "save": "Save",
     "change": "Change in Settings",
-    "ownerChanges": "The owner sets this in Settings."
+    "ownerChanges": "The owner sets this in Settings.",
+    "taxNames": {
+      "vat": "VAT",
+      "gst": "GST",
+      "sales_tax": "Sales tax",
+      "sst": "SST",
+      "tax": "Tax"
+    }
   }
 }

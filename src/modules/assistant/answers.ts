@@ -1,4 +1,4 @@
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
 import type { Intent } from './router';
 import type { ToolResult } from './tools';
@@ -49,9 +49,10 @@ export function renderAnswer(
   result: ToolResult | null,
   t: Translate,
   locale: Locale,
+  currency: string,
 ): string {
   const n = (v: number) => formatNumber(v, locale);
-  const money = (p: number) => formatBDT(p, locale, { poisha: 'never' });
+  const money = (p: number) => formatMoney(p, locale, currency, { poisha: 'never' });
   const window = t(`windows.${intent.window}`);
   if (intent.kind === 'ambiguous_item')
     return t('whichItem', {
@@ -111,7 +112,7 @@ export function renderAnswer(
       ].join('\n');
     }
     case 'finding':
-      return explainFinding(result.data as FindingData, t, locale);
+      return explainFinding(result.data as FindingData, t, locale, currency);
     case 'forecast_item': {
       const d = result.data as {
         date: string;
@@ -173,8 +174,13 @@ interface FindingData {
 }
 
 /** The deterministic explanation of one finding: every number is a field of the finding itself. */
-export function explainFinding(f: FindingData, t: Translate, locale: Locale): string {
-  const money = (p: number) => formatBDT(p, locale, { poisha: 'never' });
+export function explainFinding(
+  f: FindingData,
+  t: Translate,
+  locale: Locale,
+  currency: string = 'BDT',
+): string {
+  const money = (p: number) => formatMoney(p, locale, currency, { poisha: 'never' });
   const e = f.evidence;
   const base = (e.base as BaseUnit | undefined) ?? 'g';
   const q = (v: unknown) => qty(Number(v ?? 0), base, t, locale);

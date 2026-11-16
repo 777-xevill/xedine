@@ -1,4 +1,4 @@
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import type { InlineButton } from '@/lib/messaging/telegram';
 import { formatQuantity } from '@/modules/inventory/format';
 import {
@@ -51,8 +51,11 @@ export function draftSummary(args: {
   unit: (u: PurchaseUnit) => string;
   branch: string;
   date: string;
+  /** The restaurant's currency (ADR 0062); taka when not given. */
+  currency?: string;
 }): { text: string; complete: boolean } {
   const { lines, ingredients, locale, t } = args;
+  const currency = args.currency ?? 'BDT';
   const linesDone = lines.length > 0 && lines.every(lineComplete);
   const daysDone = lines.every((l) => validDays(l.for_days));
   const complete = linesDone && daysDone;
@@ -62,12 +65,12 @@ export function draftSummary(args: {
   const rows = lines.map((l, i) => {
     if (lineComplete(l) && l.new_ingredient) {
       const qty = formatQuantity(l.qty_base!, l.new_ingredient.base, locale, args.unit);
-      return `${n(i)}. 🆕 ${l.new_ingredient.name} — ${qty} — ${formatBDT(l.line_total_poisha!, locale)}${days(l)}`;
+      return `${n(i)}. 🆕 ${l.new_ingredient.name} — ${qty} — ${formatMoney(l.line_total_poisha!, locale, currency)}${days(l)}`;
     }
     if (l.flags.includes('pick') && l.unit && l.line_total_poisha !== null) {
       // As written, so the purchaser can see which line the buttons below are for.
       const qty = `${formatNumber(l.qty, locale)} ${args.unit(l.unit)}`;
-      return `${n(i)}. ❓ ${l.name} — ${qty} — ${formatBDT(l.line_total_poisha, locale)} — ${t('flags.pick')}`;
+      return `${n(i)}. ❓ ${l.name} — ${qty} — ${formatMoney(l.line_total_poisha, locale, currency)} — ${t('flags.pick')}`;
     }
     const ing = l.ingredient_id ? ingredients.get(l.ingredient_id) : undefined;
     if (!lineComplete(l) || !ing) {
@@ -77,17 +80,17 @@ export function draftSummary(args: {
     // Punctuation only: every word in the line is a name, a unit label or a formatted figure.
     const name = locale === 'bn' && ing.name_bn ? ing.name_bn : ing.name;
     const qty = formatQuantity(l.qty_base!, ing.base, locale, args.unit);
-    return `${n(i)}. ${name} — ${qty} — ${formatBDT(l.line_total_poisha!, locale)}${days(l)}`;
+    return `${n(i)}. ${name} — ${qty} — ${formatMoney(l.line_total_poisha!, locale, currency)}${days(l)}`;
   });
   const total = lines.reduce((s, l) => s + (l.line_total_poisha ?? 0), 0);
   const parts = [t('heading', { branch: args.branch, date: args.date }), ...rows];
   const fresh = lines.filter((l) => l.new_ingredient).length;
   if (complete) {
-    parts.push('', t('total', { amount: formatBDT(total, locale) }));
+    parts.push('', t('total', { amount: formatMoney(total, locale, currency) }));
     if (fresh > 0) parts.push(t('newItemsNote'));
     parts.push(t('daysNote'), t('askConfirm'));
   } else if (linesDone) {
-    parts.push('', t('total', { amount: formatBDT(total, locale) }), t('askDays'));
+    parts.push('', t('total', { amount: formatMoney(total, locale, currency) }), t('askDays'));
   } else if (lines.some((l) => l.flags.includes('pick')) && lines.every(waitsForPickOrDone)) {
     parts.push('', t('pickBelow'));
   } else parts.push('', t('needsFix'));

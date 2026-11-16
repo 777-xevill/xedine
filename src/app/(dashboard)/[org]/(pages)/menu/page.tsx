@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
 import {
   toggleCategoryActiveAction,
   toggleItemActiveAction,
@@ -104,7 +104,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
     groupsByItem.set(link.menu_item_id, arr);
   }
   const activeGroups = (groups ?? []).filter((g) => g.is_active);
-  const money = (p: number) => formatBDT(p, locale as Locale);
+  const money = (p: number) => formatMoney(p, locale as Locale, ctx.place.currency);
   // The how-to card ticks itself off from what is already on the menu; the first undone step is "now".
   const hasCategories = (categories ?? []).length > 0;
   const hasItems = (items ?? []).length > 0;

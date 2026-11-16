@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
+import { formatDate, type Locale } from '@/lib/i18n/format';
 import { speechConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { revokeChatLinkAction } from '@/modules/purchasing/chat-actions';
@@ -156,7 +156,7 @@ export default async function TelegramSettingsPage({
                 l,
                 <StatusBadge tone="success">
                   {t('connectedOn', {
-                    date: formatDhakaDate(new Date(l.linked_at as string), loc),
+                    date: formatDate(new Date(l.linked_at as string), loc, ctx.place.tz),
                   })}
                 </StatusBadge>,
               ),
@@ -166,7 +166,7 @@ export default async function TelegramSettingsPage({
                 l,
                 <StatusBadge tone="neutral">
                   {t('waiting', {
-                    date: formatDhakaDate(new Date(l.code_expires_at as string), loc),
+                    date: formatDate(new Date(l.code_expires_at as string), loc, ctx.place.tz),
                   })}
                 </StatusBadge>,
               ),

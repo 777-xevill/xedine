@@ -26,7 +26,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { createTranslator } from 'next-intl';
-import { formatBDT } from '@/lib/i18n/format';
+import { formatMoney } from '@/lib/i18n/format';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
 import { cutOut } from '@/modules/social/cutout';
@@ -63,7 +63,13 @@ import { resolveVideoLook, VIDEO_KINDS, type VideoKind } from '@/modules/social/
 import { fallbackWordKeys, hookStyleFor, type Occasion } from '@/modules/social/video-words';
 import { writeSocialVideo } from '@/modules/social/writer';
 import { banglaWords } from '@/modules/social/bangla-lines';
-import { countryName, countryOf, nationalDayOf, occasionLook } from '@/modules/social/culture';
+import {
+  countryName,
+  countryOf,
+  currencyOf,
+  nationalDayOf,
+  occasionLook,
+} from '@/modules/social/culture';
 import { pickTrack, scoreVideo, speak } from '@/modules/social/sound';
 
 function arg(name: string): string | undefined {
@@ -170,7 +176,11 @@ async function posters(files: string[], out: string) {
       name: names[i] ?? basename(file, extname(file)).replace(/-\d+$/, '').replace(/-/g, ' '),
       cutUrl: cut.usable ? dataUrl(cut.webp, 'image/webp') : null,
       photoUrl: dataUrl(photo, mimeOf(file)),
-      price: price ? formatBDT(Number(price) + i * 5000, lang, { poisha: 'never' }) : null,
+      price: price
+        ? formatMoney(Number(price) + i * 5000, lang, currencyOf(arg('country') ?? 'BD'), {
+            poisha: 'never',
+          })
+        : null,
       note:
         i === 0
           ? null
@@ -282,8 +292,12 @@ async function videos(files: string[], out: string) {
       name: names[i] ?? basename(file, extname(file)).replace(/-\d+$/, '').replace(/-/g, ' '),
       cutUrl: cut ? url : null,
       photoUrl: url,
-      price: formatBDT(price + i * 5000, lang, { poisha: 'never' }),
-      was: formatBDT(price + i * 5000 + 10000, lang, { poisha: 'never' }),
+      price: formatMoney(price + i * 5000, lang, currencyOf(arg('country') ?? 'BD'), {
+        poisha: 'never',
+      }),
+      was: formatMoney(price + i * 5000 + 10000, lang, currencyOf(arg('country') ?? 'BD'), {
+        poisha: 'never',
+      }),
       note: null,
     });
   }

@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Hint, Input, Label, Select, Textarea } from '@/components/ui/form';
 import { Segmented } from '@/components/ui/segmented';
-import { formatBDT } from '@/lib/i18n/format';
+import { formatMoney } from '@/lib/i18n/format';
+import { usePlace } from '@/components/place-provider';
 import { cn } from '@/lib/utils';
 import { draftSocialVideoWordsAction, requestSocialVideoAction } from '@/modules/social/actions';
 import { seedOf, type SocialTone } from '@/modules/social/look';
@@ -126,6 +127,7 @@ export function SocialVideoStudio({
   };
 }) {
   const t = useTranslations('social.video');
+  const { currency } = usePlace();
   const tg = useTranslations('social.growth');
   const [picked, setPicked] = useState<string[]>(dishes[0] ? [dishes[0].id] : []);
   const [kind, setKind] = useState<VideoKind | ''>('');
@@ -193,7 +195,9 @@ export function SocialVideoStudio({
           name,
           cutUrl: d.cutUrl,
           photoUrl: d.photoUrl,
-          price: isOffer ? formatBDT(offerPoisha, lang, { poisha: 'never' }) : menuPrice,
+          price: isOffer
+            ? formatMoney(offerPoisha, lang, currency, { poisha: 'never' })
+            : menuPrice,
           was: isOffer ? menuPrice : null,
           note: d.note,
         };

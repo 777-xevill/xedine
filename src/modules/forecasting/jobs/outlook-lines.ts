@@ -1,7 +1,7 @@
 import 'server-only';
 import { createTranslator } from 'next-intl';
 import { createServiceRoleClient } from '@/lib/db/service-role';
-import { formatDhakaDay, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDay, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays, DEFAULT_CUTOFF_MINUTES } from '@/lib/time/business-date';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
@@ -13,8 +13,6 @@ import { dailyWeather, type DayWeather, type WeatherPoint } from '@/modules/fore
  * for one explicit org (service role).
  */
 type Supabase = ReturnType<typeof createServiceRoleClient>;
-
-const noonDhaka = (date: string) => new Date(`${date}T06:00:00Z`);
 
 export async function outlookLines(
   sb: Supabase,
@@ -73,7 +71,7 @@ export async function outlookLines(
       days.set(d.date, [...(days.get(d.date) ?? []), { name: b.name as string, day: d }]);
   }
   const n = (v: number) => formatNumber(v, locale);
-  const label = (d: string) => formatDhakaDay(noonDhaka(d), locale);
+  const label = (d: string) => formatDay(new Date(`${d}T12:00:00Z`), locale, 'UTC');
   const rainyAt = (d: string) =>
     (days.get(d) ?? [])
       .filter((x) => x.day.rainy)

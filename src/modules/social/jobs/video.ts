@@ -61,6 +61,7 @@ import {
   type Photo,
   prepareDish,
 } from './art';
+import { taxLabel } from '@/modules/tenancy/tax-label';
 
 /**
  * Makes one short video post (ADR 0061): the autopilot's (slot 1–5, or the daily post on a video day) or
@@ -560,7 +561,8 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
       const agreed = agreedPoisha(input);
       const vat = {
         included: (orgSettings?.price_includes_vat as boolean | undefined) ?? true,
-        plusVat: t('poster.plusVat'),
+        plusVat: t('poster.plusVat', { tax: taxLabel(lang, country) }),
+        currency: String(place?.currency ?? 'BDT'),
       };
       const offer = Number(post.offer_poisha ?? 0);
       if (agreed !== null && offer > 0 && offer < agreed) {
@@ -578,7 +580,7 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
             post.org_id,
             picked.map((p) => p.dish),
             lang,
-            t('poster.plusVat'),
+            t('poster.plusVat', { tax: taxLabel(lang, country) }),
           )
         : new Map<string, string | null>();
     const dishes: VideoDish[] = [];

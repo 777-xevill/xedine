@@ -13,13 +13,7 @@ import { AskBox } from '@/components/chat/chat-view';
 import { BarList } from '@/components/metrics/bar-list';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/form';
-import {
-  formatBDT,
-  formatBps,
-  formatDhakaDate,
-  formatNumber,
-  type Locale,
-} from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import { cn } from '@/lib/utils';
 import {
@@ -62,7 +56,7 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
     getLocale(),
   ]);
   const loc = locale as Locale;
-  const money = (p: number) => formatBDT(p, loc, { poisha: 'never' });
+  const money = (p: number) => formatMoney(p, loc, ctx.place.currency, { poisha: 'never' });
   const has = (r: (typeof ctx.roles)[number]) => ctx.roles.includes(r);
   const canSeeMoney = has('owner') || has('accountant');
   const seesSales = canSeeMoney || has('manager');
@@ -131,7 +125,7 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
       : ts('days', { days: formatNumber(r.days_of_cover, loc, { fractionDigits: 1 }) });
 
   const subtitle = today
-    ? th('subtitle', { date: formatDhakaDate(new Date(`${today.date}T06:00:00Z`), loc) })
+    ? th('subtitle', { date: formatDate(new Date(`${today.date}T12:00:00Z`), loc, 'UTC') })
     : t('subtitle');
 
   return (

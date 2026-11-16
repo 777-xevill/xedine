@@ -5,7 +5,7 @@ import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { setBenchmarkOptInAction } from '@/modules/benchmarking/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
@@ -84,7 +84,8 @@ export default async function BenchmarksPage({ params }: { params: Promise<{ org
   const show = (id: string, v: number | null) => {
     if (v == null) return '—';
     if (BPS.has(id)) return formatBps(Math.round(Number(v)), loc);
-    if (POISHA.has(id)) return formatBDT(Math.round(Number(v)), loc, { poisha: 'never' });
+    if (POISHA.has(id))
+      return formatMoney(Math.round(Number(v)), loc, ctx.place.currency, { poisha: 'never' });
     return formatNumber(Number(v), loc, { fractionDigits: 1 });
   };
 

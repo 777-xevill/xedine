@@ -35,7 +35,14 @@ describe('i18n message catalogues', () => {
   });
 
   it('Bangla messages are actually Bangla (brand names and language labels excepted)', () => {
-    const allowedLatin = new Set(['common.appName', 'common.english', 'onboarding.slugPrefix']);
+    // Placeholder-only messages (the tax's name comes translated from place.taxNames, ADR 0062).
+    const allowedLatin = new Set([
+      'common.appName',
+      'common.english',
+      'onboarding.slugPrefix',
+      'pos.vat',
+      'social.poster.plusVat',
+    ]);
     for (const [key, value] of Object.entries(bn_)) {
       if (allowedLatin.has(key)) continue;
       expect(/[ঀ-৿]/.test(value), `${key} is not translated: "${value}"`).toBe(true);

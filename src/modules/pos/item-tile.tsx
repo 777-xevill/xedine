@@ -3,7 +3,8 @@
 import { Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
-import { formatBDT } from '@/lib/i18n/format';
+import { formatMoney } from '@/lib/i18n/format';
+import { tillPlace } from './till-place';
 import type { MenuItem } from './client';
 import { itemUnitPrice } from './dialogs';
 import { useTill } from './till-context';
@@ -35,7 +36,7 @@ export function ItemTile({
   const [broken, setBroken] = useState(false);
   const src = view === 'photo' && !broken ? photoSrc(sb, item.photo_path) : null;
   const hasChoices = item.variants.length > 0 || item.modifier_groups.length > 0;
-  const price = `${formatBDT(itemUnitPrice(item, null), locale)}${hasChoices ? ' +' : ''}`;
+  const price = `${formatMoney(itemUnitPrice(item, null), locale, tillPlace().currency)}${hasChoices ? ' +' : ''}`;
 
   if (view === 'text') {
     return (

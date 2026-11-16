@@ -11,7 +11,9 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
 import { ActionForm } from '@/components/action-form';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { formatBDT, formatDhakaDate, isLocale, type Locale } from '@/lib/i18n/format';
+import { formatDate, formatMoney, isLocale, type Locale } from '@/lib/i18n/format';
+import { createClient } from '@/lib/db/supabase-server';
+import { placeOfOrg } from '@/modules/tenancy/context';
 import { formatQuantity } from '@/modules/inventory/format';
 import { hideItemAction } from '@/modules/inventory/guard-actions';
 import { stockGuard, type GuardKind, type GuardRow } from '@/modules/inventory/guard';
@@ -43,18 +45,19 @@ export async function StockGuardCard({
   branchId: string | null;
   canHide: boolean;
 }) {
-  const [rows, t, units, raw] = await Promise.all([
+  const [rows, t, units, raw, place] = await Promise.all([
     stockGuard(orgId, branchId),
     getTranslations('stockGuard'),
     getTranslations('units'),
     getLocale(),
+    createClient().then((sb) => placeOfOrg(sb, orgId)),
   ]);
   const locale: Locale = isLocale(raw) ? raw : 'bn';
   const unit = (u: PurchaseUnit) => units(u);
   const qty = (r: GuardRow, q: number) =>
     formatQuantity(q, r.base, locale, unit, { maxDecimals: 1 });
   const day = (d: string | null) =>
-    d ? formatDhakaDate(new Date(`${d}T12:00:00+06:00`), locale) : '';
+    d ? formatDate(new Date(`${d}T12:00:00Z`), locale, 'UTC') : '';
   const nameOf = (r: GuardRow) => (locale === 'bn' && r.name_bn ? r.name_bn : r.name);
 
   const say = (r: GuardRow): { title: string; body: string } => {
@@ -64,10 +67,10 @@ export async function StockGuardCard({
         return {
           title: t('priceTypo.title', { name }),
           body: t('priceTypo.body', {
-            paid: formatBDT(r.last_total_poisha ?? 0, locale),
+            paid: formatMoney(r.last_total_poisha ?? 0, locale, place.currency),
             qty: qty(r, r.qty ?? 0),
             date: day(r.since),
-            usual: formatBDT(r.usual_total_poisha ?? 0, locale),
+            usual: formatMoney(r.usual_total_poisha ?? 0, locale, place.currency),
           }),
         };
       case 'below_zero':

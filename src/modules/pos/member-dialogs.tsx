@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { QrCode } from '@/components/qr-code';
 import { Button } from '@/components/ui/button';
 import { Alert, Hint, Input, Label } from '@/components/ui/form';
-import { formatBDT, formatNumber } from '@/lib/i18n/format';
+import { formatMoney, formatNumber } from '@/lib/i18n/format';
+import { tillPlace } from './till-place';
 import { parseMemberToken } from '@/modules/customers/member-card';
 import type { TillMember } from './client';
 import { DialogShell } from './dialogs';
@@ -164,7 +165,7 @@ export function UsePointsDialog({
       <p className="text-sm">
         {t('pointsBalance', {
           points: formatNumber(member.points ?? 0, locale),
-          worth: formatBDT(member.point_value_poisha ?? 0, locale),
+          worth: formatMoney(member.point_value_poisha ?? 0, locale, tillPlace().currency),
         })}
       </p>
       {usable > 0 ? (
@@ -172,7 +173,7 @@ export function UsePointsDialog({
           <p className="text-sm text-secondary">
             {t('pointsUsable', {
               points: formatNumber(usable, locale),
-              amount: formatBDT(member.usable_worth_poisha ?? 0, locale),
+              amount: formatMoney(member.usable_worth_poisha ?? 0, locale, tillPlace().currency),
             })}
           </p>
           <div>

@@ -55,11 +55,11 @@
 - **Guardrails:** numbers only from tool results (validator rejects, retries once, then falls back to a deterministic template); "I don't have that data yet" when tools return nothing; write actions only create drafts; never cross tenants; reply in the user's language (bn / Banglish / en); owner-stated `org_context` is respected.
 - **Evals:** `tests/ai-evals` — golden questions with exact expected numbers from the synthetic dataset. Run before merging AI changes.
 
-## Jobs (Asia/Dhaka, per-org configurable)
+## Jobs (each restaurant's own time zone, per-org configurable)
 - Every 5–15 min: refresh today's aggregates; real-time alerts (e.g., void spike).
 - After business-day cutoff (≈04:30): close the day, compute metrics, run leak rules, update forecasts, draft tomorrow's bazar list, queue briefs.
 - 09:00 morning brief · 23:00 evening close (optional) · weekly review after the weekend · monthly benchmarks.
-- Implementation: **Supabase `pg_cron` → authenticated job routes** ([ADR 0004](decisions/0004-scheduled-jobs.md)); long work chunked via a dispatcher that enqueues per-org work; every run logged in `job_runs`; idempotent per (job, org, period). Cron schedules are UTC; per-org Asia/Dhaka timing resolves inside the job from `org_settings`. `pg_cron` calls are fire-and-forget, so **`job_runs` plus an alert on missing runs is the only failure signal** and ships in Phase 0.
+- Implementation: **Supabase `pg_cron` → authenticated job routes** ([ADR 0004](decisions/0004-scheduled-jobs.md)); long work chunked via a dispatcher that enqueues per-org work; every run logged in `job_runs`; idempotent per (job, org, period). Cron schedules are UTC; per-org timing (the restaurant's own time zone, ADR 0062) resolves inside the job from `org_settings`; the brief and the day's close run hourly and each org takes its turn at its local hour. `pg_cron` calls are fire-and-forget, so **`job_runs` plus an alert on missing runs is the only failure signal** and ships in Phase 0.
 
 ## Offline POS
 PWA with cached menu/prices; orders get client UUIDs and go to an IndexedDB outbox; background sync with idempotency keys; server stores price snapshots and flags mismatches; visible sync status; printing works offline; alert when a device stays offline > N hours.

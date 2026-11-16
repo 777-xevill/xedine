@@ -1,8 +1,9 @@
 import { getLocale, getTranslations } from 'next-intl/server';
+import type { Place } from '@/modules/tenancy/place';
 import { ActionForm } from '@/components/action-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, Hint, Input, Label, Select } from '@/components/ui/form';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
 import {
   addFixedCostAction,
   endFixedCostAction,
@@ -28,14 +29,16 @@ export async function BillsSection({
   orgSlug,
   branches,
   rows,
+  place,
 }: {
   orgId: string;
   orgSlug: string;
   branches: { id: string; name: string }[];
   rows: FixedCostRow[];
+  place: Place;
 }) {
   const [t, locale] = await Promise.all([getTranslations('costs'), getLocale()]);
-  const money = (p: number) => formatBDT(p, locale as Locale);
+  const money = (p: number) => formatMoney(p, locale as Locale, place.currency);
   const total = rows.reduce((sum, r) => sum + Number(r.monthly_poisha), 0);
   const branchName = (id: string | null) =>
     id ? (branches.find((b) => b.id === id)?.name ?? '') : t('allBranches');
@@ -45,7 +48,7 @@ export async function BillsSection({
       <input type="hidden" name="orgSlug" value={orgSlug} />
     </>
   );
-  const plain = (poisha: number) => formatBDT(poisha, 'en', { symbol: false });
+  const plain = (poisha: number) => formatMoney(poisha, 'en', place.currency, { symbol: false });
 
   return (
     <div className="space-y-6">

@@ -3,7 +3,7 @@
  * page, the briefs and the "rain soon" alert. Pure functions (no I/O, no clock): the job and the pages pass
  * the weather points and the instant in.
  */
-import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES } from '@/lib/time/business-date';
+import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES, DHAKA_TZ } from '@/lib/time/business-date';
 
 /** One weather reading as stored in `weather_hours`: rain over the period that starts at `at`. */
 export interface WeatherPoint {
@@ -63,10 +63,11 @@ export function dailyWeather(
   from: string,
   to: string,
   cutoffMinutes: number = DEFAULT_CUTOFF_MINUTES,
+  tz: string = DHAKA_TZ,
 ): DayWeather[] {
   const byDay = new Map<string, WeatherPoint[]>();
   for (const p of points) {
-    const d = businessDate(new Date(p.at), cutoffMinutes);
+    const d = businessDate(new Date(p.at), cutoffMinutes, tz);
     if (d < from || d > to) continue;
     const list = byDay.get(d) ?? [];
     list.push(p);

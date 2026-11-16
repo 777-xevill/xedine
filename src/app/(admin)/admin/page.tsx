@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, Input, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { now } from '@/lib/time/clock';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
 import { decideBranchRequestAction, setSubscriptionAction } from '@/modules/billing/actions';
 import { FacebookRequests } from './facebook-requests';
 
@@ -92,7 +92,11 @@ export default async function AdminPage({
                       plan: t(`plans.${r.plan_code}`),
                       name: r.name,
                       area: r.area ? ` (${r.area})` : '',
-                      extra: formatBDT(Number(r.price_per_branch_poisha), locale as Locale),
+                      extra: formatMoney(
+                        Number(r.price_per_branch_poisha),
+                        locale as Locale,
+                        'BDT',
+                      ),
                     })}
                   </p>
                   <ActionForm

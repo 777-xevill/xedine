@@ -34,7 +34,7 @@ import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, Card, EmptyState, Hint, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDateTimeIn, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDateTime, formatNumber, type Locale } from '@/lib/i18n/format';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { markSocialDishAction, skipSocialPostAction } from '@/modules/social/actions';
@@ -45,20 +45,21 @@ import { branchPricesByItem, posterPrice } from '@/modules/social/prices';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
 import { getOrgContext } from '@/modules/tenancy/context';
+import { taxLabel } from '@/modules/tenancy/tax-label';
 
 /**
  * The poster's own words in one language (button labels, fallback lines), for the live preview. Read
  * straight from the catalogue, as the job does: the request's translator always follows the viewer's own
  * language, but a Bangla poster needs Bangla words even when the owner's screen is in English.
  */
-function posterText(locale: Locale): StudioPosterText & { plusVat: string } {
+function posterText(locale: Locale, country: string): StudioPosterText & { plusVat: string } {
   const t = createTranslator({
     locale,
     messages: locale === 'bn' ? bn : en,
     namespace: 'social.poster',
   });
   return {
-    plusVat: t('plusVat'),
+    plusVat: t('plusVat', { tax: taxLabel(locale, country) }),
     cta: t('cta'),
     labels: {
       orderNow: t('labels.orderNow'),
@@ -247,8 +248,8 @@ export default async function GrowthPage({
       p_now: at.toISOString(),
     }),
   ]);
-  const posterBn = posterText('bn');
-  const posterEn = posterText('en');
+  const posterBn = posterText('bn', ctx.place.country);
+  const posterEn = posterText('en', ctx.place.country);
   // The poster's colours and contact live in social_settings; the owner's first visit makes the row (the
   // database holds the default colours), a manager waits for the owner.
   let look = settings;
@@ -267,7 +268,7 @@ export default async function GrowthPage({
   const country = countryOf(orgSettings?.country);
   const tz = timezoneOf(country, orgSettings?.timezone);
   const pricesOn = pricesSupported(String(orgSettings?.currency ?? 'BDT'));
-  const when = (iso: string | Date) => formatDateTimeIn(new Date(iso), loc, tz);
+  const when = (iso: string | Date) => formatDateTime(new Date(iso), loc, tz);
   const dishes = items ?? [];
   const dishName = new Map(dishes.map((d) => [d.id as string, d.name as string]));
   const mediaUrl = (bucket: string, path: string) =>
@@ -300,7 +301,11 @@ export default async function GrowthPage({
       : posterPrice(
           { basePoisha: Number(d.base_price_poisha), branchPoisha: perBranch.get(d.id) ?? [] },
           locale,
-          { included: vatIncluded, plusVat: (locale === 'bn' ? posterBn : posterEn).plusVat },
+          {
+            included: vatIncluded,
+            plusVat: (locale === 'bn' ? posterBn : posterEn).plusVat,
+            currency: ctx.place.currency,
+          },
         );
   const studioDishes: StudioDish[] = dishes.map((d) => {
     const a = artFor.get(d.id as string);

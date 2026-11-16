@@ -5,7 +5,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, EmptyState, Hint, PageTitle, Stat } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { getOrgContext } from '@/modules/tenancy/context';
 
@@ -142,7 +142,9 @@ export default async function CustomersPage({
                               </span>
                             </td>
                             <td className="py-2.5 text-end tabular-nums">
-                              {formatBDT(Number(c.spend_90d_poisha), loc, { poisha: 'never' })}
+                              {formatMoney(Number(c.spend_90d_poisha), loc, ctx.place.currency, {
+                                poisha: 'never',
+                              })}
                             </td>
                             <td className="py-2.5 text-end text-xs text-secondary tabular-nums">
                               {`R${c.r ?? '–'} F${c.f} M${c.m}`}

@@ -5,13 +5,7 @@ import { LocaleSwitcher } from '@/components/locale-switcher';
 import { QrCode } from '@/components/qr-code';
 import { PillNav } from '@/components/ui/pill-nav';
 import { publicEnv } from '@/lib/env';
-import {
-  formatBDT,
-  formatBps,
-  formatDhakaDate,
-  formatNumber,
-  type Locale,
-} from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { memberCardUrl } from '@/modules/customers/member-card';
 import { readMemberCard } from '@/modules/customers/member-card-view';
 
@@ -55,8 +49,11 @@ export default async function MemberCardPage({
     );
   }
 
-  const money = (p: number) => formatBDT(p, loc);
-  const date = (iso: string) => formatDhakaDate(new Date(iso), loc);
+  // The restaurant's own money and clock (ADR 0062).
+  const cur = card.currency ?? 'BDT';
+  const tz = card.timezone ?? 'Asia/Dhaka';
+  const money = (p: number) => formatMoney(p, loc, cur);
+  const date = (iso: string) => formatDate(new Date(iso), loc, tz);
   const link = memberCardUrl(publicEnv().NEXT_PUBLIC_SITE_URL, token);
 
   return (
@@ -81,7 +78,8 @@ export default async function MemberCardPage({
         </p>
         <p className="mt-1 text-xl font-bold">{card.name ?? t('member')}</p>
         <p className="text-sm text-secondary tabular-nums">
-          {card.phone} · {t('since', { date: date(`${card.member_since}T12:00:00+06:00`) })}
+          {card.phone} ·{' '}
+          {t('since', { date: formatDate(new Date(`${card.member_since}T12:00:00Z`), loc, 'UTC') })}
         </p>
         <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -106,7 +104,7 @@ export default async function MemberCardPage({
         <p className="mt-3 text-xs text-secondary">
           {t('rules', {
             points: formatNumber(card.earn_points, loc),
-            every: formatBDT(card.earn_every_poisha, loc, { poisha: 'never' }),
+            every: formatMoney(card.earn_every_poisha, loc, cur, { poisha: 'never' }),
             worth: money(card.point_value_poisha),
             min: formatNumber(card.min_redeem_points, loc),
           })}
@@ -177,7 +175,7 @@ export default async function MemberCardPage({
 
       {tab === 'menu' ? (
         <section className="space-y-4">
-          <DishMenu dishes={card.menu} locale={loc} otherLabel={t('otherDishes')} />
+          <DishMenu dishes={card.menu} locale={loc} currency={cur} otherLabel={t('otherDishes')} />
           <p className="text-xs text-secondary">{t('menuNote')}</p>
         </section>
       ) : null}

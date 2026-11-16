@@ -89,9 +89,7 @@ export function PlaceFields({
         {currencyLocked ? <input type="hidden" name="currency" value={currency} /> : null}
         {currencyLocked ? <Hint>{t('currencyLocked')}</Hint> : null}
       </div>
-      <Hint className="sm:col-span-3">
-        {currency === 'BDT' ? t('hint') : t('hintOtherCurrency')}
-      </Hint>
+      <Hint className="sm:col-span-3">{t('hint')}</Hint>
     </div>
   );
 }

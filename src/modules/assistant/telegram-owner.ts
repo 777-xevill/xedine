@@ -91,6 +91,7 @@ export async function answerOwnerQuestion(args: {
       businessDate: businessDate(
         at,
         (settings as { default_cutoff_minutes?: number } | null)?.default_cutoff_minutes ?? 240,
+        (settings as { timezone?: string } | null)?.timezone ?? 'Asia/Dhaka',
       ),
       ownerRules: (rules ?? []).map((r) => r.body as string),
       access: {

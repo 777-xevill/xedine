@@ -50,6 +50,7 @@ import { countryName, countryOf, currencyOf, pricesSupported, timezoneOf } from 
 import type { DishArt, PostContent } from '../templates';
 import { ApprovedWordsSchema, posterLang, posterWords, type SocialWords } from '../words';
 import { checkDishPhoto, SOCIAL_POST_PROMPT, writeSocialPost } from '../writer';
+import { taxLabel } from '@/modules/tenancy/tax-label';
 
 /**
  * The social autopilot's 10-minute tick (ADR 0040, 0057), run by GitHub Actions (ADR 0044):
@@ -607,7 +608,7 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
               post.org_id,
               [chosen, ...extras.map((e) => e.dish)],
               lang,
-              t('plusVat'),
+              t('plusVat', { tax: taxLabel(lang, s.country) }),
             )
           : new Map<string, string | null>();
       const nameOf = (d: Dish) => (lang === 'bn' && d.name_bn?.trim() ? d.name_bn.trim() : d.name);

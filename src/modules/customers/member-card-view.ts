@@ -10,6 +10,9 @@ import { CARD_TOKEN } from './member-card';
 export interface MemberCardView {
   restaurant: string;
   name: string | null;
+  /** The restaurant's currency and time zone (ADR 0062); absent from an older database. */
+  currency?: string;
+  timezone?: string;
   phone: string;
   member_since: string;
   points: number;

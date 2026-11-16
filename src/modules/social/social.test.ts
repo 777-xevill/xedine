@@ -445,12 +445,16 @@ describe('dish cut-outs (ADR 0057)', () => {
 });
 
 describe('prices on posters (ADR 0057)', () => {
-  const vat = { included: true, plusVat: '+VAT' };
+  const vat = { included: true, plusVat: '+VAT', currency: 'BDT' };
 
   it('prints the menu price with the shared formatter, Bangla digits in Bangla', () => {
     expect(posterPrice({ basePoisha: 35000, branchPoisha: [] }, 'en', vat)).toBe('৳350');
     expect(posterPrice({ basePoisha: 35000, branchPoisha: [35000] }, 'bn', vat)).toBe('৳৩৫০');
     expect(posterPrice({ basePoisha: 125050, branchPoisha: [] }, 'en', vat)).toBe('৳1,250.50');
+    // A restaurant abroad: its own currency (ADR 0062).
+    expect(
+      posterPrice({ basePoisha: 125050, branchPoisha: [] }, 'en', { ...vat, currency: 'USD' }),
+    ).toBe('$1,250.50');
   });
 
   it('says nothing when branches charge differently, or the dish has no price', () => {
@@ -463,6 +467,7 @@ describe('prices on posters (ADR 0057)', () => {
       posterPrice({ basePoisha: 35000, branchPoisha: [] }, 'en', {
         included: false,
         plusVat: '+VAT',
+        currency: 'BDT',
       }),
     ).toBe('৳350 +VAT');
   });

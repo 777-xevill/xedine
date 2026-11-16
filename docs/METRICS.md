@@ -1,6 +1,6 @@
 # Xedine — Metric Definitions (single source of truth)
 
-Rules: money in poisha · quantities in base units · periods use `business_date` (Asia/Dhaka, branch cutoff hour, default 04:00) · each metric has one implementation · if code and this file disagree, stop and ask. Thresholds below are defaults stored in config.
+Rules: money in poisha (hundredths of the restaurant's currency, ADR 0062) · quantities in base units · periods use `business_date` (the restaurant's own time zone, Asia/Dhaka by default, branch cutoff hour, default 04:00) · each metric has one implementation · if code and this file disagree, stop and ask. Thresholds below are defaults stored in config.
 
 ## Sales
 | ID | Definition |

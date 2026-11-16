@@ -12,6 +12,8 @@ import { routeQuestion, type MenuRef } from './router';
 import { selectTools } from './tool-select';
 import { runTool, type ToolContext, type ToolResult } from './tools';
 import { validateNumbers } from './validator';
+import { formatMoney } from '@/lib/i18n/format';
+import { placeOfOrg } from '@/modules/tenancy/place';
 
 /**
  * The owner assistant (PRODUCT.md M10, ARCHITECTURE.md "AI layer"). Numbers only from tools: a model's
@@ -20,7 +22,7 @@ import { validateNumbers } from './validator';
  */
 export const ASSISTANT_PROMPT: PromptVersion = {
   key: 'assistant',
-  version: 6,
+  version: 7,
   body: [
     'You are Xedine, the AI manager of this restaurant in Bangladesh. You work for the owner and know the',
     'business like a sharp operations manager: sales, menu, recipes, stock, loss, waste, purchases, money',
@@ -53,7 +55,8 @@ export const ASSISTANT_PROMPT: PromptVersion = {
     '',
     'Numbers: every number you write must appear in a tool result, the Restaurant card or the question.',
     'Never add, subtract, divide, average, estimate or round figures yourself, never invent one. Money in',
-    'tool results is already in taka (*_taka): write it with ৳ as given, never mention poisha. *_pct is',
+    "tool results is already in whole units of the restaurant's currency (*_taka, named so for every",
+    '  currency): write it with the currency sign the context gives, never mention poisha. *_pct is',
     'already percent. Quantities such as "9.55 kg" are ready to copy.',
     'If the tools return nothing, an error, two_counts_needed or not_permitted, say plainly what is missing',
     'or that this person cannot see it. Do not guess. If an item or branch is ambiguous, ask which one.',
@@ -95,9 +98,10 @@ export async function loadToolContext(
   nowIso: string,
   access?: Access,
 ): Promise<ToolContext> {
-  const [{ data: menu }, { data: branches }] = await Promise.all([
+  const [{ data: menu }, { data: branches }, place] = await Promise.all([
     sb.from('menu_items').select('id, name, name_bn').eq('org_id', orgId).eq('is_active', true),
     sb.from('branches').select('id, name').eq('org_id', orgId).eq('is_active', true),
+    placeOfOrg(sb, orgId),
   ]);
   return {
     sb,
@@ -106,6 +110,8 @@ export async function loadToolContext(
     menu: (menu ?? []) as MenuRef[],
     branches: (branches ?? []) as { id: string; name: string }[],
     access,
+    currency: place.currency,
+    tz: place.tz,
   };
 }
 
@@ -123,7 +129,7 @@ export async function routerAnswer(
   const started = performance.now();
   const result: ToolResult | null = call ? await runTool(call.name, call.input, ctx) : null;
   return {
-    text: renderAnswer(intent, result, t, locale),
+    text: renderAnswer(intent, result, t, locale, ctx.currency),
     toolCalls: call
       ? [
           {
@@ -164,7 +170,8 @@ export async function askAssistant(args: {
     try {
       const card = await restaurantCard(ctx, args.page);
       const context = [
-        `Today's business date (Asia/Dhaka): ${args.businessDate}. Question language: ${language}.`,
+        `Today's business date (${ctx.tz}): ${args.businessDate}. Question language: ${language}.`,
+        `Money is in ${ctx.currency}: write amounts like ${formatMoney(125000, 'en', ctx.currency)}.`,
         language === 'en'
           ? 'Write the whole answer in English only, no Bangla words.'
           : 'Write the whole answer in Bangla script only (dish and ingredient names may stay as written).',
@@ -205,7 +212,7 @@ export async function askAssistant(args: {
       );
       if (check.ok)
         return {
-          text: forReader(first.text, locale),
+          text: forReader(first.text, locale, ctx.currency),
           language,
           source: 'llm',
           numericCheck: first.toolCalls.length ? 'ok' : 'not_applicable',
@@ -231,7 +238,7 @@ export async function askAssistant(args: {
       );
       if (recheck.ok)
         return {
-          text: forReader(second.text, locale),
+          text: forReader(second.text, locale, ctx.currency),
           language,
           source: 'llm',
           numericCheck: 'retried',

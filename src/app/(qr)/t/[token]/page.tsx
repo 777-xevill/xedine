@@ -9,7 +9,7 @@ import { OnceForm } from '@/components/once-form';
 import { TableMenu, type TableDish } from '@/components/table-menu';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/form';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { vapidPublicKey } from '@/modules/customers/jobs/push';
 import { memberCardPath } from '@/modules/customers/member-card';
@@ -59,6 +59,8 @@ export default async function TablePage({
     );
   }
 
+  // The restaurant's own money (ADR 0062).
+  const cur = page.currency;
   // The card this phone joined with before (a cookie per restaurant); a reset or switched-off card is ignored.
   const saved = jar.get(cardCookieName(page.org_id))?.value;
   const card = page.member_on && saved ? await readMemberCard(saved) : null;
@@ -145,7 +147,7 @@ export default async function TablePage({
                 {t('points', { n: formatNumber(card.points, loc) })}
               </p>
               <p className="text-sm text-secondary">
-                {t('worth', { amount: formatBDT(card.points_worth_poisha, loc) })}
+                {t('worth', { amount: formatMoney(card.points_worth_poisha, loc, cur) })}
               </p>
               <a
                 href={memberCardPath(saved!)}
@@ -168,8 +170,8 @@ export default async function TablePage({
                   <li>
                     {t('joinPoints', {
                       points: formatNumber(page.earn_points, loc),
-                      every: formatBDT(page.earn_every_poisha, loc, { poisha: 'never' }),
-                      worth: formatBDT(page.point_value_poisha, loc),
+                      every: formatMoney(page.earn_every_poisha, loc, cur, { poisha: 'never' }),
+                      worth: formatMoney(page.point_value_poisha, loc, cur),
                     })}
                   </li>
                 ) : null}
@@ -252,6 +254,7 @@ export default async function TablePage({
           <p className="glass rounded-sheet p-5 text-sm text-secondary">{t('menuEmpty')}</p>
         ) : (
           <TableMenu
+            currency={cur}
             dishes={dishes}
             token={token}
             aiOn={aiConfigured()}

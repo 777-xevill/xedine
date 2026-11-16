@@ -17,7 +17,7 @@ import {
   Select,
 } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
 import {
@@ -88,7 +88,7 @@ export default async function CompliancePage({ params }: { params: Promise<{ org
   }[];
   const vatRows = (vat.data ?? []) as Record<string, unknown>[];
   const sum = (k: string) => vatRows.reduce((s, r) => s + Number(r[k] ?? 0), 0);
-  const bdt = (v: number) => formatBDT(v, loc, { poisha: 'never' });
+  const bdt = (v: number) => formatMoney(v, loc, ctx.place.currency, { poisha: 'never' });
   const showBranch = ctx.branches.length > 1;
   const branchName = (id: string | null) =>
     id ? (ctx.branches.find((b) => b.id === id)?.name ?? '') : t('wholeRestaurant');

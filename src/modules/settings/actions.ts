@@ -6,6 +6,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { parseTakaToPoisha } from '@/lib/money';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
+import { orgToday } from '@/modules/tenancy/context';
 import { normalizeBdPhone } from '@/lib/messaging/phone';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { FEATURE_KEYS, parseFeatures } from '@/modules/tenancy/navigation';
@@ -156,8 +157,8 @@ export async function setChannelCommissionAction(
       commission_bps: percentToBps(parsed.data.commissionPct),
       fixed_fee_poisha: fixedFee,
       packaging_poisha: packaging,
-      // Asia/Dhaka calendar date (cutoff 0): commission terms change at midnight, not at 04:00.
-      effective_from: businessDate(now(), 0),
+      // The restaurant's calendar date (cutoff 0): commission terms change at midnight, not at 04:00.
+      effective_from: await orgToday(parsed.data.orgId, 0),
     },
     { onConflict: 'org_id,channel_id,effective_from' },
   );

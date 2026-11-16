@@ -4,6 +4,7 @@ import en from '@/messages/en.json';
 import {
   COUNTRIES,
   COUNTRY_CODES,
+  countryCalendar,
   countryName,
   countryOf,
   currencyName,
@@ -19,6 +20,8 @@ import {
   occasionsFor,
   placeOptions,
   pricesSupported,
+  TARGET_COUNTRIES,
+  taxKindOf,
   timezoneOf,
   timezonesOf,
 } from './culture';
@@ -134,9 +137,13 @@ describe('culture by country', () => {
     expect(countryName('US')).toBe('United States');
   });
 
-  it('shows prices only where the app has the currency', () => {
+  it('shows prices in every currency that counts in hundredths', () => {
     expect(pricesSupported('BDT')).toBe(true);
-    expect(pricesSupported('USD')).toBe(false);
+    expect(pricesSupported('USD')).toBe(true);
+    expect(pricesSupported('PKR')).toBe(true);
+    expect(pricesSupported('JPY')).toBe(false);
+    expect(pricesSupported('KWD')).toBe(false);
+    expect(currencyOf('KW')).toBe('USD');
   });
 
   it('gives every country its own currency, and every currency a name', () => {
@@ -162,5 +169,45 @@ describe('culture by country', () => {
         expect(get(m, 'occasionNames', o), `name ${o}`).toBeTruthy();
       }
     }
+  });
+});
+
+describe('a country’s own calendar (ADR 0062)', () => {
+  it('lists each festival once over its days, Ramadan as one stretch where it is kept', () => {
+    const gb = countryCalendar('GB', '2027-12-01', 40);
+    expect(gb.map((e) => [e.occasion, e.starts_on, e.ends_on])).toEqual([
+      ['christmas', '2027-12-24', '2027-12-25'],
+      ['new_year', '2027-12-31', '2028-01-01'],
+    ]);
+    const us = countryCalendar('US', '2026-11-01', 30);
+    expect(us.find((e) => e.occasion === 'thanksgiving')?.starts_on).toBe('2026-11-26');
+    const sa = countryCalendar('SA', '2027-02-01', 60);
+    expect(sa.find((e) => e.kind === 'ramadan')).toMatchObject({
+      starts_on: '2027-02-08',
+      ends_on: '2027-03-09',
+    });
+    expect(sa.find((e) => e.occasion === 'eid_fitr')).toMatchObject({
+      kind: 'eid',
+      starts_on: '2027-03-09',
+      ends_on: '2027-03-11',
+    });
+    expect(sa.some((e) => e.occasion === 'jummah' || e.occasion === 'iftar')).toBe(false);
+    expect(countryCalendar('US', '2027-02-01', 60).some((e) => e.kind === 'ramadan')).toBe(false);
+  });
+
+  it('names what each target market calls its sales tax', () => {
+    expect(TARGET_COUNTRIES.map((c) => [c, taxKindOf(c)])).toEqual([
+      ['BD', 'vat'],
+      ['IN', 'gst'],
+      ['PK', 'gst'],
+      ['AE', 'vat'],
+      ['SA', 'vat'],
+      ['QA', 'tax'],
+      ['MY', 'sst'],
+      ['SG', 'gst'],
+      ['GB', 'vat'],
+      ['US', 'sales_tax'],
+    ]);
+    for (const c of TARGET_COUNTRIES) expect(pricesSupported(currencyOf(c)), c).toBe(true);
   });
 });

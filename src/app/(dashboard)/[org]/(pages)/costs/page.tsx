@@ -39,7 +39,7 @@ export default async function CostsPage({
   const tab: Tab = (TABS as readonly string[]).includes(query.tab ?? '')
     ? (query.tab as Tab)
     : 'bills';
-  const today = businessDate(now());
+  const today = businessDate(now(), ctx.place.cutoffMinutes, ctx.place.tz);
   const thisMonth = today.slice(0, 7);
   const asked = /^\d{4}-(0[1-9]|1[0-2])$/.test(query.month ?? '') ? query.month! : thisMonth;
   // Pay can be entered up to the current month, and back as far as the owner wants.
@@ -78,6 +78,7 @@ export default async function CostsPage({
           orgSlug={ctx.org.slug}
           branches={branches}
           rows={rows as unknown as FixedCostRow[]}
+          place={ctx.place}
         />
       </>
     );
@@ -117,6 +118,7 @@ export default async function CostsPage({
         staff={(staff ?? []) as unknown as StaffRow[]}
         entries={(entries ?? []) as unknown as SalaryEntryRow[]}
         branches={branches}
+        place={ctx.place}
       />
     </>
   );

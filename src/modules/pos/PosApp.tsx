@@ -5,7 +5,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label } from '@/components/ui/form';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
+import { setTillPlace, tillPlace } from './till-place';
 import { computeLine, parseTakaToPoisha, sumLines, type VatConfig } from '@/lib/money';
 import { now } from '@/lib/time/clock';
 import {
@@ -348,6 +349,7 @@ function Till({
     loadTillData(sb, device)
       .then((d) => {
         if (cancelled) return;
+        setTillPlace(d.receipt);
         setData(d);
         setFromCache(false);
         setTillSnapshot(device.deviceId, { ...d, savedAt: nowIso() });
@@ -356,6 +358,7 @@ function Till({
         if (cancelled) return;
         const snapshot = getTillSnapshot(device.deviceId);
         if (snapshot) {
+          setTillPlace(snapshot.receipt);
           setData({ ...snapshot, memberCardOn: snapshot.memberCardOn ?? false });
           setFromCache(true);
           setReachable(false);
@@ -905,7 +908,9 @@ function Till({
       setOrder(updated);
       setRefunded((r) => r + amountPoisha);
       setChange(0);
-      setNotice(t('refundDone', { amount: formatBDT(amountPoisha, locale) }));
+      setNotice(
+        t('refundDone', { amount: formatMoney(amountPoisha, locale, tillPlace().currency) }),
+      );
     });
 
   // ---------------------------------------------------------------------------------------
@@ -1278,13 +1283,13 @@ function ShiftCloser({
                 <div className="flex justify-between">
                   <dt className="text-secondary">{t('expectedCash')}</dt>
                   <dd className="tabular-nums">
-                    {formatBDT(result.expected_cash_poisha ?? 0, locale)}
+                    {formatMoney(result.expected_cash_poisha ?? 0, locale, tillPlace().currency)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-secondary">{t('countedCash')}</dt>
                   <dd className="tabular-nums">
-                    {formatBDT(result.counted_cash_poisha ?? 0, locale)}
+                    {formatMoney(result.counted_cash_poisha ?? 0, locale, tillPlace().currency)}
                   </dd>
                 </div>
                 <div className="flex justify-between font-bold">
@@ -1292,7 +1297,7 @@ function ShiftCloser({
                   <dd
                     className={`tabular-nums ${(result.over_short_poisha ?? 0) === 0 ? 'text-success' : 'text-danger'}`}
                   >
-                    {formatBDT(result.over_short_poisha ?? 0, locale)}
+                    {formatMoney(result.over_short_poisha ?? 0, locale, tillPlace().currency)}
                   </dd>
                 </div>
               </dl>

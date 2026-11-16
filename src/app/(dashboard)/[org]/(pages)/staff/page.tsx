@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDateTime, type Locale } from '@/lib/i18n/format';
+import { formatDateTime, type Locale } from '@/lib/i18n/format';
 import {
   createStaffAction,
   revokeDeviceAction,
@@ -225,7 +225,7 @@ export default async function StaffPage({
                     <p className="text-xs text-secondary">
                       {t(`deviceKind.${d.kind}`)}
                       {d.last_seen_at
-                        ? ` · ${formatDhakaDateTime(new Date(d.last_seen_at), locale as Locale)}`
+                        ? ` · ${formatDateTime(new Date(d.last_seen_at), locale as Locale, ctx.place.tz)}`
                         : ''}
                     </p>
                   </div>

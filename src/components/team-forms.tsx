@@ -196,6 +196,8 @@ export function SettingsForm({
     weekStart: number;
     /** The restaurant already has orders, so the database refuses a change of price basis (ADR 0005). */
     priceBasisLocked: boolean;
+    /** What the tax is called in the restaurant's country (ADR 0062): VAT, GST, Sales tax… */
+    tax: string;
   };
 }) {
   const t = useTranslations();
@@ -225,7 +227,7 @@ export function SettingsForm({
             disabled={locked}
             className="size-4 accent-purple"
           />
-          {t('settings.priceInclusive')}
+          {t('settings.priceInclusive', { tax: settings.tax })}
         </label>
         <label
           className={`flex min-h-11 items-center gap-2 text-sm ${locked && settings.priceIncludesVat ? 'text-secondary' : ''}`}
@@ -238,14 +240,18 @@ export function SettingsForm({
             disabled={locked}
             className="size-4 accent-purple"
           />
-          {t('settings.priceExclusive')}
+          {t('settings.priceExclusive', { tax: settings.tax })}
         </label>
-        <Hint>{locked ? t('settings.priceBasisLockedNow') : t('settings.priceBasisHelp')}</Hint>
+        <Hint>
+          {locked
+            ? t('settings.priceBasisLockedNow', { tax: settings.tax })
+            : t('settings.priceBasisHelp')}
+        </Hint>
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="vatRate">{t('settings.vatRate')}</Label>
+          <Label htmlFor="vatRate">{t('settings.vatRate', { tax: settings.tax })}</Label>
           <Input
             id="vatRate"
             name="vatRate"

@@ -4,7 +4,7 @@ import { Dumbbell, Feather, Send, Sparkles, Wallet, X } from 'lucide-react';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import * as React from 'react';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import {
   ALLERGENS,
@@ -37,11 +37,13 @@ type Answer =
  * approved value; the AI only chooses dishes and words.
  */
 export function TableMenu({
+  currency,
   dishes,
   token,
   aiOn,
   otherLabel,
 }: {
+  currency: string;
   dishes: TableDish[];
   token: string;
   aiOn: boolean;
@@ -117,7 +119,9 @@ export function TableMenu({
     {
       key: 'budget',
       icon: Wallet,
-      label: t('pickBudget', { price: formatBDT(BUDGET_POISHA, loc, { poisha: 'never' }) }),
+      label: t('pickBudget', {
+        price: formatMoney(BUDGET_POISHA, loc, currency, { poisha: 'never' }),
+      }),
       needsFacts: false,
     },
   ];
@@ -253,7 +257,7 @@ export function TableMenu({
                         ) : null}
                       </span>
                       <span className="text-sm font-semibold tabular-nums">
-                        {formatBDT(d.price_poisha, loc)}
+                        {formatMoney(d.price_poisha, loc, currency)}
                       </span>
                     </li>
                   ))}
@@ -317,7 +321,7 @@ export function TableMenu({
                         ) : null}
                       </span>
                       <span className="font-semibold tabular-nums">
-                        {formatBDT(m.price_poisha, loc)}
+                        {formatMoney(m.price_poisha, loc, currency)}
                       </span>
                     </button>
                     {expanded ? (

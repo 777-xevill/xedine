@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, EmptyState, Hint, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import { businessToday } from '@/modules/metrics/queries';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
@@ -47,7 +47,8 @@ export default async function BranchesPage({
   const from = addDays(to, -(days - 1));
   const supabase = await createClient();
   const name = (id: unknown) => ctx.branches.find((b) => b.id === id)?.name ?? t('otherBranch');
-  const bdt = (v: unknown) => (v == null ? '—' : formatBDT(Number(v), loc, { poisha: 'never' }));
+  const bdt = (v: unknown) =>
+    v == null ? '—' : formatMoney(Number(v), loc, ctx.place.currency, { poisha: 'never' });
   const bps = (v: unknown) => (v == null ? '—' : formatBps(Number(v), loc));
   const num = (v: unknown, digits = 0) =>
     v == null ? '—' : formatNumber(Number(v), loc, { fractionDigits: digits });

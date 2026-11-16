@@ -22,7 +22,9 @@ import { StatusBadge, type BadgeTone } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label, Select } from '@/components/ui/form';
 import { Segmented } from '@/components/ui/segmented';
-import { formatBDT, formatBps, formatDhakaDateTime, formatNumber } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatDateTime, formatNumber } from '@/lib/i18n/format';
+import { tillPlace } from './till-place';
+import { taxKindOf } from '@/modules/social/culture';
 import { parseTakaToPoisha, type LineAmounts } from '@/lib/money';
 import { memberCardUrl } from '@/modules/customers/member-card';
 import type {
@@ -90,8 +92,9 @@ function Totals({
   };
 }) {
   const t = useTranslations('pos');
+  const tp = useTranslations('place');
   const { locale } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   return (
     <dl className="space-y-1 text-sm">
       <div className="flex justify-between">
@@ -105,7 +108,9 @@ function Totals({
         </div>
       ) : null}
       <div className="flex justify-between">
-        <dt className="text-secondary">{t('vat')}</dt>
+        <dt className="text-secondary">
+          {t('vat', { tax: tp(`taxNames.${taxKindOf(tillPlace().country)}`) })}
+        </dt>
         <dd className="tabular-nums">{money(amounts.vatPoisha)}</dd>
       </div>
       {amounts.serviceChargePoisha > 0 ? (
@@ -164,7 +169,7 @@ export function CartScreen({
 }) {
   const t = useTranslations('pos');
   const { locale } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   const [category, setCategory] = useState<string>('all');
   const [picking, setPicking] = useState<MenuItem | null>(null);
   const [view, setView] = useState<TillView>(() => getTillView());
@@ -463,7 +468,7 @@ export function OrderScreen({
 }) {
   const t = useTranslations('pos');
   const { locale, online } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   const [voidTarget, setVoidTarget] = useState<OrderLine | null>(null);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -502,7 +507,7 @@ export function OrderScreen({
             <h2 className="text-xl font-bold">{orderLabel(order, t)}</h2>
             <p className="text-sm text-secondary">
               {tableName ? `${tableName} · ` : ''}
-              {formatDhakaDateTime(new Date(order.placed_at), locale)}
+              {formatDateTime(new Date(order.placed_at), locale, tillPlace().tz)}
             </p>
           </div>
           <OrderBadges order={order} local={local} />
@@ -561,7 +566,7 @@ export function OrderScreen({
               <p className="text-secondary">
                 {t('pointsUsedHere', {
                   points: formatNumber(member.used_here ?? 0, locale),
-                  amount: formatBDT(member.used_worth_poisha ?? 0, locale),
+                  amount: formatMoney(member.used_worth_poisha ?? 0, locale, tillPlace().currency),
                 })}
               </p>
             ) : null}
@@ -747,10 +752,12 @@ export function CheckoutScreen({
 }) {
   const t = useTranslations('pos');
   const { locale } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   const due = Math.max(0, order.total_poisha - paidPoisha);
   const [method, setMethod] = useState<PaymentMethod>('cash');
-  const [amount, setAmount] = useState(() => formatBDT(due, 'en', { symbol: false }));
+  const [amount, setAmount] = useState(() =>
+    formatMoney(due, 'en', tillPlace().currency, { symbol: false }),
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Round-up notes a cashier is likely to be handed, as quick buttons (৳100, ৳500, ৳1000).
@@ -873,7 +880,7 @@ export function ReceiptScreen({
         </div>
         {changePoisha > 0 ? (
           <p className="mt-4 text-3xl font-bold tabular-nums">
-            {t('change', { amount: formatBDT(changePoisha, locale) })}
+            {t('change', { amount: formatMoney(changePoisha, locale, tillPlace().currency) })}
           </p>
         ) : null}
         {local ? <p className="mt-3 text-xs text-secondary">{t('provisionalNote')}</p> : null}
@@ -937,7 +944,7 @@ export function OrdersScreen({
 }) {
   const t = useTranslations('pos');
   const { locale, online } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   return (
     <section className="glass flex min-h-0 flex-1 flex-col rounded-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -966,7 +973,7 @@ export function OrdersScreen({
             <div>
               <p className="font-semibold">{p.provisionalReceiptNo}</p>
               <p className="text-xs text-secondary">
-                {formatDhakaDateTime(new Date(p.placedAt), locale)}
+                {formatDateTime(new Date(p.placedAt), locale, tillPlace().tz)}
               </p>
             </div>
             <StatusBadge tone="warning">{t('waitingSync')}</StatusBadge>
@@ -985,7 +992,7 @@ export function OrdersScreen({
                   {tableName(o.table_id) ? ` · ${tableName(o.table_id)}` : ''}
                 </p>
                 <p className="text-xs text-secondary">
-                  {formatDhakaDateTime(new Date(o.placed_at), locale)}
+                  {formatDateTime(new Date(o.placed_at), locale, tillPlace().tz)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -1076,7 +1083,7 @@ export function SyncStatus({
                     </StatusBadge>
                   </div>
                   <p className="text-xs text-muted">
-                    {formatDhakaDateTime(new Date(e.createdAt), locale)}
+                    {formatDateTime(new Date(e.createdAt), locale, tillPlace().tz)}
                   </p>
                   {e.error ? <p className="mt-1 text-xs text-danger">{e.error}</p> : null}
                   {e.status === 'failed' ? (

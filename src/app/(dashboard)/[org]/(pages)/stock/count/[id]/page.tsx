@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, Hint, Input, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDate, type Locale } from '@/lib/i18n/format';
+import { formatDate, type Locale } from '@/lib/i18n/format';
 import { saveCountAction } from '@/modules/inventory/actions';
 import { formatQuantity } from '@/modules/inventory/format';
 import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
@@ -108,7 +108,7 @@ export default async function CountPage({
         title={t(`start.${count.kind as string}`)}
         subtitle={t('countSubtitle', {
           branch: branchName,
-          date: formatDhakaDate(new Date(`${count.counted_on as string}T06:00:00Z`), loc),
+          date: formatDate(new Date(`${count.counted_on as string}T12:00:00Z`), loc, 'UTC'),
         })}
         actions={
           <>

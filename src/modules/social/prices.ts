@@ -1,4 +1,4 @@
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
 
 /**
  * Prices on posters (ADR 0057). Pure, so the job (art.ts) and the Growth preview share it; the preview
@@ -18,11 +18,11 @@ export interface PriceInput {
 export function posterPrice(
   p: PriceInput,
   locale: Locale,
-  vat: { included: boolean; plusVat: string },
+  vat: { included: boolean; plusVat: string; currency: string },
 ): string | null {
   if (!Number.isSafeInteger(p.basePoisha) || p.basePoisha <= 0) return null;
   if (p.branchPoisha.some((b) => b !== p.basePoisha)) return null;
-  const price = formatBDT(p.basePoisha, locale);
+  const price = formatMoney(p.basePoisha, locale, vat.currency);
   return vat.included ? price : `${price} ${vat.plusVat}`;
 }
 

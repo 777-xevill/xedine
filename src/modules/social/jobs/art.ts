@@ -231,7 +231,11 @@ export async function menuPrices(
       .is('variant_id', null)
       .eq('is_available', true)
       .in('menu_item_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
-    sb.from('org_settings').select('price_includes_vat').eq('org_id', orgId).maybeSingle(),
+    sb
+      .from('org_settings')
+      .select('price_includes_vat, currency')
+      .eq('org_id', orgId)
+      .maybeSingle(),
   ]);
   const byItem = branchPricesByItem(
     (branch ?? []) as { menu_item_id: string; price_poisha: number }[],
@@ -243,7 +247,7 @@ export async function menuPrices(
       posterPrice(
         { basePoisha: Number(i.base_price_poisha), branchPoisha: byItem.get(i.id) ?? [] },
         locale,
-        { included, plusVat },
+        { included, plusVat, currency: (settings?.currency as string | undefined) ?? 'BDT' },
       ),
     ]),
   );

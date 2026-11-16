@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { formatBDT, type Locale } from '@/lib/i18n/format';
+import { formatMoney, type Locale } from '@/lib/i18n/format';
 import { dishPhotoUrl, type MenuDish } from '@/modules/customers/member-card-view';
 
 /**
@@ -7,10 +7,12 @@ import { dishPhotoUrl, type MenuDish } from '@/modules/customers/member-card-vie
  * photo links come from the public menu-photos bucket.
  */
 export function DishMenu({
+  currency,
   dishes,
   locale,
   otherLabel,
 }: {
+  currency: string;
   dishes: MenuDish[];
   locale: Locale;
   /** The heading for dishes with no category. */
@@ -50,7 +52,7 @@ export function DishMenu({
                     ) : null}
                   </span>
                   <span className="font-semibold tabular-nums">
-                    {formatBDT(m.price_poisha, locale)}
+                    {formatMoney(m.price_poisha, locale, currency)}
                   </span>
                 </li>
               ))}

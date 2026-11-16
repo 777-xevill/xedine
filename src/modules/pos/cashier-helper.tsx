@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { useSpeech } from '@/components/use-speech';
 import { Button } from '@/components/ui/button';
 import { Alert, Textarea } from '@/components/ui/form';
-import { formatBDT } from '@/lib/i18n/format';
+import { formatMoney } from '@/lib/i18n/format';
+import { tillPlace } from './till-place';
 import type { MenuCategory, MenuItem } from './client';
 import { ItemPicker, itemUnitPrice, type PickedItem } from './dialogs';
 import { cashierHelperAction } from './helper-actions';
@@ -38,7 +39,7 @@ export function CashierHelper({
 }) {
   const t = useTranslations('pos');
   const { device, locale, online } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   const label = (x: { name: string; name_bn: string | null }) =>
     locale === 'bn' && x.name_bn ? x.name_bn : x.name;
 

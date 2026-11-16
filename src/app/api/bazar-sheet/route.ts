@@ -1,6 +1,6 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDay, type Locale } from '@/lib/i18n/format';
+import { formatDay, type Locale } from '@/lib/i18n/format';
 import { escapeHtml } from '@/modules/forecasting/bazar-share';
 import { formatQuantity } from '@/modules/inventory/format';
 import type { BaseUnit } from '@/modules/purchasing/lines';
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
     })
     .sort((a, b) => a.supplier.localeCompare(b.supplier) || a.name.localeCompare(b.name));
 
-  const day = formatDhakaDay(new Date(`${date}T06:00:00Z`), loc);
+  const day = formatDay(new Date(`${date}T12:00:00Z`), loc, 'UTC');
   const body = rows
     .map(
       (r) =>

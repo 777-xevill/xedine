@@ -6,6 +6,7 @@ import { GlobalAgent } from '@/components/chat/global-agent';
 import { AppShell } from '@/components/shell/app-shell';
 import { Sidebar } from '@/components/shell/sidebar';
 import { ThemeApplier, ThemeScript } from '@/components/theme';
+import { PlaceProvider } from '@/components/place-provider';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { buildNavigation } from '@/modules/tenancy/navigation';
@@ -54,7 +55,9 @@ export default async function OrgLayout({
           </>
         }
       >
-        {children}
+        <PlaceProvider value={{ currency: ctx.place.currency, tz: ctx.place.tz }}>
+          {children}
+        </PlaceProvider>
         {nav.canChat ? (
           <GlobalAgent
             orgId={ctx.org.id}

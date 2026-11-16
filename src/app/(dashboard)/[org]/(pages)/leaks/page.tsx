@@ -5,13 +5,7 @@ import { FindingActions, ScanForm } from '@/components/leak-forms';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card, EmptyState, PageTitle } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
-import {
-  formatBDT,
-  formatBps,
-  formatDhakaDate,
-  formatNumber,
-  type Locale,
-} from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { formatQuantity } from '@/modules/inventory/format';
 import { findings, type FindingRow } from '@/modules/metrics/queries';
 import type { BaseUnit } from '@/modules/purchasing/lines';
@@ -27,7 +21,8 @@ const STATUS_TONE = {
 } as const;
 
 /** Business dates are plain dates; noon in Dhaka keeps them on the same calendar day in any format. */
-const asDate = (d: string) => new Date(`${d}T06:00:00Z`);
+/** A business date drawn as itself: noon UTC, shown in UTC (the same day in every zone). */
+const asDate = (d: string) => new Date(`${d}T12:00:00Z`);
 
 export default async function LeaksPage({
   params,
@@ -48,7 +43,7 @@ export default async function LeaksPage({
     getLocale(),
   ]);
   const loc = locale as Locale;
-  const money = (p: number) => formatBDT(p, loc, { poisha: 'never' });
+  const money = (p: number) => formatMoney(p, loc, ctx.place.currency, { poisha: 'never' });
   const count = (v: unknown) => formatNumber(Number(v ?? 0), loc);
   const status = show === 'all' ? 'all' : show === 'resolved' ? 'resolved' : 'open';
   const [result, history] = await Promise.all([
@@ -292,8 +287,8 @@ export default async function LeaksPage({
                     </h2>
                     <p className="text-sm text-secondary">
                       {t('period', {
-                        from: formatDhakaDate(asDate(f.period_start), loc),
-                        to: formatDhakaDate(asDate(f.period_end), loc),
+                        from: formatDate(asDate(f.period_start), loc, 'UTC'),
+                        to: formatDate(asDate(f.period_end), loc, 'UTC'),
                       })}
                     </p>
                   </div>

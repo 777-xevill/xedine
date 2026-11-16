@@ -4,6 +4,7 @@ import { now } from '@/lib/time/clock';
 import type { FactsFields } from '@/modules/menu/food-facts';
 import type { MenuDish } from './member-card-view';
 import { TABLE_TOKEN } from './table-qr';
+import { placeOfOrg } from '@/modules/tenancy/place';
 
 /**
  * The customer's table page (ADR 0045) has no account: the table's link token is the only credential.
@@ -12,6 +13,8 @@ import { TABLE_TOKEN } from './table-qr';
  */
 export interface TablePageView {
   org_id: string;
+  /** The restaurant's currency (ADR 0062), added by the loader. */
+  currency: string;
   restaurant: string;
   branch: string;
   address: string;
@@ -39,5 +42,8 @@ export async function readTablePage(token: string): Promise<TablePageView | null
     console.error('table page', error.code);
     return null;
   }
-  return (data as TablePageView | null) ?? null;
+  if (!data) return null;
+  const page = data as Omit<TablePageView, 'currency'>;
+  const place = await placeOfOrg(createServiceRoleClient(), page.org_id);
+  return { ...page, currency: place.currency };
 }

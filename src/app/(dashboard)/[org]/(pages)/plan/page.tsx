@@ -30,13 +30,7 @@ import {
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import {
-  formatBps,
-  formatDhakaDay,
-  formatDhakaTime,
-  formatNumber,
-  type Locale,
-} from '@/lib/i18n/format';
+import { formatBps, formatDay, formatTime, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import {
   approveBazarAction,
@@ -61,7 +55,8 @@ const SKY_ICON = {
   storm: CloudLightning,
   fog: CloudFog,
 } as const;
-const noonDhaka = (date: string) => new Date(`${date}T06:00:00Z`);
+/** A business date drawn as itself: noon UTC, shown in UTC (the same day in every zone). */
+const noonDhaka = (date: string) => new Date(`${date}T12:00:00Z`);
 const STATUS_TONE = {
   draft: 'neutral',
   approved: 'info',
@@ -120,7 +115,7 @@ export default async function PlanPage({
       ? to('today')
       : d === addDays(today, 1)
         ? to('tomorrow')
-        : formatDhakaDay(noonDhaka(d), loc);
+        : formatDay(noonDhaka(d), loc, 'UTC');
   const n1 = (v: number) => formatNumber(v, loc, { fractionDigits: Number.isInteger(v) ? 0 : 1 });
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
 
@@ -155,7 +150,7 @@ export default async function PlanPage({
           <CardTitle className="mb-0">{to('title', { branch: branch.name })}</CardTitle>
           <p className="text-xs text-secondary">
             {outlook.updatedAt
-              ? to('updated', { time: formatDhakaTime(new Date(outlook.updatedAt), loc) })
+              ? to('updated', { time: formatTime(new Date(outlook.updatedAt), loc, ctx.place.tz) })
               : to('noWeather')}
           </p>
         </div>
@@ -210,8 +205,8 @@ export default async function PlanPage({
           <p className={`mb-2 text-sm ${outlook.rainSoon ? 'text-info' : 'text-secondary'}`}>
             {outlook.rainSoon
               ? to('rainSoon', {
-                  start: formatDhakaTime(new Date(outlook.rainSoon.start), loc),
-                  end: formatDhakaTime(new Date(outlook.rainSoon.end), loc),
+                  start: formatTime(new Date(outlook.rainSoon.start), loc, ctx.place.tz),
+                  end: formatTime(new Date(outlook.rainSoon.end), loc, ctx.place.tz),
                   mm: n1(outlook.rainSoon.rainMm),
                 })
               : outlook.hours.length > 0
@@ -242,7 +237,7 @@ export default async function PlanPage({
                       className="flex min-w-[3.5rem] flex-col items-center gap-0.5 rounded-input bg-surface-elevated px-2 py-1.5 text-xs"
                     >
                       <span className="text-secondary tabular-nums">
-                        {formatDhakaTime(new Date(h.at), loc)}
+                        {formatTime(new Date(h.at), loc, ctx.place.tz)}
                       </span>
                       <Icon
                         aria-label={to(`sky.${sky}`)}

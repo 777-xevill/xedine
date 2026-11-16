@@ -3,6 +3,11 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { createClient } from '@/lib/db/supabase-server';
+import { businessDate } from '@/lib/time/business-date';
+import { now } from '@/lib/time/clock';
+import { placeFrom, placeOfOrg, type Place } from './place';
+
+export { placeFrom, placeOfOrg, type Place };
 
 export type Role = 'owner' | 'manager' | 'cashier' | 'kitchen' | 'purchaser' | 'accountant';
 
@@ -18,6 +23,8 @@ export interface OrgContext {
   /** null = all branches. */
   selectedBranchId: string | null;
   allOrgs: { name: string; slug: string }[];
+  /** Where the restaurant is (ADR 0062): every date, time and amount on its pages uses these. */
+  place: Place;
 }
 
 /** Resolve the signed-in user and the org in the URL. Everything comes through RLS, so a stranger's slug is a 404. */
@@ -35,21 +42,27 @@ export const getOrgContext = cache(async (slug: string): Promise<OrgContext> => 
   const org = orgs?.find((o) => o.slug === slug);
   if (!org) notFound();
 
-  const [{ data: memberships }, { data: branches }, { data: profile }] = await Promise.all([
-    supabase
-      .from('memberships')
-      .select('role')
-      .eq('org_id', org.id)
-      .eq('user_id', user.id)
-      .eq('status', 'active'),
-    supabase
-      .from('branches')
-      .select('id, name')
-      .eq('org_id', org.id)
-      .eq('is_active', true)
-      .order('name'),
-    supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle(),
-  ]);
+  const [{ data: memberships }, { data: branches }, { data: profile }, { data: settings }] =
+    await Promise.all([
+      supabase
+        .from('memberships')
+        .select('role')
+        .eq('org_id', org.id)
+        .eq('user_id', user.id)
+        .eq('status', 'active'),
+      supabase
+        .from('branches')
+        .select('id, name')
+        .eq('org_id', org.id)
+        .eq('is_active', true)
+        .order('name'),
+      supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle(),
+      supabase
+        .from('org_settings')
+        .select('country, timezone, currency, default_cutoff_minutes')
+        .eq('org_id', org.id)
+        .maybeSingle(),
+    ]);
   const roles = (memberships ?? []).map((m) => m.role as Role);
   if (roles.length === 0) notFound();
 
@@ -67,8 +80,18 @@ export const getOrgContext = cache(async (slug: string): Promise<OrgContext> => 
     branches: branches ?? [],
     selectedBranchId,
     allOrgs: (orgs ?? []).map((o) => ({ name: o.name, slug: o.slug })),
+    place: placeFrom(settings),
   };
 });
+
+/**
+ * "Today" for a restaurant on its own clock (ADR 0062), read with the signed-in caller's client. `cutoff` 0
+ * is the plain calendar day (terms that change at midnight); otherwise the org's business-day cutoff.
+ */
+export async function orgToday(orgId: string, cutoff?: 0): Promise<string> {
+  const place = await placeOfOrg(await createClient(), orgId);
+  return businessDate(now(), cutoff ?? place.cutoffMinutes, place.tz);
+}
 
 /** The branch a branch-level page works on: ?branch=, else the header's selection, else the first. */
 export function pickBranch(

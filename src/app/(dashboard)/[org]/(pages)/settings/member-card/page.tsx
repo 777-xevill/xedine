@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, Hint, Input, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { publicEnv } from '@/lib/env';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import { poishaToTakaText } from '@/lib/money';
 import { memberCardUrl } from '@/modules/customers/member-card';
 import { getOrgContext } from '@/modules/tenancy/context';
@@ -165,8 +165,10 @@ export default async function MemberCardSettingsPage({
             {s
               ? t('rulesNow', {
                   points: formatNumber(s.earn_points, loc),
-                  every: formatBDT(Number(s.earn_every_poisha), loc, { poisha: 'never' }),
-                  worth: formatBDT(Number(s.point_value_poisha), loc),
+                  every: formatMoney(Number(s.earn_every_poisha), loc, ctx.place.currency, {
+                    poisha: 'never',
+                  }),
+                  worth: formatMoney(Number(s.point_value_poisha), loc, ctx.place.currency),
                 })
               : t('rulesNotSet')}
           </Hint>

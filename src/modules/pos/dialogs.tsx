@@ -6,7 +6,8 @@ import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label, Select, Textarea } from '@/components/ui/form';
-import { formatBDT } from '@/lib/i18n/format';
+import { formatMoney } from '@/lib/i18n/format';
+import { tillPlace } from './till-place';
 import { parseTakaToPoisha } from '@/lib/money';
 import {
   approveAction,
@@ -397,7 +398,9 @@ export function RefundDialog({
 }) {
   const t = useTranslations('pos');
   const { locale } = useTill();
-  const [amount, setAmount] = useState(() => formatBDT(maxAmountPoisha, 'en', { symbol: false }));
+  const [amount, setAmount] = useState(() =>
+    formatMoney(maxAmountPoisha, 'en', tillPlace().currency, { symbol: false }),
+  );
   const [method, setMethod] = useState<(typeof PAYMENT_METHODS)[number]>('cash');
   const [reasonId, setReasonId] = useState(reasons[0]?.id ?? '');
   const [approving, setApproving] = useState(false);
@@ -413,7 +416,7 @@ export function RefundDialog({
       ) : (
         <>
           <p className="text-sm text-secondary">
-            {t('maxRefund', { amount: formatBDT(maxAmountPoisha, locale) })}
+            {t('maxRefund', { amount: formatMoney(maxAmountPoisha, locale, tillPlace().currency) })}
           </p>
           <div>
             <Label htmlFor="ramt">{t('amount')}</Label>
@@ -523,7 +526,7 @@ export function ItemPicker({
 }) {
   const t = useTranslations('pos');
   const { locale } = useTill();
-  const money = (p: number) => formatBDT(p, locale);
+  const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   const label = (x: { name: string; name_bn: string | null }) =>
     locale === 'bn' && x.name_bn ? x.name_bn : x.name;
   const variants = item.variants.filter((v) => v.is_available);

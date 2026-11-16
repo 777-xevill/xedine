@@ -9,7 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { aiConfigured } from '@/lib/llm-gateway';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { editorAmount, type DishRow } from '@/modules/recipes/dish';
 import { allIngredients, dishRecipeLines } from '@/modules/recipes/queries';
@@ -116,7 +116,10 @@ export default async function DishIngredientsPage({
         cost && canSeeMoney
           ? {
               complete: cost.complete,
-              text: cost.unit_cost_poisha === null ? '' : formatBDT(cost.unit_cost_poisha, loc),
+              text:
+                cost.unit_cost_poisha === null
+                  ? ''
+                  : formatMoney(cost.unit_cost_poisha, loc, ctx.place.currency),
             }
           : null,
     };

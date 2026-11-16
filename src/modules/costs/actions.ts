@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
 import { parseTakaToPoisha } from '@/lib/money';
-import { businessDate } from '@/lib/time/business-date';
-import { now } from '@/lib/time/clock';
+import { orgToday } from '@/modules/tenancy/context';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -53,7 +52,7 @@ export async function addFixedCostAction(_prev: FormState, formData: FormData): 
     kind: parsed.data.kind,
     label: parsed.data.label || null,
     monthly_poisha: parsed.data.monthly,
-    effective_from: businessDate(now()),
+    effective_from: await orgToday(parsed.data.orgId),
   });
   if (error) return { error: mapDbError(error) };
   refresh(parsed.data.orgSlug);
@@ -65,7 +64,7 @@ export async function endFixedCostAction(formData: FormData): Promise<void> {
   const parsed = base.extend({ id: z.uuid() }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const supabase = await createClient();
-  const today = businessDate(now());
+  const today = await orgToday(parsed.data.orgId);
   const { error } = await supabase
     .from('fixed_costs')
     .update({ effective_to: today })
@@ -107,7 +106,7 @@ export async function updateFixedCostAction(
     p_kind: parsed.data.kind,
     p_label: parsed.data.label,
     p_monthly: parsed.data.monthly,
-    p_today: businessDate(now()),
+    p_today: await orgToday(parsed.data.orgId),
   });
   if (error) return { error: mapDbError(error) };
   refresh(parsed.data.orgSlug);

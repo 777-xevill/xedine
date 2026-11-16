@@ -18,7 +18,7 @@ import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
 import { PlaceFields } from '@/components/place-fields';
 import { now } from '@/lib/time/clock';
-import { placeOptions } from '@/modules/social/culture';
+import { placeOptions, taxKindOf } from '@/modules/social/culture';
 import { updatePlaceAction } from '@/modules/tenancy/actions';
 
 export default async function SettingsPage({ params }: { params: Promise<{ org: string }> }) {
@@ -119,13 +119,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
             cutoff: `${hh}:${mm}`,
             weekStart: s.week_start,
             priceBasisLocked: (anyOrder ?? []).length > 0,
+            tax: tp(`taxNames.${taxKindOf(ctx.place.country)}`),
           }}
         />
       </Card>
 
       <Card className="mt-6">
         <CardTitle>{t('receiptTitle')}</CardTitle>
-        <p className="-mt-2 mb-4 text-sm text-secondary">{t('receiptSubtitle')}</p>
+        <p className="-mt-2 mb-4 text-sm text-secondary">
+          {ctx.place.country === 'BD' ? t('receiptSubtitle') : t('receiptSubtitleOther')}
+        </p>
         <ReceiptSettingsForm
           orgId={ctx.org.id}
           orgSlug={ctx.org.slug}

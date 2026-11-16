@@ -7,9 +7,9 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import {
-  formatBDT,
+  formatMoney,
   formatBps,
-  formatDhakaDateTime,
+  formatDateTime,
   formatNumber,
   type Locale,
 } from '@/lib/i18n/format';
@@ -60,7 +60,11 @@ export default async function FindingEvidencePage({
   const base = (evidence.base as BaseUnit | undefined) ?? 'g';
   const qty = (v: unknown) => formatQuantity(Number(v ?? 0), base, loc, (u) => tu(u));
   const perKg = (x1000: unknown) =>
-    formatBDT(Math.round(Number(x1000 ?? 0) * (base === 'pcs' ? 0.001 : 1)), loc);
+    formatMoney(
+      Math.round(Number(x1000 ?? 0) * (base === 'pcs' ? 0.001 : 1)),
+      loc,
+      ctx.place.currency,
+    );
   const rows = (events ?? []) as {
     occurred_at: string | null;
     business_date: string;
@@ -287,7 +291,7 @@ export default async function FindingEvidencePage({
                   <td className="px-4 py-2.5">{r.business_date}</td>
                   <td className="px-4 py-2.5 text-end tabular-nums">{qty(r.detail)}</td>
                   <td className="px-4 py-2.5 text-end font-semibold tabular-nums">
-                    {formatBDT(Number(r.value_poisha), loc)}
+                    {formatMoney(Number(r.value_poisha), loc, ctx.place.currency)}
                   </td>
                 </tr>
               ))}
@@ -329,7 +333,7 @@ export default async function FindingEvidencePage({
                   <td className="px-4 py-2.5 whitespace-nowrap">
                     {perDay || !r.occurred_at
                       ? r.business_date
-                      : formatDhakaDateTime(new Date(r.occurred_at), loc)}
+                      : formatDateTime(new Date(r.occurred_at), loc, ctx.place.tz)}
                   </td>
                   <td className="px-4 py-2.5 tabular-nums">
                     {r.order_number === null
@@ -339,11 +343,11 @@ export default async function FindingEvidencePage({
                         : `#${formatNumber(r.order_number, loc)}`}
                   </td>
                   <td className="px-4 py-2.5 text-end font-semibold tabular-nums">
-                    {formatBDT(Number(r.value_poisha), loc)}
+                    {formatMoney(Number(r.value_poisha), loc, ctx.place.currency)}
                   </td>
                   {itemDay ? (
                     <td className="px-4 py-2.5 text-end tabular-nums">
-                      {formatBDT(Number(r.detail || 0), loc)}
+                      {formatMoney(Number(r.detail || 0), loc, ctx.place.currency)}
                     </td>
                   ) : perDay ? null : (
                     <td className="px-4 py-2.5 text-secondary">{r.detail || '—'}</td>

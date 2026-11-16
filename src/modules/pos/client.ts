@@ -1075,16 +1075,21 @@ export interface ReceiptInfo {
   address: string | null;
   phone: string | null;
   footer: string | null;
+  /** The restaurant's currency and time zone (ADR 0062); absent in a snapshot saved before them. */
+  currency?: string;
+  timezone?: string;
+  country?: string;
 }
 
 export async function fetchReceiptInfo(sb: SupabaseClient, orgId: string): Promise<ReceiptInfo> {
-  const [{ data: org, error: oe }, { data: rs, error: re }] = await Promise.all([
+  const [{ data: org, error: oe }, { data: rs, error: re }, { data: place }] = await Promise.all([
     sb.from('organizations').select('name').eq('id', orgId).single(),
     sb
       .from('org_receipt_settings')
       .select('legal_name, bin, address, phone, footer')
       .eq('org_id', orgId)
       .maybeSingle(),
+    sb.from('org_settings').select('currency, timezone, country').eq('org_id', orgId).maybeSingle(),
   ]);
   if (oe) throw oe;
   if (re) throw re;
@@ -1095,6 +1100,9 @@ export async function fetchReceiptInfo(sb: SupabaseClient, orgId: string): Promi
     address: (rs?.address as string | null) ?? null,
     phone: (rs?.phone as string | null) ?? null,
     footer: (rs?.footer as string | null) ?? null,
+    currency: (place?.currency as string | undefined) ?? 'BDT',
+    timezone: (place?.timezone as string | undefined) ?? 'Asia/Dhaka',
+    country: (place?.country as string | undefined) ?? 'BD',
   };
 }
 

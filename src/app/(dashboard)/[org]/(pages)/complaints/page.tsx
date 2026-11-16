@@ -24,7 +24,7 @@ import {
 } from '@/modules/customers/table-qr-actions';
 import { complaintUrl } from '@/modules/reviews/complaint-link';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { businessToday } from '@/modules/metrics/queries';
 import {
@@ -127,7 +127,7 @@ export default async function ComplaintsPage({
     actions.set(a.incident_id, [...(actions.get(a.incident_id) ?? []), a]);
 
   const n = (v: unknown) => formatNumber(Number(v ?? 0), loc);
-  const day = (d: string) => formatDhakaDate(new Date(`${d}T06:00:00Z`), loc);
+  const day = (d: string) => formatDate(new Date(`${d}T12:00:00Z`), loc, 'UTC');
   const branchName = (id: string) => ctx.branches.find((b) => b.id === id)?.name ?? '';
   const showBranch = ctx.branches.length > 1;
   const open = incidents.filter((x) => x.status !== 'resolved');

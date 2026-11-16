@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { parseTakaToPoisha } from '@/lib/money';
 import { addDays } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
@@ -58,7 +58,7 @@ export default async function MenuProfitPage({
 
   const [t, locale] = await Promise.all([getTranslations('menuProfit'), getLocale()]);
   const loc = locale as Locale;
-  const money = (p: number) => formatBDT(p, loc, { poisha: 'never' });
+  const money = (p: number) => formatMoney(p, loc, ctx.place.currency, { poisha: 'never' });
   const window: Window = (WINDOWS as readonly string[]).includes(sp.window ?? '')
     ? (sp.window as Window)
     : 'last_30d';
@@ -271,9 +271,9 @@ export default async function MenuProfitPage({
             <p className="text-base font-semibold">
               {t('simHeadline', {
                 item: (items ?? []).find((i) => i.id === simItem)?.name ?? '',
-                price: formatBDT(Number(simRow.new_price_poisha ?? 0), loc),
-                after: formatBDT(Number(simRow.new_cm_poisha ?? 0), loc),
-                before: formatBDT(Number(simRow.current_cm_poisha ?? 0), loc),
+                price: formatMoney(Number(simRow.new_price_poisha ?? 0), loc, ctx.place.currency),
+                after: formatMoney(Number(simRow.new_cm_poisha ?? 0), loc, ctx.place.currency),
+                before: formatMoney(Number(simRow.current_cm_poisha ?? 0), loc, ctx.place.currency),
               })}
             </p>
             <p className="mt-1 text-sm">
@@ -281,7 +281,11 @@ export default async function MenuProfitPage({
                 ? t('simImpactNone')
                 : t(Number(simRow.cm_change_28d_poisha) > 0 ? 'simImpactUp' : 'simImpactDown', {
                     qty: formatNumber(Number(simRow.qty_28d ?? 0), loc),
-                    change: formatBDT(Math.abs(Number(simRow.cm_change_28d_poisha)), loc),
+                    change: formatMoney(
+                      Math.abs(Number(simRow.cm_change_28d_poisha)),
+                      loc,
+                      ctx.place.currency,
+                    ),
                   })}
             </p>
             <Hint>{t('simAssumption')}</Hint>
@@ -318,7 +322,7 @@ export default async function MenuProfitPage({
                           {simRow[k] == null
                             ? '—'
                             : kind === 'money'
-                              ? formatBDT(Number(simRow[k]), loc)
+                              ? formatMoney(Number(simRow[k]), loc, ctx.place.currency)
                               : formatBps(Number(simRow[k]), loc)}
                         </td>
                       ))}

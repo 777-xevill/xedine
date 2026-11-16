@@ -29,17 +29,21 @@ function wrap<T>(metric_id: string, filters: Record<string, unknown>, rows: T[])
   return { metric_id, as_of: now().toISOString(), filters, rows };
 }
 
-/** The org's current business date (Asia/Dhaka, org cutoff) and the injected "now" behind it. */
+/** The org's current business date (its own time zone and cutoff, ADR 0062) and the injected "now" behind it. */
 export async function businessToday(orgId: string): Promise<{ date: string; nowIso: string }> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('org_settings')
-    .select('default_cutoff_minutes')
+    .select('default_cutoff_minutes, timezone')
     .eq('org_id', orgId)
     .maybeSingle();
   const at = now();
   return {
-    date: businessDate(at, data?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES),
+    date: businessDate(
+      at,
+      data?.default_cutoff_minutes ?? DEFAULT_CUTOFF_MINUTES,
+      (data?.timezone as string | undefined) ?? 'Asia/Dhaka',
+    ),
     nowIso: at.toISOString(),
   };
 }

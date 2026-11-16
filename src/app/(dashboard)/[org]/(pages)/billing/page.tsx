@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, Hint, PageTitle, Stat } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBDT, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
@@ -34,7 +34,7 @@ export default async function BillingPage({ params }: { params: Promise<{ org: s
   const b = ((data ?? []) as Record<string, unknown>[])[0];
   if (!b) notFound();
   const status = b.status as keyof typeof TONE;
-  const bdt = (v: unknown) => formatBDT(Number(v ?? 0), loc, { poisha: 'never' });
+  const bdt = (v: unknown) => formatMoney(Number(v ?? 0), loc, 'BDT', { poisha: 'never' });
 
   return (
     <>

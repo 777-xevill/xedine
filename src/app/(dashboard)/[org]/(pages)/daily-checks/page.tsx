@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Card, Hint, Input, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBps, formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import {
   addCheckAction,
@@ -96,7 +96,7 @@ export default async function DailyChecksPage({ params }: { params: Promise<{ or
 
   const label = (x: { name: string; name_bn: string | null }) =>
     loc === 'bn' && x.name_bn ? x.name_bn : x.name;
-  const day = (d: string) => formatDhakaDate(new Date(`${d}T06:00:00Z`), loc);
+  const day = (d: string) => formatDate(new Date(`${d}T12:00:00Z`), loc, 'UTC');
   const branchName = (id: string) => ctx.branches.find((b) => b.id === id)?.name ?? '';
   const showBranch = ctx.branches.length > 1;
   const n = (v: number) => formatNumber(Number(v), loc);

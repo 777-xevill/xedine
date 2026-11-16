@@ -1,17 +1,12 @@
 import { ChevronLeft, ChevronRight, CopyPlus } from 'lucide-react';
 import Link from 'next/link';
 import { getLocale, getTranslations } from 'next-intl/server';
+import type { Place } from '@/modules/tenancy/place';
 import { ActionForm } from '@/components/action-form';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, EmptyState, Hint, Input, Label, Select } from '@/components/ui/form';
-import {
-  formatBDT,
-  formatDhakaDate,
-  formatDhakaMonth,
-  formatNumber,
-  type Locale,
-} from '@/lib/i18n/format';
+import { formatMoney, formatDate, formatMonth, formatNumber, type Locale } from '@/lib/i18n/format';
 import {
   copySalariesAction,
   markAllSalariesPaidAction,
@@ -40,7 +35,8 @@ export interface StaffRow {
 }
 
 /** A business date "2026-11-14" as noon in Dhaka, for the shared date formatters. */
-const noon = (day: string) => new Date(`${day}T12:00:00+06:00`);
+/** A calendar date drawn as itself: noon UTC, shown in UTC (the same day in every zone). */
+const noon = (day: string) => new Date(`${day}T12:00:00Z`);
 
 /**
  * Costs → Salaries (ADR 0060): one month at a time. The owner types each person's pay, marks who has been
@@ -58,6 +54,7 @@ export async function SalariesSection({
   staff,
   entries,
   branches,
+  place,
 }: {
   orgId: string;
   orgSlug: string;
@@ -69,6 +66,7 @@ export async function SalariesSection({
   staff: StaffRow[];
   entries: SalaryEntryRow[];
   branches: { id: string; name: string }[];
+  place: Place;
 }) {
   const [t, tr, locale] = await Promise.all([
     getTranslations('costs'),
@@ -76,8 +74,8 @@ export async function SalariesSection({
     getLocale(),
   ]);
   const loc = locale as Locale;
-  const money = (p: number) => formatBDT(p, loc);
-  const plain = (p: number) => formatBDT(p, 'en', { symbol: false });
+  const money = (p: number) => formatMoney(p, loc, place.currency);
+  const plain = (p: number) => formatMoney(p, 'en', place.currency, { symbol: false });
   const by = new Map(entries.map((e) => [e.staff_id, e]));
   const totalOf = (e: SalaryEntryRow) => Number(e.salary_poisha) + Number(e.allowances_poisha);
   const base = `/${orgSlug}/costs?tab=salaries`;
@@ -112,7 +110,7 @@ export async function SalariesSection({
       ))}
     </Select>
   );
-  const monthName = formatDhakaMonth(noon(`${month}-15`), loc);
+  const monthName = formatMonth(noon(`${month}-15`), loc, 'UTC');
   const tiles = [
     { label: t('salPeople'), value: formatNumber(staff.length, loc), hint: t('salPeopleHint') },
     { label: t('salTotal'), value: money(totalPay), hint: monthName },
@@ -224,7 +222,7 @@ export async function SalariesSection({
               const paid = e ? Number(e.paid_poisha) : 0;
               const full = Boolean(e) && total > 0 && paid >= total;
               const part = Boolean(e) && paid > 0 && !full;
-              const when = e?.paid_on ? formatDhakaDate(noon(e.paid_on), loc) : '';
+              const when = e?.paid_on ? formatDate(noon(e.paid_on), loc, 'UTC') : '';
               const how = e?.paid_method ? t(`methods.${e.paid_method}`) : '';
               return (
                 <li key={s.id}>

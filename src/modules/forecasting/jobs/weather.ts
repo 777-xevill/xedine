@@ -1,7 +1,8 @@
 import 'server-only';
 import { createTranslator } from 'next-intl';
 import { createServiceRoleClient } from '@/lib/db/service-role';
-import { formatDhakaTime, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatNumber, formatTime, type Locale } from '@/lib/i18n/format';
+import { placeOfOrg } from '@/modules/tenancy/place';
 import { addDays, businessDate, DEFAULT_CUTOFF_MINUTES } from '@/lib/time/business-date';
 import bn from '@/messages/bn.json';
 import en from '@/messages/en.json';
@@ -9,11 +10,14 @@ import { briefLocale, notifyOwnerOnce } from '@/modules/briefs/jobs/briefs';
 import {
   branchCoords,
   calendarToAdd,
+  type CalendarEstimate,
   dailyWeather,
   parseMetno,
   rainWindow,
   type WeatherPoint,
 } from '@/modules/forecasting/outlook';
+import { countryCalendar, nationalDayOf } from '@/modules/social/culture';
+import type { Occasion } from '@/modules/social/video-words';
 
 /**
  * The weather job (ADR 0051), every three hours: fetch MET Norway's forecast for every active branch, store
@@ -148,7 +152,9 @@ export async function runWeather(
   const outcomes = await Promise.allSettled(
     [...byOrg].map(async ([orgId, orgBranches]) => {
       const orgCutoff = cutoffOf.get(orgId) ?? DEFAULT_CUTOFF_MINUTES;
-      const today = businessDate(at, orgCutoff);
+      // The restaurant's own clock (ADR 0062).
+      const place = await placeOfOrg(sb, orgId);
+      const today = businessDate(at, orgCutoff, place.tz);
       const last = addDays(today, DAYS_AHEAD);
 
       // 1. Rainy days on the calendar: the forecast scales a flagged day by what rainy days did before.
@@ -158,13 +164,13 @@ export async function runWeather(
         const pts = pointsOf.get(b.id);
         if (!pts) continue;
         haveWeather = true;
-        for (const d of dailyWeather(pts, today, last, b.cutoff_minutes ?? orgCutoff))
+        for (const d of dailyWeather(pts, today, last, b.cutoff_minutes ?? orgCutoff, place.tz))
           if (d.rainy) rainy.add(d.date);
       }
       if (haveWeather) result.flaggedDays += await syncRainFlags(sb, orgId, today, last, rainy);
 
-      // 2. The national calendar's coming days, once each.
-      result.calendarAdded += await addCalendar(sb, orgId, today);
+      // 2. The country's coming special days, once each (Bangladesh's own list, else culture.ts).
+      result.calendarAdded += await addCalendar(sb, orgId, today, place.country);
 
       // 3. Rain about to start at a branch: one alert per branch per business day.
       for (const b of orgBranches) {
@@ -175,8 +181,8 @@ export async function runWeather(
           const t = translator(locale);
           return t('rainSoonAlert', {
             branch: b.name,
-            start: formatDhakaTime(new Date(w.start), locale),
-            end: formatDhakaTime(new Date(w.end), locale),
+            start: formatTime(new Date(w.start), locale, place.tz),
+            end: formatTime(new Date(w.end), locale, place.tz),
             mm: formatNumber(w.rainMm, locale, {
               fractionDigits: Number.isInteger(w.rainMm) ? 0 : 1,
             }),
@@ -193,6 +199,27 @@ export async function runWeather(
         o.reason instanceof Error ? o.reason.message.slice(0, 120) : 'error',
       );
   return result;
+}
+
+/** A country's special days as calendar estimates, named in both languages from the app's own words. */
+function countryEstimates(country: string, today: string): CalendarEstimate[] {
+  const day = nationalDayOf(country)?.name;
+  const name = (locale: Locale, o: Occasion) =>
+    o === 'national_day' && day
+      ? day
+      : createTranslator({
+          locale,
+          messages: locale === 'bn' ? bn : en,
+          namespace: 'social.video',
+        })(`occasionNames.${o}`);
+  return countryCalendar(country, today).map((e) => ({
+    key: e.key,
+    name: name('en', e.occasion),
+    name_bn: name('bn', e.occasion),
+    kind: e.kind,
+    starts_on: e.starts_on,
+    ends_on: e.ends_on,
+  }));
 }
 
 function translator(locale: Locale) {
@@ -249,8 +276,13 @@ async function syncRainFlags(
 }
 
 /** Add the coming national days the org does not have yet; each is added once, so a deleted one stays gone. */
-async function addCalendar(sb: Supabase, orgId: string, today: string): Promise<number> {
-  const coming = calendarToAdd(today);
+async function addCalendar(
+  sb: Supabase,
+  orgId: string,
+  today: string,
+  country: string,
+): Promise<number> {
+  const coming = country === 'BD' ? calendarToAdd(today) : countryEstimates(country, today);
   if (coming.length === 0) return 0;
   const { data: marks, error } = await sb
     .from('org_job_marks')

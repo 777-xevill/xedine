@@ -9,7 +9,7 @@ import { SettingsNav } from '@/components/settings-nav';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatBps, formatDhakaDate, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
 import { codeStatus, type CodeStatus } from '@/modules/discounts/codes';
@@ -45,7 +45,7 @@ export default async function DiscountCodesPage({ params }: { params: Promise<{ 
       Number(r.uses),
     ]),
   );
-  const today = businessDate(now());
+  const today = businessDate(now(), ctx.place.cutoffMinutes, ctx.place.tz);
 
   return (
     <>
@@ -89,7 +89,7 @@ export default async function DiscountCodesPage({ params }: { params: Promise<{ 
                         {' · '}
                         {c.ends_on
                           ? t('until', {
-                              date: formatDhakaDate(new Date(`${c.ends_on}T12:00:00+06:00`), loc),
+                              date: formatDate(new Date(`${c.ends_on}T12:00:00Z`), loc, 'UTC'),
                             })
                           : t('noEnd')}
                         {c.note ? ` · ${c.note}` : ''}

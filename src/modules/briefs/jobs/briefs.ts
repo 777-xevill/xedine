@@ -3,7 +3,8 @@ import { createTranslator } from 'next-intl';
 import { z } from 'zod';
 import { createServiceRoleClient } from '@/lib/db/service-role';
 import { telegramApi } from '@/lib/messaging/telegram';
-import { formatBDT, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
+import { placeOfOrg } from '@/modules/tenancy/place';
 import { aiConfigured, gateway, type PromptVersion } from '@/lib/llm-gateway';
 import { addDays, businessDate } from '@/lib/time/business-date';
 import bn from '@/messages/bn.json';
@@ -73,14 +74,11 @@ export async function composeBrief(args: {
 }): Promise<{ text: string; figures: Record<string, unknown> }> {
   const { sb, orgId, kind, at, locale } = args;
   const t = createTranslator({ locale, messages: locale === 'bn' ? bn : en, namespace: 'briefs' });
-  const money = (p: number) => formatBDT(p, locale, { poisha: 'never' });
+  // The restaurant's own money and clock (ADR 0062).
+  const place = await placeOfOrg(sb, orgId);
+  const money = (p: number) => formatMoney(p, locale, place.currency, { poisha: 'never' });
   const n = (v: number) => formatNumber(v, locale);
-  const { data: settings } = await sb
-    .from('org_settings')
-    .select('default_cutoff_minutes')
-    .eq('org_id', orgId)
-    .maybeSingle();
-  const today = businessDate(at, settings?.default_cutoff_minutes ?? 240);
+  const today = businessDate(at, place.cutoffMinutes, place.tz);
   const nowIso = at.toISOString();
   const lines: string[] = [];
   const figures: Record<string, unknown> = { kind, today };
@@ -297,18 +295,14 @@ export async function queueBrief(
     }
   }
   if (to) {
-    const { data: settings } = await sb
-      .from('org_settings')
-      .select('default_cutoff_minutes')
-      .eq('org_id', orgId)
-      .maybeSingle();
+    const place = await placeOfOrg(sb, orgId);
     await queueMessage(sb, {
       orgId,
       toPhone: to.phone,
       templateKey: `brief_${kind}`,
       language: to.locale,
       body: brief.text,
-      idempotencyKey: `brief_${kind}:${businessDate(at, settings?.default_cutoff_minutes ?? 240)}`,
+      idempotencyKey: `brief_${kind}:${businessDate(at, place.cutoffMinutes, place.tz)}`,
     });
     delivered = true;
   }

@@ -17,7 +17,7 @@ import {
   Select,
 } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDate, formatDhakaDateTime, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDate, formatDateTime, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import {
   holdIngredientAction,
@@ -153,7 +153,7 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
 
   const label = (x: { name: string; name_bn: string | null }) =>
     loc === 'bn' && x.name_bn ? x.name_bn : x.name;
-  const day = (d: string) => formatDhakaDate(new Date(`${d}T06:00:00Z`), loc);
+  const day = (d: string) => formatDate(new Date(`${d}T12:00:00Z`), loc, 'UTC');
   const n = (v: number) => formatNumber(v, loc);
   const branchName = (id: string) => ctx.branches.find((b) => b.id === id)?.name ?? '';
   const showBranch = ctx.branches.length > 1;
@@ -466,7 +466,7 @@ export default async function FoodSafetyPage({ params }: { params: Promise<{ org
             <ul className="mt-1 space-y-1 text-sm">
               {soldRows.map((s) => (
                 <li key={s.order_id}>
-                  {formatDhakaDateTime(new Date(s.at), loc)} · {s.ingredients.join(', ')}
+                  {formatDateTime(new Date(s.at), loc, ctx.place.tz)} · {s.ingredients.join(', ')}
                 </li>
               ))}
             </ul>

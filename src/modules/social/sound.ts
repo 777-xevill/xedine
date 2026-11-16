@@ -158,20 +158,29 @@ export async function speak(
   const clean = text.replace(/\s+/g, ' ').trim().slice(0, 160);
   if (!clean) return null;
   const python = process.env.PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3');
+  // The text goes in a UTF-8 file, not the command line, so Bangla reaches the voice whole on any system.
+  const textFile = `${file}.txt`;
+  await writeFile(textFile, clean, 'utf8');
   const args = [
     '-m',
     'edge_tts',
     '--voice',
     VOICES[lang][gender],
     '--rate=+6%',
-    '--text',
-    clean,
+    '--file',
+    textFile,
     '--write-media',
     file,
   ];
-  // The free service now and then drops a request: one more try, then music only.
+  // The free service drops a request now and then ("No audio was received"): three tries with a short
+  // wait between them, then music only.
   let r = await run(python, args, 40_000);
-  if (r.code !== 0) r = await run(python, args, 40_000);
+  for (const wait of [1500, 4000]) {
+    if (r.code === 0 && existsSync(file)) break;
+    await new Promise((done) => setTimeout(done, wait));
+    r = await run(python, args, 40_000);
+  }
+  await rm(textFile, { force: true });
   if (r.code !== 0 || !existsSync(file)) {
     const why = r.stderr.trim().split(/\r?\n/).pop() ?? 'failed';
     console.warn(`voice: ${why.slice(0, 200)}`);

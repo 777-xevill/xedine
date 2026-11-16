@@ -28,6 +28,15 @@ import {
 } from '@/modules/social/video-words';
 import { writeSocialPost, writeSocialVideo } from '@/modules/social/writer';
 import { banglaCaption, type BanglaContext, banglaWords } from '@/modules/social/bangla-lines';
+import {
+  COUNTRY_CODES,
+  countryName,
+  countryOf,
+  isTimeZone,
+  pricesSupported,
+  timezoneOf,
+  timezonesOf,
+} from '@/modules/social/culture';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
@@ -42,6 +51,19 @@ const refresh = (slug: string) => {
   revalidatePath(`/${slug}/settings/social`);
   revalidatePath(`/${slug}/growth`);
 };
+/** The restaurant's country and time zone (saved with the video settings, ADR 0061). */
+async function placeOf(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+): Promise<{ country: ReturnType<typeof countryOf>; tz: string }> {
+  const { data } = await supabase
+    .from('social_settings')
+    .select('country, timezone')
+    .eq('org_id', orgId)
+    .maybeSingle();
+  return { country: countryOf(data?.country), tz: timezoneOf(data?.country, data?.timezone) };
+}
+
 const optional = (max: number) =>
   z
     .string()
@@ -178,16 +200,18 @@ export async function requestSocialPostAction(
   ];
   if (extra.length > 3 || !extra.every((v) => z.uuid().safeParse(v).success))
     return { error: 'invalidInput' };
+  const supabase = await createClient();
+  // "Today" and the time picked are the restaurant's own (its country's time zone).
+  const { tz } = await placeOf(supabase, d.orgId);
   const at = now();
   let when = at;
-  let planDate = businessDate(at, 0);
+  let planDate = businessDate(at, 0, tz);
   if (d.when === 'later') {
     if (!d.date || !d.time) return { error: 'socialPickTime' };
-    when = slotAt(d.date, d.time);
+    when = slotAt(d.date, d.time, tz);
     planDate = d.date;
     if (when.getTime() < at.getTime()) return { error: 'socialPickTime' };
   }
-  const supabase = await createClient();
   const { error } = await supabase.rpc('request_social_post', {
     p_org: d.orgId,
     p_item: d.itemId,
@@ -238,7 +262,7 @@ export async function draftSocialWordsAction(input: {
       .maybeSingle(),
     supabase
       .from('social_settings')
-      .select('tone, display_name, area')
+      .select('tone, display_name, area, country')
       .eq('org_id', d.orgId)
       .maybeSingle(),
   ]);
@@ -252,6 +276,7 @@ export async function draftSocialWordsAction(input: {
       ownNote: d.idea || null,
       tone: (settings?.tone as 'friendly' | 'premium' | 'fun' | undefined) ?? 'friendly',
       area: (settings?.area as string | null) ?? null,
+      country: countryName(countryOf(settings?.country)),
     });
     // Only the words go back to the browser (the schema drops the model name and prompt version).
     return { ok: true, words: SocialWordsSchema.parse(written) };
@@ -426,7 +451,7 @@ export async function pickSocialPageAction(
 // Short videos (ADR 0061): owner and managers alike.
 // ---------------------------------------------------------------------------------------------
 
-/** How many videos a day, the AI voice and special-day greetings. */
+/** How many videos a day, the AI voice, special-day greetings, and the restaurant's country and time zone. */
 export async function saveSocialVideoSettingsAction(
   _prev: FormState,
   formData: FormData,
@@ -437,10 +462,16 @@ export async function saveSocialVideoSettingsAction(
       voiceShare: z.enum(['none', 'half', 'all']),
       voiceGender: z.enum(['female', 'male']),
       greetings: z.literal('on').optional(),
+      country: z.enum(COUNTRY_CODES as [string, ...string[]]),
+      timezone: z.string().trim().max(40).optional(),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
   const d = parsed.data;
+  // A time zone of the country (a new country without its zone picked yet takes the country's first).
+  const zones = timezonesOf(d.country);
+  const timezone = d.timezone && zones.includes(d.timezone) ? d.timezone : zones[0]!;
+  if (!isTimeZone(timezone)) return { error: 'invalidInput' };
   const supabase = await createClient();
   const { error } = await supabase.rpc('save_social_video_settings', {
     p_org: d.orgId,
@@ -448,6 +479,8 @@ export async function saveSocialVideoSettingsAction(
     p_voice_share: d.voiceShare,
     p_voice_gender: d.voiceGender,
     p_greetings: d.greetings === 'on',
+    p_country: d.country,
+    p_timezone: timezone,
   });
   if (error) return { error: mapDbError(error) };
   refresh(d.orgSlug);
@@ -498,18 +531,21 @@ export async function requestSocialVideoAction(
   }
   const kind = d.kind || null;
   if (look && kind && look.kind !== kind) look = null;
+  const supabase = await createClient();
+  const { country, tz } = await placeOf(supabase, d.orgId);
+  // Menu prices are taka only: outside Bangladesh there is no offer video (culture.ts).
+  if (kind === 'offer' && !pricesSupported(country)) return { error: 'socialOfferNoPrices' };
   const at = now();
   let when = at;
-  let planDate = businessDate(at, 0);
+  let planDate = businessDate(at, 0, tz);
   if (d.when === 'later') {
     if (!d.date || !d.time) return { error: 'socialPickTime' };
-    when = slotAt(d.date, d.time);
+    when = slotAt(d.date, d.time, tz);
     planDate = d.date;
     if (when.getTime() < at.getTime()) return { error: 'socialPickTime' };
   }
   const offer = kind === 'offer' && d.offer ? Math.round(Number(d.offer) * 100) : null;
   if (kind === 'offer' && !offer) return { error: 'socialOfferPrice' };
-  const supabase = await createClient();
   const { error } = await supabase.rpc('request_social_video', {
     p_org: d.orgId,
     p_items: items,
@@ -574,7 +610,7 @@ export async function draftSocialVideoWordsAction(input: {
       .in('id', d.itemIds),
     supabase
       .from('social_settings')
-      .select('tone, display_name, area')
+      .select('tone, display_name, area, country')
       .eq('org_id', d.orgId)
       .maybeSingle(),
     supabase
@@ -608,6 +644,7 @@ export async function draftSocialVideoWordsAction(input: {
       ownNote: d.idea || null,
       tone,
       area: (settings?.area as string | null) ?? null,
+      country: countryName(countryOf(settings?.country)),
       hookStyle,
       recentLines,
     });

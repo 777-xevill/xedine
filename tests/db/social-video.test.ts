@@ -98,6 +98,62 @@ describe('social video', () => {
     expect(audits).toHaveLength(2);
   });
 
+  const place = (who: TestUser, country: string | null, tz: string | null) =>
+    asUser(
+      who,
+      (s) =>
+        s.attempt(
+          'select public.save_social_video_settings($1, 1::smallint, $2, $3, true, $4, $5)',
+          [org.id, 'half', 'female', country, tz],
+        ),
+      commit,
+    );
+  const placeNow = async () =>
+    (
+      await admin<{ country: string; timezone: string; language: string }>(
+        `select country, timezone, language from public.social_settings where org_id = $1`,
+        [org.id],
+      )
+    )[0];
+
+  it('keeps the restaurant’s country and time zone: Bangladesh by default, English when it leaves, audited', async () => {
+    expect(await placeNow()).toMatchObject({ country: 'BD', timezone: 'Asia/Dhaka' });
+    await admin(`update public.social_settings set language = 'both' where org_id = $1`, [org.id]);
+    expect(code(await place(manager, 'US', 'America/Chicago'))).toBe('ok');
+    // Leaving Bangladesh puts the posts in English (the Bangla lines are written for Bangladesh).
+    expect(await placeNow()).toEqual({
+      country: 'US',
+      timezone: 'America/Chicago',
+      language: 'en',
+    });
+    // Bangla again by hand stays when the country does not change (a Bangladeshi restaurant abroad).
+    await admin(`update public.social_settings set language = 'bn' where org_id = $1`, [org.id]);
+    expect(code(await place(org.owner, null, null))).toBe('ok');
+    expect(await placeNow()).toEqual({
+      country: 'US',
+      timezone: 'America/Chicago',
+      language: 'bn',
+    });
+    for (const [c, tz] of [
+      ['usa', null],
+      ['us', null],
+      [null, 'not a zone; drop table'],
+      [null, 'x'],
+    ] as const)
+      expect(code(await place(org.owner, c, tz)), `${c} ${tz}`).toBe('22023');
+    expect(code(await place(accountant, 'GB', 'Europe/London'))).toBe('42501');
+    expect(code(await place(other.owner, 'GB', 'Europe/London'))).toBe('42501');
+    const [audit] = await admin<{ after: Record<string, unknown> }>(
+      `select after from public.audit_log where org_id = $1 and action = 'social.video_settings'
+        order by created_at desc limit 1`,
+      [org.id],
+    );
+    expect(audit!.after).toMatchObject({ country: 'US', timezone: 'America/Chicago' });
+    // Back home: Bangladesh and Dhaka (the language is the owner's to set again).
+    expect(code(await place(org.owner, 'BD', 'Asia/Dhaka'))).toBe('ok');
+    expect(await placeNow()).toMatchObject({ country: 'BD', timezone: 'Asia/Dhaka' });
+  });
+
   const request = (
     who: TestUser,
     items: string[],

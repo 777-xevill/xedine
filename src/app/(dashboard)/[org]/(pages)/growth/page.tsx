@@ -19,13 +19,24 @@ import { SocialVideoStudio, type VideoStudioText } from '@/components/social-vid
 import { DishHqPhotoField } from '@/components/dish-hq-photo-field';
 import { ActionForm } from '@/components/action-form';
 import { saveSocialVideoSettingsAction } from '@/modules/social/actions';
+import { CountryZoneFields } from '@/components/country-zone-fields';
+import {
+  COUNTRY_CODES,
+  countryName,
+  countryOf,
+  nationalDayOf,
+  occasionsFor,
+  pricesSupported,
+  timezoneOf,
+  timezonesOf,
+} from '@/modules/social/culture';
 import { OCCASIONS } from '@/modules/social/video-words';
 import { MIN_VIDEO_PHOTO_PX } from '@/modules/social/video-rules';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, Card, EmptyState, Hint, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { formatDhakaDateTime, formatNumber, type Locale } from '@/lib/i18n/format';
+import { formatDateTimeIn, formatNumber, type Locale } from '@/lib/i18n/format';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { markSocialDishAction, skipSocialPostAction } from '@/modules/social/actions';
@@ -70,8 +81,11 @@ function posterText(locale: Locale): StudioPosterText & { plusVat: string } {
   };
 }
 
-/** The video's own words in one language (labels, defaults, greetings), for the live preview. */
-function videoText(locale: Locale): VideoStudioText {
+/**
+ * The video's own words in one language (labels, defaults, greetings), for the live preview. The national
+ * day's greeting carries the country's own day ("Happy Canada Day").
+ */
+function videoText(locale: Locale, nationalDay: string | null): VideoStudioText {
   const t = createTranslator({ locale, messages: locale === 'bn' ? bn : en, namespace: 'social' });
   return {
     labels: { or: t('video.or'), onlyAt: t('video.onlyAt'), now: t('video.now') },
@@ -83,9 +97,29 @@ function videoText(locale: Locale): VideoStudioText {
       tagline: t('video.defaults.tagline'),
     },
     greetings: Object.fromEntries(
-      OCCASIONS.filter((o) => o !== 'custom').map((o) => [o, t(`video.occasions.${o}`)]),
+      OCCASIONS.filter((o) => o !== 'custom').map((o) => [
+        o,
+        o === 'national_day'
+          ? nationalDay
+            ? t('video.occasions.national_day', { day: nationalDay })
+            : t('video.occasions.independence_day')
+          : t(`video.occasions.${o}`),
+      ]),
     ) as VideoStudioText['greetings'],
   };
+}
+
+/** A time zone as people read it: "New York (GMT-5)", from the zone's own city and today's offset. */
+function zoneCity(tz: string): string {
+  const city = (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
+  try {
+    const offset = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' })
+      .formatToParts(now())
+      .find((p) => p.type === 'timeZoneName')?.value;
+    return offset ? `${city} (${offset})` : city;
+  } catch {
+    return city;
+  }
 }
 
 const STATUS_TONE: Record<string, 'neutral' | 'info' | 'success' | 'danger'> = {
@@ -171,7 +205,7 @@ export default async function GrowthPage({
     supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings, country, timezone',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
@@ -237,11 +271,26 @@ export default async function GrowthPage({
     ({ data: look } = await supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings, country, timezone',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle());
   }
+  // The restaurant's country and clock (ADR 0061): its special days, its posting times, and prices only
+  // where the menu is in taka.
+  const country = countryOf(look?.country);
+  const tz = timezoneOf(country, look?.timezone);
+  const pricesOn = pricesSupported(country);
+  const when = (iso: string | Date) => formatDateTimeIn(new Date(iso), loc, tz);
+  const countryList = COUNTRY_CODES.map((code) => ({ code, name: countryName(code, loc) })).sort(
+    (a, b) => a.name.localeCompare(b.name, loc),
+  );
+  const zoneList = Object.fromEntries(
+    COUNTRY_CODES.map((code) => [
+      code,
+      timezonesOf(code).map((z) => ({ tz: z, city: zoneCity(z) })),
+    ]),
+  );
   const dishes = items ?? [];
   const dishName = new Map(dishes.map((d) => [d.id as string, d.name as string]));
   const mediaUrl = (bucket: string, path: string) =>
@@ -269,7 +318,7 @@ export default async function GrowthPage({
   );
   const vatIncluded = (orgSettings?.price_includes_vat as boolean | undefined) ?? true;
   const price = (d: { id: string; base_price_poisha: number }, locale: Locale) =>
-    look?.show_price === false
+    look?.show_price === false || !pricesOn
       ? null
       : posterPrice(
           { basePoisha: Number(d.base_price_poisha), branchPoisha: perBranch.get(d.id) ?? [] },
@@ -344,9 +393,7 @@ export default async function GrowthPage({
           </div>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold tabular-nums">
-                {formatDhakaDateTime(new Date(p.scheduled_at), loc)}
-              </span>
+              <span className="font-semibold tabular-nums">{when(p.scheduled_at)}</span>
               <StatusBadge tone={STATUS_TONE[p.status] ?? 'neutral'}>
                 {t(`status.${p.status}`)}
               </StatusBadge>
@@ -598,81 +645,8 @@ export default async function GrowthPage({
       {tab === 'video' ? (
         <div className="space-y-6">
           <Card>
-            <p className="mb-1 font-semibold">{tv('settings.title')}</p>
-            <p className="mb-4 text-sm text-secondary">{tv('settings.body')}</p>
-            {!look ? (
-              <EmptyState title={t('noLook')} body={t('noLookBody')} />
-            ) : (
-              <ActionForm
-                action={saveSocialVideoSettingsAction}
-                successKey="common.saved"
-                className="grid gap-4 sm:grid-cols-3"
-              >
-                {hidden}
-                <div>
-                  <Label htmlFor="sv-per-day">{tv('settings.perDay')}</Label>
-                  <Select
-                    id="sv-per-day"
-                    name="videosPerDay"
-                    defaultValue={String(look.videos_per_day ?? 1)}
-                  >
-                    {[0, 1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>
-                        {tv('settings.perDayN', { n })}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="sv-voice">{tv('settings.voice')}</Label>
-                  <Select
-                    id="sv-voice"
-                    name="voiceShare"
-                    defaultValue={(look.voice_share as string | undefined) ?? 'half'}
-                  >
-                    {(['none', 'half', 'all'] as const).map((v) => (
-                      <option key={v} value={v}>
-                        {tv(`settings.voiceShare.${v}`)}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="sv-gender">{tv('settings.gender')}</Label>
-                  <Select
-                    id="sv-gender"
-                    name="voiceGender"
-                    defaultValue={(look.voice_gender as string | undefined) ?? 'female'}
-                  >
-                    <option value="female">{tv('settings.female')}</option>
-                    <option value="male">{tv('settings.male')}</option>
-                  </Select>
-                </div>
-                <label className="flex items-start gap-3 rounded-input border border-line p-3 sm:col-span-3">
-                  <input
-                    type="checkbox"
-                    name="greetings"
-                    defaultChecked={look.greetings !== false}
-                    className="mt-1 size-5 accent-purple"
-                  />
-                  <span>
-                    <span className="block font-semibold">{tv('settings.greetings')}</span>
-                    <span className="text-sm text-secondary">{tv('settings.greetingsHint')}</span>
-                  </span>
-                </label>
-                <div className="sm:col-span-3">
-                  <Button type="submit">{tv('settings.save')}</Button>
-                  <Hint className="mt-2">
-                    {look.autopilot ? tv('settings.autopilotOn') : tv('settings.autopilotOff')}
-                  </Hint>
-                </div>
-              </ActionForm>
-            )}
-          </Card>
-
-          <Card>
-            <p className="mb-1 font-semibold">{tv('make.title')}</p>
-            <p className="mb-4 text-sm text-secondary">{tv('make.body')}</p>
+            <p className="mb-1 text-lg font-bold">{tv('make.title')}</p>
+            <p className="mb-5 text-sm text-secondary">{tv('make.body')}</p>
             {dishes.length === 0 ? (
               <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
             ) : !look ? (
@@ -696,15 +670,152 @@ export default async function GrowthPage({
                     : null,
                 }}
                 language={(look.language as 'bn' | 'en' | 'both' | undefined) ?? 'both'}
-                text={{ bn: videoText('bn'), en: videoText('en') }}
+                text={{
+                  bn: videoText('bn', nationalDayOf(country)?.name ?? null),
+                  en: videoText('en', nationalDayOf(country)?.name ?? null),
+                }}
                 aiOn={aiConfigured()}
                 tone={((look.tone as SocialTone | undefined) ?? 'friendly') as SocialTone}
+                place={{
+                  country,
+                  countryName: countryName(country, loc),
+                  nationalDay: nationalDayOf(country)?.name ?? null,
+                  ...occasionsFor(country, OCCASIONS),
+                  pricesOn,
+                }}
               />
             )}
           </Card>
 
           <Card>
-            <p className="mb-1 font-semibold">{tv('photos.title')}</p>
+            <p className="mb-1 text-lg font-bold">{tv('settings.title')}</p>
+            <p className="mb-4 text-sm text-secondary">{tv('settings.body')}</p>
+            {!look ? (
+              <EmptyState title={t('noLook')} body={t('noLookBody')} />
+            ) : (
+              <>
+                <ul className="mb-3 flex flex-wrap gap-2" aria-label={tv('settings.now')}>
+                  <li>
+                    <Badge tone="neutral">
+                      {tv('settings.perDayN', { n: Number(look.videos_per_day ?? 1) })}
+                    </Badge>
+                  </li>
+                  <li>
+                    <Badge tone="neutral">
+                      {tv(
+                        `settings.voiceShare.${(look.voice_share as 'none' | 'half' | 'all' | undefined) ?? 'half'}`,
+                      )}
+                    </Badge>
+                  </li>
+                  <li>
+                    <Badge tone="neutral">
+                      {look.greetings !== false
+                        ? tv('settings.greetingsOnShort')
+                        : tv('settings.greetingsOffShort')}
+                    </Badge>
+                  </li>
+                  <li>
+                    <Badge tone="neutral">
+                      {countryName(country, loc)} · {zoneCity(tz)}
+                    </Badge>
+                  </li>
+                </ul>
+                <Hint className="mb-4">
+                  {look.autopilot ? tv('settings.autopilotOn') : tv('settings.autopilotOff')}
+                </Hint>
+                <details className="rounded-input border border-line">
+                  <summary className="cursor-pointer p-3 font-semibold select-none">
+                    {tv('settings.change')}
+                  </summary>
+                  <ActionForm
+                    action={saveSocialVideoSettingsAction}
+                    successKey="common.saved"
+                    className="space-y-5 border-t border-line p-4"
+                  >
+                    {hidden}
+                    <fieldset className="space-y-3">
+                      <legend className="mb-1 text-sm font-semibold">
+                        {tv('settings.placeTitle')}
+                      </legend>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <CountryZoneFields
+                          countries={countryList}
+                          zones={zoneList}
+                          country={country}
+                          timezone={tz}
+                        />
+                      </div>
+                      <Hint>{tv('settings.countryHint')}</Hint>
+                    </fieldset>
+                    <fieldset className="space-y-3">
+                      <legend className="mb-1 text-sm font-semibold">
+                        {tv('settings.videosTitle')}
+                      </legend>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div>
+                          <Label htmlFor="sv-per-day">{tv('settings.perDay')}</Label>
+                          <Select
+                            id="sv-per-day"
+                            name="videosPerDay"
+                            defaultValue={String(look.videos_per_day ?? 1)}
+                          >
+                            {[0, 1, 2, 3, 4, 5].map((n) => (
+                              <option key={n} value={n}>
+                                {tv('settings.perDayN', { n })}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="sv-voice">{tv('settings.voice')}</Label>
+                          <Select
+                            id="sv-voice"
+                            name="voiceShare"
+                            defaultValue={(look.voice_share as string | undefined) ?? 'half'}
+                          >
+                            {(['none', 'half', 'all'] as const).map((v) => (
+                              <option key={v} value={v}>
+                                {tv(`settings.voiceShare.${v}`)}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="sv-gender">{tv('settings.gender')}</Label>
+                          <Select
+                            id="sv-gender"
+                            name="voiceGender"
+                            defaultValue={(look.voice_gender as string | undefined) ?? 'female'}
+                          >
+                            <option value="female">{tv('settings.female')}</option>
+                            <option value="male">{tv('settings.male')}</option>
+                          </Select>
+                        </div>
+                      </div>
+                      <label className="flex items-start gap-3 rounded-input border border-line p-3">
+                        <input
+                          type="checkbox"
+                          name="greetings"
+                          defaultChecked={look.greetings !== false}
+                          className="mt-1 size-5 accent-purple"
+                        />
+                        <span>
+                          <span className="block font-semibold">{tv('settings.greetings')}</span>
+                          <span className="text-sm text-secondary">
+                            {tv('settings.greetingsHint')}
+                          </span>
+                        </span>
+                      </label>
+                    </fieldset>
+                    <Button type="submit">{tv('settings.save')}</Button>
+                  </ActionForm>
+                </details>
+              </>
+            )}
+          </Card>
+
+          <Card>
+            <p className="mb-1 text-lg font-bold">{tv('photos.title')}</p>
             <p className="mb-4 text-sm text-secondary">
               {tv('photos.body', { px: formatNumber(MIN_VIDEO_PHOTO_PX, loc) })}
             </p>
@@ -840,7 +951,7 @@ export default async function GrowthPage({
           </div>
         )
       ) : null}
-      <Hint className="mt-6">{t('footnote', { at: formatDhakaDateTime(at, loc) })}</Hint>
+      <Hint className="mt-6">{t('footnote', { at: when(at) })}</Hint>
     </>
   );
 }

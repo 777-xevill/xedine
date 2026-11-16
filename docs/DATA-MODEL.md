@@ -323,7 +323,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `save_push_subscription` | `p_card_token text, p_endpoint text, p_p256dh text, p_auth text` |
 | `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text, p_draft uuid DEFAULT NULL::uuid` |
 | `save_salary` | `p_org uuid, p_staff uuid, p_month date, p_salary bigint, p_allowances bigint, p_note text DEFAULT NULL::text` |
-| `save_social_video_settings` | `p_org uuid, p_videos_per_day smallint, p_voice_share text, p_voice_gender text, p_greetings boolean` |
+| `save_social_video_settings` | `p_org uuid, p_videos_per_day smallint, p_voice_share text, p_voice_gender text, p_greetings boolean, p_country text DEFAULT NULL::text, p_timezone text DEFAULT NULL::text` |
 | `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
 | `send_bazar_list` | `p_list uuid, p_messages jsonb` |
 | `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |

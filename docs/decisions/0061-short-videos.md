@@ -105,6 +105,33 @@ dish only by its Bangla name and promise no price, delivery, hours, ingredients,
 they fit any dish. The AI is asked only for English, and for Bangla only when the owner wrote their own idea
 (the lines cannot carry it; the studio shows those words for editing). Adding lines is editing that file.
 
+**Culture by country** (the founder, same week: "this SaaS is not only for Bangladesh, the culture must follow
+the restaurant's country"). Each restaurant has a **country and a time zone** (`social_settings.country`,
+`.timezone`, default Bangladesh / Asia/Dhaka), set by the owner or a manager on Growth → Video. `culture.ts` (pure)
+holds 45 countries: their special days in order of importance, the national day by its own name ("Happy Canada
+Day") dressed in the country's **flag colours**, where Friday is greeted as Jummah (Muslim-majority countries
+only), where Mother's and Father's Day fall, Thanksgiving (US in November, Canada in October), Easter by
+computus, and new days: Diwali, Holi, Lunar New Year, Easter, Thanksgiving, Halloween, Father's Day, Nowruz, Día
+de Muertos (Diwali in gold lanterns, Lunar New Year in red ones). Dates that follow the moon or a local calendar
+(the Eids, Ramadan, Diwali, Holi, Lunar New Year) are a table through 2030, marked TODO(verify); a moon-sighted
+Eid is greeted a day either side, and a unit test fails when the table runs out. Bangladesh keeps its own
+calendar (ADR 0051), so a day the owner deleted is still not greeted.
+- **Times.** The autopilot plans "today" and every posting time in the restaurant's time zone; the owner's "post
+  later" time is their own clock; the meal-moment hook ("lunch", "dinner") reads the local hour; Growth shows
+  times in that zone.
+- **Words.** The AI is told the country and to write for its people (food culture, everyday words, festivals),
+  never another country's customs (prompts `social_post` v3, `social_video` v3). Bangla lines stay as written
+  (ADR above) for Bangla videos. Leaving Bangladesh switches the post language to English once; the owner can
+  set Bangla again in Settings → Social (a Bangladeshi restaurant abroad).
+- **Prices.** Menu prices are taka (poisha) only, so **outside Bangladesh no poster or video shows a price and
+  there is no offer video** (the studio hides the kind and says why; the server refuses it). A currency per
+  restaurant is the next step for that, not a label swap.
+- **The studio** lists the country's own days first ("Special days in Canada"), then every other day (Bangladesh's
+  own named as such), then "write your own".
+- **The page** reads top to bottom: make a video (numbered steps: dishes, kind and day, words, post), then the
+  autopilot's video settings as a one-line summary with "Change video settings" opening the form (where the
+  restaurant is; daily videos), then the photos.
+
 ## Consequences
 
 - One video takes about 25 s to render on the founder's PC; the GitHub runner is slower. The tick never starts a
@@ -116,3 +143,8 @@ they fit any dish. The AI is asked only for English, and for Bangla only when th
   that does not fit; adding a track is a file plus a line in `library.json`.
 - Poster-day reels for TikTok (ADR 0041) still use the old 8-second reel; every post whose format is video now
   uses the new engine.
+- Country and time zone live on `social_settings`, not the organisation: the rest of Xedine (money in BDT, VAT,
+  the business day and every metric in Asia/Dhaka, the BD calendar, the bn/en interface) is still Bangladeshi.
+  Opening Xedine to restaurants abroad means moving country, time zone and currency to the organisation and
+  through the metrics; that is its own decision.
+- The moving festival dates must be checked and extended every year (the test says when).

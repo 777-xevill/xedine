@@ -46,6 +46,7 @@ import {
   videoTimes,
 } from '../schedule';
 import { makeVideoPost, VIDEO_POST_COLUMNS, type VideoPostRow } from './video';
+import { countryName, countryOf, pricesSupported } from '../culture';
 import type { DishArt, PostContent } from '../templates';
 import { ApprovedWordsSchema, posterLang, posterWords, type SocialWords } from '../words';
 import { checkDishPhoto, SOCIAL_POST_PROMPT, writeSocialPost } from '../writer';
@@ -92,6 +93,8 @@ interface Settings {
   post_item_ids: string[];
   show_price: boolean;
   videos_per_day: number;
+  country: string;
+  timezone: string;
 }
 
 interface Post {
@@ -123,7 +126,7 @@ interface Post {
 }
 
 const SETTINGS_COLUMNS =
-  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, videos_per_day';
+  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, videos_per_day, country, timezone';
 const POST_COLUMNS =
   'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, template, design_words, design_spec, extra_item_ids, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
 
@@ -199,7 +202,7 @@ async function planAhead(sb: Supabase, at: Date): Promise<number> {
   if (error) throw error;
   let planned = 0;
   for (const s of (rows ?? []) as Settings[]) {
-    const today = businessDate(at, 0);
+    const today = businessDate(at, 0, s.timezone);
     const { data: existing } = await sb
       .from('social_posts')
       .select('plan_date, slot')
@@ -215,13 +218,13 @@ async function planAhead(sb: Supabase, at: Date): Promise<number> {
         !have.has(date) &&
         isPostingDay(date, s.post_days) &&
         // Switched on after today's time has passed: start tomorrow rather than post late.
-        slotAt(date, s.post_time).getTime() >= at.getTime() - 30 * 60_000,
+        slotAt(date, s.post_time, s.timezone).getTime() >= at.getTime() - 30 * 60_000,
     );
     if (missing.length === 0) continue;
     // The sales split is only read when a day still needs planning, not on every tick.
     const inputs = await growthInputs(sb, s.org_id, at);
     for (const date of missing) {
-      const slot = slotAt(date, s.post_time);
+      const slot = slotAt(date, s.post_time, s.timezone);
       const { error: insertError } = await sb.from('social_posts').insert({
         org_id: s.org_id,
         source: 'autopilot',
@@ -260,7 +263,7 @@ async function planVideos(
     for (const [i, time] of videoTimes(s.post_time, n).entries()) {
       const slot = i + 1;
       if (have.has(`${date}|${slot}`)) continue;
-      const when = slotAt(date, time);
+      const when = slotAt(date, time, s.timezone);
       if (when.getTime() < at.getTime() - 30 * 60_000) continue;
       const { error } = await sb.from('social_posts').insert({
         org_id: s.org_id,
@@ -547,6 +550,7 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
           ownNote: post.own_text,
           tone: s.tone,
           area,
+          country: countryName(countryOf(s.country)),
         });
         words = { ...ai, ...(own ?? {}) };
         model = ai.model;
@@ -561,15 +565,17 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
         at,
       });
 
-      const prices = s.show_price
-        ? await menuPrices(
-            sb,
-            post.org_id,
-            [chosen, ...extras.map((e) => e.dish)],
-            lang,
-            t('plusVat'),
-          )
-        : new Map<string, string | null>();
+      // Prices are taka only (culture.ts): a restaurant outside Bangladesh shows none.
+      const prices =
+        s.show_price && pricesSupported(s.country)
+          ? await menuPrices(
+              sb,
+              post.org_id,
+              [chosen, ...extras.map((e) => e.dish)],
+              lang,
+              t('plusVat'),
+            )
+          : new Map<string, string | null>();
       const nameOf = (d: Dish) => (lang === 'bn' && d.name_bn?.trim() ? d.name_bn.trim() : d.name);
       const art = async (
         r: ReadyDish,

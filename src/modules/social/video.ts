@@ -75,7 +75,14 @@ export interface VideoContent {
   /** How long the hook stays (a spoken hook needs its own length); 2.2 s by default. */
   hookSeconds?: number;
   /** A special day: its greeting (fixed text, or the owner's own words) opens the video in its theme. */
-  occasion?: { greeting: string; theme: OccasionTheme } | null;
+  occasion?: {
+    greeting: string;
+    theme: OccasionTheme;
+    /** The day's own colours (a national day: the country's flag; Diwali: gold), else the theme's. */
+    palette?: readonly (readonly [number, number, number])[];
+    /** Hanging lanterns without the moon (Lunar New Year: red, Diwali: gold). */
+    lanterns?: 'red' | 'gold';
+  } | null;
   /** In the Growth preview the page fits its words and plays (and loops) by itself. */
   preview?: boolean;
 }
@@ -597,7 +604,10 @@ function ambientHtml(b: B): string {
       festive: { names: ['dot', 'squiggle', 'star', 'ring'], colors: [k.accent, k.head, k.deco] },
       love: { names: ['heart', 'heartLine', 'sparkle'], colors: [[237, 73, 86], k.accent] },
     };
-    const set = kinds[theme];
+    const own = b.c.occasion?.palette;
+    const set = own?.length
+      ? { ...kinds[theme], colors: own.map((c) => [...c] as Rgb) }
+      : kinds[theme];
     return Array.from({ length: 22 }, (_, i) => {
       const name = set.names[i % set.names.length]!;
       const size = 26 + Math.round(rnd() * 46);
@@ -760,7 +770,14 @@ function greetingScene(b: B, h: number, bg: string, onPhoto: boolean, greeting: 
     theme === 'islamic'
       ? `<div class="abs" style="left:700px;top:180px;width:280px;height:280px;color:${css(b.k.accent)};animation:${an('unblur', 0.8, 0.05)}">${MOON}</div>
 ${[150, 330, 860].map((x, i) => `<div class="abs" style="left:${x}px;top:-40px;width:90px;height:${300 + i * 90}px;transform-origin:45px 0;color:${css(b.k.accent)};animation:${an('slideDown', 0.7, 0.1 + i * 0.12)},${an('sway', 2.6, 0.8, { ease: 'ease-in-out', iter: 'infinite', fill: 'none' })}">${LANTERN}</div>`).join('')}`
-      : '';
+      : c.occasion?.lanterns
+        ? [120, 300, 780, 930]
+            .map(
+              (x, i) =>
+                `<div class="abs" style="left:${x}px;top:-40px;width:90px;height:${280 + (i % 2) * 110}px;transform-origin:45px 0;color:${c.occasion!.lanterns === 'red' ? 'rgb(214 38 38)' : 'rgb(244 180 40)'};animation:${an('slideDown', 0.7, 0.1 + i * 0.1)},${an('sway', 2.6, 0.8, { ease: 'ease-in-out', iter: 'infinite', fill: 'none' })}">${LANTERN}</div>`,
+            )
+            .join('')
+        : '';
   return {
     start: 0,
     end: h,

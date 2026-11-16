@@ -33,7 +33,6 @@ import {
   isRepeatLine,
   mealMoment,
   type Occasion,
-  OCCASION_THEME,
   occasionOfCalendarKey,
   OCCASIONS,
   videoWordsFor,
@@ -41,6 +40,15 @@ import {
 import { zonedParts } from '@/lib/time/business-date';
 import { banglaCaption, type BanglaContext, banglaWords } from '../bangla-lines';
 import { MIN_VIDEO_PHOTO_PX } from '../video-rules';
+import {
+  countryName,
+  countryOf,
+  nationalDayOf,
+  occasionLook,
+  occasionOnDate,
+  pricesSupported,
+  timezoneOf,
+} from '../culture';
 import { agreedPoisha, posterPrice } from '../prices';
 import { ApprovedWordsSchema, posterLang } from '../words';
 import { checkDishPhoto, SOCIAL_VIDEO_PROMPT, writeSocialVideo } from '../writer';
@@ -107,9 +115,11 @@ interface VideoSettings {
   voice_share: 'none' | 'half' | 'all';
   voice_gender: 'female' | 'male';
   greetings: boolean;
+  country: string;
+  timezone: string;
 }
 const SETTINGS =
-  'autopilot, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, voice_share, voice_gender, greetings';
+  'autopilot, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, voice_share, voice_gender, greetings, country, timezone';
 
 interface Dish {
   id: string;
@@ -219,6 +229,10 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     await sb.from('social_posts').update({ status: 'skipped' }).eq('id', post.id);
     return true;
   }
+  // The restaurant's country decides its special days, its hours and whether prices show (culture.ts).
+  const country = countryOf(s.country);
+  const tz = timezoneOf(country, s.timezone);
+  const withPrices = pricesSupported(country);
   const restaurant = s.display_name || (org?.name as string) || '';
   const area = s.area || [profile?.area, profile?.city].filter(Boolean).join(', ') || null;
   const own = ownVideoWords(post.design_words);
@@ -397,22 +411,34 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     }
     const main = picked[0]!.dish;
 
-    // The special day: the owner's choice, else the restaurant's calendar or Friday.
+    // The special day: the owner's choice, else the restaurant's own: in Bangladesh its calendar (a day the
+    // owner deleted is not greeted) or Friday; elsewhere its country's festivals and weekly day.
     let occasion: Occasion | null = null;
     if (post.occasion && (OCCASIONS as readonly string[]).includes(post.occasion))
       occasion = post.occasion as Occasion;
     else if (post.source === 'autopilot')
-      occasion = occasionForDay(
-        post.plan_date,
-        s.greetings,
-        await festivalOn(sb, post.org_id, post.plan_date),
-      );
+      occasion =
+        country === 'BD'
+          ? occasionForDay(
+              post.plan_date,
+              s.greetings,
+              await festivalOn(sb, post.org_id, post.plan_date),
+            )
+          : s.greetings
+            ? occasionOnDate(country, post.plan_date)
+            : null;
+    // A country without a national day of its own in the list greets a picked national day plainly.
+    const nationalDay = nationalDayOf(country)?.name;
     const greeting =
       occasion === 'custom'
         ? (post.occasion_text ?? '').trim()
-        : occasion
-          ? t(`video.occasions.${occasion}`)
-          : '';
+        : occasion === 'national_day'
+          ? nationalDay
+            ? t('video.occasions.national_day', { day: nationalDay })
+            : t('video.occasions.independence_day')
+          : occasion
+            ? t(`video.occasions.${occasion}`)
+            : '';
 
     // The one fact the words may lean on (CLAUDE.md #1).
     const nameOf = (d: Dish) => (lang === 'bn' && d.name_bn?.trim() ? d.name_bn.trim() : d.name);
@@ -434,7 +460,7 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     // A different kind of opening line per video (craving, meal moment, dare…), drawn from the post's seed.
     const wordSeed = seedOf(`${post.id}:words`);
     const moment = post.scheduled_at
-      ? mealMoment(zonedParts(new Date(post.scheduled_at)).hour)
+      ? mealMoment(zonedParts(new Date(post.scheduled_at), tz).hour)
       : null;
     const hookStyle = hookStyleFor(wordSeed, s.tone, { hasMoment: moment !== null });
     const fixed = fallbackWordKeys(hookStyle, moment, wordSeed);
@@ -470,6 +496,7 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
           ownNote: post.own_text,
           tone: s.tone,
           area,
+          country: countryName(country),
           hookStyle,
           moment,
           recentLines,
@@ -503,6 +530,8 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     // An offer is the owner's own price, shown only below the menu price every branch agrees on (the
     // poster rule); otherwise the video is a plain showcase and says no price it cannot stand behind.
     let offerText: { was: string; now: string } | null = null;
+    // Menu prices are taka only, so outside Bangladesh an offer video is a plain showcase.
+    if (kind === 'offer' && !withPrices) kind = 'showcase';
     if (kind === 'offer') {
       const [{ data: branchRows }, { data: orgSettings }] = await Promise.all([
         sb
@@ -538,15 +567,16 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
       } else kind = 'showcase';
     }
     // Prices only from the menu, and only when every branch agrees (the poster rule).
-    const prices = s.show_price
-      ? await menuPrices(
-          sb,
-          post.org_id,
-          picked.map((p) => p.dish),
-          lang,
-          t('poster.plusVat'),
-        )
-      : new Map<string, string | null>();
+    const prices =
+      s.show_price && withPrices
+        ? await menuPrices(
+            sb,
+            post.org_id,
+            picked.map((p) => p.dish),
+            lang,
+            t('poster.plusVat'),
+          )
+        : new Map<string, string | null>();
     const dishes: VideoDish[] = [];
     for (const [i, p] of picked.entries()) {
       const cut = await bestCut(sb, p.row);
@@ -611,7 +641,7 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
       dishes,
       seconds: voice ? 12 : 11,
       hookSeconds: voice ? Math.max(2.2, voice.seconds + 0.7) : 2.2,
-      occasion: occasion ? { greeting, theme: OCCASION_THEME[occasion] } : null,
+      occasion: occasion ? { greeting, ...occasionLook(occasion, country) } : null,
     };
     const made = await renderVideo(browser, content);
     const track = await pickTrack(moodsFor(s.tone, occasion, kind), post.id, recentMusic);

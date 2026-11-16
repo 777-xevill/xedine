@@ -122,6 +122,19 @@ export function formatDhakaDateTime(instant: Date, locale: Locale): string {
   return `${formatDhakaDate(instant, locale)}, ${formatDhakaTime(instant, locale)}`;
 }
 
+/** A date and time in a given time zone (a restaurant outside Bangladesh, ADR 0061): "16 Nov 2026, 19:30". */
+export function formatDateTimeIn(instant: Date, locale: Locale, tz: string): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    timeZone: tz,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(instant);
+}
+
 /** A month as its name: "November 2026" / "নভেম্বর ২০২৬"; pass any instant inside the month (noon Dhaka). */
 export function formatDhakaMonth(instant: Date, locale: Locale): string {
   return new Intl.DateTimeFormat(intlLocale(locale), {

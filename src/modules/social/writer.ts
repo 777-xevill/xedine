@@ -12,7 +12,7 @@ import {
 const MOMENT_WORDS: Record<MealMoment, string> = {
   breakfast: 'breakfast',
   lunch: 'lunch',
-  snack: 'evening snack (bikeler nasta)',
+  snack: 'afternoon or evening snack',
   dinner: 'dinner',
   late: 'late-night food',
 };
@@ -28,9 +28,9 @@ export { asciiDigits, inventedNumber, type SocialWords } from './words';
  */
 export const SOCIAL_POST_PROMPT: PromptVersion = {
   key: 'social_post',
-  version: 2,
+  version: 3,
   body: [
-    'You are the social media manager of a restaurant in Bangladesh. Write the words for ONE',
+    'You are the social media manager of a restaurant in the country you are given. Write the words for ONE',
     'Facebook/Instagram post about the dish and the fact you are given. It is published as is, so it must',
     'be safe and true.',
     'Rules:',
@@ -48,7 +48,9 @@ export const SOCIAL_POST_PROMPT: PromptVersion = {
     '  answer that points to food, max 2 words (e.g. "Hungry").',
     '- mood_word: one of MOOD, FOOD, GOOD. mood_top_en (max 3 words) + mood_word + mood_bottom_en (max 2',
     '  words) read as one sentence, e.g. "What\'s your" MOOD "today?".',
-    '- caption_bn: Bangla script, 2–4 short sentences, warm, Dhaka food culture, end with a call to come or',
+    '- Write for the people of that country: their food culture, their everyday words, their festivals. Never',
+    '  bring in another country’s customs, slang or holidays.',
+    '- caption_bn: Bangla script, 2–4 short sentences, warm, end with a call to come or',
     '  order, then up to 3 hashtags. caption_en: the same in English. Max 2 emojis per caption.',
     '- Match the tone you are given: friendly (warm, homely), premium (calm, elegant), fun (playful, Gen Z).',
   ].join('\n'),
@@ -103,9 +105,12 @@ export async function writeSocialPost(args: {
   ownNote: string | null;
   tone: 'friendly' | 'premium' | 'fun';
   area: string | null;
+  /** The restaurant's country in English ("Bangladesh", "United States"). */
+  country: string;
 }): Promise<SocialWords & { model: string; promptVersion: number }> {
   const lines = [
     `Restaurant: ${args.restaurant}${args.area ? ` (${args.area})` : ''}`,
+    `Country: ${args.country}`,
     `Dish: ${args.dish}`,
     `Fact: ${args.fact}`,
     args.ownNote ? `Owner note (must be the main message): ${args.ownNote}` : null,
@@ -131,7 +136,7 @@ export async function writeSocialPost(args: {
  */
 export const SOCIAL_VIDEO_PROMPT: PromptVersion = {
   key: 'social_video',
-  version: 2,
+  version: 3,
   body: [
     'You are the social media manager of a restaurant. Write the words for ONE 10-second food video',
     '(Facebook/Instagram Reels, TikTok). It is published as is, so it must be safe and true.',
@@ -139,6 +144,8 @@ export const SOCIAL_VIDEO_PROMPT: PromptVersion = {
     '- Use only the facts given (and the owner note, if any). Never invent prices, discounts, offers, ratings,',
     '  awards, ingredients, delivery promises or opening hours. Never write a number unless it is in the facts',
     '  or the owner note.',
+    '- Write for the people of the restaurant’s country: their food culture, the way they talk, their',
+    '  festivals. Never bring in another country’s customs, slang or holidays.',
     '- *_en fields are English; *_bn fields are natural spoken Bangla in Bangla script, the way people in',
     '  Dhaka talk (polite আপনি, everyday words, correct spelling). Write the Bangla fresh, not a word-for-word',
     '  translation; if a phrase sounds odd, use a simpler one.',
@@ -172,6 +179,8 @@ export async function writeSocialVideo(args: {
   ownNote: string | null;
   tone: 'friendly' | 'premium' | 'fun';
   area: string | null;
+  /** The restaurant's country in English ("Bangladesh", "United States"). */
+  country: string;
   hookStyle: HookStyle;
   moment?: MealMoment | null;
   recentLines?: readonly string[];
@@ -179,6 +188,7 @@ export async function writeSocialVideo(args: {
   const recent = (args.recentLines ?? []).filter((l) => l.trim()).slice(0, 12);
   const lines = [
     `Restaurant: ${args.restaurant}${args.area ? ` (${args.area})` : ''}`,
+    `Country: ${args.country}`,
     `Dishes in the video: ${args.dishes.join(', ')}`,
     `Video kind: ${args.kind}`,
     `Facts: ${args.fact}`,

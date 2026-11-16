@@ -25,6 +25,16 @@ export const OCCASIONS = [
   'valentine',
   'mothers_day',
   'weekend',
+  'national_day',
+  'diwali',
+  'holi',
+  'lunar_new_year',
+  'easter',
+  'thanksgiving',
+  'halloween',
+  'fathers_day',
+  'nowruz',
+  'dia_de_muertos',
   'custom',
 ] as const;
 export type Occasion = (typeof OCCASIONS)[number];
@@ -45,6 +55,16 @@ export const OCCASION_THEME: Record<Occasion, OccasionTheme> = {
   valentine: 'love',
   mothers_day: 'love',
   weekend: 'festive',
+  national_day: 'national',
+  diwali: 'festive',
+  holi: 'festive',
+  lunar_new_year: 'festive',
+  easter: 'festive',
+  thanksgiving: 'festive',
+  halloween: 'festive',
+  fathers_day: 'love',
+  nowruz: 'festive',
+  dia_de_muertos: 'festive',
   custom: 'plain',
 };
 

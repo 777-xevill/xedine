@@ -22,12 +22,8 @@ import {
   VIDEO_SIZE,
 } from '@/modules/social/video';
 import { resolveVideoLook, VIDEO_KINDS, type VideoKind } from '@/modules/social/video-look';
-import {
-  type AiVideoWords,
-  type Occasion,
-  OCCASION_THEME,
-  OCCASIONS,
-} from '@/modules/social/video-words';
+import { type AiVideoWords, type Occasion } from '@/modules/social/video-words';
+import { occasionLook } from '@/modules/social/culture';
 
 type Lang = 'bn' | 'en';
 
@@ -48,6 +44,21 @@ const NEED: Record<VideoKind, (n: number) => boolean> = {
   search: (n) => n >= 2,
 };
 const AUTO_KIND = (n: number): VideoKind => (n <= 1 ? 'showcase' : n === 2 ? 'versus' : 'carousel');
+
+/** Special days only Bangladesh keeps: named with the country when a restaurant elsewhere sees them. */
+const BD_ONLY: readonly Occasion[] = ['boishakh', 'victory_day', 'independence_day'];
+
+/** A numbered step heading, so the page reads top to bottom: pick, choose, words, post. */
+function Step({ n, title }: { n: number; title: string }) {
+  return (
+    <p className="mb-2 flex items-center gap-2 font-semibold">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-purple text-xs font-bold text-white tabular-nums">
+        {n}
+      </span>
+      {title}
+    </p>
+  );
+}
 
 /** The video page drawn by the same code as the real one, playing in a box `width` pixels wide. */
 function VideoFrame({ html, width, title }: { html: string; width: number; title: string }) {
@@ -84,6 +95,7 @@ export function SocialVideoStudio({
   text,
   aiOn,
   tone,
+  place,
 }: {
   orgId: string;
   orgSlug: string;
@@ -100,6 +112,18 @@ export function SocialVideoStudio({
   text: Record<Lang, VideoStudioText>;
   aiOn: boolean;
   tone: SocialTone;
+  /**
+   * The restaurant's country (ADR 0061): its own special days listed first, its national day by name, its
+   * flag on that day, and no prices or offer videos where the menu has no taka.
+   */
+  place: {
+    country: string;
+    countryName: string;
+    nationalDay: string | null;
+    own: Occasion[];
+    other: Occasion[];
+    pricesOn: boolean;
+  };
 }) {
   const t = useTranslations('social.video');
   const tg = useTranslations('social.growth');
@@ -131,7 +155,7 @@ export function SocialVideoStudio({
     .map((id) => dishes.find((d) => d.id === id))
     .filter((d): d is StudioDish => !!d);
   const n = chosen.length;
-  const fits = VIDEO_KINDS.filter((k) => NEED[k](n));
+  const fits = VIDEO_KINDS.filter((k) => NEED[k](n) && (k !== 'offer' || place.pricesOn));
   const realKind: VideoKind = kind && NEED[kind](n) ? kind : AUTO_KIND(n);
   const toggle = (id: string) =>
     setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length >= 3 ? p : [...p, id]));
@@ -163,7 +187,7 @@ export function SocialVideoStudio({
       ...brand,
       dishes: chosen.map((d, i) => {
         const name = lang === 'bn' && d.nameBn?.trim() ? d.nameBn.trim() : d.name;
-        const menuPrice = d.price[lang];
+        const menuPrice = place.pricesOn ? d.price[lang] : null;
         const isOffer = realKind === 'offer' && i === 0 && offerPoisha;
         return {
           name,
@@ -174,7 +198,8 @@ export function SocialVideoStudio({
           note: d.note,
         };
       }),
-      occasion: occasion && greeting ? { greeting, theme: OCCASION_THEME[occasion] } : null,
+      occasion:
+        occasion && greeting ? { greeting, ...occasionLook(occasion, place.country) } : null,
       preview: true,
     };
     return videoHtml(content);
@@ -214,7 +239,7 @@ export function SocialVideoStudio({
   return (
     <div className="space-y-6">
       <section>
-        <p className="mb-2 text-sm font-semibold">{t('make.pickDishes')}</p>
+        <Step n={1} title={t('make.pickDishes')} />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
           {dishes.map((d) => {
             const at = picked.indexOf(d.id);
@@ -286,6 +311,7 @@ export function SocialVideoStudio({
         </div>
 
         <div className="min-w-0 space-y-4">
+          <Step n={2} title={t('make.stepChoose')} />
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="sv-kind">{t('make.kind')}</Label>
@@ -310,11 +336,25 @@ export function SocialVideoStudio({
                 onChange={(e) => setOccasion(e.target.value as Occasion | '')}
               >
                 <option value="">{t('make.occasionNone')}</option>
-                {OCCASIONS.map((o) => (
-                  <option key={o} value={o}>
-                    {t(`occasionNames.${o}`)}
-                  </option>
-                ))}
+                <optgroup label={t('settings.ownDays', { country: place.countryName })}>
+                  {place.own.map((o) => (
+                    <option key={o} value={o}>
+                      {o === 'national_day' && place.nationalDay
+                        ? place.nationalDay
+                        : t(`occasionNames.${o}`)}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label={t('settings.otherDays')}>
+                  {place.other.map((o) => (
+                    <option key={o} value={o}>
+                      {place.country !== 'BD' && BD_ONLY.includes(o)
+                        ? t('make.bdDay', { name: t(`occasionNames.${o}`) })
+                        : t(`occasionNames.${o}`)}
+                    </option>
+                  ))}
+                  <option value="custom">{t('occasionNames.custom')}</option>
+                </optgroup>
               </Select>
             </div>
             {occasion === 'custom' ? (
@@ -344,6 +384,9 @@ export function SocialVideoStudio({
             ) : null}
           </div>
 
+          {place.pricesOn ? null : <Hint>{t('settings.priceNote')}</Hint>}
+
+          <Step n={3} title={t('make.stepWords')} />
           <div>
             <Label htmlFor="sv-idea">{t('make.idea')}</Label>
             <Textarea
@@ -399,6 +442,7 @@ export function SocialVideoStudio({
             successKey="social.video.make.requested"
             className="space-y-3 border-t border-line pt-4"
           >
+            <Step n={4} title={t('make.stepPost')} />
             <input type="hidden" name="orgId" value={orgId} />
             <input type="hidden" name="orgSlug" value={orgSlug} />
             {picked.map((id) => (

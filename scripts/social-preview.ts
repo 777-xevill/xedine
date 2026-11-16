@@ -7,6 +7,7 @@
  *   pnpm social:preview videos <cut-out or photo…> [--dish "A|B|C"] [--lang en|bn] [--tone …] [--count 7]
  *       [--kind showcase|versus|combo|carousel|ring|search|offer] [--seed s] [--html] [--out <dir>]
  *       [--sound] [--voice] [--gender male] [--occasion eid_fitr|jummah|…|custom --occasion-text "…"]
+ *       [--country US] (the restaurant's country: its national day's name and flag colours, ADR 0061)
  *       short sample videos (ADR 0061) into <out>/videos; a .webp file is taken as a cut-out. --sound adds
  *       music and motion sounds, --voice reads the hook aloud (needs Python with edge-tts).
  *
@@ -59,14 +60,10 @@ import {
   type VideoWords,
 } from '@/modules/social/video';
 import { resolveVideoLook, VIDEO_KINDS, type VideoKind } from '@/modules/social/video-look';
-import {
-  fallbackWordKeys,
-  hookStyleFor,
-  type Occasion,
-  OCCASION_THEME,
-} from '@/modules/social/video-words';
+import { fallbackWordKeys, hookStyleFor, type Occasion } from '@/modules/social/video-words';
 import { writeSocialVideo } from '@/modules/social/writer';
 import { banglaWords } from '@/modules/social/bangla-lines';
+import { countryName, countryOf, nationalDayOf, occasionLook } from '@/modules/social/culture';
 import { pickTrack, scoreVideo, speak } from '@/modules/social/sound';
 
 function arg(name: string): string | undefined {
@@ -303,6 +300,16 @@ async function videos(files: string[], out: string) {
   };
   const salt = arg('seed') ?? 'sample';
   const occasion = (arg('occasion') ?? null) as Occasion | null;
+  const country = countryOf(arg('country') ?? 'BD');
+  const nationalDay = nationalDayOf(country)?.name;
+  const greetingOf = (o: Occasion): string =>
+    o === 'custom'
+      ? (arg('occasion-text') ?? '')
+      : o === 'national_day'
+        ? nationalDay
+          ? t('video.occasions.national_day', { day: nationalDay })
+          : t('video.occasions.independence_day')
+        : t(`video.occasions.${o}`);
   const said: string[] = [];
   await withBrowser(async (browser) => {
     for (let i = 0; i < count; i++) {
@@ -352,14 +359,11 @@ async function videos(files: string[], out: string) {
           dishes: picked.map((d) => d.name),
           kind,
           fact: `A spotlight on ${picked.map((d) => d.name).join(' and ')} from the menu.`,
-          occasion: !occasion
-            ? null
-            : occasion === 'custom'
-              ? (arg('occasion-text') ?? null)
-              : t(`video.occasions.${occasion}`),
+          occasion: occasion ? greetingOf(occasion) || null : null,
           ownNote: null,
           tone,
-          area: 'Dhanmondi',
+          area: country === 'BD' ? 'Dhanmondi' : null,
+          country: countryName(country),
           hookStyle: style,
           moment,
           recentLines: said,
@@ -388,13 +392,7 @@ async function videos(files: string[], out: string) {
         logoUrl: null,
         dishes: picked,
         occasion: occasion
-          ? {
-              greeting:
-                occasion === 'custom'
-                  ? (arg('occasion-text') ?? '')
-                  : t(`video.occasions.${occasion}`),
-              theme: OCCASION_THEME[occasion],
-            }
+          ? { greeting: greetingOf(occasion), ...occasionLook(occasion, country) }
           : null,
       };
       // --voice reads the hook (and greeting) aloud; the hook stays as long as the voice needs.

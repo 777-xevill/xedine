@@ -1,4 +1,4 @@
-import { businessDayBounds, weekday, type BusinessDate } from '@/lib/time/business-date';
+import { businessDayBounds, DHAKA_TZ, weekday, type BusinessDate } from '@/lib/time/business-date';
 
 /**
  * When and what the social autopilot posts (ADR 0040, 0058). Pure, so the rotation is testable with a
@@ -7,13 +7,16 @@ import { businessDayBounds, weekday, type BusinessDate } from '@/lib/time/busine
 export type SocialFormat = 'mix' | 'image' | 'video';
 export type PostAngle = 'star' | 'quiet_time' | 'spotlight' | 'own';
 
-/** 'HH:MM' or 'HH:MM:SS' local Asia/Dhaka time on a calendar date → the UTC instant. */
-export function slotAt(date: BusinessDate, postTime: string): Date {
+/**
+ * 'HH:MM' or 'HH:MM:SS' local time on a calendar date → the UTC instant, in the restaurant's time zone
+ * (Asia/Dhaka unless its country says otherwise, ADR 0061).
+ */
+export function slotAt(date: BusinessDate, postTime: string, tz: string = DHAKA_TZ): Date {
   const m = /^(\d{2}):(\d{2})/.exec(postTime);
   if (!m) throw new RangeError(`Invalid post time: ${postTime}`);
   const minutes = Number(m[1]) * 60 + Number(m[2]);
   // A cutoff of 0 makes the "business day" the plain calendar day.
-  return new Date(businessDayBounds(date, 0).start.getTime() + minutes * 60_000);
+  return new Date(businessDayBounds(date, 0, tz).start.getTime() + minutes * 60_000);
 }
 
 /** Days since 1970-01-01 for a calendar date: a stable counter that drives every rotation. */
@@ -121,7 +124,7 @@ export function autopilotOrder(
 // Short videos (ADR 0061)
 // ---------------------------------------------------------------------------------------------
 
-/** Good times for the day's videos, in the order they are used (local Asia/Dhaka). */
+/** Good times for the day's videos, in the order they are used (the restaurant's local time). */
 export const VIDEO_TIMES = ['12:30', '19:30', '16:00', '21:00', '10:30', '18:00', '14:00'] as const;
 
 const minutesOf = (hhmm: string) => {

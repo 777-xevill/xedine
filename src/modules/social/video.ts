@@ -822,7 +822,7 @@ ${b.look.steam ? steam(b, 540, 700, h + 0.7) : ''}
 ${tagline(b, b.c.words.tagline, h + 0.9, 1460)}`;
   const close = `${dish(b, d, { left: -240, top: 300, width: 1560, height: 1380 }, mid, { enter: 'zoom', idle: 'kb' })}
 ${b.look.steam ? steam(b, 540, 520, mid + 0.3, 380) : ''}
-${bigText(b, b.c.words.punch || b.c.words.tagline, { left: 70, top: 1380, width: 940, height: 300 }, 112, mid + 0.35, b.look.hook === 'type' ? 'pop' : b.look.hook, { color: WHITE, shadow: true })}
+${bigText(b, b.c.words.cta, { left: 70, top: 1380, width: 940, height: 300 }, 112, mid + 0.35, b.look.hook === 'type' ? 'pop' : b.look.hook, { color: WHITE, shadow: true })}
 ${d.price ? priceTag(b, d.price, 740, 300, mid + 0.7, 250, b.rnd() < 0.5) : ''}`;
   return [
     { start: h, end: mid, html: a },

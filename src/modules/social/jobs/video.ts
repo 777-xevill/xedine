@@ -115,11 +115,9 @@ interface VideoSettings {
   voice_share: 'none' | 'half' | 'all';
   voice_gender: 'female' | 'male';
   greetings: boolean;
-  country: string;
-  timezone: string;
 }
 const SETTINGS =
-  'autopilot, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, voice_share, voice_gender, greetings, country, timezone';
+  'autopilot, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, voice_share, voice_gender, greetings';
 
 interface Dish {
   id: string;
@@ -218,11 +216,17 @@ export async function makeVideoPost(sb: Supabase, post: VideoPostRow, at: Date):
 }
 
 async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean> {
-  const [{ data: settingsRow }, { data: org }, { data: profile }] = await Promise.all([
-    sb.from('social_settings').select(SETTINGS).eq('org_id', post.org_id).maybeSingle(),
-    sb.from('organizations').select('name').eq('id', post.org_id).single(),
-    sb.from('org_profile').select('area, city').eq('org_id', post.org_id).maybeSingle(),
-  ]);
+  const [{ data: settingsRow }, { data: org }, { data: profile }, { data: place }] =
+    await Promise.all([
+      sb.from('social_settings').select(SETTINGS).eq('org_id', post.org_id).maybeSingle(),
+      sb.from('organizations').select('name').eq('id', post.org_id).single(),
+      sb.from('org_profile').select('area, city').eq('org_id', post.org_id).maybeSingle(),
+      sb
+        .from('org_settings')
+        .select('country, timezone, currency')
+        .eq('org_id', post.org_id)
+        .maybeSingle(),
+    ]);
   if (!settingsRow) throw new VideoFail('no_settings', true);
   const s = settingsRow as VideoSettings;
   if (post.source === 'autopilot' && !s.autopilot) {
@@ -230,9 +234,9 @@ async function make(sb: Supabase, post: VideoPostRow, at: Date): Promise<boolean
     return true;
   }
   // The restaurant's country decides its special days, its hours and whether prices show (culture.ts).
-  const country = countryOf(s.country);
-  const tz = timezoneOf(country, s.timezone);
-  const withPrices = pricesSupported(country);
+  const country = countryOf(place?.country);
+  const tz = timezoneOf(country, place?.timezone);
+  const withPrices = pricesSupported(String(place?.currency ?? 'BDT'));
   const restaurant = s.display_name || (org?.name as string) || '';
   const area = s.area || [profile?.area, profile?.city].filter(Boolean).join(', ') || null;
   const own = ownVideoWords(post.design_words);

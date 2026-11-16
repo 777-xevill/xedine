@@ -46,7 +46,7 @@ import {
   videoTimes,
 } from '../schedule';
 import { makeVideoPost, VIDEO_POST_COLUMNS, type VideoPostRow } from './video';
-import { countryName, countryOf, pricesSupported } from '../culture';
+import { countryName, countryOf, currencyOf, pricesSupported, timezoneOf } from '../culture';
 import type { DishArt, PostContent } from '../templates';
 import { ApprovedWordsSchema, posterLang, posterWords, type SocialWords } from '../words';
 import { checkDishPhoto, SOCIAL_POST_PROMPT, writeSocialPost } from '../writer';
@@ -93,8 +93,10 @@ interface Settings {
   post_item_ids: string[];
   show_price: boolean;
   videos_per_day: number;
+  /** The restaurant's own (org_settings), filled in after the read. */
   country: string;
   timezone: string;
+  currency: string;
 }
 
 interface Post {
@@ -126,7 +128,7 @@ interface Post {
 }
 
 const SETTINGS_COLUMNS =
-  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, videos_per_day, country, timezone';
+  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, videos_per_day';
 const POST_COLUMNS =
   'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, template, design_words, design_spec, extra_item_ids, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
 
@@ -194,6 +196,37 @@ export async function runSocialTick(
 // 1. Plan
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The restaurants' own country, time zone and currency (org_settings, set by the owner) on their social
+ * settings: the autopilot keeps each restaurant's own clock and shows prices only in taka.
+ */
+async function withPlace(sb: Supabase, rows: Settings[]): Promise<Settings[]> {
+  if (rows.length === 0) return rows;
+  const { data, error } = await sb
+    .from('org_settings')
+    .select('org_id, country, timezone, currency')
+    .in(
+      'org_id',
+      rows.map((r) => r.org_id),
+    );
+  if (error) throw error;
+  const by = new Map(
+    ((data ?? []) as { org_id: string; country: string; timezone: string; currency: string }[]).map(
+      (p) => [p.org_id, p],
+    ),
+  );
+  return rows.map((r) => {
+    const p = by.get(r.org_id);
+    const country = countryOf(p?.country);
+    return {
+      ...r,
+      country,
+      timezone: timezoneOf(country, p?.timezone),
+      currency: p?.currency ?? currencyOf(country),
+    };
+  });
+}
+
 async function planAhead(sb: Supabase, at: Date): Promise<number> {
   const { data: rows, error } = await sb
     .from('social_settings')
@@ -201,7 +234,7 @@ async function planAhead(sb: Supabase, at: Date): Promise<number> {
     .eq('autopilot', true);
   if (error) throw error;
   let planned = 0;
-  for (const s of (rows ?? []) as Settings[]) {
+  for (const s of await withPlace(sb, (rows ?? []) as Settings[])) {
     const today = businessDate(at, 0, s.timezone);
     const { data: existing } = await sb
       .from('social_posts')
@@ -353,7 +386,8 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       ]);
     // request_social_post creates the row for an owner's post; an autopilot post only exists with one.
     if (!settingsRow) return fail(sb, post, 'no_settings', true);
-    const s = settingsRow as Settings;
+    const [s] = await withPlace(sb, [settingsRow as Settings]);
+    if (!s) return fail(sb, post, 'no_settings', true);
     // Switched off after this day was planned: the owner's own posts still go, the autopilot's don't.
     if (post.source === 'autopilot' && !s.autopilot) {
       await sb.from('social_posts').update({ status: 'skipped' }).eq('id', post.id);
@@ -550,7 +584,7 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
           ownNote: post.own_text,
           tone: s.tone,
           area,
-          country: countryName(countryOf(s.country)),
+          country: countryName(s.country),
         });
         words = { ...ai, ...(own ?? {}) };
         model = ai.model;
@@ -567,7 +601,7 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
 
       // Prices are taka only (culture.ts): a restaurant outside Bangladesh shows none.
       const prices =
-        s.show_price && pricesSupported(s.country)
+        s.show_price && pricesSupported(s.currency)
           ? await menuPrices(
               sb,
               post.org_id,

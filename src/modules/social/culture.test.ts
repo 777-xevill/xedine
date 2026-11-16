@@ -6,7 +6,10 @@ import {
   COUNTRY_CODES,
   countryName,
   countryOf,
+  currencyName,
+  currencyOf,
   easterOf,
+  isCurrency,
   isCountry,
   isTimeZone,
   MOVING_DATES_UNTIL,
@@ -14,6 +17,7 @@ import {
   occasionLook,
   occasionOnDate,
   occasionsFor,
+  placeOptions,
   pricesSupported,
   timezoneOf,
   timezonesOf,
@@ -131,8 +135,22 @@ describe('culture by country', () => {
   });
 
   it('shows prices only where the app has the currency', () => {
-    expect(pricesSupported('BD')).toBe(true);
-    expect(pricesSupported('US')).toBe(false);
+    expect(pricesSupported('BDT')).toBe(true);
+    expect(pricesSupported('USD')).toBe(false);
+  });
+
+  it('gives every country its own currency, and every currency a name', () => {
+    expect(currencyOf('BD')).toBe('BDT');
+    expect(currencyOf('AE')).toBe('AED');
+    expect(currencyOf('FR')).toBe('EUR');
+    expect(currencyOf('nowhere')).toBe('BDT');
+    for (const code of COUNTRY_CODES) expect(isCurrency(currencyOf(code)), code).toBe(true);
+    expect(isCurrency('XYZ')).toBe(false);
+    expect(currencyName('USD')).toBe('US Dollar');
+    const o = placeOptions('en', new Date('2026-11-16T00:00:00Z'));
+    expect(o.countries).toHaveLength(COUNTRY_CODES.length);
+    expect(o.zones.US![0]).toEqual({ tz: 'America/New_York', label: 'New York (GMT-5)' });
+    expect(o.currencyOf.GB).toBe('GBP');
   });
 
   it('has a greeting and a name in both languages for every special day', () => {

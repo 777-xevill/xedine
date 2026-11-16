@@ -135,7 +135,8 @@
     "socialOfferPrice": "Type an offer price lower than the menu price.",
     "socialOfferNoPrices": "Offer videos need menu prices in taka, so they work only for restaurants in Bangladesh for now.",
     "socialVideoKindCount": "This kind of video needs a different number of dishes.",
-    "socialOccasionText": "Write your special day."
+    "socialOccasionText": "Write your special day.",
+    "currencyLocked": "The currency cannot change after your first sale: every amount is already saved in it."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -3341,17 +3342,12 @@
         "save": "Save",
         "autopilotOn": "The autopilot is on: these videos go out by themselves.",
         "autopilotOff": "The autopilot is off: switch it on in Settings → Social for daily videos. Your own videos still go out.",
-        "country": "Your country",
-        "countryHint": "Special days, the Friday greeting and posting times follow your country. Outside Bangladesh, videos start in English (change it in Settings → Social) and show no prices for now.",
-        "timezone": "Time zone",
         "ownDays": "Special days in {country}",
         "otherDays": "More special days",
         "priceNote": "Prices and offers in videos are only for Bangladesh at the moment.",
         "now": "Your video settings now",
         "change": "Change video settings",
-        "placeTitle": "Where your restaurant is",
         "videosTitle": "Daily videos",
-        "timezoneHint": "Posting times and \"today\" follow this clock.",
         "greetingsOnShort": "Greets special days",
         "greetingsOffShort": "No special-day greetings"
       },
@@ -4713,5 +4709,17 @@
     "briefTomorrow": "Tomorrow’s weather: {sky}, up to {max}°C.",
     "briefTomorrowRain": "🌧 Rain tomorrow at {branches}: the forecast already counts it.",
     "briefTomorrowEvents": "📅 Tomorrow: {events}."
+  },
+  "place": {
+    "title": "Where your restaurant is",
+    "country": "Country",
+    "timezone": "Time zone",
+    "currency": "Currency",
+    "currencyLocked": "Fixed after your first sale.",
+    "hint": "Your country sets your special days and greetings; the time zone sets when your posts go out.",
+    "hintOtherCurrency": "For now Xedine shows amounts in taka (৳). Your own currency on bills and reports is coming next; until then posts and videos show no prices.",
+    "save": "Save",
+    "change": "Change in Settings",
+    "ownerChanges": "The owner sets this in Settings."
   }
 }

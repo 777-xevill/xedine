@@ -16,15 +16,20 @@ import {
 } from '@/modules/settings/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
+import { PlaceFields } from '@/components/place-fields';
+import { now } from '@/lib/time/clock';
+import { placeOptions } from '@/modules/social/culture';
+import { updatePlaceAction } from '@/modules/tenancy/actions';
 
 export default async function SettingsPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
   const ctx = await getOrgContext(org);
   if (!ctx.isOwner) notFound();
 
-  const [t, tc, locale] = await Promise.all([
+  const [t, tc, tp, locale] = await Promise.all([
     getTranslations('settings'),
     getTranslations('common'),
+    getTranslations('place'),
     getLocale(),
   ]);
   const supabase = await createClient();
@@ -39,7 +44,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
     supabase
       .from('org_settings')
       .select(
-        'price_includes_vat, vat_rate_bps, service_charge_bps, default_cutoff_minutes, week_start',
+        'price_includes_vat, vat_rate_bps, service_charge_bps, default_cutoff_minutes, week_start, country, timezone, currency',
       )
       .eq('org_id', ctx.org.id)
       .single(),
@@ -86,6 +91,22 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
     <>
       <SettingsNav ctx={ctx} current="general" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
+
+      <Card className="mb-6">
+        <CardTitle>{tp('title')}</CardTitle>
+        <ActionForm action={updatePlaceAction} successKey="common.saved" className="space-y-4">
+          <input type="hidden" name="orgId" value={ctx.org.id} />
+          <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+          <PlaceFields
+            options={placeOptions(locale, now())}
+            country={s.country as string}
+            timezone={s.timezone as string}
+            currency={s.currency as string}
+            currencyLocked={(anyOrder ?? []).length > 0}
+          />
+          <Button type="submit">{tp('save')}</Button>
+        </ActionForm>
+      </Card>
 
       <Card>
         <SettingsForm

@@ -516,11 +516,74 @@ export const timezonesOf = (code: string): readonly string[] => profile(code).tz
 export const defaultTimezone = (code: string): string => profile(code).tz[0]!;
 export const nationalDayOf = (code: string) => profile(code).national ?? null;
 
+/** Each country's own currency (ISO 4217): the one a new restaurant there starts with. */
+const CURRENCY: Record<CountryCode, string> = {
+  BD: 'BDT',
+  IN: 'INR',
+  PK: 'PKR',
+  LK: 'LKR',
+  NP: 'NPR',
+  MY: 'MYR',
+  ID: 'IDR',
+  SG: 'SGD',
+  TH: 'THB',
+  VN: 'VND',
+  PH: 'PHP',
+  CN: 'CNY',
+  JP: 'JPY',
+  KR: 'KRW',
+  AE: 'AED',
+  SA: 'SAR',
+  QA: 'QAR',
+  KW: 'KWD',
+  OM: 'OMR',
+  BH: 'BHD',
+  JO: 'JOD',
+  EG: 'EGP',
+  TR: 'TRY',
+  IR: 'IRR',
+  MA: 'MAD',
+  NG: 'NGN',
+  KE: 'KES',
+  ZA: 'ZAR',
+  GB: 'GBP',
+  IE: 'EUR',
+  FR: 'EUR',
+  DE: 'EUR',
+  ES: 'EUR',
+  IT: 'EUR',
+  NL: 'EUR',
+  SE: 'SEK',
+  RU: 'RUB',
+  US: 'USD',
+  CA: 'CAD',
+  MX: 'MXN',
+  BR: 'BRL',
+  AR: 'ARS',
+  AU: 'AUD',
+  NZ: 'NZD',
+};
+export const currencyOf = (code: unknown): string => CURRENCY[countryOf(code)];
+/** Every currency a restaurant can keep its books in (each country's own, once). */
+export const CURRENCIES: readonly string[] = [...new Set(Object.values(CURRENCY))].sort();
+export const isCurrency = (c: unknown): c is string =>
+  typeof c === 'string' && CURRENCIES.includes(c);
+
+/** A currency's name in a language ("US Dollar", "মার্কিন ডলার"). */
+export function currencyName(code: string, locale: string = 'en'): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'currency' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 /**
- * Menu prices and offers are Bangladeshi taka only (the app has no other currency yet), so a video in
- * another country shows no price and makes no offer video rather than printing "৳" for someone's dollars.
+ * Prices are shown only in taka for now: every amount the app formats is taka (ADR 0005), so a restaurant
+ * keeping its books in another currency shows no price in a post or video and makes no offer video, rather
+ * than printing "৳" for someone's dollars. A later step formats each restaurant's own currency.
  */
-export const pricesSupported = (code: string): boolean => code === 'BD';
+export const pricesSupported = (currency: string): boolean => currency === 'BDT';
 
 // ---------------------------------------------------------------------------------------------
 // Dates
@@ -787,4 +850,51 @@ export function occasionsFor(
   const seen = new Set<Occasion>(own);
   const other = all.filter((o) => !seen.has(o) && o !== 'custom');
   return { own: [...new Set(own)], other };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Where the restaurant is: the lists for the sign-up and Settings pickers
+// ---------------------------------------------------------------------------------------------
+
+/** A time zone as people read it: "New York (GMT-5)", from the zone's own city and its offset `at`. */
+export function zoneLabel(tz: string, at: Date): string {
+  const city = (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
+  try {
+    const offset = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' })
+      .formatToParts(at)
+      .find((p) => p.type === 'timeZoneName')?.value;
+    return offset ? `${city} (${offset})` : city;
+  } catch {
+    return city;
+  }
+}
+
+export interface PlaceOptions {
+  /** Every country, sorted by its name in the viewer's language. */
+  countries: { code: string; name: string }[];
+  /** Each country's time zones (the usual one first) with a readable name. */
+  zones: Record<string, { tz: string; label: string }[]>;
+  /** Every currency with its name, and the one each country starts with. */
+  currencies: { code: string; name: string }[];
+  currencyOf: Record<string, string>;
+}
+
+/** The picker lists, built on the server in the viewer's language (so the browser shows the same names). */
+export function placeOptions(locale: string, at: Date): PlaceOptions {
+  return {
+    countries: COUNTRY_CODES.map((code) => ({ code, name: countryName(code, locale) })).sort(
+      (a, b) => a.name.localeCompare(b.name, locale),
+    ),
+    zones: Object.fromEntries(
+      COUNTRY_CODES.map((code) => [
+        code,
+        timezonesOf(code).map((tz) => ({ tz, label: zoneLabel(tz, at) })),
+      ]),
+    ),
+    currencies: CURRENCIES.map((code) => ({
+      code,
+      name: `${currencyName(code, locale)} (${code})`,
+    })),
+    currencyOf: Object.fromEntries(COUNTRY_CODES.map((code) => [code, currencyOf(code)])),
+  };
 }

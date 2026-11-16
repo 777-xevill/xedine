@@ -12,9 +12,25 @@ import { mapDbError, safeNext, SIGNUP_EMAIL_COOKIE, type FormState } from './for
 import { createInvitedAccount } from './invite-account';
 import { oauthProvider } from './oauth';
 import { checkPhoneSignIn } from './phone-sign-in';
+import { COUNTRY_CODES, isCurrency, timezonesOf } from '@/modules/social/culture';
 
 const ROLES = ['manager', 'cashier', 'kitchen', 'purchaser', 'accountant'] as const;
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
+
+/**
+ * Where the restaurant is (sign-up and Settings): a country Xedine knows, one of that country's time zones and
+ * a known currency. Null when the form sent something else.
+ */
+function parsePlace(
+  formData: FormData,
+): { country: string; timezone: string; currency: string } | null {
+  const country = String(formData.get('country') ?? '');
+  const timezone = String(formData.get('timezone') ?? '');
+  const currency = String(formData.get('currency') ?? '');
+  if (!(COUNTRY_CODES as readonly string[]).includes(country)) return null;
+  if (!timezonesOf(country).includes(timezone) || !isCurrency(currency)) return null;
+  return { country, timezone, currency };
+}
 
 const credentials = z.object({
   email: z.email(),
@@ -232,6 +248,8 @@ export async function createOrganizationAction(
     .map((name, i) => ({ name: name.trim(), area: (areas[i] ?? '').trim() }))
     .filter((b) => b.name !== '');
   if (branches.length === 0) return { error: 'invalidInput' };
+  const place = parsePlace(formData);
+  if (!place) return { error: 'invalidInput' };
 
   const supabase = await createClient();
   const { data: orgId, error } = await supabase.rpc('create_organization', {
@@ -241,6 +259,13 @@ export async function createOrganizationAction(
     p_locale: await resolveLocale(),
   });
   if (error) return { error: mapDbError(error) };
+  // Its country, clock and currency (the new owner may write org_settings; the change is audited). A
+  // failure leaves Bangladesh's, which the owner can change in Settings.
+  const { error: placeError } = await supabase
+    .from('org_settings')
+    .update(place)
+    .eq('org_id', orgId as string);
+  if (placeError) console.error('org place', placeError.code);
   // Day-one channels, reason codes and a kitchen station, so the till works immediately (ADR 0014).
   const { error: defaultsError } = await supabase.rpc('ensure_org_defaults', {
     p_org: orgId as string,
@@ -379,6 +404,37 @@ export async function updateSettingsAction(
   if (error) return { error: mapDbError(error) };
   if (!data || data.length === 0) return { error: 'notAllowed' };
   revalidatePath(`/${parsed.data.orgSlug}`, 'layout');
+  return { ok: true };
+}
+
+/**
+ * The owner sets where the restaurant is: its country (special days, wording), its time zone (posting times)
+ * and its currency (fixed by the database once there are sales). Leaving Bangladesh puts the social posts in
+ * English once, since the hand-written Bangla lines are for Bangladesh; Bangla can be set again in Settings →
+ * Social.
+ */
+export async function updatePlaceAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ids = z
+    .object({ orgId: z.uuid(), orgSlug: z.string().regex(SLUG) })
+    .safeParse(Object.fromEntries(formData));
+  const place = parsePlace(formData);
+  if (!ids.success || !place) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { data: before } = await supabase
+    .from('org_settings')
+    .select('country, currency')
+    .eq('org_id', ids.data.orgId)
+    .maybeSingle();
+  const { error, data } = await supabase
+    .from('org_settings')
+    .update(place)
+    .eq('org_id', ids.data.orgId)
+    .select('org_id');
+  if (error) return { error: error.code === '23514' ? 'currencyLocked' : mapDbError(error) };
+  if (!data || data.length === 0) return { error: 'notAllowed' };
+  if (before?.country === 'BD' && place.country !== 'BD')
+    await supabase.from('social_settings').update({ language: 'en' }).eq('org_id', ids.data.orgId);
+  revalidatePath(`/${ids.data.orgSlug}`, 'layout');
   return { ok: true };
 }
 

@@ -21,6 +21,8 @@ import {
 } from '@/modules/tenancy/actions';
 import { initialState } from '@/modules/tenancy/form-state';
 import { fallbackSlug, slugFromName } from '@/modules/tenancy/slug';
+import { PlaceFields } from '@/components/place-fields';
+import type { PlaceOptions } from '@/modules/social/culture';
 
 export function ErrorAlert({ error }: { error?: string }) {
   const t = useTranslations('errors');
@@ -283,7 +285,7 @@ interface BranchRow {
   key: number;
 }
 
-export function OnboardingForm() {
+export function OnboardingForm({ place }: { place: PlaceOptions }) {
   const t = useTranslations();
   const [state, action, pending] = useActionState(createOrganizationAction, initialState);
   const [rows, setRows] = useState<BranchRow[]>([{ key: 1 }]);
@@ -334,6 +336,10 @@ export function OnboardingForm() {
         </div>
         <Hint>{t('onboarding.slugHelp')}</Hint>
       </div>
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-medium">{t('place.title')}</legend>
+        <PlaceFields options={place} country="BD" timezone="Asia/Dhaka" currency="BDT" />
+      </fieldset>
       <fieldset className="space-y-3">
         <legend className="mb-1.5 text-sm font-medium">{t('onboarding.branches')}</legend>
         {rows.map((row, index) => (

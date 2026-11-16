@@ -19,16 +19,14 @@ import { SocialVideoStudio, type VideoStudioText } from '@/components/social-vid
 import { DishHqPhotoField } from '@/components/dish-hq-photo-field';
 import { ActionForm } from '@/components/action-form';
 import { saveSocialVideoSettingsAction } from '@/modules/social/actions';
-import { CountryZoneFields } from '@/components/country-zone-fields';
 import {
-  COUNTRY_CODES,
   countryName,
   countryOf,
   nationalDayOf,
   occasionsFor,
   pricesSupported,
   timezoneOf,
-  timezonesOf,
+  zoneLabel,
 } from '@/modules/social/culture';
 import { OCCASIONS } from '@/modules/social/video-words';
 import { MIN_VIDEO_PHOTO_PX } from '@/modules/social/video-rules';
@@ -109,19 +107,6 @@ function videoText(locale: Locale, nationalDay: string | null): VideoStudioText 
   };
 }
 
-/** A time zone as people read it: "New York (GMT-5)", from the zone's own city and today's offset. */
-function zoneCity(tz: string): string {
-  const city = (tz.split('/').pop() ?? tz).replace(/_/g, ' ');
-  try {
-    const offset = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' })
-      .formatToParts(now())
-      .find((p) => p.type === 'timeZoneName')?.value;
-    return offset ? `${city} (${offset})` : city;
-  } catch {
-    return city;
-  }
-}
-
 const STATUS_TONE: Record<string, 'neutral' | 'info' | 'success' | 'danger'> = {
   planned: 'neutral',
   ready: 'info',
@@ -182,9 +167,10 @@ export default async function GrowthPage({
     : 'make';
   const ctx = await getOrgContext(org);
   if (!ctx.roles.includes('owner') && !ctx.roles.includes('manager')) notFound();
-  const [t, tv, locale] = await Promise.all([
+  const [t, tv, tp, locale] = await Promise.all([
     getTranslations('social.growth'),
     getTranslations('social.video'),
+    getTranslations('place'),
     getLocale(),
   ]);
   const loc = locale as Locale;
@@ -205,7 +191,7 @@ export default async function GrowthPage({
     supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings, country, timezone',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
@@ -249,7 +235,7 @@ export default async function GrowthPage({
       .eq('is_available', true),
     supabase
       .from('org_settings')
-      .select('price_includes_vat')
+      .select('price_includes_vat, country, timezone, currency')
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     supabase.from('org_profile').select('area, city').eq('org_id', ctx.org.id).maybeSingle(),
@@ -271,26 +257,17 @@ export default async function GrowthPage({
     ({ data: look } = await supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings, country, timezone',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle());
   }
   // The restaurant's country and clock (ADR 0061): its special days, its posting times, and prices only
   // where the menu is in taka.
-  const country = countryOf(look?.country);
-  const tz = timezoneOf(country, look?.timezone);
-  const pricesOn = pricesSupported(country);
+  const country = countryOf(orgSettings?.country);
+  const tz = timezoneOf(country, orgSettings?.timezone);
+  const pricesOn = pricesSupported(String(orgSettings?.currency ?? 'BDT'));
   const when = (iso: string | Date) => formatDateTimeIn(new Date(iso), loc, tz);
-  const countryList = COUNTRY_CODES.map((code) => ({ code, name: countryName(code, loc) })).sort(
-    (a, b) => a.name.localeCompare(b.name, loc),
-  );
-  const zoneList = Object.fromEntries(
-    COUNTRY_CODES.map((code) => [
-      code,
-      timezonesOf(code).map((z) => ({ tz: z, city: zoneCity(z) })),
-    ]),
-  );
   const dishes = items ?? [];
   const dishName = new Map(dishes.map((d) => [d.id as string, d.name as string]));
   const mediaUrl = (bucket: string, path: string) =>
@@ -716,12 +693,19 @@ export default async function GrowthPage({
                   </li>
                   <li>
                     <Badge tone="neutral">
-                      {countryName(country, loc)} · {zoneCity(tz)}
+                      {countryName(country, loc)} · {zoneLabel(tz, at)}
                     </Badge>
                   </li>
                 </ul>
                 <Hint className="mb-4">
-                  {look.autopilot ? tv('settings.autopilotOn') : tv('settings.autopilotOff')}
+                  {look.autopilot ? tv('settings.autopilotOn') : tv('settings.autopilotOff')}{' '}
+                  {ctx.isOwner ? (
+                    <Link href={`/${ctx.org.slug}/settings`} className="underline">
+                      {tp('change')}
+                    </Link>
+                  ) : (
+                    tp('ownerChanges')
+                  )}
                 </Hint>
                 <details className="rounded-input border border-line">
                   <summary className="cursor-pointer p-3 font-semibold select-none">
@@ -733,20 +717,6 @@ export default async function GrowthPage({
                     className="space-y-5 border-t border-line p-4"
                   >
                     {hidden}
-                    <fieldset className="space-y-3">
-                      <legend className="mb-1 text-sm font-semibold">
-                        {tv('settings.placeTitle')}
-                      </legend>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <CountryZoneFields
-                          countries={countryList}
-                          zones={zoneList}
-                          country={country}
-                          timezone={tz}
-                        />
-                      </div>
-                      <Hint>{tv('settings.countryHint')}</Hint>
-                    </fieldset>
                     <fieldset className="space-y-3">
                       <legend className="mb-1 text-sm font-semibold">
                         {tv('settings.videosTitle')}

@@ -94,7 +94,7 @@
 | `org_job_marks` | What a job already did once for an org (alert sent, calendar day added). Service role only. | org · service only | no client access | PK org_id, key | forecasting · P11 |
 | `org_profile` | Business profile: cuisine, format, price band, area, owner WhatsApp. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
 | `org_receipt_settings` | Receipt header/footer and Mushak-6.3-ready fields (TODO verify). | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | pos · P1 |
-| `org_settings` | VAT/service-charge config, price basis, cutoff, dayparts, week start, locale. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
+| `org_settings` | VAT/service-charge config, price basis, cutoff, dayparts, week start, locale, country, time zone, currency. | org | read: owner, manager, cashier, kitchen, purchaser, accountant; write: owner | PK org_id | tenancy · P0 |
 | `organizations` | A restaurant business (tenant). | org (the tenant) | custom — select: members; update: owner; create only via create_organization() | PK id | tenancy · P0 |
 | `payments` | Split payments by method. | org + branch | read: owner, manager, cashier, kitchen, accountant; write: service role only (written only by the audited POS RPCs (ADR 0014)) | PK id · → branches, orders, shifts, staff | payments · P1 |
 | `plans` | Billing plans (provisional prices, ADR 0008). Platform. | platform (no tenant data) | read: signed-in users; write: none | PK id | billing · P10 |
@@ -323,7 +323,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `save_push_subscription` | `p_card_token text, p_endpoint text, p_p256dh text, p_auth text` |
 | `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text, p_draft uuid DEFAULT NULL::uuid` |
 | `save_salary` | `p_org uuid, p_staff uuid, p_month date, p_salary bigint, p_allowances bigint, p_note text DEFAULT NULL::text` |
-| `save_social_video_settings` | `p_org uuid, p_videos_per_day smallint, p_voice_share text, p_voice_gender text, p_greetings boolean, p_country text DEFAULT NULL::text, p_timezone text DEFAULT NULL::text` |
+| `save_social_video_settings` | `p_org uuid, p_videos_per_day smallint, p_voice_share text, p_voice_gender text, p_greetings boolean` |
 | `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
 | `send_bazar_list` | `p_list uuid, p_messages jsonb` |
 | `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |

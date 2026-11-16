@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { RollingFigure } from './rolling-figure';
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
@@ -72,15 +73,17 @@ export function Alert({
   );
 }
 
-/** A card: smoked glass with a hairline silver rim; rises in as it scrolls into view. */
+/**
+ * A card: smoked glass (`.card-glass` in globals.css) — translucent, a rim that catches light along its
+ * top edge, and a soft yellow light that follows the pointer (`data-spot`). Rises in as it scrolls
+ * into view.
+ */
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       data-reveal=""
-      className={cn(
-        'rounded-card border border-edge bg-surface bg-[image:var(--glass-sheen)] p-6 shadow-soft',
-        className,
-      )}
+      data-spot=""
+      className={cn('card-glass rounded-card border p-6', className)}
       {...props}
     />
   );
@@ -98,7 +101,10 @@ export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHead
   );
 }
 
-/** A big, quiet page title (Apple's large title): bold, tight, with the explanation below in grey. */
+/**
+ * A big, quiet page title (Apple's large title): bold, tight, with the explanation below in grey. Once
+ * it scrolls away, the same words fold into a small frosted bar at the top (`.title-bar`, CSS only).
+ */
 export function PageTitle({
   title,
   subtitle,
@@ -121,13 +127,16 @@ export function PageTitle({
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      <div aria-hidden className="title-bar">
+        <span className="truncate">{title}</span>
+      </div>
     </header>
   );
 }
 
 /**
- * A labelled figure. Figures always use the primary text token, never the gradient (ADR 0009), and
- * arrive out of a soft blur.
+ * A labelled figure. Figures always use the primary text token, never the gradient (ADR 0009). A text
+ * figure rolls into place character by character (RollingFigure); its test id sits on the plain copy.
  */
 export function Stat({
   label,
@@ -142,15 +151,24 @@ export function Stat({
 }) {
   return (
     <div
-      className={cn('rounded-input border border-edge bg-surface-elevated px-4 py-3.5', className)}
+      className={cn(
+        'rounded-input border border-edge bg-surface-elevated/80 bg-[image:var(--glass-sheen)] px-4 py-3.5 shadow-[var(--rim)]',
+        className,
+      )}
     >
       <p className="text-xs font-medium text-secondary">{label}</p>
-      <p
-        className="animate-figure mt-1 text-[1.375rem] leading-tight font-semibold tracking-tight text-foreground tabular-nums"
-        data-testid={testId}
-      >
-        {value}
-      </p>
+      {typeof value === 'string' ? (
+        <p className="mt-1 text-[1.5rem] leading-tight font-semibold tracking-[-0.02em] text-foreground tabular-nums">
+          <RollingFigure value={value} testId={testId} />
+        </p>
+      ) : (
+        <p
+          className="animate-figure mt-1 text-[1.5rem] leading-tight font-semibold tracking-[-0.02em] text-foreground tabular-nums"
+          data-testid={testId}
+        >
+          {value}
+        </p>
+      )}
     </div>
   );
 }

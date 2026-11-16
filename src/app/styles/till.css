@@ -1,0 +1,650 @@
+/*
+ * The till (POS) and the kitchen screen (KDS) — ADR 0063 polish. Imported by globals.css.
+ * Only the brand tokens from globals.css (grey, silver, yellow and their color-mix shades); no hex,
+ * rgb() or hsl(). Class and keyframe names start with "till-". Every animation here stops for reduced
+ * motion in the block at the end of this file.
+ *
+ * Cheap tablets, all day (BRAND.md "Surface personalities"): solid surfaces and no blur; depth comes
+ * from a lighter fill per step (page, pane, tile) and a hairline silver rim. Motion is transform and
+ * opacity only and short (150–450 ms), so it holds 60 fps; the one long effect, a new ticket's glow,
+ * only fades an opacity over a still shadow.
+ */
+
+/* ------------------------------------------------------------------------------------------- */
+/* Ground rules (unlayered: they must win over the shared utilities)                            */
+/* ------------------------------------------------------------------------------------------- */
+
+[data-surface='till'] {
+  /* One step lighter than whatever it sits on: chips and wells read on a pane and in a sheet alike. */
+  --till-lift: color-mix(in srgb, var(--brand-silver) 6%, transparent);
+  --till-lift-strong: color-mix(in srgb, var(--brand-silver) 11%, transparent);
+  --till-ring: var(--brand-yellow);
+  /* A tap is just a tap: no grey flash over buttons on Android. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Whatever a shared component still draws as glass is solid here: no backdrop work for the GPU. */
+[data-surface='till'] .glass,
+[data-surface='till'] .glass-strong {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* The shared dialog's scrim (the kitchen's waste sheet): no blur, a little denser instead. */
+[data-surface='till'] dialog::backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: color-mix(in srgb, var(--brand-grey) 84%, transparent);
+}
+
+/* Lists scroll inside their pane; a fling at the end never drags the page behind. */
+.till-scroll {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/*
+ * The till's big call to action (Place order): when nothing can be placed it is a quiet grey pill,
+ * not a dim yellow one. Unlayered, so it wins over the shared button's own disabled look.
+ */
+.till-cta:disabled {
+  background-image: none;
+  background-color: var(--till-lift);
+  color: var(--text-muted);
+  box-shadow: none;
+  opacity: 1;
+}
+
+/*
+ * The till's own pieces. In the components layer, so a Tailwind utility on the same element (a radius,
+ * a size, a padding) can still refine them.
+ */
+@layer components {
+  /* ----------------------------------------------------------------------------------------- */
+  /* Surfaces                                                                                    */
+  /* ----------------------------------------------------------------------------------------- */
+
+  /* A pane (the menu, the cart, the top bar, a ticket): one step up from the page. */
+  .till-pane {
+    background-color: var(--surface);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--rim);
+  }
+
+  /* A raised block inside a pane (the helper, a hero figure): one more step, lit from above. */
+  .till-raised {
+    background-color: var(--surface-elevated);
+    background-image: var(--glass-sheen);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--rim);
+  }
+
+  /* A quiet row or box inside a pane or a sheet (a queued sale, a member, a note): one soft step up. */
+  .till-soft {
+    background-color: var(--till-lift);
+    border: 1px solid var(--glass-edge);
+  }
+
+  /* A sunken groove (the quantity stepper): darker than the pane, so its round keys stand out. */
+  .till-well {
+    background-color: color-mix(in srgb, var(--brand-grey) 55%, var(--surface));
+    border: 1px solid var(--glass-edge);
+  }
+
+  /* The till's own sheets (dialogs): solid, the strongest rim, rising on a spring over a grey scrim. */
+  .till-scrim {
+    background-color: color-mix(in srgb, var(--brand-grey) 82%, transparent);
+    animation: till-fade 0.22s var(--ease-smooth) both;
+  }
+  .till-sheet {
+    background-color: var(--surface-elevated);
+    background-image: var(--glass-sheen);
+    border: 1px solid var(--glass-edge-strong);
+    box-shadow: var(--rim);
+    animation: till-sheet-in 0.42s var(--ease-spring) both;
+  }
+
+  /* ----------------------------------------------------------------------------------------- */
+  /* Pressables                                                                                  */
+  /* ----------------------------------------------------------------------------------------- */
+
+  /*
+   * A dish tile, a staff name, an order row: a raised tile that sinks to 96% under the finger and
+   * springs back. The press goes down fast (100 ms) and comes back on the spring.
+   */
+  .till-tile {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--surface-elevated);
+    background-image: var(--glass-sheen);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--rim);
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    transition:
+      scale 0.45s var(--ease-spring),
+      background-color 0.2s var(--ease-smooth),
+      border-color 0.2s var(--ease-smooth);
+  }
+  /* The selection ring: drawn on top (over a photo too) and faded in, never a growing shadow. */
+  .till-tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 1px var(--till-ring);
+    opacity: 0;
+    transition: opacity 0.22s var(--ease-smooth);
+  }
+  @media (hover: hover) {
+    .till-tile:hover {
+      background-color: var(--surface-hover);
+      border-color: var(--glass-edge-strong);
+    }
+  }
+  /* In the cart: a yellow ring and a faint yellow tint. */
+  .till-tile[data-selected='true'] {
+    background-color: color-mix(in srgb, var(--brand-yellow) 7%, var(--surface-elevated));
+    border-color: var(--till-ring);
+  }
+  .till-tile[data-selected='true']::after {
+    opacity: 1;
+  }
+  .till-tile:active {
+    scale: 0.96;
+    background-color: var(--surface-hover);
+    transition-duration: 0.1s;
+    transition-timing-function: var(--ease-smooth);
+  }
+
+  /* The tile's corner mark: a quiet "+" until the dish is in the cart, then its count in yellow. */
+  .till-mark {
+    display: inline-flex;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 0.375rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    background-color: var(--surface-hover);
+    border: 1px solid var(--glass-edge);
+    transition:
+      color 0.2s var(--ease-smooth),
+      background-color 0.2s var(--ease-smooth);
+  }
+  .till-tile[data-selected='true'] .till-mark {
+    color: var(--on-action);
+    background-color: var(--brand-yellow);
+    border-color: transparent;
+  }
+
+  /* A dish with no photo: its first letter, large and faint, under a soft top light. */
+  .till-monogram {
+    background-color: var(--surface-hover);
+    background-image: radial-gradient(
+      120% 90% at 50% 0%,
+      color-mix(in srgb, var(--brand-silver) 10%, transparent),
+      transparent 70%
+    );
+    color: color-mix(in srgb, var(--brand-silver) 24%, transparent);
+  }
+
+  /* Filter rails (menu categories, kitchen stations): the current one turns silver, like iOS. */
+  .till-chip {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding-inline: 1.125rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    background-color: var(--till-lift);
+    border: 1px solid var(--glass-edge);
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    transition:
+      color 0.2s var(--ease-smooth),
+      background-color 0.2s var(--ease-smooth),
+      border-color 0.2s var(--ease-smooth),
+      scale 0.4s var(--ease-spring);
+  }
+  @media (hover: hover) {
+    .till-chip:hover {
+      color: var(--text);
+      background-color: var(--till-lift-strong);
+    }
+  }
+  .till-chip[aria-pressed='true'] {
+    color: var(--brand-grey);
+    background-color: var(--brand-silver);
+    border-color: var(--brand-silver);
+  }
+  .till-chip:active {
+    scale: 0.95;
+    transition-duration: 0.1s;
+  }
+
+  /* Choices in a form (payment method, size, add-ons, waste reason): picked = a yellow ring. */
+  .till-choice {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding-inline: 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background-color: var(--till-lift);
+    border: 1px solid var(--glass-edge);
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    transition:
+      color 0.2s var(--ease-smooth),
+      background-color 0.2s var(--ease-smooth),
+      border-color 0.2s var(--ease-smooth),
+      scale 0.4s var(--ease-spring);
+  }
+  @media (hover: hover) {
+    .till-choice:hover {
+      color: var(--text);
+      background-color: var(--till-lift-strong);
+      border-color: var(--glass-edge-strong);
+    }
+  }
+  .till-choice[aria-pressed='true'] {
+    color: var(--text);
+    background-color: color-mix(in srgb, var(--brand-yellow) 13%, transparent);
+    border-color: var(--till-ring);
+    box-shadow: inset 0 0 0 1px var(--till-ring);
+  }
+  .till-choice[aria-pressed='true'] svg {
+    color: var(--brand-yellow);
+  }
+  .till-choice:active {
+    scale: 0.95;
+    transition-duration: 0.1s;
+  }
+
+  /* The PIN pad: round keys like a phone's lock screen. */
+  .till-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    font-size: 1.75rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    background-color: var(--surface-elevated);
+    background-image: var(--glass-sheen);
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--rim);
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    transition:
+      scale 0.45s var(--ease-spring),
+      background-color 0.3s var(--ease-smooth);
+  }
+  .till-key:active {
+    scale: 0.92;
+    background-color: var(--surface-hover);
+    transition-duration: 0.08s;
+  }
+  /* The delete key has no disc, like the phone's. */
+  .till-key[data-plain='true'] {
+    background-color: transparent;
+    background-image: none;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--text-secondary);
+  }
+  .till-key[data-plain='true']:active {
+    background-color: var(--till-lift);
+  }
+
+  /* PIN dots: an empty ring that fills (and pops) as each digit is typed. */
+  .till-dot {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 9999px;
+    border: 1.5px solid var(--border-strong);
+    transition:
+      background-color 0.15s var(--ease-smooth),
+      border-color 0.15s var(--ease-smooth);
+  }
+  .till-dot[data-on='true'] {
+    background-color: var(--brand-silver);
+    border-color: var(--brand-silver);
+    animation: till-dot-in 0.3s var(--ease-spring);
+  }
+
+  /* A person's first letter in a soft silver disc (the staff picker, the PIN screen). */
+  .till-avatar {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    font-weight: 700;
+    color: var(--text);
+    background-image: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--brand-silver) 26%, var(--brand-grey)),
+      color-mix(in srgb, var(--brand-silver) 11%, var(--brand-grey))
+    );
+    border: 1px solid var(--glass-edge-strong);
+    box-shadow: var(--rim);
+  }
+
+  /* ----------------------------------------------------------------------------------------- */
+  /* The kitchen ticket                                                                          */
+  /* ----------------------------------------------------------------------------------------- */
+
+  /*
+   * Age drives the colour (BRAND.md): silver while fresh, a yellow tint when it is getting old, a
+   * yellow edge and a solid yellow clock once late. The clock's icon and words always say it too.
+   */
+  .till-ticket {
+    position: relative;
+    animation: till-ticket-in 0.4s var(--ease-spring) both;
+    transition: border-color 0.3s var(--ease-smooth);
+  }
+  /* A new ticket lands on a spring; on first load they follow each other 40 ms apart. */
+  .till-ticket:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .till-ticket:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .till-ticket:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .till-ticket:nth-child(5) {
+    animation-delay: 160ms;
+  }
+  .till-ticket:nth-child(n + 6) {
+    animation-delay: 200ms;
+  }
+  /* The late edge: over the header band, faded in. */
+  .till-ticket::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: 2;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 2px var(--brand-yellow);
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-smooth);
+  }
+  .till-ticket[data-age='late'] {
+    border-color: var(--brand-yellow);
+  }
+  .till-ticket[data-age='late']::before {
+    opacity: 1;
+  }
+  /* A ticket nobody has started yet glows once as it lands (an opacity fade over a still shadow). */
+  .till-ticket::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow:
+      0 0 0 2px var(--brand-yellow),
+      0 0 36px -6px color-mix(in srgb, var(--brand-yellow) 60%, transparent);
+  }
+  .till-ticket[data-status='sent_to_kitchen']::after {
+    animation: till-glow 1.8s var(--ease-smooth) 0.2s both;
+  }
+
+  .till-band {
+    background-color: var(--surface-elevated);
+    background-image: var(--glass-sheen);
+    border-bottom: 1px solid var(--glass-edge);
+    border-start-start-radius: calc(var(--radius-card) - 1px);
+    border-start-end-radius: calc(var(--radius-card) - 1px);
+    transition: background-color 0.3s var(--ease-smooth);
+  }
+  .till-ticket[data-age='warn'] .till-band {
+    background-color: color-mix(in srgb, var(--brand-yellow) 9%, var(--surface-elevated));
+  }
+  .till-ticket[data-age='late'] .till-band {
+    background-color: color-mix(in srgb, var(--brand-yellow) 16%, var(--surface-elevated));
+  }
+
+  .till-age {
+    display: inline-flex;
+    min-height: 2rem;
+    align-items: center;
+    gap: 0.375rem;
+    padding-inline: 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    background-color: var(--till-lift);
+    border: 1px solid var(--glass-edge);
+  }
+  .till-ticket[data-age='warn'] .till-age {
+    color: var(--brand-yellow);
+    background-color: color-mix(in srgb, var(--brand-yellow) 14%, transparent);
+    border-color: color-mix(in srgb, var(--brand-yellow) 45%, transparent);
+  }
+  .till-ticket[data-age='late'] .till-age {
+    color: var(--on-action);
+    background-color: var(--brand-yellow);
+    border-color: var(--brand-yellow);
+  }
+
+  /* ----------------------------------------------------------------------------------------- */
+  /* Motion                                                                                      */
+  /* ----------------------------------------------------------------------------------------- */
+
+  /* A screen of the till arrives (cart, order, checkout, receipt, orders). */
+  .till-enter {
+    animation: till-rise 0.26s var(--ease-smooth) both;
+  }
+  /* A new cart or order line settles in on a spring. */
+  .till-line {
+    animation: till-line-in 0.34s var(--ease-spring) both;
+  }
+  /* A quantity or a count changes: the new figure pops. */
+  .till-pop {
+    display: inline-block;
+    animation: till-pop 0.3s var(--ease-smooth) both;
+  }
+  /* A total changes: the new figure rolls up into place (final from the first frame, never counted). */
+  .till-figure {
+    display: inline-block;
+    animation: till-figure 0.26s var(--ease-smooth) both;
+  }
+  /* A label changes (a ticket's status, its next step): the new words slide up. */
+  .till-swap {
+    display: inline-block;
+    animation: till-swap 0.26s var(--ease-smooth) both;
+  }
+  /* The receipt's big mark (done, or cancelled). */
+  .till-done {
+    animation: till-done 0.46s var(--ease-smooth) both;
+  }
+  /* A wrong PIN shakes the dots, like a phone's lock screen. */
+  .till-shake {
+    animation: till-shake 0.4s var(--ease-smooth);
+  }
+  /* A ticket's clock changes state (getting old, late): one small nudge. */
+  .till-nudge {
+    animation: till-nudge 0.5s var(--ease-smooth) both;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------- */
+/* Keyframes                                                                                     */
+/* ------------------------------------------------------------------------------------------- */
+
+@keyframes till-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes till-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+@keyframes till-sheet-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.96);
+  }
+}
+@keyframes till-line-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.97);
+  }
+}
+@keyframes till-pop {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes till-figure {
+  from {
+    opacity: 0.3;
+    transform: translate3d(0, 28%, 0);
+  }
+}
+@keyframes till-swap {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 45%, 0);
+  }
+}
+@keyframes till-done {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes till-dot-in {
+  from {
+    transform: scale(0.4);
+  }
+}
+@keyframes till-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translate3d(-9px, 0, 0);
+  }
+  40% {
+    transform: translate3d(8px, 0, 0);
+  }
+  60% {
+    transform: translate3d(-5px, 0, 0);
+  }
+  80% {
+    transform: translate3d(3px, 0, 0);
+  }
+}
+@keyframes till-ticket-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.96);
+  }
+}
+@keyframes till-glow {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes till-nudge {
+  0% {
+    transform: scale(0.85);
+  }
+  45% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Reduced motion: nothing moves. Unlayered and last, so it wins over everything above. */
+@media (prefers-reduced-motion: reduce) {
+  .till-scrim,
+  .till-sheet,
+  .till-dot[data-on='true'],
+  .till-ticket,
+  .till-ticket::after,
+  .till-ticket[data-status='sent_to_kitchen']::after,
+  .till-enter,
+  .till-line,
+  .till-pop,
+  .till-figure,
+  .till-swap,
+  .till-done,
+  .till-shake,
+  .till-nudge {
+    animation: none;
+  }
+  .till-tile,
+  .till-chip,
+  .till-choice,
+  .till-key {
+    transition-property: color, background-color, border-color;
+  }
+  .till-tile:active,
+  .till-chip:active,
+  .till-choice:active,
+  .till-key:active {
+    scale: none;
+  }
+}

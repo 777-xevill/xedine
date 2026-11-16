@@ -2,6 +2,11 @@
 
 import {
   ArrowLeft,
+  BadgePercent,
+  Ban,
+  CheckCircle2,
+  ChefHat,
+  Clock3,
   CloudOff,
   History,
   Image as ImageIcon,
@@ -11,14 +16,18 @@ import {
   QrCode as QrIcon,
   RefreshCw,
   ScanLine,
+  ShoppingBag,
   Star,
   Type,
   UserPlus,
+  Utensils,
+  Wallet,
   Wifi,
+  XCircle,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
-import { StatusBadge, type BadgeTone } from '@/components/ui/badge';
+import { Badge, StatusBadge, type BadgeTone } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, Input, Label, Select } from '@/components/ui/form';
 import { Segmented } from '@/components/ui/segmented';
@@ -96,32 +105,39 @@ function Totals({
   const { locale } = useTill();
   const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   return (
-    <dl className="space-y-1 text-sm">
-      <div className="flex justify-between">
+    <dl className="space-y-1.5 text-sm">
+      <div className="flex justify-between gap-3">
         <dt className="text-secondary">{t('subtotal')}</dt>
-        <dd className="tabular-nums">{money(amounts.netPoisha)}</dd>
+        <dd className="text-secondary tabular-nums">{money(amounts.netPoisha)}</dd>
       </div>
       {amounts.discountPoisha ? (
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-3">
           <dt className="text-secondary">{t('discount')}</dt>
-          <dd className="tabular-nums">−{money(amounts.discountPoisha)}</dd>
+          <dd className="font-medium text-warning tabular-nums">
+            −{money(amounts.discountPoisha)}
+          </dd>
         </div>
       ) : null}
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-3">
         <dt className="text-secondary">
           {t('vat', { tax: tp(`taxNames.${taxKindOf(tillPlace().country)}`) })}
         </dt>
-        <dd className="tabular-nums">{money(amounts.vatPoisha)}</dd>
+        <dd className="text-secondary tabular-nums">{money(amounts.vatPoisha)}</dd>
       </div>
       {amounts.serviceChargePoisha > 0 ? (
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-3">
           <dt className="text-secondary">{t('serviceCharge')}</dt>
-          <dd className="tabular-nums">{money(amounts.serviceChargePoisha)}</dd>
+          <dd className="text-secondary tabular-nums">{money(amounts.serviceChargePoisha)}</dd>
         </div>
       ) : null}
-      <div className="flex justify-between border-t border-line pt-1.5 text-base font-bold">
-        <dt>{t('total')}</dt>
-        <dd className="tabular-nums">{money(amounts.totalPoisha)}</dd>
+      {/* The hero: the figure the customer pays, large; it rolls up into place when it changes. */}
+      <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-3">
+        <dt className="text-base font-semibold">{t('total')}</dt>
+        <dd className="text-[2rem] leading-none font-bold tracking-[-0.035em] tabular-nums">
+          <span key={amounts.totalPoisha} className="till-figure">
+            {money(amounts.totalPoisha)}
+          </span>
+        </dd>
       </div>
     </dl>
   );
@@ -178,6 +194,12 @@ export function CartScreen({
     setTillView(next);
   };
   const shown = category === 'all' ? menu : menu.filter((c) => c.id === category);
+  // How many of each dish the cart holds (all sizes together): only rings its tile, never a price.
+  const inCart = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of cart) counts.set(c.menuItemId, (counts.get(c.menuItemId) ?? 0) + c.quantity);
+    return counts;
+  }, [cart]);
 
   const tap = (item: MenuItem) => {
     if (item.variants.length > 0 || item.modifier_groups.length > 0) {
@@ -196,10 +218,10 @@ export function CartScreen({
   };
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="glass flex min-h-0 flex-col rounded-card p-3">
+    <div className="till-enter grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_340px]">
+      <section className="till-pane flex min-h-0 flex-col rounded-card p-3 sm:p-4">
         {mode.kind === 'round' ? (
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="till-raised mb-3 flex items-center justify-between gap-2 rounded-input py-1.5 ps-4 pe-1.5">
             <p className="font-semibold">{t('addingToOrder', { order: mode.orderLabel })}</p>
             <Button variant="ghost" size="sm" onClick={onCancelRound}>
               <ArrowLeft aria-hidden className="size-4" />
@@ -236,7 +258,7 @@ export function CartScreen({
         <div className="mb-3">
           <nav
             aria-label={t('categories')}
-            className="-mx-1 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-1 pb-1"
+            className="till-scroll -mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-1"
           >
             {[
               { id: 'all', label: t('allItems') },
@@ -247,11 +269,7 @@ export function CartScreen({
                 type="button"
                 aria-pressed={category === c.id}
                 onClick={() => setCategory(c.id)}
-                className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-medium transition ${
-                  category === c.id
-                    ? 'border-purple bg-surface-elevated text-foreground'
-                    : 'glass-tile text-secondary'
-                }`}
+                className="till-chip"
               >
                 {c.label}
               </button>
@@ -259,22 +277,24 @@ export function CartScreen({
           </nav>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pe-1">
+        <div className="till-scroll min-h-0 flex-1 overflow-y-auto pe-1">
           {shown.map((cat) => {
             const items = cat.items.filter((i) => i.is_available);
             if (items.length === 0) return null;
             return (
-              <div key={cat.id} className="mb-4">
-                <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
-                  {itemLabel(cat, locale)}
+              <div key={cat.id} className="mb-5 last:mb-1">
+                <h2 className="mb-2.5 flex items-center gap-3 text-xs font-semibold tracking-[0.08em] text-muted uppercase">
+                  <span className="shrink-0">{itemLabel(cat, locale)}</span>
+                  <span aria-hidden className="h-px flex-1 bg-line" />
                 </h2>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                   {items.map((item) => (
                     <ItemTile
                       key={item.id}
                       item={item}
                       label={itemLabel(item, locale)}
                       view={view}
+                      inCart={inCart.get(item.id) ?? 0}
                       onTap={() => tap(item)}
                     />
                   ))}
@@ -285,10 +305,13 @@ export function CartScreen({
         </div>
       </section>
 
-      <aside className="glass flex min-h-0 flex-col rounded-card p-3">
-        <h2 className="mb-2 font-semibold">{t('cart')}</h2>
+      <aside className="till-pane flex min-h-0 flex-col rounded-card p-3 sm:p-4">
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-bold tracking-tight">
+          <ShoppingBag aria-hidden className="size-5 text-muted" />
+          {t('cart')}
+        </h2>
         {mode.kind !== 'round' ? (
-          <div className="mb-3 grid grid-cols-2 gap-2">
+          <div className="mb-2 grid grid-cols-2 gap-2">
             <div>
               <Label htmlFor="channel">{t('channel')}</Label>
               <Select id="channel" value={channelId} onChange={(e) => setChannelId(e.target.value)}>
@@ -314,36 +337,48 @@ export function CartScreen({
             ) : null}
           </div>
         ) : null}
-        <div className="min-h-24 flex-1 overflow-y-auto">
+        <div className="till-scroll -mx-1 min-h-24 flex-1 overflow-y-auto px-1">
           {cart.length === 0 ? (
-            <p className="text-sm text-secondary">{t('cartEmpty')}</p>
+            <div className="flex h-full min-h-32 flex-col items-center justify-center gap-3 text-center">
+              <span
+                aria-hidden
+                className="till-raised flex size-14 items-center justify-center rounded-full"
+              >
+                <ShoppingBag className="size-6 text-muted" />
+              </span>
+              <p className="text-sm text-secondary">{t('cartEmpty')}</p>
+            </div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-line">
               {cart.map((c) => (
-                <li key={c.key} className="flex items-start gap-2 text-sm">
+                <li key={c.key} className="till-line flex items-center gap-3 py-2.5 text-sm">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{c.name}</p>
+                    <p className="text-[0.9375rem] leading-snug font-semibold">{c.name}</p>
                     {c.modifiersLabel ? (
-                      <p className="text-xs text-secondary">{c.modifiersLabel}</p>
+                      <p className="mt-0.5 text-xs text-secondary">{c.modifiersLabel}</p>
                     ) : null}
-                    {c.note ? <p className="text-xs text-muted italic">{c.note}</p> : null}
-                    <p className="text-xs text-muted tabular-nums">{money(c.unitPricePoisha)}</p>
+                    {c.note ? <p className="mt-0.5 text-xs text-muted italic">{c.note}</p> : null}
+                    <p className="mt-0.5 text-xs text-muted tabular-nums">
+                      {money(c.unitPricePoisha)}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="till-well flex shrink-0 items-center gap-0.5 rounded-full p-0.5">
                     <Button
                       variant="subtle"
                       size="icon"
-                      className="size-9"
                       aria-label={t('less')}
                       onClick={() => changeQty(c.key, -1)}
                     >
                       <Minus aria-hidden className="size-4" />
                     </Button>
-                    <span className="w-6 text-center font-semibold tabular-nums">{c.quantity}</span>
+                    <span className="w-7 text-center text-base font-bold tabular-nums">
+                      <span key={c.quantity} className="till-pop">
+                        {c.quantity}
+                      </span>
+                    </span>
                     <Button
                       variant="subtle"
                       size="icon"
-                      className="size-9"
                       aria-label={t('more')}
                       onClick={() => changeQty(c.key, 1)}
                     >
@@ -356,11 +391,16 @@ export function CartScreen({
           )}
         </div>
         {preview && cart.length > 0 && mode.kind === 'new' ? (
-          <div className="mt-2 border-t border-line pt-2">
+          <div className="till-enter mt-2 border-t border-line pt-3">
             <Totals amounts={preview} />
           </div>
         ) : null}
-        <Button size="lg" className="mt-3" disabled={busy || cart.length === 0} onClick={onSubmit}>
+        <Button
+          size="lg"
+          className="till-cta mt-3 min-h-16 w-full text-[1.0625rem]"
+          disabled={busy || cart.length === 0}
+          onClick={onSubmit}
+        >
           {mode.kind === 'round' ? t('addToOrder') : t('placeOrder')}
         </Button>
       </aside>
@@ -490,7 +530,7 @@ export function OrderScreen({
   const anySent = lines.some((l) => l.status === 'active' && l.kot_sent_at !== null);
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="till-enter grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_320px]">
       {receipt ? (
         <Receipt
           kind="kot"
@@ -501,30 +541,58 @@ export function OrderScreen({
           locale={locale}
         />
       ) : null}
-      <section className="glass flex min-h-0 flex-col rounded-card p-4">
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="text-xl font-bold">{orderLabel(order, t)}</h2>
-            <p className="text-sm text-secondary">
-              {tableName ? `${tableName} · ` : ''}
-              {formatDateTime(new Date(order.placed_at), locale, tillPlace().tz)}
+      <section className="till-pane flex min-h-0 flex-col rounded-card p-4 sm:p-5">
+        <div className="mb-1 flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+          <div className="min-w-0">
+            <h2 className="text-[1.75rem] leading-tight font-bold tracking-[-0.03em]">
+              {orderLabel(order, t)}
+            </h2>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-secondary">
+              {tableName ? (
+                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                  <Utensils aria-hidden className="size-4 text-muted" />
+                  {tableName}
+                </span>
+              ) : null}
+              <span className="inline-flex items-center gap-1.5 tabular-nums">
+                <Clock3 aria-hidden className="size-4 text-muted" />
+                {formatDateTime(new Date(order.placed_at), locale, tillPlace().tz)}
+              </span>
             </p>
           </div>
           <OrderBadges order={order} local={local} />
         </div>
-        <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+        <ul className="till-scroll min-h-0 flex-1 divide-y divide-line overflow-y-auto">
           {lines.map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-2 py-2.5 text-sm">
-              <div className={l.status === 'voided' ? 'flex-1 text-muted line-through' : 'flex-1'}>
-                <p className="font-medium">
-                  {l.quantity} × {l.name_snapshot}
-                </p>
-                {l.notes ? <p className="text-xs text-muted italic">{l.notes}</p> : null}
+            <li key={l.id} className="till-line flex items-center gap-3 py-3 text-sm">
+              <span
+                className={`flex h-8 min-w-10 shrink-0 items-center justify-center rounded-full px-2 text-sm font-bold tabular-nums ${
+                  l.status === 'voided' ? 'text-muted line-through' : 'till-raised'
+                }`}
+              >
+                {l.quantity}×
+              </span>
+              <div
+                className={
+                  l.status === 'voided'
+                    ? 'min-w-0 flex-1 text-muted line-through'
+                    : 'min-w-0 flex-1'
+                }
+              >
+                <p className="text-[0.9375rem] font-semibold">{l.name_snapshot}</p>
+                {l.notes ? <p className="mt-0.5 text-xs text-muted italic">{l.notes}</p> : null}
                 {l.status === 'active' && l.kot_sent_at === null ? (
-                  <p className="text-xs text-warning">{t('notSentYet')}</p>
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-warning">
+                    <ChefHat aria-hidden className="size-3.5" />
+                    {t('notSentYet')}
+                  </p>
                 ) : null}
               </div>
-              <span className="w-24 text-end tabular-nums">{money(l.total_poisha)}</span>
+              <span
+                className={`w-24 text-end font-semibold tabular-nums ${l.status === 'voided' ? 'text-muted' : ''}`}
+              >
+                {money(l.total_poisha)}
+              </span>
               {l.status === 'active' && unpaid && !closed ? (
                 <Button
                   variant="ghost"
@@ -540,7 +608,7 @@ export function OrderScreen({
         </ul>
       </section>
 
-      <aside className="glass flex flex-col gap-3 rounded-card p-4">
+      <aside className="till-pane till-scroll flex min-h-0 flex-col gap-3 overflow-y-auto rounded-card p-4">
         <Totals
           amounts={{
             netPoisha: order.net_poisha,
@@ -551,7 +619,7 @@ export function OrderScreen({
           }}
         />
         {memberOn ? (
-          <div className="rounded-input border border-line p-3 text-sm">
+          <div className="till-raised rounded-input p-3 text-sm">
             <p className="flex items-center gap-1.5 font-semibold">
               <Star aria-hidden className="size-4 text-purple" />
               {member.name ?? t('member')}
@@ -597,22 +665,24 @@ export function OrderScreen({
           </p>
         ) : null}
         {!closed && hasUnsent ? (
-          <Button size="lg" disabled={busy} onClick={onSendKitchen}>
+          <Button size="lg" className="w-full" disabled={busy} onClick={onSendKitchen}>
+            <ChefHat aria-hidden className="size-5" />
             {t('sendToKitchen')}
           </Button>
         ) : null}
         {anySent && receipt ? (
-          <Button variant="secondary" onClick={() => window.print()}>
+          <Button variant="secondary" className="w-full" onClick={() => window.print()}>
             <Printer aria-hidden className="size-4" />
             {t('printKot')}
           </Button>
         ) : null}
         {!closed && unpaid ? (
           <>
-            <Button size="lg" disabled={busy} onClick={onCheckout}>
+            <Button size="lg" className="w-full" disabled={busy} onClick={onCheckout}>
+              <Wallet aria-hidden className="size-5" />
               {t('checkout')}
             </Button>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 [&_svg]:shrink-0 [&>button]:px-3 [&>button]:leading-tight [&>button]:whitespace-normal">
               <Button variant="secondary" disabled={busy || !live} onClick={onAddRound}>
                 <Plus aria-hidden className="size-4" />
                 {t('addItems')}
@@ -622,6 +692,7 @@ export function OrderScreen({
                 disabled={busy || !live}
                 onClick={() => setDiscountOpen(true)}
               >
+                <BadgePercent aria-hidden className="size-4" />
                 {t('applyDiscount')}
               </Button>
               <Button
@@ -648,13 +719,15 @@ export function OrderScreen({
                   disabled={busy || !live}
                   onClick={() => setCancelOpen(true)}
                 >
+                  <Ban aria-hidden className="size-4" />
                   {t('cancelOrder')}
                 </Button>
               ) : null}
             </div>
           </>
         ) : null}
-        <Button variant="ghost" className="mt-auto" onClick={onNewOrder}>
+        <Button variant="ghost" className="mt-auto shrink-0" onClick={onNewOrder}>
+          <Plus aria-hidden className="size-4" />
           {t('newOrder')}
         </Button>
       </aside>
@@ -774,48 +847,59 @@ export function CheckoutScreen({
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4">
+    <div className="till-enter mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-3">
       <Button variant="ghost" className="self-start" onClick={onBack}>
         <ArrowLeft aria-hidden className="size-4" />
         {t('backToOrder')}
       </Button>
-      <div className="glass rounded-card p-5 text-center">
-        <p className="text-sm text-secondary">{t('amountDue')}</p>
-        <p className="text-4xl font-bold tabular-nums">{money(due)}</p>
-        <p className="mt-1 text-sm text-secondary tabular-nums">
-          {t('total')} {money(order.total_poisha)} · {t('amountPaid')} {money(paidPoisha)}
-        </p>
-      </div>
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      <MethodPicker value={method} onChange={setMethod} />
-      <div>
-        <Label htmlFor="amt">{t('amount')}</Label>
-        <Input
-          id="amt"
-          inputMode="decimal"
-          className="text-lg"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </div>
-      {method === 'cash' ? (
-        <div className="flex flex-wrap gap-2">
-          {quick.map((q) => (
-            <Button
-              key={q}
-              variant="subtle"
-              size="sm"
-              disabled={busy}
-              onClick={() => void submit(q)}
-            >
-              {money(q)}
-            </Button>
-          ))}
+      <div className="till-scroll grid min-h-0 flex-1 content-start gap-3 overflow-y-auto md:grid-cols-2">
+        <div className="till-raised flex flex-col items-center justify-center rounded-card px-6 py-8 text-center md:min-h-[24rem]">
+          <p className="text-sm font-medium text-secondary">{t('amountDue')}</p>
+          <p className="mt-3 text-[3.25rem] leading-none font-bold tracking-[-0.04em] tabular-nums">
+            {money(due)}
+          </p>
+          <p className="mt-5 text-sm text-secondary tabular-nums">
+            {t('total')} {money(order.total_poisha)} · {t('amountPaid')} {money(paidPoisha)}
+          </p>
         </div>
-      ) : null}
-      <Button size="lg" disabled={busy} onClick={() => void submit(parseTakaToPoisha(amount))}>
-        {t('addPayment')}
-      </Button>
+        <div className="till-pane flex flex-col gap-4 rounded-card p-4 sm:p-5">
+          {error ? <Alert tone="danger">{error}</Alert> : null}
+          <MethodPicker value={method} onChange={setMethod} />
+          <div>
+            <Label htmlFor="amt">{t('amount')}</Label>
+            <Input
+              id="amt"
+              inputMode="decimal"
+              className="min-h-14 text-2xl font-semibold tracking-tight tabular-nums"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+          {method === 'cash' ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {quick.map((q) => (
+                <Button
+                  key={q}
+                  variant="secondary"
+                  className="min-h-12 px-3 tabular-nums"
+                  disabled={busy}
+                  onClick={() => void submit(q)}
+                >
+                  {money(q)}
+                </Button>
+              ))}
+            </div>
+          ) : null}
+          <Button
+            size="lg"
+            className="mt-1 w-full"
+            disabled={busy}
+            onClick={() => void submit(parseTakaToPoisha(amount))}
+          >
+            {t('addPayment')}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -854,7 +938,7 @@ export function ReceiptScreen({
   const [refundOpen, setRefundOpen] = useState(false);
   const cancelled = order.order_status === 'cancelled';
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 text-center">
+    <div className="till-enter mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-4 text-center">
       {receipt ? (
         <Receipt
           kind="receipt"
@@ -870,16 +954,30 @@ export function ReceiptScreen({
           }
         />
       ) : null}
-      <div className="glass w-full rounded-card p-6">
-        <h2 className={`text-2xl font-bold ${cancelled ? 'text-danger' : 'text-success'}`}>
+      <div className="till-pane w-full rounded-sheet px-6 pt-8 pb-7">
+        <span
+          aria-hidden
+          className={`till-done mx-auto mb-4 flex size-16 items-center justify-center rounded-full ${
+            cancelled
+              ? 'border border-danger/60 bg-danger/12 text-danger'
+              : 'border border-edge-strong bg-surface-hover text-success'
+          }`}
+        >
+          {cancelled ? <XCircle className="size-8" /> : <CheckCircle2 className="size-8" />}
+        </span>
+        <h2
+          className={`text-[1.75rem] leading-tight font-bold tracking-[-0.03em] ${cancelled ? 'text-danger' : 'text-success'}`}
+        >
           {cancelled ? t('orderCancelled') : t('orderComplete')}
         </h2>
-        <p className="mt-1 text-secondary">{order.invoice_no ?? order.provisional_receipt_no}</p>
+        <p className="mt-1 text-secondary tabular-nums">
+          {order.invoice_no ?? order.provisional_receipt_no}
+        </p>
         <div className="mt-3 flex justify-center">
           <OrderBadges order={order} local={local} />
         </div>
         {changePoisha > 0 ? (
-          <p className="mt-4 text-3xl font-bold tabular-nums">
+          <p className="till-raised mt-5 rounded-card px-4 py-4 text-[2rem] leading-tight font-bold tracking-[-0.03em] tabular-nums">
             {t('change', { amount: formatMoney(changePoisha, locale, tillPlace().currency) })}
           </p>
         ) : null}
@@ -887,16 +985,17 @@ export function ReceiptScreen({
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         {receipt && !cancelled ? (
-          <Button variant="secondary" onClick={() => window.print()}>
+          <Button variant="secondary" size="lg" onClick={() => window.print()}>
             <Printer aria-hidden className="size-4" />
             {t('printReceipt')}
           </Button>
         ) : null}
-        <Button size="lg" onClick={onNewOrder}>
+        <Button size="lg" className="min-w-40" onClick={onNewOrder}>
+          <Plus aria-hidden className="size-5" />
           {t('newOrder')}
         </Button>
         {refundablePoisha > 0 && !local ? (
-          <Button variant="danger" disabled={!online} onClick={() => setRefundOpen(true)}>
+          <Button variant="danger" size="lg" disabled={!online} onClick={() => setRefundOpen(true)}>
             {t('refundOrder')}
           </Button>
         ) : null}
@@ -946,10 +1045,10 @@ export function OrdersScreen({
   const { locale, online } = useTill();
   const money = (p: number) => formatMoney(p, locale, tillPlace().currency);
   return (
-    <section className="glass flex min-h-0 flex-1 flex-col rounded-card p-4">
+    <section className="till-pane till-enter flex min-h-0 flex-1 flex-col rounded-card p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-xl font-bold">
-          <History aria-hidden className="size-5" />
+        <h2 className="flex items-center gap-2.5 text-[1.75rem] leading-tight font-bold tracking-[-0.03em]">
+          <History aria-hidden className="size-6 text-muted" />
           {t('ordersTitle')}
         </h2>
         <div className="flex gap-2">
@@ -964,15 +1063,15 @@ export function OrdersScreen({
         </div>
       </div>
       {!online ? <Alert tone="warning">{t('ordersOffline')}</Alert> : null}
-      <ul className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto">
+      <ul className="till-scroll mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto">
         {pending.map((p) => (
           <li
             key={p.orderId}
-            className="glass-tile flex items-center justify-between gap-2 rounded-input p-3"
+            className="till-line flex items-center justify-between gap-2 rounded-[1.125rem] border border-dashed border-warning/45 bg-warning/5 px-4 py-3"
           >
             <div>
-              <p className="font-semibold">{p.provisionalReceiptNo}</p>
-              <p className="text-xs text-secondary">
+              <p className="font-semibold tabular-nums">{p.provisionalReceiptNo}</p>
+              <p className="mt-0.5 text-xs text-secondary tabular-nums">
                 {formatDateTime(new Date(p.placedAt), locale, tillPlace().tz)}
               </p>
             </div>
@@ -980,24 +1079,24 @@ export function OrdersScreen({
           </li>
         ))}
         {orders.map((o) => (
-          <li key={o.id}>
+          <li key={o.id} className="till-line">
             <button
               type="button"
               onClick={() => onOpen(o)}
-              className="glass-tile flex w-full flex-wrap items-center justify-between gap-2 rounded-input p-3 text-start transition hover:border-purple"
+              className="till-tile flex min-h-16 w-full flex-wrap items-center justify-between gap-2 rounded-[1.125rem] px-4 py-3 text-start"
             >
               <div>
-                <p className="font-semibold">
+                <p className="text-[0.9375rem] font-semibold">
                   {orderLabel(o, t)}
                   {tableName(o.table_id) ? ` · ${tableName(o.table_id)}` : ''}
                 </p>
-                <p className="text-xs text-secondary">
+                <p className="mt-0.5 text-xs text-secondary tabular-nums">
                   {formatDateTime(new Date(o.placed_at), locale, tillPlace().tz)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <OrderBadges order={o} local={false} />
-                <span className="w-24 text-end font-semibold tabular-nums">
+                <span className="w-28 text-end text-base font-bold tracking-tight tabular-nums">
                   {money(o.total_poisha)}
                 </span>
               </div>
@@ -1005,7 +1104,15 @@ export function OrdersScreen({
           </li>
         ))}
         {!loading && orders.length === 0 && pending.length === 0 ? (
-          <li className="text-sm text-secondary">{t('noOrders')}</li>
+          <li className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <span
+              aria-hidden
+              className="till-raised flex size-14 items-center justify-center rounded-full"
+            >
+              <History className="size-6 text-muted" />
+            </span>
+            <span className="text-sm text-secondary">{t('noOrders')}</span>
+          </li>
         ) : null}
       </ul>
     </section>
@@ -1051,16 +1158,15 @@ export function SyncStatus({
         className="rounded-full"
         aria-label={`${online ? t('online') : t('offline')} · ${label}`}
       >
-        <StatusBadge tone={tone as 'success'} className="min-h-9 px-3 text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            {online ? (
-              <Wifi aria-hidden className="size-3.5" />
-            ) : (
-              <CloudOff aria-hidden className="size-3.5" />
-            )}
+        <Badge
+          tone={tone}
+          icon={online ? <Wifi /> : <CloudOff />}
+          className="min-h-9 px-3.5 text-[0.8125rem]"
+        >
+          <span key={label} className="till-swap">
             {label}
           </span>
-        </StatusBadge>
+        </Badge>
       </button>
       {open ? (
         <DialogShell title={t('syncTitle')} onClose={() => setOpen(false)} wide>
@@ -1070,7 +1176,7 @@ export function SyncStatus({
           ) : (
             <ul className="space-y-2">
               {entries.map((e) => (
-                <li key={e.id} className="glass-tile rounded-input p-3 text-sm">
+                <li key={e.id} className="till-soft till-line rounded-input p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">
                       {t(`op.${e.op.kind}`)}

@@ -1,0 +1,274 @@
+/*
+ * Charts and data visuals (bars, meters, sparklines) — ADR 0063 polish. Imported by globals.css.
+ * Only the brand tokens from globals.css (grey, silver, yellow and their color-mix shades); no hex,
+ * rgb() or hsl(). Class and keyframe names start with "chart-". Every animation here stops for reduced
+ * motion in the block at the end of this file.
+ *
+ * Apple Health in the dark: soft silver columns and bars on hairline gridlines, the peak lit in a
+ * yellow-to-gold gradient with a soft glow (BRAND.md: yellow for the peak, silver for the rest). Only
+ * transform and opacity move, so cheap phones keep up, and only the drawing moves: every height, length
+ * and value is final from the first frame. Nothing is counted up and no figure is shown that the metric
+ * did not produce.
+ *
+ * In the components layer, so a utility on the same element (a height, a margin) still wins.
+ */
+
+@layer components {
+  /* --- Columns over time (ColumnChart) ------------------------------------------------------ */
+
+  /* The plot: a hairline at each quarter of the tallest column, and a firmer baseline. */
+  .chart-plot {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--brand-silver) 7%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 100% 25%;
+    border-bottom: 1px solid color-mix(in srgb, var(--brand-silver) 20%, transparent);
+  }
+
+  /*
+   * A column: soft silver, a continuous rounded top; it grows from the baseline in its turn. Its top
+   * (where the height is read) stays at 3.2:1 on the card, above WCAG's 3:1 for a graphic.
+   */
+  .chart-bar {
+    width: 62%;
+    min-width: 3px;
+    max-width: 2.25rem;
+    border-radius: 0.5rem 0.5rem 0.1875rem 0.1875rem;
+    background-image: linear-gradient(
+      to bottom,
+      var(--brand-silver),
+      color-mix(in srgb, var(--brand-silver) 72%, transparent)
+    );
+    opacity: 0.48;
+    transform-origin: 50% 100%;
+    transition: opacity 0.35s var(--ease-smooth);
+    animation: chart-grow 0.75s var(--ease-spring) backwards;
+    animation-delay: calc(260ms + var(--chart-i, 0) * var(--chart-step, 30ms));
+  }
+  /* The peak: yellow into gold, a light top edge and a soft yellow glow. */
+  .chart-bar-peak {
+    opacity: 1;
+    background-image: linear-gradient(to bottom, var(--brand-yellow), var(--gold));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--brand-silver) 65%, transparent),
+      0 0 14px -2px color-mix(in srgb, var(--brand-yellow) 45%, transparent),
+      0 12px 30px -10px color-mix(in srgb, var(--brand-yellow) 55%, transparent);
+  }
+
+  /* Pointing at (or tapping, or tabbing to) a column lights it and quiets the rest. */
+  .chart-plot:hover .chart-bar {
+    opacity: 0.2;
+  }
+  .chart-plot:hover .chart-bar-peak {
+    opacity: 0.62;
+  }
+  .chart-plot .chart-col:hover .chart-bar {
+    opacity: 0.8;
+  }
+  .chart-plot .chart-col:hover .chart-bar-peak {
+    opacity: 1;
+  }
+  .chart-plot:has(.chart-col:focus-visible) .chart-bar {
+    opacity: 0.2;
+  }
+  .chart-plot:has(.chart-col:focus-visible) .chart-bar-peak {
+    opacity: 0.62;
+  }
+  .chart-plot .chart-col:focus-visible .chart-bar {
+    opacity: 0.8;
+  }
+  .chart-plot .chart-col:focus-visible .chart-bar-peak {
+    opacity: 1;
+  }
+
+  /*
+   * The peak's own label: a small pill tinted with the peak's yellow. It arrives once its column has
+   * grown, and steps aside for the value pill when the column is pointed at.
+   */
+  .chart-peak-label {
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 9999px;
+    background-color: color-mix(in srgb, var(--brand-yellow) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-yellow) 26%, transparent);
+    transition: opacity 0.2s var(--ease-smooth);
+    animation: chart-label-in 0.5s var(--ease-smooth) backwards;
+    animation-delay: calc(680ms + var(--chart-i, 0) * var(--chart-step, 30ms));
+  }
+  .chart-col:hover .chart-peak-label,
+  .chart-col:focus-visible .chart-peak-label {
+    opacity: 0;
+  }
+
+  /*
+   * The value pill (the column's own label and amount, nothing new): a small pane of grey glass that
+   * pops up over the column on a spring. Not displayed until asked for, so it never widens the page.
+   */
+  .chart-tip {
+    display: none;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--glass-edge-strong);
+    border-radius: 0.75rem;
+    background-color: color-mix(in srgb, var(--surface-hover) 96%, transparent);
+    background-image: var(--glass-sheen);
+    box-shadow: var(--shadow-lift);
+  }
+  .chart-col:hover .chart-tip,
+  .chart-col:focus-visible .chart-tip {
+    display: block;
+    animation: chart-tip-in 0.34s var(--ease-spring) both;
+  }
+
+  /* --- Horizontal bars and meters (BarList, Meter) ------------------------------------------ */
+
+  /* The track: a soft groove. It clips the fill, so the round end stays round while it slides in. */
+  .chart-track {
+    --chart-bleed: 1.5rem;
+    position: relative;
+    height: 0.4375rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    background-color: color-mix(in srgb, var(--brand-silver) 7%, transparent);
+    box-shadow: inset 0 1px 1px color-mix(in srgb, var(--brand-grey) 60%, transparent);
+  }
+  /*
+   * The fill reaches back past the start of the track (the bleed, hidden by the clip), so the
+   * spring's small overshoot never opens a gap at the start of the bar.
+   */
+  .chart-fill {
+    position: absolute;
+    inset-block: 0;
+    left: calc(var(--chart-bleed) * -1);
+    width: calc(var(--chart-w, 0%) + var(--chart-bleed));
+    border-radius: inherit;
+    background-image: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--brand-silver) 70%, transparent),
+      var(--brand-silver)
+    );
+    opacity: 0.5;
+    transition: opacity 0.35s var(--ease-smooth);
+    animation: chart-slide 0.85s var(--ease-spring) backwards;
+    animation-delay: calc(360ms + var(--chart-i, 0) * 35ms);
+  }
+  /* The largest bar: gold into yellow toward its end, with a glow that follows the fill exactly. */
+  .chart-fill-peak {
+    opacity: 1;
+    background-image: linear-gradient(to right, var(--gold), var(--brand-yellow));
+  }
+  .chart-track:has(> .chart-fill-peak) {
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-yellow) 40%, transparent));
+  }
+  /* Progress toward done (BRAND.md: done is calm silver). */
+  .chart-fill-done {
+    opacity: 1;
+    background-image: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--brand-silver) 55%, transparent),
+      var(--brand-silver)
+    );
+  }
+  .chart-row:hover .chart-fill {
+    opacity: 0.78;
+  }
+  .chart-row:hover .chart-fill-peak {
+    opacity: 1;
+  }
+
+  /* People who ask for more contrast get firmer bars and gridlines. */
+  @media (prefers-contrast: more) {
+    .chart-plot {
+      background-image: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--brand-silver) 16%, transparent) 1px,
+        transparent 1px
+      );
+      border-bottom-color: color-mix(in srgb, var(--brand-silver) 40%, transparent);
+    }
+    .chart-bar,
+    .chart-fill {
+      opacity: 0.75;
+    }
+    .chart-bar-peak,
+    .chart-fill-peak,
+    .chart-fill-done {
+      opacity: 1;
+    }
+  }
+
+  /* --- Where you sit (benchmarks) ----------------------------------------------------------- */
+
+  .chart-scale {
+    background-color: color-mix(in srgb, var(--brand-silver) 7%, transparent);
+    box-shadow: inset 0 1px 1px color-mix(in srgb, var(--brand-grey) 60%, transparent);
+  }
+  /* The usual range: the middle half, the same range the card's words give under the bar. */
+  .chart-scale-band {
+    position: absolute;
+    inset-block: 0;
+    left: 25%;
+    right: 25%;
+    border-radius: inherit;
+    background-color: color-mix(in srgb, var(--brand-silver) 15%, transparent);
+    animation: chart-fade 0.6s var(--ease-smooth) 120ms backwards;
+  }
+  /* You: a lit yellow bead, cut out of the track by a ring of the card's own grey. */
+  .chart-marker {
+    background-image: radial-gradient(
+      circle at 35% 30%,
+      color-mix(in srgb, var(--brand-yellow) 45%, var(--brand-silver)),
+      var(--brand-yellow) 60%
+    );
+    box-shadow:
+      0 0 0 3px var(--surface),
+      0 0 18px 2px color-mix(in srgb, var(--brand-yellow) 38%, transparent);
+    animation: chart-pop 0.7s var(--ease-spring) 320ms backwards;
+  }
+}
+
+@keyframes chart-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes chart-slide {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes chart-label-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 5px, 0);
+  }
+}
+@keyframes chart-tip-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.9);
+  }
+}
+@keyframes chart-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar,
+  .chart-peak-label,
+  .chart-col:hover .chart-tip,
+  .chart-col:focus-visible .chart-tip,
+  .chart-fill,
+  .chart-scale-band,
+  .chart-marker {
+    animation: none;
+  }
+}

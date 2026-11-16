@@ -25,33 +25,41 @@ cards), inside QR codes (scanners need it) and on the landing page's light parts
 | Token | Value | Use |
 |---|---|---|
 | `--bg` | grey | The page |
-| `--bg-secondary` | grey + 3.5% silver | The sidebar (as frosted glass) |
-| `--surface` | grey + 5.5% silver | Cards, sheets |
-| `--surface-elevated` | grey + 9% silver | Fields, stat tiles, the current sidebar item |
-| `--surface-hover` | grey + 13% silver | Hover and the selected tab |
+| `--bg-secondary` | grey + 4% silver | The sidebar (translucent, the page's light shows through) |
+| `--surface` | grey + 7% silver | Cards, sheets |
+| `--surface-elevated` | grey + 11% silver | Fields, stat tiles, the current sidebar item |
+| `--surface-hover` | grey + 15% silver | Hover and the selected tab |
 | `--border` / `--border-strong` | grey + 12% / 22% silver | Lines |
 | `--glass-edge` | silver at 13% | The hairline rim on glass |
 | `--scrim` | grey at 72% | Behind dialogs and the phone menu |
 
 Glass (`glass`, `glass-strong`) is translucent grey with a 22px blur, a hairline silver rim and a faint top
-light (`--rim`). Depth comes from lighter fills and rims, not from black shadows. The page has a faint
-yellow glow from the top corner and a silver one from the bottom, drifting over half a minute (`.aurora`).
+light (`--rim`). Depth comes from lighter fills and rims, not from black shadows.
+
+**Cards** (`Card` → `.card-glass`; hand-made `rounded-card border bg-surface` cards in the workspace get the
+same) are smoked glass: translucent, a rim that is brighter along the top edge (a masked gradient
+border), and — with a mouse — a soft yellow light that follows the pointer across the card and along its
+rim (`data-spot`, `src/components/pointer-light.tsx`). The day's card on Home has its own corner glow
+(`.hero-glow`). Restaurant and person initials sit on gold tiles (`.initials-tile`).
+
+**The page's light** (`.aurora`): three soft glows — yellow from the top corner, gold from the left,
+silver from the bottom — drifting over half a minute, under a fine silver film grain.
 
 ## Text (worst case on the lightest surface, all pass WCAG AA)
 
 | Token | Value | Contrast | Use |
 |---|---|---|---|
-| `--text` | silver | 7.9 : 1 (9.9 on the page) | Primary text, **every figure** |
-| `--text-secondary` | silver 86% | 6.1 : 1 | Body copy, table cells |
-| `--text-muted` | silver 76% | 5.1 : 1 | Labels, metadata |
+| `--text` | silver | 6.7 : 1 (9.9 on the page) | Primary text, **every figure** |
+| `--text-secondary` | silver 86% | 5.2 : 1 | Body copy, table cells |
+| `--text-muted` | silver 80% | 4.7 : 1 | Labels, metadata |
 | `--text-disabled` | silver 45% | — | Disabled controls only |
 | yellow as text | yellow | 9.0 : 1 on the page | Links, attention words, active icons |
 
 ## Meaning with three colours
 
 Status is **never colour alone**: always an icon and words too (BRAND rule since ADR 0009).
-- **Yellow is attention.** Warning = a yellow tint; danger = solid yellow (badges) or a yellow edge
-  (alerts) — the loudest thing on the screen. Negative money is yellow with a minus sign.
+- **Yellow is attention.** Warning = a faint yellow tint; danger = a stronger tint with a yellow rim and a
+  soft glow (badges) or a yellow edge (alerts). Negative money is yellow with a minus sign.
 - **Silver is calm.** Success, done and information are silver with their icon.
 - Charts: yellow for the main series or the peak, silver (or yellow at half strength) for the rest.
 - Four-way colour (game players, the wheel): yellow, silver, gold (yellow 60% + silver) and pale gold.
@@ -60,7 +68,8 @@ Status is **never colour alone**: always an icon and words too (BRAND rule since
 
 ## Actions
 
-- **Primary:** yellow pill with a soft top light and grey words (9 : 1), a yellow glow underneath.
+- **Primary:** yellow pill with a soft top light and grey words (9 : 1), a yellow glow underneath, and a
+  sheet of light that sweeps across it on hover (`.btn-shine`).
 - **Secondary:** a raised grey pill with a silver rim. **Ghost:** words only. **Danger:** outlined yellow.
 - **Focus:** a 2px yellow ring; fields glow yellow when focused.
 - `--brand-gradient` (yellow → gold → silver) is for the composer's halo and decoration only, never
@@ -75,7 +84,15 @@ Apple-style: smooth deceleration for what arrives (`--ease-smooth`), a gentle sp
 - **Cards** further down rise in as they scroll into view (`data-reveal`, scroll timelines where the
   browser has them). Clickable cards lift 2px on hover.
 - **Everything pressable** sinks to 97% while held. Dialogs and the till's sheets rise on a spring;
-  menus drop in; the sidebar marker grows in; figures arrive out of a blur (`animate-figure`).
+  menus drop in; arrows lean toward where they lead.
+- **The selection glides:** the sidebar's current-page highlight, tab bars (`PillNav`) and segmented
+  controls are one object that slides to the new choice (React `<ViewTransition>` shared elements:
+  `sidebar-pill`, `chat-pill`, `tab-pill-*`, `seg-*`). Moving between pages, the old page dissolves
+  (`page-swap`) while the new one cascades in; the sidebar never moves.
+- **Figures roll into place** character by character (`RollingFigure`, Apple's numeric text): the real
+  characters from the first frame, only their position moves — never a count-up (CLAUDE.md #1).
+- **Large titles fold** into a small frosted bar once they scroll away (`.title-bar`, a scroll timeline).
+- Lists inside cards arrive row by row; table rows light up under the pointer.
 - **The till and the kitchen screen** keep only the press feedback: no page cascade, no aurora, no blur.
 - **Reduced motion:** every animation stops (`prefers-reduced-motion`); reduced transparency gets solid
   surfaces.
@@ -83,8 +100,10 @@ Apple-style: smooth deceleration for what arrives (`--ease-smooth`), a gentle sp
 ## Typography (ADR 0063)
 
 **Inter** for Latin letters and digits, **Noto Sans Bengali** for Bangla, both self-hosted by `next/font`
-(`src/app/layout.tsx`). Large page titles are bold with tight tracking; figures use tabular digits; Bangla
-digits when the locale is `bn`, via the shared formatters.
+(`src/app/layout.tsx`); Inter's optical sizes are on, so large titles get its tighter display cut. Large
+page titles are bold with tight tracking; figures use tabular digits; Bangla digits when the locale is
+`bn`, via the shared formatters. The assistant's greeting (narrative, never a number) wears the gold-to-
+silver light (`text-brand`).
 
 ## Logo
 

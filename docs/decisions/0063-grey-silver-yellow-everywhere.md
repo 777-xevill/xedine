@@ -42,6 +42,28 @@ was light (ADR 0024) with an opt-in navy dark mode (ADR 0034), purple actions an
 8. **No feature, flow, text or data change.** Layout and navigation stay as ADR 0024 set them (sidebar + one
    workspace); only how they look and move.
 
+## Second pass (same day)
+
+The founder saw it running and said it still looked "boring — more premium and aesthetic, more animation,
+more like Apple", and allowed several agents to work at once. Same three colours, same features:
+
+- **Depth and light:** clearer surface steps; three drifting glows and a fine film grain behind the page;
+  the sidebar translucent so that light shows through.
+- **Glass cards:** translucent, a rim brighter along the top edge, and a soft yellow light that follows
+  the pointer over the card and along its rim (mouse only; one passive listener for the whole app).
+- **Selection that glides:** the sidebar highlight, tab bars and segmented controls slide to the new choice
+  (React 19.3 `<ViewTransition>` shared elements, no dependency); the old page dissolves on navigation.
+- **Figures roll into place** character by character (Apple's numeric text). The characters are the
+  final ones from the first frame; nothing counts up, so no number is ever shown that a metric did not
+  produce (CLAUDE.md #1).
+- **Large titles fold** into a frosted bar on scroll; the Home page's day card is a hero with big figures;
+  the assistant greets with a floating chef and a gold-to-silver headline (narrative, not a number).
+- Yellow shine on primary buttons; gold initials tiles; calmer danger badges (tint, rim, glow) instead of a
+  solid block; yellow native ticks and radios; branded "not found" and "couldn't open" pages.
+- Three areas were polished in parallel, each in its own stylesheet under `src/app/styles/`: charts
+  (bars grow in on a spring), the customer pages (a member card like a wallet pass), and the till and
+  kitchen screen (premium but instant: solid surfaces, press springs, no blur).
+
 ## Consequences
 
 - CLAUDE.md non-negotiable #9 now reads "grey, silver, yellow only"; BRAND.md is rewritten.

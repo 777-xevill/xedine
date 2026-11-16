@@ -2,11 +2,20 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { Inter, Noto_Sans_Bengali } from 'next/font/google';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { PointerLight } from '@/components/pointer-light';
 import { cn } from '@/lib/utils';
 import './globals.css';
 
-/** ADR 0063: Inter for Latin letters and digits, Noto Sans Bengali for Bangla. Self-hosted by next/font. */
-const inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter', display: 'swap' });
+/**
+ * ADR 0063: Inter for Latin letters and digits (with its optical sizes, so large titles get the
+ * tighter display cut), Noto Sans Bengali for Bangla. Self-hosted by next/font.
+ */
+const inter = Inter({
+  subsets: ['latin', 'latin-ext'],
+  axes: ['opsz'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 const bengali = Noto_Sans_Bengali({
   subsets: ['bengali'],
   variable: '--font-bengali',
@@ -35,7 +44,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className={cn(inter.variable, bengali.variable)} suppressHydrationWarning>
       <body>
-        <div aria-hidden className="aurora" />
+        <div aria-hidden className="aurora">
+          <span />
+          <span />
+        </div>
+        <PointerLight />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

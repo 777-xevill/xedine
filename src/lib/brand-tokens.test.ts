@@ -32,11 +32,18 @@ describe('brand tokens (ADR 0009, ADR 0063, docs/BRAND.md)', () => {
   });
 
   it('uses no colour but grey, silver and yellow (white only for paper, QR codes and the landing page)', () => {
+    // globals.css and every stylesheet it imports (src/app/styles/*.css).
+    const sheets = walk(join(SRC, 'app'))
+      .filter((f) => f.endsWith('.css'))
+      .map((f) => readFileSync(f, 'utf8').toLowerCase())
+      .join('\n')
+      // Comments may name what is banned; only the rules count.
+      .replace(/\/\*[\s\S]*?\*\//g, '');
     const allowed = new Set(['#2b2d31', '#d9dadc', '#ffc93c', '#ffffff']);
-    const found = new Set(css.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/g) ?? []);
+    const found = new Set(sheets.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/g) ?? []);
     expect([...found].filter((hex) => !allowed.has(hex))).toEqual([]);
     // No rgb()/hsl()/oklch() side doors either: every other shade is a color-mix of the three.
-    expect(css).not.toMatch(/\b(?:rgba?|hsla?|oklch|oklab)\(/);
+    expect(sheets).not.toMatch(/\b(?:rgba?|hsla?|oklch|oklab)\(/);
   });
 
   it('grey is the primary colour and the page; silver the words; yellow the actions', () => {

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { PageAgent } from '@/components/chat/page-agent';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { Meter } from '@/components/metrics/meter';
 import { Disclosure, ToneIcon } from '@/components/stock/parts';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
@@ -193,15 +194,11 @@ export default async function DishIngredientsPage({
                   total: formatNumber(dishes.length, loc),
                 })}
               </p>
-              <div
-                className="mt-2 h-2 max-w-md overflow-hidden rounded-full bg-surface-elevated"
-                aria-hidden
-              >
-                <div
-                  className="h-full rounded-full bg-success-bright"
-                  style={{ width: `${(written / dishes.length) * 100}%` }}
-                />
-              </div>
+              <Meter
+                pct={(written / dishes.length) * 100}
+                tone="done"
+                className="mt-2 h-2 max-w-md"
+              />
               {!canEdit ? <Hint>{t('readOnly')}</Hint> : null}
             </div>
             {addDish}

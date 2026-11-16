@@ -1726,9 +1726,10 @@
     "branches": "Branches",
     "sections": "Stock sections",
     "tabs": {
-      "forecast": "What might sell",
-      "prep": "Maybe cook",
-      "bazar": "Maybe buy"
+      "status": "In stock",
+      "used": "Used",
+      "variance": "Loss",
+      "waste": "Waste"
     },
     "tabHints": {
       "status": "What you have now",
@@ -2065,9 +2066,9 @@
     "branches": "Branches",
     "sections": "Plan sections",
     "tabs": {
-      "forecast": "What will sell",
-      "prep": "What to cook",
-      "bazar": "What to buy"
+      "forecast": "What might sell",
+      "prep": "Maybe cook",
+      "bazar": "Maybe buy"
     },
     "day": "Day",
     "tomorrow": "Tomorrow",
@@ -4730,5 +4731,12 @@
       "sst": "SST",
       "tax": "Tax"
     }
+  },
+  "pageStates": {
+    "notFoundTitle": "This page isn't here",
+    "notFoundBody": "The link may be old, or the page has moved. Go back home and pick it from the menu.",
+    "errorTitle": "This page couldn't open",
+    "errorBody": "Something went wrong while loading it. Try again, or go back home.",
+    "retry": "Try again"
   }
 }

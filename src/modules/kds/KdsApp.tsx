@@ -1,6 +1,21 @@
 'use client';
 
-import { Clock3, LogOut, Trash2 } from 'lucide-react';
+import {
+  AlarmClock,
+  Bike,
+  CheckCircle2,
+  ChefHat,
+  CircleDashed,
+  Clock3,
+  Flame,
+  LogOut,
+  ShoppingBag,
+  StickyNote,
+  Store,
+  Trash2,
+  Utensils,
+  type LucideIcon,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from '@/components/ui/form';
@@ -33,6 +48,24 @@ const NEXT_LABEL: Record<string, 'start' | 'ready' | 'served'> = {
   sent_to_kitchen: 'start',
   preparing: 'ready',
   ready: 'served',
+};
+
+/** Presentation only: from this age the clock is tinted yellow (late, at 15, is unchanged). */
+const WARN_MINUTES = 10;
+
+/** Icons beside the status words (never colour alone, BRAND.md). */
+const STATUS_ICON: Record<string, LucideIcon> = {
+  sent_to_kitchen: CircleDashed,
+  preparing: Flame,
+  ready: CheckCircle2,
+};
+/** Where the food goes, at a glance: a table, a bag to take away, a rider. */
+const KIND_ICON: Record<string, LucideIcon> = {
+  dine_in: Utensils,
+  takeaway: ShoppingBag,
+  own_delivery: Bike,
+  foodpanda: Bike,
+  pathao_food: Bike,
 };
 
 /** Minutes since a ticket (or its latest round) reached the kitchen. */
@@ -191,26 +224,23 @@ function Board({
 
   const tableName = (id: string | null) => lookups.tables.find((x) => x.id === id)?.name ?? null;
   const channelName = (id: string) => lookups.channels.find((x) => x.id === id)?.name ?? '';
+  const channelKind = (id: string) => lookups.channels.find((x) => x.id === id)?.kind ?? '';
 
   return (
     <div className="min-h-dvh p-3">
-      <header className="glass mb-3 flex flex-wrap items-center justify-between gap-2 rounded-full px-4 py-2">
+      <header className="till-pane mb-3 flex flex-wrap items-center justify-between gap-2 rounded-card py-2 ps-4 pe-2 sm:rounded-full">
         <span className="text-sm">
           <span className="font-semibold">{device.branchName}</span>
           <span className="text-secondary"> · {staff.staffName}</span>
         </span>
-        <nav aria-label={t('stations')} className="flex flex-wrap gap-1.5">
+        <nav aria-label={t('stations')} className="flex flex-wrap gap-2">
           {[{ id: 'all', name: t('allStations') }, ...lookups.stations].map((s) => (
             <button
               key={s.id}
               type="button"
               aria-pressed={stationFilter === s.id}
               onClick={() => setStationFilter(s.id)}
-              className={`min-h-10 rounded-full border px-4 text-sm font-medium transition ${
-                stationFilter === s.id
-                  ? 'border-purple bg-surface-elevated text-foreground'
-                  : 'glass-tile text-secondary'
-              }`}
+              className="till-chip"
             >
               {s.name}
             </button>
@@ -239,68 +269,102 @@ function Board({
       {error ? <Alert tone="warning">{error}</Alert> : null}
 
       {tickets.length === 0 ? (
-        <p className="mt-16 text-center text-lg text-secondary">{t('noTickets')}</p>
+        <div className="till-enter mt-24 flex flex-col items-center gap-4 text-center">
+          <span
+            aria-hidden
+            className="till-raised flex size-20 items-center justify-center rounded-full"
+          >
+            <ChefHat className="size-9 text-muted" />
+          </span>
+          <p className="text-xl font-semibold text-secondary">{t('noTickets')}</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {tickets.map(({ order: o, lines: ls, sentAt }) => {
             const age = minutesSince(sentAt);
             const late = age >= 15;
+            // Presentation only: the clock is tinted yellow a little before the ticket counts as late.
+            const ageState = late ? 'late' : age >= WARN_MINUTES ? 'warn' : 'fresh';
             const action = NEXT_LABEL[o.order_status];
             const table = tableName(o.table_id);
+            const StatusIcon = STATUS_ICON[o.order_status] ?? CircleDashed;
+            const PlaceIcon = table ? Utensils : (KIND_ICON[channelKind(o.channel_id)] ?? Store);
             return (
               <article
                 key={o.id}
-                className={`glass flex flex-col rounded-card p-4 ${late ? 'border-danger/70' : ''}`}
+                data-age={ageState}
+                data-status={o.order_status}
+                className="till-ticket till-pane flex flex-col rounded-card"
               >
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-xl font-bold">
+                <div className="till-band flex items-start justify-between gap-2 px-4 pt-3.5 pb-3">
+                  <div className="min-w-0">
+                    <p className="text-2xl leading-tight font-bold tracking-[-0.03em]">
                       {o.order_number !== null
                         ? tp('orderNumber', { number: o.order_number })
                         : o.id.slice(0, 8)}
                     </p>
-                    <p className="text-sm text-secondary">{table ?? channelName(o.channel_id)}</p>
+                    <p className="mt-1 inline-flex items-center gap-1.5 text-base font-semibold text-secondary">
+                      <PlaceIcon aria-hidden className="size-4 shrink-0 text-muted" />
+                      {table ?? channelName(o.channel_id)}
+                    </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span
-                      className={`inline-flex items-center gap-1 text-sm font-semibold tabular-nums ${late ? 'text-danger' : 'text-secondary'}`}
-                    >
-                      <Clock3 aria-hidden className="size-4" />
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span key={ageState} className="till-age till-nudge">
+                      {late ? (
+                        <AlarmClock aria-hidden className="size-4" />
+                      ) : (
+                        <Clock3 aria-hidden className="size-4" />
+                      )}
                       {t('sentAgo', { minutes: age })}
                     </span>
-                    <span className="text-xs text-muted">
+                    <span
+                      key={o.order_status}
+                      className="till-swap inline-flex items-center gap-1 text-xs font-medium text-secondary"
+                    >
+                      <StatusIcon aria-hidden className="size-3.5" />
                       {tp(`orderStatus.${o.order_status}`)}
                     </span>
                   </div>
                 </div>
-                <ul className="mb-3 flex-1 space-y-1.5">
+                <ul className="flex-1 space-y-2 px-4 py-3">
                   {ls.map((l) => (
                     <li
                       key={l.id}
-                      className={l.status === 'voided' ? 'text-muted line-through' : ''}
+                      className={`till-line flex items-baseline gap-2.5 ${l.status === 'voided' ? 'text-muted line-through' : ''}`}
                     >
-                      <span className="text-lg font-bold tabular-nums">{l.quantity}×</span>{' '}
-                      <span className="text-base">{l.name_snapshot}</span>
-                      {l.status === 'voided' ? (
-                        <span className="ms-1 text-xs font-semibold text-danger no-underline">
-                          {t('voided')}
-                        </span>
-                      ) : null}
-                      {l.notes ? (
-                        <span className="block text-sm text-warning">{l.notes}</span>
-                      ) : null}
+                      <span className="min-w-9 shrink-0 text-xl font-bold tabular-nums">
+                        {l.quantity}×
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="text-lg leading-snug font-medium">{l.name_snapshot}</span>
+                        {l.status === 'voided' ? (
+                          <span className="ms-2 inline-block rounded-full bg-danger px-2 py-0.5 align-middle text-[0.6875rem] font-bold text-on-action no-underline">
+                            {t('voided')}
+                          </span>
+                        ) : null}
+                        {l.notes ? (
+                          <span className="mt-1 flex w-fit items-center gap-1.5 rounded-lg border border-warning/35 bg-warning/10 px-2 py-0.5 text-sm font-medium text-warning no-underline">
+                            <StickyNote aria-hidden className="size-3.5 shrink-0" />
+                            {l.notes}
+                          </span>
+                        ) : null}
+                      </span>
                     </li>
                   ))}
                 </ul>
                 {action ? (
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    disabled={busyOrder === o.id}
-                    onClick={() => advance(o.id)}
-                  >
-                    {t(action)}
-                  </Button>
+                  <div className="px-4 pb-4">
+                    <Button
+                      size="lg"
+                      className="w-full text-[1.0625rem]"
+                      disabled={busyOrder === o.id}
+                      onClick={() => advance(o.id)}
+                    >
+                      <span key={action} className="till-swap">
+                        {t(action)}
+                      </span>
+                    </Button>
+                  </div>
                 ) : null}
               </article>
             );

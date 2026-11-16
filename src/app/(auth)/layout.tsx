@@ -7,6 +7,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   const [t, tl] = await Promise.all([getTranslations('common'), getTranslations('legal')]);
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 py-5">
+      {/* The chef's light behind the card, breathing slowly (ADR 0063). */}
+      <div aria-hidden className="auth-halo" />
       <header className="mb-10 flex items-center justify-between gap-3">
         <Link href="/">
           <BrandMark name={t('appName')} />

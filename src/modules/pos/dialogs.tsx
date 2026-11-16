@@ -1,6 +1,15 @@
 'use client';
 
-import { X } from 'lucide-react';
+import {
+  Banknote,
+  CreditCard,
+  Landmark,
+  Minus,
+  Plus,
+  Smartphone,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -39,13 +48,14 @@ export function DialogShell({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-30 flex animate-[fade-in_0.25s_var(--ease-smooth)_both] items-end justify-center bg-scrim p-3 backdrop-blur-md sm:items-center"
+      data-surface="till"
+      className="till-scrim fixed inset-0 z-30 flex items-end justify-center p-3 sm:items-center"
     >
       <div
-        className={`glass-strong max-h-[90dvh] w-full animate-[sheet-in_0.45s_var(--ease-spring)_both] space-y-3 overflow-y-auto rounded-sheet p-5 ${wide ? 'max-w-lg' : 'max-w-sm'}`}
+        className={`till-sheet till-scroll max-h-[90dvh] w-full space-y-4 overflow-y-auto rounded-sheet p-5 sm:p-6 ${wide ? 'max-w-lg' : 'max-w-sm'}`}
       >
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-lg font-bold">{title}</h3>
+          <h3 className="text-xl font-bold tracking-[-0.02em]">{title}</h3>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label={t('close')}>
             <X aria-hidden className="size-5" />
           </Button>
@@ -460,6 +470,17 @@ export const PAYMENT_METHODS = [
 ] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
+/** Icons only: cash, card, the mobile wallets, the bank. */
+const METHOD_ICON: Record<PaymentMethod, LucideIcon> = {
+  cash: Banknote,
+  card: CreditCard,
+  bkash: Smartphone,
+  nagad: Smartphone,
+  rocket: Smartphone,
+  upay: Smartphone,
+  bank: Landmark,
+};
+
 export function MethodPicker({
   value,
   onChange,
@@ -471,22 +492,22 @@ export function MethodPicker({
   return (
     <fieldset>
       <legend className="mb-1.5 text-sm font-medium text-secondary">{t('paymentMethod')}</legend>
-      <div className="grid grid-cols-4 gap-1.5">
-        {PAYMENT_METHODS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={value === m}
-            onClick={() => onChange(m)}
-            className={`min-h-11 rounded-full border px-2 text-sm font-medium transition ${
-              value === m
-                ? 'border-purple bg-surface-elevated text-foreground'
-                : 'glass-tile text-secondary'
-            }`}
-          >
-            {t(`methods.${m}`)}
-          </button>
-        ))}
+      <div className="grid grid-cols-4 gap-2">
+        {PAYMENT_METHODS.map((m) => {
+          const Icon = METHOD_ICON[m];
+          return (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={value === m}
+              onClick={() => onChange(m)}
+              className="till-choice min-h-16 flex-col gap-1 rounded-input px-1.5 text-[0.8125rem]"
+            >
+              <Icon aria-hidden className="size-5" />
+              {t(`methods.${m}`)}
+            </button>
+          );
+        })}
       </div>
     </fieldset>
   );
@@ -569,11 +590,7 @@ export function ItemPicker({
                 type="button"
                 aria-pressed={variantId === v.id}
                 onClick={() => setVariantId(v.id)}
-                className={`min-h-11 rounded-full border px-4 text-sm font-medium transition ${
-                  variantId === v.id
-                    ? 'border-purple bg-surface-elevated text-foreground'
-                    : 'glass-tile text-secondary'
-                }`}
+                className="till-choice px-4"
               >
                 {label(v)} · {money(itemUnitPrice(item, v.id))}
               </button>
@@ -604,11 +621,7 @@ export function ItemPicker({
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggle(g.id, m.id, g.max_select)}
-                    className={`min-h-11 rounded-full border px-4 text-sm transition ${
-                      on
-                        ? 'border-purple bg-surface-elevated text-foreground'
-                        : 'glass-tile text-secondary'
-                    }`}
+                    className="till-choice px-4 font-medium"
                   >
                     {label(m)}
                     {m.price_poisha > 0 ? ` +${money(m.price_poisha)}` : ''}
@@ -640,9 +653,13 @@ export function ItemPicker({
             disabled={quantity <= 1}
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
           >
-            −
+            <Minus aria-hidden className="size-4" />
           </Button>
-          <span className="w-8 text-center text-lg font-semibold tabular-nums">{quantity}</span>
+          <span className="w-8 text-center text-xl font-bold tabular-nums">
+            <span key={quantity} className="till-pop">
+              {quantity}
+            </span>
+          </span>
           <Button
             variant="secondary"
             size="icon"
@@ -650,7 +667,7 @@ export function ItemPicker({
             disabled={quantity >= 99}
             onClick={() => setQuantity((q) => Math.min(99, q + 1))}
           >
-            +
+            <Plus aria-hidden className="size-4" />
           </Button>
         </div>
         <Button
@@ -668,7 +685,7 @@ export function ItemPicker({
             })
           }
         >
-          {t('addToCart')} · {money(unit)}
+          {t('addToCart')} · <span className="tabular-nums">{money(unit)}</span>
         </Button>
       </div>
     </DialogShell>

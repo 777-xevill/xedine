@@ -309,10 +309,13 @@ export default async function SalesPage({
                   <summary className="cursor-pointer text-sm font-medium text-purple">
                     {t('charts.showAll', { n: formatNumber(itemBars.length, loc) })}
                   </summary>
+                  {/* The rest of the same list: drawn to the same scale, nothing lit. */}
                   <BarList
                     className="mt-3"
                     label={t('itemsTitle')}
                     items={itemBars.slice(TOP_ITEMS)}
+                    peak={null}
+                    max={Math.max(0, ...itemBars.map((i) => i.value))}
                   />
                 </details>
               ) : null}

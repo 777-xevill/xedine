@@ -13,6 +13,7 @@ import { AskBox } from '@/components/chat/chat-view';
 import { BarList } from '@/components/metrics/bar-list';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/form';
+import { RollingFigure } from '@/components/ui/rolling-figure';
 import { formatMoney, formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import { cn } from '@/lib/utils';
@@ -130,12 +131,15 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4 pt-1">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">
+          <h1 className="text-[2rem] leading-[1.1] font-bold tracking-[-0.035em] sm:text-[2.5rem]">
             {t('welcome', { name: ctx.fullName })}
           </h1>
-          <p className="mt-1.5 text-secondary">{subtitle}</p>
+          <p className="mt-2 text-[0.9375rem] text-secondary">{subtitle}</p>
+        </div>
+        <div aria-hidden className="title-bar">
+          <span className="truncate">{t('welcome', { name: ctx.fullName })}</span>
         </div>
         {today && hasAnySales ? (
           <StatusBadge
@@ -194,10 +198,11 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
 
       {today && hasAnySales && totalRow ? (
         <section aria-labelledby="today-heading">
-          <Card className="p-5 sm:p-6">
+          <Card className="overflow-hidden p-5 sm:p-7">
+            <span aria-hidden className="hero-glow" />
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 id="today-heading" className="text-base font-semibold">
+                <h2 id="today-heading" className="text-lg font-semibold tracking-[-0.01em]">
                   {t('howDoing')}
                 </h2>
                 <p className="mt-0.5 text-sm text-secondary">{paceText(headlinePace)}</p>
@@ -207,7 +212,7 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
               </StatusBadge>
             </div>
 
-            <dl className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Figure label={th('netSales')} value={money(totalRow.net_poisha)} strong />
               <Figure label={th('orders')} value={formatNumber(totalRow.orders_completed, loc)} />
               <Figure
@@ -253,7 +258,7 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
                   return (
                     <li
                       key={r.branch_id}
-                      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3"
+                      className="-mx-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-xl px-2 py-3 transition-colors duration-300 hover:bg-surface-elevated/60"
                     >
                       <span className="font-medium">{branchName(r.branch_id)}</span>
                       <span className="flex items-center gap-3 text-sm">
@@ -428,16 +433,29 @@ function Figure({
   tone?: 'danger';
 }) {
   return (
-    <div className="rounded-input bg-surface-elevated px-4 py-3">
-      <dt className="text-xs font-medium text-secondary">{label}</dt>
+    <div
+      className={cn(
+        'relative rounded-2xl border bg-surface-elevated/70 bg-[image:var(--glass-sheen)] px-4 py-4 shadow-[var(--rim)]',
+        strong ? 'border-brand-yellow/30' : 'border-edge',
+      )}
+    >
+      <dt className="flex items-center gap-1.5 text-xs font-medium text-secondary">
+        {strong ? (
+          <span
+            aria-hidden
+            className="size-1.5 rounded-full bg-brand-yellow shadow-[0_0_8px_var(--brand-yellow)]"
+          />
+        ) : null}
+        {label}
+      </dt>
       <dd
         className={cn(
-          'mt-1 font-semibold tabular-nums',
-          strong ? 'text-2xl' : 'text-xl',
+          'mt-1.5 leading-tight font-semibold tracking-[-0.03em] tabular-nums',
+          strong ? 'text-[1.75rem] sm:text-[2rem]' : 'text-[1.5rem] sm:text-[1.625rem]',
           tone === 'danger' ? 'text-danger' : 'text-foreground',
         )}
       >
-        {value}
+        <RollingFigure value={value} />
       </dd>
     </div>
   );
@@ -462,13 +480,15 @@ function AttentionRow({
     <li>
       <Link
         href={href}
-        className="group flex items-center gap-3 rounded-input border border-line px-3.5 py-3 transition hover:border-line-strong hover:bg-surface-elevated"
+        className="group flex items-center gap-3 rounded-2xl border border-edge bg-surface-elevated/40 px-3.5 py-3 transition duration-300 hover:-translate-y-px hover:border-edge-strong hover:bg-surface-elevated/80"
       >
         <span
           aria-hidden
           className={cn(
-            'inline-flex size-9 shrink-0 items-center justify-center rounded-full [&>svg]:size-4',
-            tone === 'danger' ? 'bg-danger/10 text-danger' : 'bg-warning/12 text-warning',
+            'inline-flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-500 ease-spring group-hover:scale-110 group-hover:-rotate-6 [&>svg]:size-[1.1rem]',
+            tone === 'danger'
+              ? 'bg-danger/15 text-danger shadow-[0_0_18px_-6px_var(--danger)]'
+              : 'bg-warning/10 text-warning',
           )}
         >
           {icon}
@@ -482,7 +502,7 @@ function AttentionRow({
         ) : null}
         <ArrowRight
           aria-hidden
-          className="size-4 shrink-0 text-muted transition group-hover:translate-x-0.5 rtl:rotate-180"
+          className="size-4 shrink-0 text-muted transition group-hover:translate-x-0.5 group-hover:text-brand-yellow rtl:rotate-180"
         />
       </Link>
     </li>
@@ -508,11 +528,11 @@ function GetStarted({
             <li key={s.href}>
               <Link
                 href={s.href}
-                className="group flex h-full flex-col rounded-input border border-line p-4 transition hover:border-purple/40 hover:shadow-soft"
+                className="group flex h-full flex-col rounded-2xl border border-edge bg-surface-elevated/40 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-brand-yellow/40 hover:bg-surface-elevated/80"
               >
                 <span
                   aria-hidden
-                  className="inline-flex size-9 items-center justify-center rounded-lg bg-purple/10 text-purple [&>svg]:size-4"
+                  className="initials-tile inline-flex size-10 items-center justify-center rounded-xl transition-transform duration-500 ease-spring group-hover:scale-110 group-hover:-rotate-6 [&>svg]:size-[1.1rem]"
                 >
                   {s.icon}
                 </span>

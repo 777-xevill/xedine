@@ -64,8 +64,16 @@ function Hidden({
   );
 }
 
-export function AssistantAvatar() {
-  return (
+export function AssistantAvatar({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
+  return size === 'lg' ? (
+    <Image
+      src="/brand/logo-chef-192.png"
+      alt=""
+      width={64}
+      height={64}
+      className="landing-float size-16 shrink-0 rounded-[24%] shadow-[0_18px_44px_-14px_var(--brand-yellow)] ring-1 ring-edge"
+    />
+  ) : (
     <Image
       src="/brand/logo-chef-64.png"
       alt=""
@@ -187,10 +195,14 @@ export function ChatView({
         {introLayer}
         <div className="relative z-[1] flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center px-4 py-10 lg:min-h-dvh">
           <div className="w-full max-w-2xl animate-rise-in">
-            <p className="text-center text-sm font-medium text-purple">
+            <div className="flex justify-center">
+              <AssistantAvatar size="lg" />
+            </div>
+            <p className="mt-5 text-center text-sm font-medium text-purple">
               {t('hello', { name: firstName })}
             </p>
-            <h1 className="mt-2 text-center text-3xl font-semibold tracking-[-0.025em] text-balance sm:text-4xl">
+            {/* The greeting is narrative, so it may wear the gold-to-silver light (ADR 0009). */}
+            <h1 className="text-brand mt-2 animate-figure pb-1 text-center text-[2.25rem] leading-tight font-bold tracking-[-0.035em] text-balance sm:text-[2.75rem]">
               {t('greeting')}
             </h1>
             <div className="mt-8">
@@ -203,12 +215,16 @@ export function ChatView({
                 className="mt-6 flex flex-wrap justify-center gap-2"
                 aria-label={t('suggestionsLabel')}
               >
-                {suggestions.map((s) => (
-                  <li key={s}>
+                {suggestions.map((s, i) => (
+                  <li
+                    key={s}
+                    className="animate-rise-in"
+                    style={{ animationDelay: `${180 + i * 60}ms` }}
+                  >
                     <button
                       type="button"
                       onClick={() => ask.askNow(s)}
-                      className="rounded-full border border-line bg-surface px-3.5 py-2 text-sm text-secondary shadow-soft transition hover:border-purple/40 hover:text-foreground"
+                      className="glass rounded-full px-4 py-2 text-sm text-secondary transition duration-300 hover:-translate-y-0.5 hover:border-brand-yellow/40 hover:text-foreground"
                     >
                       {s}
                     </button>

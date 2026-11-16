@@ -154,7 +154,11 @@ export function WasteDialog({
             >
               <Minus aria-hidden className="size-4" />
             </Button>
-            <span className="w-10 text-center text-2xl font-bold tabular-nums">{portions}</span>
+            <span className="w-10 text-center text-2xl font-bold tabular-nums">
+              <span key={portions} className="till-pop">
+                {portions}
+              </span>
+            </span>
             <Button
               size="icon"
               variant="secondary"
@@ -174,11 +178,7 @@ export function WasteDialog({
                 type="button"
                 aria-pressed={reason === r.id}
                 onClick={() => setReason(r.id)}
-                className={`min-h-11 rounded-full border px-4 text-sm font-medium transition ${
-                  reason === r.id
-                    ? 'border-purple bg-surface-elevated text-foreground'
-                    : 'glass-tile text-secondary'
-                }`}
+                className="till-choice px-4"
               >
                 {name(r)}
               </button>

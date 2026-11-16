@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { ViewTransition } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface SegmentOption<T extends string> {
@@ -10,7 +11,11 @@ export interface SegmentOption<T extends string> {
   testId?: string;
 }
 
-/** Segmented pill control (UI_UX_design/ "Option 1 | Option 2 | Option 3"). A radio group underneath. */
+/**
+ * Segmented pill control ("Option 1 | Option 2 | Option 3"). A radio group underneath. The chosen
+ * option's pill glides to the new choice (a React <ViewTransition> shared element, ADR 0063); the
+ * choice is applied in a transition so the glide can play.
+ */
 export function Segmented<T extends string>({
   options,
   value,
@@ -26,6 +31,7 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'default' | 'lg';
   className?: string;
 }) {
+  const pill = `seg-${React.useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   return (
     <div
       role="radiogroup"
@@ -44,16 +50,21 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={active}
             data-testid={o.testId}
-            onClick={() => onChange(o.value)}
+            onClick={() => React.startTransition(() => onChange(o.value))}
             className={cn(
-              'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition duration-300',
+              'relative isolate inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition duration-300',
               size === 'sm' ? 'min-h-7 px-2.5 text-xs' : 'px-4 text-sm',
               size === 'lg' ? 'min-h-12' : size === 'sm' ? '' : 'min-h-9',
               active
-                ? 'bg-surface-hover text-foreground shadow-soft [&_svg]:text-brand-yellow'
+                ? 'text-foreground [&_svg]:text-brand-yellow'
                 : 'text-secondary hover:bg-surface-elevated hover:text-foreground',
             )}
           >
+            {active ? (
+              <ViewTransition name={pill} share="pill-glide" default="none">
+                <span aria-hidden className="tab-pill" />
+              </ViewTransition>
+            ) : null}
             {o.icon ? (
               <span
                 aria-hidden

@@ -124,11 +124,13 @@ export default async function BenchmarksPage({ params }: { params: Promise<{ org
                       <div
                         role="img"
                         aria-label={t('barLabel')}
-                        className="relative mt-4 h-2 rounded-full bg-surface-elevated"
+                        className="chart-scale relative mt-4 h-2 rounded-full"
                       >
+                        {/* The usual range (the middle half), as the words under the bar say it. */}
+                        <span aria-hidden className="chart-scale-band" />
                         <span
                           aria-hidden
-                          className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full bg-purple"
+                          className="chart-marker absolute top-1/2 size-4 -translate-y-1/2 rounded-full"
                           style={{ insetInlineStart: `calc(${SPOT[r.place]}% - 0.5rem)` }}
                         />
                       </div>

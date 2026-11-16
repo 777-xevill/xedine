@@ -1,6 +1,6 @@
 'use client';
 
-import { BellRing } from 'lucide-react';
+import { BellOff, BellRing, TriangleAlert } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { b64urlDecode } from '@/lib/messaging/web-push';
@@ -59,23 +59,38 @@ export function NotifyOffersField({ publicKey }: { publicKey: string | null }) {
     void subscribe();
   }
 
+  // ADR 0063: a lit panel with a tick that fills yellow; the status line keeps an icon with its words.
+  const StatusIcon =
+    status === 'on'
+      ? BellRing
+      : status === 'blocked'
+        ? BellOff
+        : status === 'failed'
+          ? TriangleAlert
+          : null;
   return (
-    <div className="space-y-1">
-      <label className="flex items-start gap-2 text-sm font-semibold">
+    <div className="cust-consent">
+      <label className="flex cursor-pointer items-start gap-3 text-[0.9375rem] leading-snug font-semibold">
         <input
           type="checkbox"
           name="offers"
-          className="mt-1"
+          className="cust-tick"
           checked={checked}
           onChange={(e) => toggle(e.target.checked)}
         />
-        <span className="flex items-center gap-1.5">
-          <BellRing aria-hidden className="size-4 shrink-0 text-purple" />
+        <span className="flex items-start gap-1.5 pt-0.5">
+          <BellRing aria-hidden className="mt-0.5 size-4 shrink-0 text-purple" />
           {t('offers')}
         </span>
       </label>
       <input type="hidden" name="push" value={subscription} />
-      <p role="status" className="ps-6 text-xs text-secondary">
+      <p
+        role="status"
+        className="mt-1.5 flex items-start gap-1.5 ps-9 text-xs leading-relaxed text-secondary"
+      >
+        {StatusIcon ? (
+          <StatusIcon aria-hidden className="mt-0.5 size-3.5 shrink-0 text-purple" />
+        ) : null}
         {status === 'on'
           ? t('offersOn')
           : status === 'blocked'

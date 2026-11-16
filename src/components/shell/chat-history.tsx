@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { ViewTransition } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface ChatSummary {
@@ -43,12 +44,17 @@ export function ChatHistory({
                 aria-current={c.id === current ? 'page' : undefined}
                 title={c.title}
                 className={cn(
-                  'relative block truncate rounded-[0.625rem] px-2.5 py-1.5 text-sm transition duration-300',
+                  'relative isolate block truncate rounded-[0.625rem] px-2.5 py-1.5 text-sm transition duration-300',
                   c.id === current
-                    ? 'nav-active bg-surface-elevated font-medium text-foreground shadow-soft'
+                    ? 'font-medium text-foreground'
                     : 'text-secondary hover:bg-surface hover:text-foreground',
                 )}
               >
+                {c.id === current ? (
+                  <ViewTransition name="chat-pill" share="pill-glide" default="none">
+                    <span aria-hidden className="nav-pill" />
+                  </ViewTransition>
+                ) : null}
                 {c.title}
               </Link>
             </li>

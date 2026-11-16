@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ViewTransition } from 'react';
 import { cn } from '@/lib/utils';
 import type { IconKey } from '@/modules/tenancy/navigation';
 
@@ -71,7 +72,7 @@ export interface SidebarLink {
 }
 
 export const sidebarItem =
-  'relative flex min-h-9 items-center gap-2.5 rounded-[0.625rem] px-2.5 text-sm font-medium transition duration-300';
+  'relative isolate flex min-h-9 items-center gap-2.5 rounded-[0.625rem] px-2.5 text-sm font-medium transition duration-300';
 
 function isActive(pathname: string, link: SidebarLink): boolean {
   const match = (href: string, exact?: boolean) =>
@@ -79,7 +80,11 @@ function isActive(pathname: string, link: SidebarLink): boolean {
   return match(link.href, link.exact) || (link.alsoActive ?? []).some((h) => match(h));
 }
 
-/** A list of sidebar links. Client-only for the active highlight; links work without JS. */
+/**
+ * A list of sidebar links. Client-only for the active highlight; links work without JS. The highlight
+ * is one object for the whole sidebar (`sidebar-pill`): on navigation it glides from the old page's
+ * row to the new one (a React <ViewTransition> shared element, ADR 0063).
+ */
 export function SidebarNav({
   links,
   label,
@@ -111,10 +116,15 @@ export function SidebarNav({
                   sidebarItem,
                   'group/nav',
                   active
-                    ? 'nav-active bg-surface-elevated text-foreground shadow-soft'
+                    ? 'text-foreground'
                     : 'text-secondary hover:bg-surface hover:text-foreground',
                 )}
               >
+                {active ? (
+                  <ViewTransition name="sidebar-pill" share="pill-glide" default="none">
+                    <span aria-hidden className="nav-pill" />
+                  </ViewTransition>
+                ) : null}
                 <Icon
                   aria-hidden
                   className={cn(

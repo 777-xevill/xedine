@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './styles/charts.css';
+@import './styles/customer.css';
+@import './styles/till.css';
 
 /*
  * Brand tokens (docs/BRAND.md, ADR 0063). The founder's three colours and nothing else: grey is the
@@ -21,18 +24,18 @@
 
   /*
    * Surfaces: the grey page, and silver mixed into it for each step up (Apple-style elevation: what is
-   * closer is lighter). Contrast of the text tokens, worst case on the lightest surface: text 7.9:1,
-   * secondary 6.1:1, muted 5.1:1 (all pass AA).
+   * closer is lighter). Contrast of the text tokens, worst case on the lightest surface (15%): text
+   * 6.7:1, secondary 5.2:1, muted 4.7:1 (all pass AA).
    */
   --bg: var(--brand-grey);
-  --bg-secondary: color-mix(in srgb, var(--brand-silver) 3.5%, var(--brand-grey));
-  --surface: color-mix(in srgb, var(--brand-silver) 5.5%, var(--brand-grey));
-  --surface-elevated: color-mix(in srgb, var(--brand-silver) 9%, var(--brand-grey));
-  --surface-hover: color-mix(in srgb, var(--brand-silver) 13%, var(--brand-grey));
+  --bg-secondary: color-mix(in srgb, var(--brand-silver) 4%, var(--brand-grey));
+  --surface: color-mix(in srgb, var(--brand-silver) 7%, var(--brand-grey));
+  --surface-elevated: color-mix(in srgb, var(--brand-silver) 11%, var(--brand-grey));
+  --surface-hover: color-mix(in srgb, var(--brand-silver) 15%, var(--brand-grey));
 
   --text: var(--brand-silver);
   --text-secondary: color-mix(in srgb, var(--brand-silver) 86%, var(--brand-grey));
-  --text-muted: color-mix(in srgb, var(--brand-silver) 76%, var(--brand-grey));
+  --text-muted: color-mix(in srgb, var(--brand-silver) 80%, var(--brand-grey));
   --text-disabled: color-mix(in srgb, var(--brand-silver) 45%, var(--brand-grey));
 
   --border: color-mix(in srgb, var(--brand-silver) 12%, var(--brand-grey));
@@ -260,6 +263,10 @@ body {
 }
 
 @layer base {
+  /* Native tick boxes, radio buttons and sliders in the founder's yellow. */
+  :root {
+    accent-color: var(--brand-yellow);
+  }
   /* In the base layer so a component's own focus style (a utility) can replace it. */
   :focus-visible {
     outline: 2px solid var(--brand-yellow);
@@ -364,10 +371,11 @@ body {
 }
 
 /*
- * The page's light: two very faint glows, yellow from the top corner and silver from the bottom, that
- * drift slowly (half a minute a cycle) so the grey never feels flat. Transform only, so it costs the
- * GPU almost nothing; still for reduced motion, and gone on the till, the kitchen screen and the
- * landing page.
+ * The page's light (ADR 0063): three soft glows — yellow from the top corner, gold from the left,
+ * silver from the bottom — drifting slowly (half a minute a cycle) under a fine film grain, like light
+ * on brushed metal. Glass surfaces above are translucent, so they pick up this light. Transform only,
+ * so it costs the GPU almost nothing; still for reduced motion, and gone on the till, the kitchen
+ * screen and the landing page.
  */
 .aurora {
   position: fixed;
@@ -378,33 +386,58 @@ body {
   background: var(--bg);
 }
 .aurora::before,
-.aurora::after {
+.aurora::after,
+.aurora > span:first-child {
   content: '';
   position: absolute;
-  width: 70vmax;
-  height: 70vmax;
   border-radius: 9999px;
   will-change: transform;
 }
 .aurora::before {
-  top: -38vmax;
-  right: -26vmax;
+  width: 78vmax;
+  height: 78vmax;
+  top: -40vmax;
+  right: -22vmax;
   background: radial-gradient(
     closest-side,
-    color-mix(in srgb, var(--brand-yellow) 9%, transparent),
+    color-mix(in srgb, var(--brand-yellow) 20%, transparent),
+    color-mix(in srgb, var(--brand-yellow) 7%, transparent) 55%,
     transparent
   );
   animation: aurora-drift 30s var(--ease-smooth) infinite alternate;
 }
 .aurora::after {
-  bottom: -42vmax;
+  width: 80vmax;
+  height: 80vmax;
+  bottom: -46vmax;
   left: -30vmax;
   background: radial-gradient(
     closest-side,
-    color-mix(in srgb, var(--brand-silver) 7%, transparent),
+    color-mix(in srgb, var(--brand-silver) 9%, transparent),
     transparent
   );
   animation: aurora-drift 36s var(--ease-smooth) infinite alternate-reverse;
+}
+.aurora > span:first-child {
+  width: 52vmax;
+  height: 52vmax;
+  top: 30%;
+  left: 12%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--gold) 9%, transparent),
+    transparent
+  );
+  animation: aurora-wander 44s var(--ease-smooth) infinite alternate;
+}
+/* Film grain: silver noise at a whisper, so large grey areas read as a material, not a flat fill. */
+.aurora > span:last-child {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.855 0 0 0 0 0.86 0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
 }
 @keyframes aurora-drift {
   from {
@@ -414,8 +447,17 @@ body {
     transform: translate3d(-8vmax, 6vmax, 0) scale(1.12);
   }
 }
+@keyframes aurora-wander {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.9);
+  }
+  to {
+    transform: translate3d(14vmax, -10vmax, 0) scale(1.15);
+  }
+}
 html:has([data-surface='till']) .aurora::before,
-html:has([data-surface='till']) .aurora::after {
+html:has([data-surface='till']) .aurora::after,
+html:has([data-surface='till']) .aurora > span {
   display: none;
 }
 
@@ -755,6 +797,369 @@ details[open] > :not(summary) {
   animation: none;
 }
 
+/* ------------------------------------------------------------------------------------------- */
+/* Premium layer (ADR 0063, second pass): light on glass, rolling figures, sliding selection     */
+/* ------------------------------------------------------------------------------------------- */
+
+/* How lit a card is (0 → 1): animatable because it is registered. */
+@property --spot {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/*
+ * Cards are smoked glass: translucent (the page's light shows through), a rim that catches light
+ * along the top edge, and — with a mouse — a soft yellow light that follows the pointer across the
+ * card and along its rim (the "glass glow"). `src/components/pointer-light.tsx` sets --mx / --my.
+ */
+.card-glass,
+.workspace .rounded-card.bg-surface.border {
+  position: relative;
+  background-color: color-mix(in srgb, var(--surface) 82%, transparent);
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--brand-silver) 6%, transparent),
+    transparent 38%
+  );
+  border-color: transparent;
+  box-shadow:
+    var(--rim),
+    0 18px 40px -28px color-mix(in srgb, var(--brand-grey) 95%, transparent);
+  transition:
+    --spot 0.45s var(--ease-smooth),
+    translate 0.45s var(--ease-spring),
+    scale 0.2s var(--ease-smooth),
+    box-shadow 0.3s var(--ease-smooth);
+}
+.card-glass::before,
+.workspace .rounded-card.bg-surface.border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      240px circle at var(--mx, 50%) var(--my, -40%),
+      color-mix(in srgb, var(--brand-yellow) calc(var(--spot) * 75%), transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      170deg,
+      color-mix(in srgb, var(--brand-silver) 26%, transparent),
+      color-mix(in srgb, var(--brand-silver) 7%, transparent) 40%,
+      color-mix(in srgb, var(--brand-silver) 11%, transparent)
+    );
+  -webkit-mask:
+    linear-gradient(black 0 0) content-box,
+    linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(black 0 0) content-box exclude,
+    linear-gradient(black 0 0);
+}
+.card-glass::after,
+.workspace .rounded-card.bg-surface.border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    520px circle at var(--mx, 50%) var(--my, -40%),
+    color-mix(in srgb, var(--brand-yellow) calc(var(--spot) * 6%), transparent),
+    transparent 55%
+  );
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-glass:hover,
+  .workspace .rounded-card.bg-surface.border:hover {
+    --spot: 1;
+  }
+}
+
+/* The primary yellow: a sheet of light sweeps across it when the pointer arrives. */
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    color-mix(in srgb, var(--brand-silver) 60%, transparent) 50%,
+    transparent 70%
+  );
+  translate: -130% 0;
+}
+@media (hover: hover) {
+  .btn-shine:hover::after {
+    translate: 130% 0;
+    transition: translate 0.9s var(--ease-smooth);
+  }
+}
+
+/* Arrows and chevrons lean toward where they lead when their link is hovered. */
+:where(.lucide-arrow-right, .lucide-chevron-right, .lucide-arrow-up-right) {
+  transition: translate 0.35s var(--ease-spring);
+}
+:where(a, button):hover
+  > :where(.lucide-arrow-right, .lucide-chevron-right, .lucide-arrow-up-right) {
+  translate: 3px 0;
+}
+
+/*
+ * Figures (src/components/ui/rolling-figure.tsx): each character slides up into place, one after
+ * another — the real characters from the first frame, only their position moves (never a count-up).
+ */
+.roll-chars {
+  display: inline-flex;
+  overflow: hidden;
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+  vertical-align: bottom;
+}
+.roll-char {
+  display: inline-block;
+  white-space: pre;
+  animation: roll-up 0.75s var(--ease-spring) both;
+  animation-delay: calc(var(--i) * 26ms + 60ms);
+}
+@keyframes roll-up {
+  from {
+    transform: translate3d(0, 110%, 0);
+    opacity: 0;
+    filter: blur(3px);
+  }
+  to {
+    transform: none;
+    opacity: 1;
+    filter: none;
+  }
+}
+
+/*
+ * The large title folds into a small frosted bar once it scrolls away (Apple's large-title
+ * navigation bar). Pure CSS on the page's scroll; browsers without scroll timelines keep it hidden.
+ */
+.title-bar {
+  position: fixed;
+  z-index: 15;
+  inset-inline: 0;
+  top: 3.5rem;
+  display: flex;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  background: color-mix(in srgb, var(--brand-grey) 70%, transparent);
+  border-bottom: 1px solid var(--glass-edge);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  opacity: 0;
+  translate: 0 -8px;
+  pointer-events: none;
+}
+@media (min-width: 64rem) {
+  .title-bar {
+    top: 0;
+    height: 3.25rem;
+    inset-inline-start: var(--sidebar-width);
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .title-bar {
+    animation: title-bar-in linear both;
+    animation-timeline: scroll(root);
+    animation-range: 80px 140px;
+  }
+}
+@keyframes title-bar-in {
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/*
+ * The current page's highlight in the sidebar and in tab bars is one object that glides to the new
+ * place on navigation (React <ViewTransition> shared elements): `.nav-pill` for the sidebar,
+ * `.tab-pill` for tabs.
+ */
+.nav-pill,
+.tab-pill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.nav-pill {
+  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  box-shadow:
+    var(--rim),
+    0 0 0 1px var(--glass-edge);
+}
+.nav-pill::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.5rem;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--brand-yellow);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--brand-yellow) 70%, transparent);
+}
+.tab-pill {
+  background: var(--surface-hover);
+  box-shadow:
+    var(--rim),
+    0 1px 2px color-mix(in srgb, var(--brand-grey) 70%, transparent);
+}
+::view-transition-group(.pill-glide) {
+  animation-duration: 0.42s;
+  animation-timing-function: var(--ease-spring);
+}
+::view-transition-old(.pill-glide),
+::view-transition-new(.pill-glide) {
+  height: 100%;
+  animation: none;
+}
+::view-transition-old(.pill-glide) {
+  display: none;
+}
+
+/*
+ * Moving between pages: the old page dissolves quickly while the new one arrives in its cascade.
+ * The rest of the screen (sidebar, bars) does not move at all.
+ */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-group(.page-swap) {
+  animation-duration: 0s;
+}
+::view-transition-old(.page-swap) {
+  animation: page-out 0.16s var(--ease-smooth) both;
+}
+::view-transition-new(.page-swap) {
+  animation: fade-in 0.2s var(--ease-smooth) both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(0.99);
+  }
+}
+
+/* The hero card's own light: a soft yellow glow from its top corner. */
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      44rem 18rem at 0% 0%,
+      color-mix(in srgb, var(--brand-yellow) 9%, transparent),
+      transparent 65%
+    ),
+    radial-gradient(
+      30rem 14rem at 100% 100%,
+      color-mix(in srgb, var(--brand-silver) 5%, transparent),
+      transparent 70%
+    );
+}
+
+/* Gold initials tiles (the restaurant and the person in the sidebar). */
+.initials-tile {
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--brand-silver) 35%, transparent),
+      transparent 45%
+    ),
+    linear-gradient(140deg, var(--brand-yellow), var(--gold) 60%, var(--gold-pale));
+  color: var(--brand-grey);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--brand-silver) 60%, transparent),
+    0 4px 14px -6px color-mix(in srgb, var(--brand-yellow) 70%, transparent);
+}
+
+/* Table rows light up softly under the pointer. */
+.workspace tbody tr {
+  transition: background-color 0.2s var(--ease-smooth);
+}
+@media (hover: hover) {
+  .workspace tbody tr:hover {
+    background-color: color-mix(in srgb, var(--brand-silver) 4%, transparent);
+  }
+}
+
+/* Lists inside cards arrive one row after another. */
+.workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li:nth-child(-n + 12) {
+  animation: rise-in 0.5s var(--ease-smooth) both;
+  animation-delay: calc(var(--row, 0) * 1ms + 120ms);
+}
+.workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li:nth-child(2) {
+  --row: 35;
+}
+.workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li:nth-child(3) {
+  --row: 70;
+}
+.workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li:nth-child(4) {
+  --row: 105;
+}
+.workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li:nth-child(5) {
+  --row: 140;
+}
+.workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li:nth-child(n + 6) {
+  --row: 175;
+}
+
+/* The sign-in pages: the chef's light behind the card, breathing slowly. */
+.auth-halo {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      36rem 26rem at 50% 18%,
+      color-mix(in srgb, var(--brand-yellow) 13%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      30rem 22rem at 50% 100%,
+      color-mix(in srgb, var(--brand-silver) 7%, transparent),
+      transparent 70%
+    );
+  animation: auth-breathe 9s ease-in-out infinite alternate;
+}
+@keyframes auth-breathe {
+  to {
+    opacity: 0.6;
+    transform: scale(1.06);
+  }
+}
+
+/* Quiet, thin scrollbars. */
+html {
+  scrollbar-width: thin;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aurora::before,
   .aurora::after,
@@ -768,8 +1173,22 @@ details[open] > :not(summary) {
   dialog[open],
   dialog[open]::backdrop,
   details[open] > :not(summary),
-  .nav-active::before {
+  .nav-active::before,
+  .aurora > span,
+  .roll-char,
+  .title-bar,
+  .auth-halo,
+  .workspace :where(.card-glass, .rounded-card) > :where(ul, ol) > li {
     animation: none;
+  }
+  .btn-shine::after {
+    display: none;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
   }
   .chat-intro {
     display: none;

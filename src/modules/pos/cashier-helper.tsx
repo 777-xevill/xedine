@@ -149,7 +149,7 @@ export function CashierHelper({
   return (
     <>
       {bar}
-      <div className="glass-tile mb-3 rounded-input p-3">
+      <div className="till-raised till-enter mb-3 rounded-[1.125rem] p-3.5">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold">{t('helperTitle')}</p>
@@ -224,7 +224,7 @@ export function CashierHelper({
                 return (
                   <li
                     key={`${line.menuItemId}-${index}`}
-                    className="glass flex items-start gap-2 rounded-input p-2 text-sm"
+                    className="till-soft till-line flex items-start gap-2 rounded-input p-2.5 text-sm"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium">

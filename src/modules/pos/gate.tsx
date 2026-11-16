@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Delete, TabletSmartphone } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Input, Label, Select } from '@/components/ui/form';
 import Link from 'next/link';
@@ -75,9 +76,15 @@ export function PairingScreen({
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
-      <h1 className="text-2xl font-semibold">{t('pairTitle')}</h1>
-      <p className="text-secondary">{t('pairSubtitle')}</p>
+    <div className="till-enter mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
+      <span
+        aria-hidden
+        className="till-raised flex size-14 items-center justify-center rounded-2xl"
+      >
+        <TabletSmartphone className="size-7 text-brand-yellow" />
+      </span>
+      <h1 className="text-[2rem] leading-tight font-bold tracking-[-0.03em]">{t('pairTitle')}</h1>
+      <p className="-mt-2 text-secondary">{t('pairSubtitle')}</p>
       {error ? <Alert tone="danger">{error}</Alert> : null}
       <div>
         <Label htmlFor="org">{tn('organization')}</Label>
@@ -103,7 +110,7 @@ export function PairingScreen({
         <Label htmlFor="deviceName">{t('deviceName')}</Label>
         <Input id="deviceName" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
-      <Button onClick={() => void submit()} disabled={busy || !orgId || !branchId}>
+      <Button size="lg" onClick={() => void submit()} disabled={busy || !orgId || !branchId}>
         {busy ? t('pairing') : t('pairButton')}
       </Button>
     </div>
@@ -320,8 +327,8 @@ export function StaffGate({
 
   if (!picked) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4">
-        <h1 className="text-2xl font-semibold">
+      <div className="till-enter mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-5 px-4">
+        <h1 className="text-[2rem] leading-tight font-bold tracking-[-0.03em]">
           {staff && staff.length === 0 ? t('noStaffTitle') : t('chooseStaff')}
         </h1>
         {staff && staff.length === 0 ? (
@@ -336,9 +343,12 @@ export function StaffGate({
                 setPicked(s);
                 setMessage(null);
               }}
-              className="glass-tile min-h-16 rounded-card px-4 text-lg font-medium transition hover:border-purple"
+              className="till-tile flex min-h-20 items-center gap-3 rounded-[1.125rem] px-4 text-start text-lg font-semibold"
             >
-              {s.display_name}
+              <span aria-hidden className="till-avatar size-11 text-base">
+                {Array.from(s.display_name.trim())[0]?.toUpperCase() ?? ''}
+              </span>
+              <span className="min-w-0 truncate">{s.display_name}</span>
             </button>
           ))}
         </div>
@@ -348,15 +358,25 @@ export function StaffGate({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
-      <h1 className="text-center text-xl font-semibold">{picked.display_name}</h1>
-      <p className="text-center text-secondary">{t('enterPin')}</p>
+    <div className="till-enter mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
+      <span aria-hidden className="till-avatar mx-auto size-16 text-2xl">
+        {Array.from(picked.display_name.trim())[0]?.toUpperCase() ?? ''}
+      </span>
+      <h1 className="text-center text-2xl font-bold tracking-[-0.02em]">{picked.display_name}</h1>
+      <p className="-mt-2 text-center text-secondary">{t('enterPin')}</p>
       {notice && !message ? <Alert tone="warning">{notice}</Alert> : null}
       {message ? <Alert tone="danger">{message}</Alert> : null}
-      <div className="text-center text-3xl tracking-[0.5em]">
-        {'•'.repeat(pin.length).padEnd(6, '·')}
+      {/* Six dots fill as the digits go in; a wrong PIN shakes them (the message changes the key). */}
+      <div
+        key={message ?? ''}
+        aria-hidden
+        className={`flex justify-center gap-4 py-3 ${message ? 'till-shake' : ''}`}
+      >
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} data-on={i < pin.length} className="till-dot" />
+        ))}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="mx-auto grid grid-cols-3 gap-x-5 gap-y-3.5">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((d, i) =>
           d === '' ? (
             <span key={i} />
@@ -365,7 +385,8 @@ export function StaffGate({
               key={i}
               type="button"
               aria-label={d === '⌫' ? t('backspace') : d}
-              className="glass-tile min-h-16 rounded-full text-2xl font-medium transition active:scale-95"
+              data-plain={d === '⌫'}
+              className="till-key size-[4.75rem]"
               onClick={() => {
                 if (d === '⌫') return setPin((p) => p.slice(0, -1));
                 const next = pin.length < 6 ? pin + d : pin;
@@ -373,7 +394,7 @@ export function StaffGate({
                 if (next.length >= 4) void tryPin(next);
               }}
             >
-              {d}
+              {d === '⌫' ? <Delete aria-hidden className="size-7" /> : d}
             </button>
           ),
         )}

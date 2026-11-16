@@ -11,6 +11,7 @@ import {
   Scale,
   Smartphone,
   Sparkles,
+  TriangleAlert,
   Users,
   Zap,
   type LucideIcon,
@@ -487,11 +488,12 @@ export function GamesApp({ token, restaurant, names }: GamesAppProps) {
           {players.map((p, i) => (
             <li
               key={p.id}
-              className="game-pop flex items-center gap-3 rounded-card border border-line bg-surface px-4 py-3"
+              className="cust-row cust-rise"
+              style={{ '--i': i } as React.CSSProperties}
             >
               <span aria-hidden className={cn('size-3 rounded-full', PLAYER_BG[i])} />
               <span className="font-semibold">{p.name}</span>
-              {i === 0 ? <span className="text-xs text-secondary">{t('hostTag')}</span> : null}
+              {i === 0 ? <span className="cust-meta">{t('hostTag')}</span> : null}
             </li>
           ))}
         </ul>
@@ -552,10 +554,15 @@ export function GamesApp({ token, restaurant, names }: GamesAppProps) {
       <HostSays name={hostName} mood="happy">
         {t('hello', { host: hostName, restaurant })}
       </HostSays>
-      {notice ? <p className="rounded-input bg-warning/10 px-3 py-2 text-sm">{notice}</p> : null}
+      {notice ? (
+        <p role="status" className="cust-note cust-note--warn">
+          <TriangleAlert aria-hidden />
+          {notice}
+        </p>
+      ) : null}
       {open.length > 0 ? (
         <section className="space-y-2">
-          <h2 className="text-lg font-bold">{t('openGames')}</h2>
+          <h2 className="cust-h2 px-1">{t('openGames')}</h2>
           {open.map((r) => (
             <JoinRow
               key={r.room}
@@ -570,7 +577,7 @@ export function GamesApp({ token, restaurant, names }: GamesAppProps) {
           ))}
         </section>
       ) : null}
-      <section className="grid grid-cols-2 gap-3">
+      <section className="cust-games">
         {GAME_KEYS.map((g, i) => {
           const Icon = ICONS[g];
           const { min, max } = PLAYERS[g];
@@ -579,20 +586,16 @@ export function GamesApp({ token, restaurant, names }: GamesAppProps) {
               key={g}
               type="button"
               onClick={() => setPick(g)}
-              className="game-pop flex flex-col items-start gap-2 rounded-sheet border border-line bg-surface p-4 text-start shadow-soft transition active:scale-[0.97]"
-              style={{ animationDelay: `${i * 60}ms` }}
+              className="cust-game"
+              style={{ '--i': i } as React.CSSProperties}
             >
-              <span
-                className={cn(
-                  'flex size-11 items-center justify-center rounded-card text-on-action',
-                  PLAYER_BG[i % 4],
-                )}
-              >
+              <span className={cn('cust-game-icon', PLAYER_BG[i % 4])}>
                 <Icon aria-hidden className="size-6" />
               </span>
-              <span className="font-bold leading-tight">{gameName(g)}</span>
-              <span className="text-xs text-secondary">{t(`about.${g}`)}</span>
-              <span className="mt-auto rounded-full bg-surface-elevated px-2 py-0.5 text-xs font-semibold">
+              <span className="mt-1 leading-tight font-bold">{gameName(g)}</span>
+              <span className="text-xs leading-snug text-secondary">{t(`about.${g}`)}</span>
+              <span className="cust-meta">
+                {g === 'love' ? <Heart aria-hidden /> : <Users aria-hidden />}
                 {g === 'love'
                   ? t('couple')
                   : min === max
@@ -621,12 +624,12 @@ function Shell({
 }) {
   const t = useTranslations('games');
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onBack} aria-label={t('back')}>
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={onBack} aria-label={t('back')} className="cust-round">
           <ArrowLeft aria-hidden className="size-5" />
-        </Button>
-        <h2 className="min-w-0 truncate text-xl font-extrabold">{title}</h2>
+        </button>
+        <h2 className="cust-title min-w-0 truncate">{title}</h2>
       </div>
       {children}
     </div>
@@ -646,7 +649,7 @@ function JoinRow({
   const [name, setName] = useState(myName);
   return (
     <form
-      className="flex flex-wrap items-end gap-2 rounded-card border border-line bg-surface p-3"
+      className="cust-card cust-rise flex flex-wrap items-end gap-2.5 p-4"
       onSubmit={(e) => {
         e.preventDefault();
         onJoin(cleanName(name, t('playerN', { n: '2' })));
@@ -659,9 +662,11 @@ function JoinRow({
         maxLength={24}
         placeholder={t('yourName')}
         aria-label={t('yourName')}
-        className="min-w-0 flex-1"
+        className="cust-field min-w-0 flex-1"
       />
-      <Button type="submit">{t('join')}</Button>
+      <Button type="submit" size="lg">
+        {t('join')}
+      </Button>
     </form>
   );
 }
@@ -703,17 +708,15 @@ function Setup({
       </HostSays>
       {max > 1 && min !== max ? (
         <fieldset>
-          <legend className="mb-2 text-sm font-semibold">{t('howMany')}</legend>
+          <legend className="cust-label">{t('howMany')}</legend>
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: max - min + 1 }, (_, k) => min + k).map((n) => (
               <button
                 key={n}
                 type="button"
                 onClick={() => setCount(n)}
-                className={cn(
-                  'flex min-h-14 flex-col items-center justify-center rounded-card border-2 font-black',
-                  count === n ? 'border-purple bg-purple/10' : 'border-line bg-surface',
-                )}
+                aria-pressed={count === n}
+                className="cust-choice cust-choice--tile font-black"
               >
                 <span className="text-xl">{formatNumber(n, locale)}</span>
                 <span className="text-[0.65rem] font-semibold text-secondary">
@@ -726,17 +729,15 @@ function Setup({
       ) : null}
       {count > 1 ? (
         <fieldset>
-          <legend className="mb-2 text-sm font-semibold">{t('howPlay')}</legend>
+          <legend className="cust-label">{t('howPlay')}</legend>
           <div className="grid grid-cols-2 gap-2">
             {(['one', 'own'] as const).map((k) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => setHow(k)}
-                className={cn(
-                  'flex flex-col items-center gap-1 rounded-card border-2 p-3 text-center',
-                  how === k ? 'border-purple bg-purple/10' : 'border-line bg-surface',
-                )}
+                aria-pressed={how === k}
+                className="cust-choice cust-choice--tile"
               >
                 <span className="flex">
                   <Smartphone aria-hidden className="size-6" />
@@ -756,7 +757,7 @@ function Setup({
         </fieldset>
       ) : null}
       <form
-        className="space-y-3"
+        className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (count > 1 && how === 'own') {
@@ -773,7 +774,7 @@ function Setup({
       >
         {Array.from({ length: count > 1 && how === 'own' ? 1 : count }, (_, i) => (
           <div key={i}>
-            <Label htmlFor={`g-name-${i}`}>
+            <Label htmlFor={`g-name-${i}`} className="cust-label">
               {count > 1 && how === 'own' ? t('yourName') : label(i)}
             </Label>
             <Input
@@ -781,6 +782,7 @@ function Setup({
               value={names[i] ?? ''}
               maxLength={24}
               placeholder={count === 1 ? t('you') : label(i)}
+              className="cust-field"
               onChange={(e) =>
                 setNames((list) => list.map((v, k) => (k === i ? e.target.value : v)))
               }

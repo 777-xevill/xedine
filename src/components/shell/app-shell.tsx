@@ -45,7 +45,7 @@ export function AppShell({
       <aside
         id="app-sidebar"
         className={cn(
-          'fixed inset-y-0 start-0 z-40 flex w-[min(var(--sidebar-width),86vw)] flex-col border-e border-edge bg-background-secondary/90 backdrop-blur-2xl transition-[transform,visibility] duration-500 ease-smooth lg:w-[var(--sidebar-width)] lg:translate-x-0',
+          'fixed inset-y-0 start-0 z-40 flex w-[min(var(--sidebar-width),86vw)] flex-col border-e border-edge bg-background-secondary/60 backdrop-blur-[40px] backdrop-saturate-[1.8] transition-[transform,visibility] duration-500 ease-smooth lg:w-[var(--sidebar-width)] lg:translate-x-0',
           open
             ? 'translate-x-0 shadow-lift'
             : 'max-lg:invisible max-lg:-translate-x-full rtl:max-lg:translate-x-full',

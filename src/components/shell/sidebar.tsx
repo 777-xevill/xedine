@@ -45,12 +45,14 @@ export async function Sidebar({
           },
         ]
       : [];
-  const initials = ctx.fullName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('');
+  const initialsOf = (name: string) =>
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => Array.from(w)[0]?.toUpperCase())
+      .join('');
+  const initials = initialsOf(ctx.fullName);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -61,7 +63,13 @@ export async function Sidebar({
 
         {/* Restaurant and branch in one compact switcher. <details>: no client JS needed. */}
         <details className="group relative mt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-edge bg-surface-elevated px-3 py-2 shadow-soft hover:border-edge-strong hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-2xl border border-edge bg-surface-elevated/80 bg-[image:var(--glass-sheen)] py-2 ps-2 pe-3 shadow-soft hover:border-edge-strong hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
+            <span
+              aria-hidden
+              className="initials-tile inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-[0.8125rem] font-bold"
+            >
+              {initialsOf(ctx.org.name) || '·'}
+            </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold" data-testid="org-name">
                 {ctx.org.name}
@@ -116,7 +124,7 @@ export async function Sidebar({
         {nav.canChat ? (
           <Link
             href={`${base}/assistant`}
-            className="mt-3 flex min-h-10 items-center gap-2.5 rounded-xl bg-action px-3 text-sm font-semibold text-on-action glow-action transition duration-300 hover:-translate-y-px hover:brightness-[1.06] active:scale-[0.97]"
+            className="btn-shine relative mt-3 flex min-h-10 items-center gap-2.5 overflow-hidden rounded-xl bg-action px-3 text-sm font-semibold text-on-action glow-action transition duration-300 hover:-translate-y-px hover:brightness-[1.06] active:scale-[0.97]"
           >
             <SquarePen aria-hidden className="size-4" />
             {t('newChat')}
@@ -160,7 +168,7 @@ export async function Sidebar({
         <div className="flex items-center gap-2.5 px-1">
           <span
             aria-hidden
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-action text-xs font-bold text-on-action"
+            className="initials-tile inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
           >
             {initials || '·'}
           </span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { History, LogOut } from 'lucide-react';
+import { History, LoaderCircle, LogOut, Wallet } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -983,7 +983,10 @@ function Till({
         {loadFailed ? (
           <Alert tone="danger">{t('firstLoadNeedsInternet')}</Alert>
         ) : (
-          <p className="text-secondary">{tc('loading')}</p>
+          <p className="flex items-center gap-2 text-secondary">
+            <LoaderCircle aria-hidden className="size-5 animate-spin text-muted" />
+            {tc('loading')}
+          </p>
         )}
       </div>
     );
@@ -1012,8 +1015,11 @@ function Till({
   return (
     <TillContext.Provider value={ctx}>
       <div className="mx-auto flex h-dvh max-w-7xl flex-col gap-3 px-3 py-3">
-        <header className="glass flex flex-wrap items-center justify-between gap-2 rounded-card px-4 py-2 sm:rounded-full">
-          <span className="text-sm">
+        <header className="till-pane flex flex-wrap items-center justify-between gap-2 rounded-card py-2 ps-2 pe-2 sm:rounded-full">
+          <span className="flex min-w-0 items-center gap-2.5 text-sm">
+            <span aria-hidden className="till-avatar size-9 text-sm">
+              {Array.from(staffSession.staffName.trim())[0] ?? ''}
+            </span>
             <span className="font-semibold">{device.branchName}</span>
             <span className="text-secondary"> · {staffSession.staffName}</span>
           </span>
@@ -1169,9 +1175,15 @@ function ShiftOpener({
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="mx-auto flex min-h-dvh max-w-xs flex-col justify-center gap-4 px-4">
-      <div className="glass space-y-4 rounded-sheet p-6">
+      <div className="till-pane till-enter space-y-4 rounded-sheet p-6">
         <div>
-          <h1 className="text-lg font-semibold">{t('shiftTitle')}</h1>
+          <span
+            aria-hidden
+            className="till-raised mb-4 flex size-12 items-center justify-center rounded-2xl"
+          >
+            <Wallet className="size-6 text-brand-yellow" />
+          </span>
+          <h1 className="text-2xl font-bold tracking-[-0.03em]">{t('shiftTitle')}</h1>
           <p className="mt-1 text-sm text-secondary">{t('shiftExplain')}</p>
         </div>
         {!online ? <Alert tone="warning">{t('needsInternet')}</Alert> : null}
@@ -1181,6 +1193,7 @@ function ShiftOpener({
           <Input
             id="float"
             inputMode="decimal"
+            className="min-h-14 text-2xl font-semibold tabular-nums"
             value={float}
             onChange={(e) => setFloat(e.target.value)}
           />
@@ -1292,7 +1305,7 @@ function ShiftCloser({
                     {formatMoney(result.counted_cash_poisha ?? 0, locale, tillPlace().currency)}
                   </dd>
                 </div>
-                <div className="flex justify-between font-bold">
+                <div className="flex items-baseline justify-between border-t border-line pt-2 text-lg font-bold">
                   <dt>{t('overShort')}</dt>
                   <dd
                     className={`tabular-nums ${(result.over_short_poisha ?? 0) === 0 ? 'text-success' : 'text-danger'}`}

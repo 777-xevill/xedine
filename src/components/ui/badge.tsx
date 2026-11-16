@@ -6,13 +6,13 @@ export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 
 
 /**
  * Three colours only (ADR 0063): silver is calm (fine, done, information), yellow is attention. A
- * warning is a yellow tint; danger is solid yellow, the loudest thing on the screen.
+ * warning is a faint yellow tint; danger is a stronger tint with a yellow rim and a soft glow.
  */
 const TONES: Record<BadgeTone, string> = {
   neutral: 'border border-edge bg-surface-elevated text-secondary',
   success: 'border border-success/25 bg-success/10 text-success',
-  warning: 'border border-warning/40 bg-warning/12 text-warning',
-  danger: 'border border-danger bg-danger text-on-action',
+  warning: 'border border-warning/25 bg-warning/8 text-warning',
+  danger: 'border border-danger/55 bg-danger/15 text-danger shadow-[0_0_14px_-4px_var(--danger)]',
   info: 'border border-edge bg-surface-elevated text-info',
   accent: 'border border-purple/35 bg-purple/12 text-purple',
 };

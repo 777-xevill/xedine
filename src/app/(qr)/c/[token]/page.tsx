@@ -1,13 +1,39 @@
+import {
+  Check,
+  Hourglass,
+  Link2Off,
+  Lock,
+  MessageCircle,
+  MessageSquareWarning,
+  Receipt,
+  SprayCan,
+  Thermometer,
+  TriangleAlert,
+  UtensilsCrossed,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-import { LocaleSwitcher } from '@/components/locale-switcher';
 import { Button } from '@/components/ui/button';
 import { Input, Label, Textarea } from '@/components/ui/form';
 import { COMPLAINT_TOPICS } from '@/modules/reviews/complaint-link';
 import { readComplaintLink } from '@/modules/reviews/complaint-link-view';
+import { CustomerBar } from '../../customer-bar';
+import { SuccessMark } from '../../success-mark';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
+
+/** Each topic with a picture beside its words (ADR 0063). */
+const TOPIC_ICON = {
+  food: UtensilsCrossed,
+  clean: SprayCan,
+  service: Receipt,
+  sick: Thermometer,
+  other: MessageCircle,
+} as const;
+
+/** The mark above each whole-page message: a silver tick for sent, a yellow sign for trouble. */
+const TROUBLE_ICON = { failed: TriangleAlert, busy: Hourglass, gone: Link2Off } as const;
 
 /**
  * A customer's complaint (ADR 0043): opened from the QR code on the table or counter, no account. Tap what it
@@ -33,34 +59,44 @@ export default async function CustomerComplaintPage({
           : null;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-4 px-4 py-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          {link ? (
-            <>
-              <p className="truncate text-lg font-bold">{link.restaurant}</p>
-              <p className="truncate text-sm text-secondary">{link.branch}</p>
-            </>
-          ) : null}
-        </div>
-        <LocaleSwitcher />
-      </header>
-      <div className="glass rounded-sheet p-6 sm:p-8">
-        {message ? (
+    <div className="cust-page mx-auto flex min-h-dvh max-w-xl flex-col px-4 pb-8">
+      <CustomerBar>
+        {link ? (
           <>
-            <h1 className="text-2xl font-extrabold tracking-tight">{t(`${message}Title`)}</h1>
-            <p className="mt-2 text-secondary">{t(`${message}Body`)}</p>
+            <p className="truncate text-[0.9375rem] leading-tight font-semibold">
+              {link.restaurant}
+            </p>
+            <p className="truncate text-xs text-muted">{link.branch}</p>
+          </>
+        ) : null}
+      </CustomerBar>
+      <main className="flex flex-1 flex-col justify-center pt-5">
+        {message ? (
+          <section className="cust-card cust-state">
+            {message === 'thanks' ? (
+              <SuccessMark />
+            ) : (
+              <span className="cust-alert">
+                {(() => {
+                  const Icon = TROUBLE_ICON[message];
+                  return <Icon aria-hidden />;
+                })()}
+              </span>
+            )}
+            <h1 className="cust-title mt-5">{t(`${message}Title`)}</h1>
+            <p className="mt-2 max-w-sm text-secondary">{t(`${message}Body`)}</p>
             {message === 'failed' ? (
-              <a
-                href={`/c/${token}`}
-                className="mt-3 inline-block font-medium text-purple underline"
-              >
+              <a href={`/c/${token}`} className="cust-cta mt-6">
                 {t('tryAgain')}
               </a>
             ) : null}
-          </>
+          </section>
         ) : (
-          <form method="post" action="/api/webhooks/complaint" className="space-y-5">
+          <form
+            method="post"
+            action="/api/webhooks/complaint"
+            className="cust-card animate-rise-in space-y-6 p-5 sm:p-7"
+          >
             <input type="hidden" name="token" value={token} />
             <input
               type="text"
@@ -71,25 +107,40 @@ export default async function CustomerComplaintPage({
               className="sr-only"
             />
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight">{t('title')}</h1>
-              <p className="mt-2 text-secondary">{t('intro')}</p>
+              <span className="cust-icon">
+                <MessageSquareWarning aria-hidden className="size-[1.375rem]" />
+              </span>
+              <h1 className="cust-title mt-4">{t('title')}</h1>
+              <p className="mt-2 leading-relaxed text-secondary">{t('intro')}</p>
             </div>
             <fieldset>
-              <legend className="mb-1.5 text-sm font-medium">{t('topic')}</legend>
-              <div className="grid grid-cols-2 gap-2">
-                {COMPLAINT_TOPICS.map((v) => (
-                  <label
-                    key={v}
-                    className="glass-tile flex min-h-11 cursor-pointer items-center gap-2 rounded-input px-3 py-2 text-sm has-checked:border-purple"
-                  >
-                    <input type="radio" name="topic" value={v} defaultChecked={v === 'food'} />
-                    {t(`topics.${v}`)}
-                  </label>
-                ))}
+              <legend className="cust-label">{t('topic')}</legend>
+              <div className="cust-choices">
+                {COMPLAINT_TOPICS.map((v) => {
+                  const Icon = TOPIC_ICON[v] ?? MessageCircle;
+                  return (
+                    <label key={v} className="cust-choice cust-choice--stack">
+                      <input
+                        type="radio"
+                        name="topic"
+                        value={v}
+                        defaultChecked={v === 'food'}
+                        className="sr-only"
+                      />
+                      <Icon aria-hidden className="cust-choice-icon size-[1.375rem]" />
+                      <span className="pe-6">{t(`topics.${v}`)}</span>
+                      <span aria-hidden className="cust-choice-check">
+                        <Check />
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
             <div>
-              <Label htmlFor="c-text">{t('what')}</Label>
+              <Label htmlFor="c-text" className="cust-label">
+                {t('what')}
+              </Label>
               <Textarea
                 id="c-text"
                 name="text"
@@ -98,25 +149,46 @@ export default async function CustomerComplaintPage({
                 minLength={3}
                 maxLength={1000}
                 placeholder={t('example')}
+                className="cust-field"
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="c-name">{t('name')}</Label>
-                <Input id="c-name" name="name" maxLength={120} autoComplete="name" />
+                <Label htmlFor="c-name" className="cust-label">
+                  {t('name')}
+                </Label>
+                <Input
+                  id="c-name"
+                  name="name"
+                  maxLength={120}
+                  autoComplete="name"
+                  className="cust-field"
+                />
               </div>
               <div>
-                <Label htmlFor="c-phone">{t('phone')}</Label>
-                <Input id="c-phone" name="phone" type="tel" maxLength={30} autoComplete="tel" />
+                <Label htmlFor="c-phone" className="cust-label">
+                  {t('phone')}
+                </Label>
+                <Input
+                  id="c-phone"
+                  name="phone"
+                  type="tel"
+                  maxLength={30}
+                  autoComplete="tel"
+                  className="cust-field"
+                />
               </div>
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" size="lg" className="w-full">
               {t('send')}
             </Button>
-            <p className="text-xs text-secondary">{t('privacy')}</p>
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-muted">
+              <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+              {t('privacy')}
+            </p>
           </form>
         )}
-      </div>
+      </main>
     </div>
   );
 }

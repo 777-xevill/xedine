@@ -129,7 +129,12 @@
     "socialFacebookLink": "Please paste a Facebook link, like facebook.com/yourname.",
     "salaryBelowPaid": "The pay cannot be lower than what is already paid. Mark it as not paid first.",
     "salaryOverPaid": "The amount paid cannot be more than the pay.",
-    "salaryNotEntered": "Enter this person's pay first."
+    "salaryNotEntered": "Enter this person's pay first.",
+    "socialVideoPickDish": "Pick at least one dish.",
+    "socialVideoTooMany": "Pick at most three dishes.",
+    "socialOfferPrice": "Type an offer price lower than the menu price.",
+    "socialVideoKindCount": "This kind of video needs a different number of dishes.",
+    "socialOccasionText": "Write your special day."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -3080,7 +3085,8 @@
         "invented_number": "The AI wrote a number that isn't true, so Xedine stopped it.",
         "no_settings": "Open Settings → Social once first.",
         "other": "Facebook, Instagram, TikTok or the AI refused it. Xedine tried 3 times.",
-        "tiktok_reconnect": "TikTok stopped accepting Xedine. Connect TikTok again in Settings → Social."
+        "tiktok_reconnect": "TikTok stopped accepting Xedine. Connect TikTok again in Settings → Social.",
+        "photo_too_small": "A dish photo was too small for a video. Add a clearer photo under Video → Photos for videos."
       },
       "footnote": "Checked {at}. Xedine checks every 10 minutes.",
       "onTikTok": "On TikTok",
@@ -3099,7 +3105,8 @@
         "make": "Make a post",
         "dishes": "Dishes",
         "upcoming": "Coming up",
-        "posted": "Posted"
+        "posted": "Posted",
+        "video": "Video"
       },
       "marks": {
         "post": "Post this",
@@ -3165,6 +3172,135 @@
       "designN": "Design {n}",
       "moreDesigns": "More designs",
       "designsHint": "Every tap shows six new designs in your colours."
+    },
+    "video": {
+      "or": "OR",
+      "onlyAt": "Only at",
+      "now": "Now",
+      "occasions": {
+        "eid_fitr": "Eid Mubarak",
+        "eid_adha": "Eid Mubarak",
+        "ramadan": "Ramadan Mubarak",
+        "iftar": "Iftar time",
+        "jummah": "Jummah Mubarak",
+        "boishakh": "Shubho Noboborsho",
+        "victory_day": "Happy Victory Day",
+        "independence_day": "Happy Independence Day",
+        "new_year": "Happy New Year",
+        "christmas": "Merry Christmas",
+        "puja": "Shubho Sharodiya",
+        "valentine": "Happy Valentine's Day",
+        "mothers_day": "Happy Mother's Day",
+        "weekend": "Weekend is here"
+      },
+      "occasionNames": {
+        "eid_fitr": "Eid ul-Fitr",
+        "eid_adha": "Eid ul-Adha",
+        "ramadan": "Ramadan",
+        "iftar": "Iftar",
+        "jummah": "Jummah (Friday)",
+        "boishakh": "Pohela Boishakh",
+        "victory_day": "Victory Day",
+        "independence_day": "Independence Day",
+        "new_year": "New Year",
+        "christmas": "Christmas",
+        "puja": "Durga Puja",
+        "valentine": "Valentine's Day",
+        "mothers_day": "Mother's Day",
+        "weekend": "Weekend",
+        "custom": "Something else (write it)"
+      },
+      "defaults": {
+        "hook": "Hungry? This one's for you.",
+        "punch": "Better together!",
+        "question": "Which one is yours?",
+        "tagline": "Made fresh in our kitchen today",
+        "caption": "{dishes} at {restaurant}. Come hungry, leave happy. Order now! 🍽️"
+      },
+      "kinds": {
+        "showcase": "One dish, big",
+        "versus": "This or that?",
+        "combo": "Better together",
+        "carousel": "Menu cards",
+        "ring": "Ring of plates",
+        "search": "Search and find",
+        "offer": "Offer price"
+      },
+      "make": {
+        "title": "Make a video",
+        "body": "A 10–12 second video from your own dish photos. Xedine adds music, sounds and sometimes a voice, then posts it.",
+        "noDishes": "Add dish photos on the Menu page first.",
+        "pickDishes": "Pick 1 to 3 dishes",
+        "pickHint": "Tap to pick, tap again to drop. The numbers show the order in the video.",
+        "preview": "Video preview",
+        "previewHint": "This is the real video moving. The finished one also has music, sounds and sometimes a voice.",
+        "anotherLook": "Another look",
+        "language": "Language",
+        "bangla": "Bangla",
+        "english": "English",
+        "kind": "Kind of video",
+        "kindAuto": "Let Xedine choose",
+        "occasion": "Special day",
+        "occasionNone": "No special day",
+        "occasionText": "Your special day",
+        "occasionTextExample": "e.g. Our 5th birthday",
+        "offerPrice": "Offer price (৳)",
+        "offerHint": "Must be lower than the menu price. The menu price shows crossed out.",
+        "idea": "Your idea (optional)",
+        "ideaExample": "e.g. Family packs for the weekend",
+        "write": "Write the words for me",
+        "rewrite": "Write again",
+        "writing": "Writing…",
+        "aiWrote": "AI wrote these",
+        "errors": {
+          "notAllowed": "Only the owner or a manager can do this.",
+          "aiOff": "AI is not set up yet.",
+          "number": "The AI wrote a number that is not on your menu, so it was not used. Try again.",
+          "failed": "Could not write the words. Try again."
+        },
+        "lines": {
+          "hook": "First line (spoken on some videos)",
+          "tagline": "Line about the dish",
+          "punch": "Answer line",
+          "question": "Question to viewers"
+        },
+        "submit": "Make my video",
+        "submitHint": "It appears under Upcoming in a few minutes and posts by itself.",
+        "requested": "Your video is being made. It will appear under Upcoming shortly."
+      },
+      "settings": {
+        "title": "Videos",
+        "body": "Besides the daily post, the autopilot makes short videos of your dishes. The owner or a manager can change this.",
+        "perDay": "Videos a day",
+        "perDayN": "{n, plural, =0 {No videos} one {# video a day} other {# videos a day}}",
+        "voice": "AI voice on the first line",
+        "voiceShare": {
+          "none": "No voice",
+          "half": "Every other video",
+          "all": "Every video"
+        },
+        "gender": "Voice",
+        "female": "Woman",
+        "male": "Man",
+        "greetings": "Greet on special days",
+        "greetingsHint": "Eid, Ramadan, Jummah on Fridays, Pohela Boishakh and national days, from your calendar.",
+        "save": "Save",
+        "autopilotOn": "The autopilot is on: these videos go out by themselves.",
+        "autopilotOff": "The autopilot is off: switch it on in Settings → Social for daily videos. Your own videos still go out."
+      },
+      "photos": {
+        "title": "Photos for videos",
+        "body": "A big, clear photo makes a better video. A photo smaller than {px} pixels on its short side is skipped. Add a high-quality photo here; the till keeps its small menu photo.",
+        "tooSmall": "Too small for video",
+        "hq": "High-quality photo",
+        "menuPhoto": "Menu photo",
+        "size": "{px} px",
+        "upload": "Add clear photo",
+        "replace": "Change photo",
+        "remove": "Remove",
+        "working": "Uploading…",
+        "failed": "Could not upload. Try a smaller photo."
+      }
     }
   },
   "memberSettings": {

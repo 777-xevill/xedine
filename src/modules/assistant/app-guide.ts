@@ -163,7 +163,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   growth: {
     name: 'Growth',
-    what: "The social autopilot: Xedine makes a Facebook/Instagram poster or short reel from the restaurant's own dish photos and its sales, and posts it by itself every posting day. Shows the coming posts (skip any) and the ones that went out, and lets the owner or a manager make a post of their own about one dish, choosing among endless designs (\"More designs\"). The Dishes tab marks a dish \"Post this\", \"Xedine decides\" or \"Never\"; with none marked the autopilot posts the 5 best sellers of the last 30 days in turn. A new restaurant sees a Get started list: dish photos, logo and phone, connect Facebook and Instagram, switch the autopilot on.",
+    what: "The social autopilot: Xedine makes a Facebook/Instagram poster or short reel from the restaurant's own dish photos and its sales, and posts it by itself every posting day. Shows the coming posts (skip any) and the ones that went out, and lets the owner or a manager make a post of their own about one dish, choosing among endless designs (\"More designs\"). The Dishes tab marks a dish \"Post this\", \"Xedine decides\" or \"Never\"; with none marked the autopilot posts the 5 best sellers of the last 30 days in turn. A new restaurant sees a Get started list: dish photos, logo and phone, connect Facebook and Instagram, switch the autopilot on. The Video tab makes 10–12 second videos of 1–3 dishes (seven kinds, endless looks) with free music, food sounds and sometimes an AI voice, for any special day (Eid, Jummah, Pohela Boishakh … or the owner's own words); it sets how many videos a day (0–5), the voice and special-day greetings, and takes a high-quality photo per dish. Owner and managers can use it.",
     words: [
       'growth',
       'marketing',
@@ -172,12 +172,15 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
       'facebook',
       'instagram',
       'reel',
+      'video',
+      'eid',
       'poster',
       'social',
       'idea',
       'grow',
       'পোস্ট',
       'ফেসবুক',
+      'ভিডিও',
     ],
   },
   branches: {

@@ -15,9 +15,15 @@ import { notFound } from 'next/navigation';
 import { createTranslator } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { SocialStudio, type StudioDish, type StudioPosterText } from '@/components/social-studio';
+import { SocialVideoStudio, type VideoStudioText } from '@/components/social-video-studio';
+import { DishHqPhotoField } from '@/components/dish-hq-photo-field';
+import { ActionForm } from '@/components/action-form';
+import { saveSocialVideoSettingsAction } from '@/modules/social/actions';
+import { OCCASIONS } from '@/modules/social/video-words';
+import { MIN_VIDEO_PHOTO_PX } from '@/modules/social/video-rules';
 import { Badge, StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Alert, Card, EmptyState, Hint, PageTitle } from '@/components/ui/form';
+import { Alert, Card, EmptyState, Hint, Label, PageTitle, Select } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDhakaDateTime, formatNumber, type Locale } from '@/lib/i18n/format';
 import { aiConfigured } from '@/lib/llm-gateway';
@@ -64,6 +70,24 @@ function posterText(locale: Locale): StudioPosterText & { plusVat: string } {
   };
 }
 
+/** The video's own words in one language (labels, defaults, greetings), for the live preview. */
+function videoText(locale: Locale): VideoStudioText {
+  const t = createTranslator({ locale, messages: locale === 'bn' ? bn : en, namespace: 'social' });
+  return {
+    labels: { or: t('video.or'), onlyAt: t('video.onlyAt'), now: t('video.now') },
+    cta: t('poster.cta'),
+    defaults: {
+      hook: t('video.defaults.hook'),
+      punch: t('video.defaults.punch'),
+      question: t('video.defaults.question'),
+      tagline: t('video.defaults.tagline'),
+    },
+    greetings: Object.fromEntries(
+      OCCASIONS.filter((o) => o !== 'custom').map((o) => [o, t(`video.occasions.${o}`)]),
+    ) as VideoStudioText['greetings'],
+  };
+}
+
 const STATUS_TONE: Record<string, 'neutral' | 'info' | 'success' | 'danger'> = {
   planned: 'neutral',
   ready: 'info',
@@ -80,6 +104,7 @@ const KNOWN_ERRORS = new Set([
   'invented_number',
   'no_settings',
   'tiktok_reconnect',
+  'photo_too_small',
 ]);
 
 interface PostRow {
@@ -107,7 +132,7 @@ interface PostRow {
  * by itself every posting day; this page shows what is coming and what went out, lets the owner or a
  * manager add a post of their own, and skip one before it goes.
  */
-const TABS = ['make', 'dishes', 'upcoming', 'posted'] as const;
+const TABS = ['make', 'video', 'dishes', 'upcoming', 'posted'] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function GrowthPage({
@@ -118,10 +143,16 @@ export default async function GrowthPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const [{ org }, { tab: tabParam }] = await Promise.all([params, searchParams]);
-  const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? '') ? (tabParam as Tab) : 'make';
+  const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? '')
+    ? (tabParam as Tab)
+    : 'make';
   const ctx = await getOrgContext(org);
   if (!ctx.roles.includes('owner') && !ctx.roles.includes('manager')) notFound();
-  const [t, locale] = await Promise.all([getTranslations('social.growth'), getLocale()]);
+  const [t, tv, locale] = await Promise.all([
+    getTranslations('social.growth'),
+    getTranslations('social.video'),
+    getLocale(),
+  ]);
   const loc = locale as Locale;
   const supabase = await createClient();
   const at = now();
@@ -140,14 +171,14 @@ export default async function GrowthPage({
     supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     supabase.from('social_accounts').select('platform, name').eq('org_id', ctx.org.id),
     supabase
       .from('menu_items')
-      .select('id, name, name_bn, photo_path, description, base_price_poisha')
+      .select('id, name, name_bn, photo_path, hq_photo_path, description, base_price_poisha')
       .eq('org_id', ctx.org.id)
       .eq('is_active', true)
       .not('photo_path', 'is', null)
@@ -172,7 +203,9 @@ export default async function GrowthPage({
       .limit(30),
     supabase
       .from('social_dish_art')
-      .select('menu_item_id, source_path, cutout_path, cutout_usable, studio_path, studio_usable')
+      .select(
+        'menu_item_id, source_path, cutout_path, cutout_usable, studio_path, studio_usable, photo_width, photo_height',
+      )
       .eq('org_id', ctx.org.id),
     supabase
       .from('branch_item_prices')
@@ -204,7 +237,7 @@ export default async function GrowthPage({
     ({ data: look } = await supabase
       .from('social_settings')
       .select(
-        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids',
+        'autopilot, post_time, language, tone, color_main, color_accent, logo_path, display_name, area, phone, show_price, post_item_ids, never_item_ids, videos_per_day, voice_share, voice_gender, greetings',
       )
       .eq('org_id', ctx.org.id)
       .maybeSingle());
@@ -223,9 +256,14 @@ export default async function GrowthPage({
         cutout_usable: boolean;
         studio_path: string | null;
         studio_usable: boolean;
+        photo_width: number | null;
+        photo_height: number | null;
       },
     ]),
   );
+  // The photo posts and videos use: the high-quality one when someone added it (ADR 0061).
+  const socialPhoto = (d: { photo_path: unknown; hq_photo_path?: unknown }) =>
+    ((d.hq_photo_path as string | null | undefined) ?? (d.photo_path as string)) as string;
   const perBranch = branchPricesByItem(
     (branchPrices ?? []) as { menu_item_id: string; price_poisha: number }[],
   );
@@ -240,7 +278,7 @@ export default async function GrowthPage({
         );
   const studioDishes: StudioDish[] = dishes.map((d) => {
     const a = artFor.get(d.id as string);
-    const current = a && a.source_path === d.photo_path ? a : null;
+    const current = a && a.source_path === socialPhoto(d) ? a : null;
     const cut = current
       ? current.studio_usable && current.studio_path
         ? current.studio_path
@@ -252,7 +290,7 @@ export default async function GrowthPage({
       id: d.id as string,
       name: d.name as string,
       nameBn: (d.name_bn as string | null) ?? null,
-      photoUrl: mediaUrl('menu-photos', d.photo_path as string),
+      photoUrl: mediaUrl('menu-photos', socialPhoto(d)),
       cutUrl: cut ? mediaUrl('social-media', cut) : null,
       pending: !current,
       price: {
@@ -331,7 +369,9 @@ export default async function GrowthPage({
             ) : null}
             {p.status === 'failed' && p.error ? (
               <Alert tone="danger">
-                {KNOWN_ERRORS.has(p.error) ? t(`errors.${p.error}`) : t('errors.other')}
+                {KNOWN_ERRORS.has(p.error.split(':')[0]!)
+                  ? t(`errors.${p.error.split(':')[0]!}`)
+                  : t('errors.other')}
               </Alert>
             ) : null}
             <div className="flex flex-wrap items-center gap-2">
@@ -555,6 +595,179 @@ export default async function GrowthPage({
         </Card>
       ) : null}
 
+      {tab === 'video' ? (
+        <div className="space-y-6">
+          <Card>
+            <p className="mb-1 font-semibold">{tv('settings.title')}</p>
+            <p className="mb-4 text-sm text-secondary">{tv('settings.body')}</p>
+            {!look ? (
+              <EmptyState title={t('noLook')} body={t('noLookBody')} />
+            ) : (
+              <ActionForm
+                action={saveSocialVideoSettingsAction}
+                successKey="common.saved"
+                className="grid gap-4 sm:grid-cols-3"
+              >
+                {hidden}
+                <div>
+                  <Label htmlFor="sv-per-day">{tv('settings.perDay')}</Label>
+                  <Select
+                    id="sv-per-day"
+                    name="videosPerDay"
+                    defaultValue={String(look.videos_per_day ?? 1)}
+                  >
+                    {[0, 1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {tv('settings.perDayN', { n })}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="sv-voice">{tv('settings.voice')}</Label>
+                  <Select
+                    id="sv-voice"
+                    name="voiceShare"
+                    defaultValue={(look.voice_share as string | undefined) ?? 'half'}
+                  >
+                    {(['none', 'half', 'all'] as const).map((v) => (
+                      <option key={v} value={v}>
+                        {tv(`settings.voiceShare.${v}`)}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="sv-gender">{tv('settings.gender')}</Label>
+                  <Select
+                    id="sv-gender"
+                    name="voiceGender"
+                    defaultValue={(look.voice_gender as string | undefined) ?? 'female'}
+                  >
+                    <option value="female">{tv('settings.female')}</option>
+                    <option value="male">{tv('settings.male')}</option>
+                  </Select>
+                </div>
+                <label className="flex items-start gap-3 rounded-input border border-line p-3 sm:col-span-3">
+                  <input
+                    type="checkbox"
+                    name="greetings"
+                    defaultChecked={look.greetings !== false}
+                    className="mt-1 size-5 accent-purple"
+                  />
+                  <span>
+                    <span className="block font-semibold">{tv('settings.greetings')}</span>
+                    <span className="text-sm text-secondary">{tv('settings.greetingsHint')}</span>
+                  </span>
+                </label>
+                <div className="sm:col-span-3">
+                  <Button type="submit">{tv('settings.save')}</Button>
+                  <Hint className="mt-2">
+                    {look.autopilot ? tv('settings.autopilotOn') : tv('settings.autopilotOff')}
+                  </Hint>
+                </div>
+              </ActionForm>
+            )}
+          </Card>
+
+          <Card>
+            <p className="mb-1 font-semibold">{tv('make.title')}</p>
+            <p className="mb-4 text-sm text-secondary">{tv('make.body')}</p>
+            {dishes.length === 0 ? (
+              <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
+            ) : !look ? (
+              <EmptyState title={t('noLook')} body={t('noLookBody')} />
+            ) : (
+              <SocialVideoStudio
+                orgId={ctx.org.id}
+                orgSlug={ctx.org.slug}
+                dishes={studioDishes}
+                brand={{
+                  restaurant: (look.display_name as string | null) || ctx.org.name,
+                  area:
+                    (look.area as string | null) ||
+                    [profile?.area, profile?.city].filter(Boolean).join(', ') ||
+                    null,
+                  phone: (look.phone as string | null) ?? null,
+                  colorMain: look.color_main as string,
+                  colorAccent: look.color_accent as string,
+                  logoUrl: look.logo_path
+                    ? mediaUrl('menu-photos', look.logo_path as string)
+                    : null,
+                }}
+                language={(look.language as 'bn' | 'en' | 'both' | undefined) ?? 'both'}
+                text={{ bn: videoText('bn'), en: videoText('en') }}
+                aiOn={aiConfigured()}
+                tone={((look.tone as SocialTone | undefined) ?? 'friendly') as SocialTone}
+              />
+            )}
+          </Card>
+
+          <Card>
+            <p className="mb-1 font-semibold">{tv('photos.title')}</p>
+            <p className="mb-4 text-sm text-secondary">
+              {tv('photos.body', { px: formatNumber(MIN_VIDEO_PHOTO_PX, loc) })}
+            </p>
+            {dishes.length === 0 ? (
+              <EmptyState title={t('noPhotos')} body={t('noPhotosBody')} />
+            ) : (
+              <ul className="divide-y divide-line">
+                {[...dishes]
+                  .map((d) => {
+                    const a = artFor.get(d.id as string);
+                    const measured = a && a.source_path === socialPhoto(d) ? a : null;
+                    const short =
+                      measured?.photo_width && measured.photo_height
+                        ? Math.min(measured.photo_width, measured.photo_height)
+                        : null;
+                    return { d, short, small: short !== null && short < MIN_VIDEO_PHOTO_PX };
+                  })
+                  .sort((x, y) => Number(y.small) - Number(x.small))
+                  .map(({ d, short, small }) => (
+                    <li key={d.id as string} className="flex flex-wrap items-center gap-3 py-3">
+                      <span className="relative size-14 shrink-0 overflow-hidden rounded-input bg-surface-elevated">
+                        <Image
+                          src={mediaUrl('menu-photos', socialPhoto(d))}
+                          alt=""
+                          fill
+                          unoptimized
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold">
+                          {loc === 'bn' && d.name_bn ? (d.name_bn as string) : (d.name as string)}
+                        </p>
+                        <p className="flex flex-wrap items-center gap-1.5 text-sm text-secondary">
+                          {small ? (
+                            <Badge tone="danger">{tv('photos.tooSmall')}</Badge>
+                          ) : d.hq_photo_path ? (
+                            <Badge tone="success">{tv('photos.hq')}</Badge>
+                          ) : (
+                            <span>{tv('photos.menuPhoto')}</span>
+                          )}
+                          {short !== null ? (
+                            <span className="tabular-nums">
+                              {tv('photos.size', { px: formatNumber(short, loc) })}
+                            </span>
+                          ) : null}
+                        </p>
+                      </div>
+                      <DishHqPhotoField
+                        orgId={ctx.org.id}
+                        orgSlug={ctx.org.slug}
+                        itemId={d.id as string}
+                        path={(d.hq_photo_path as string | null) ?? null}
+                      />
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      ) : null}
+
       {tab === 'dishes' ? (
         <Card>
           <p className="mb-1 font-semibold">
@@ -590,7 +803,9 @@ export default async function GrowthPage({
                           {t('sold30', { n: formatNumber(sold.get(id) ?? 0, loc) })}
                         </span>
                         {top.has(id) ? <Badge tone="success">{t('bestSeller')}</Badge> : null}
-                        {next?.dish.id === id ? <Badge tone="accent">{t('nextBadge')}</Badge> : null}
+                        {next?.dish.id === id ? (
+                          <Badge tone="accent">{t('nextBadge')}</Badge>
+                        ) : null}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-1">

@@ -43,7 +43,9 @@ import {
   type PostAngle,
   slotAt,
   type SocialFormat,
+  videoTimes,
 } from '../schedule';
+import { makeVideoPost, VIDEO_POST_COLUMNS, type VideoPostRow } from './video';
 import type { DishArt, PostContent } from '../templates';
 import { ApprovedWordsSchema, posterLang, posterWords, type SocialWords } from '../words';
 import { checkDishPhoto, SOCIAL_POST_PROMPT, writeSocialPost } from '../writer';
@@ -89,6 +91,7 @@ interface Settings {
   never_item_ids: string[];
   post_item_ids: string[];
   show_price: boolean;
+  videos_per_day: number;
 }
 
 interface Post {
@@ -120,7 +123,7 @@ interface Post {
 }
 
 const SETTINGS_COLUMNS =
-  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price';
+  'org_id, autopilot, post_time, post_days, format, language, tone, color_main, color_accent, logo_path, display_name, area, phone, never_item_ids, post_item_ids, show_price, videos_per_day';
 const POST_COLUMNS =
   'id, org_id, menu_item_id, source, angle, format, plan_date, scheduled_at, status, own_text, template, design_words, design_spec, extra_item_ids, caption_bn, caption_en, poster_path, video_path, ai_image_path, fb_id, ig_id, ig_container_id, tiktok_publish_id, tiktok_id, attempts';
 
@@ -169,7 +172,8 @@ export async function runSocialTick(
   for (const post of (due ?? []) as Post[]) {
     // A reel takes the longest; never start one in the last two minutes of the budget.
     if (elapsed() > budgetMs - 120_000) break;
-    const ok = await makePost(sb, post, at);
+    const ok =
+      post.format === 'video' ? await makeVideo(sb, post.id, at) : await makePost(sb, post, at);
     if (ok) result.made++;
     else result.failed++;
   }
@@ -198,11 +202,14 @@ async function planAhead(sb: Supabase, at: Date): Promise<number> {
     const today = businessDate(at, 0);
     const { data: existing } = await sb
       .from('social_posts')
-      .select('plan_date')
+      .select('plan_date, slot')
       .eq('org_id', s.org_id)
       .eq('source', 'autopilot')
       .in('plan_date', [today, addDays(today, 1)]);
-    const have = new Set((existing ?? []).map((r) => r.plan_date as string));
+    const have = new Set(
+      (existing ?? []).filter((r) => Number(r.slot) === 0).map((r) => r.plan_date as string),
+    );
+    planned += await planVideos(sb, s, at, [today, addDays(today, 1)], existing ?? []);
     const missing = [today, addDays(today, 1)].filter(
       (date) =>
         !have.has(date) &&
@@ -233,6 +240,44 @@ async function planAhead(sb: Supabase, at: Date): Promise<number> {
   return planned;
 }
 
+/**
+ * The day's short videos (ADR 0061): slots 1–videos_per_day at the good times of the day, on posting days,
+ * none in the past. What each one shows is decided when it is made.
+ */
+async function planVideos(
+  sb: Supabase,
+  s: Settings,
+  at: Date,
+  dates: string[],
+  existing: { plan_date: unknown; slot: unknown }[],
+): Promise<number> {
+  const n = Math.max(0, Math.min(5, Number(s.videos_per_day ?? 0)));
+  if (n === 0) return 0;
+  const have = new Set(existing.map((r) => `${String(r.plan_date)}|${Number(r.slot)}`));
+  let planned = 0;
+  for (const date of dates) {
+    if (!isPostingDay(date, s.post_days)) continue;
+    for (const [i, time] of videoTimes(s.post_time, n).entries()) {
+      const slot = i + 1;
+      if (have.has(`${date}|${slot}`)) continue;
+      const when = slotAt(date, time);
+      if (when.getTime() < at.getTime() - 30 * 60_000) continue;
+      const { error } = await sb.from('social_posts').insert({
+        org_id: s.org_id,
+        source: 'autopilot',
+        angle: 'spotlight',
+        format: 'video',
+        plan_date: date,
+        slot,
+        scheduled_at: when.toISOString(),
+      });
+      if (!error) planned++;
+      else if (error.code !== '23505') throw error;
+    }
+  }
+  return planned;
+}
+
 interface GrowthInputs {
   top_item_name: string | null;
   weak_daypart: string | null;
@@ -250,6 +295,13 @@ async function growthInputs(sb: Supabase, orgId: string, at: Date): Promise<Grow
 // ---------------------------------------------------------------------------------------------
 // 2. Make
 // ---------------------------------------------------------------------------------------------
+
+/** A video post (ADR 0061): every video, the autopilot's and the owner's, is made by jobs/video.ts. */
+async function makeVideo(sb: Supabase, id: string, at: Date): Promise<boolean> {
+  const { data } = await sb.from('social_posts').select(VIDEO_POST_COLUMNS).eq('id', id).single();
+  if (!data) return false;
+  return makeVideoPost(sb, data as unknown as VideoPostRow, at);
+}
 
 async function fail(sb: Supabase, post: Post, message: string, final = false): Promise<false> {
   const attempts = post.attempts + 1;
@@ -322,11 +374,14 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
     // The dishes this post may show: active, with a photo, not on the owner's "never" list.
     const { data: items } = await sb
       .from('menu_items')
-      .select('id, name, name_bn, photo_path, description, base_price_poisha')
+      .select('id, name, name_bn, photo_path, hq_photo_path, description, base_price_poisha')
       .eq('org_id', post.org_id)
       .eq('is_active', true)
       .not('photo_path', 'is', null);
-    const all = (items ?? []) as Dish[];
+    // A dish's high-quality photo, when someone added one, is used instead of the small menu photo (ADR 0061).
+    const all = ((items ?? []) as (Dish & { hq_photo_path: string | null })[]).map(
+      ({ hq_photo_path, ...d }) => ({ ...d, photo_path: hq_photo_path ?? d.photo_path }),
+    );
     const allowed = all.filter((i) => post.source === 'owner' || !s.never_item_ids.includes(i.id));
     if (allowed.length === 0) return fail(sb, post, 'no_dish_photos', true);
 
@@ -351,8 +406,7 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
       .map((h) => h.template)
       .filter((d): d is string => Boolean(d));
 
-    const inputs =
-      post.angle === 'quiet_time' ? await growthInputs(sb, post.org_id, at) : null;
+    const inputs = post.angle === 'quiet_time' ? await growthInputs(sb, post.org_id, at) : null;
     let angle = post.angle;
     // Units sold in the last 30 days (items.qty_sold, last_30d): the autopilot posts what sells (ADR 0058).
     const { data: qty } = await sb.rpc('metric_item_qty', {
@@ -424,7 +478,8 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
 
       // A best seller tells the best-seller story; any other dish is a spotlight (ADR 0058).
       if (angle === 'star' && !top.has(chosen.id)) angle = 'spotlight';
-      if (angle === 'spotlight' && top.has(chosen.id) && post.source === 'autopilot') angle = 'star';
+      if (angle === 'spotlight' && top.has(chosen.id) && post.source === 'autopilot')
+        angle = 'star';
 
       // The look: the one the owner previewed, else a fresh one whose layout the last posts did not use.
       const ctx = {
@@ -459,7 +514,10 @@ async function makePost(sb: Supabase, post: Post, at: Date): Promise<boolean> {
           .sort((a, b) => b.sold - a.sold || a.name.localeCompare(b.name));
         for (const o of others) {
           if (extras.length >= want.count) break;
-          const r = await ready(allowed.find((i) => i.id === o.id)!, want.need === 'cut');
+          const r = await ready(
+            allowed.find((i) => i.id === o.id)!,
+            want.need === 'cut',
+          );
           if (r) extras.push(r);
         }
       }
@@ -899,12 +957,14 @@ async function prepareArt(sb: Supabase, at: Date, more: () => boolean): Promise<
     if (!more()) break;
     const { data: items } = await sb
       .from('menu_items')
-      .select('id, photo_path')
+      .select('id, photo_path, hq_photo_path')
       .eq('org_id', orgId)
       .eq('is_active', true)
       .not('photo_path', 'is', null)
       .limit(300);
-    const dishes = (items ?? []) as { id: string; photo_path: string }[];
+    const dishes = (
+      (items ?? []) as { id: string; photo_path: string; hq_photo_path: string | null }[]
+    ).map((d) => ({ id: d.id, photo_path: d.hq_photo_path ?? d.photo_path }));
     const known = await artRows(
       sb,
       orgId,

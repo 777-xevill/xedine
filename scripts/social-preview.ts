@@ -4,6 +4,12 @@
  *   pnpm social:preview cutout <photo> [<photo>…] --out <dir>
  *       lift each dish off its background; writes <name>.webp and prints whether a poster may use it.
  *
+ *   pnpm social:preview videos <cut-out or photo…> [--dish "A|B|C"] [--lang en|bn] [--tone …] [--count 7]
+ *       [--kind showcase|versus|combo|carousel|ring|search|offer] [--seed s] [--html] [--out <dir>]
+ *       [--sound] [--voice] [--gender male] [--occasion eid_fitr|jummah|…|custom --occasion-text "…"]
+ *       short sample videos (ADR 0061) into <out>/videos; a .webp file is taken as a cut-out. --sound adds
+ *       music and motion sounds, --voice reads the hook aloud (needs Python with edge-tts).
+ *
  *   pnpm social:preview posters <main photo> [<more photos>…] --dish "Kacchi Biryani|Borhani" [--price 35000]
  *       [--lang en|bn] [--tone friendly|premium|fun] [--count 12] [--page 0] [--layout corner]
  *       [--every] [--reel] [--html] [--out <dir>]
@@ -33,13 +39,28 @@ import {
   seedOf,
   type SocialTone,
 } from '@/modules/social/look';
-import { dataUrl, renderPoster, renderReel, withBrowser } from '@/modules/social/render';
+import {
+  dataUrl,
+  renderPoster,
+  renderReel,
+  renderVideo,
+  withBrowser,
+} from '@/modules/social/render';
 import {
   type DishArt,
   type PostContent,
   posterHtml,
   type PosterWords,
 } from '@/modules/social/templates';
+import {
+  type VideoContent,
+  type VideoDish,
+  videoHtml,
+  type VideoWords,
+} from '@/modules/social/video';
+import { resolveVideoLook, VIDEO_KINDS, type VideoKind } from '@/modules/social/video-look';
+import { type Occasion, OCCASION_THEME } from '@/modules/social/video-words';
+import { pickTrack, scoreVideo, speak } from '@/modules/social/sound';
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -221,7 +242,157 @@ async function posters(files: string[], out: string) {
         console.log(`reel      ${reel}  ${Math.round(performance.now() - t1)} ms`);
       }
     }
-    await sheet(browser, shots, join(out, `sheet-${lang}-${only ?? (process.argv.includes('--every') ? 'every' : pageNo)}.jpg`));
+    await sheet(
+      browser,
+      shots,
+      join(
+        out,
+        `sheet-${lang}-${only ?? (process.argv.includes('--every') ? 'every' : pageNo)}.jpg`,
+      ),
+    );
+  });
+}
+
+const VIDEO_SAMPLE: Record<'en' | 'bn', VideoWords> = {
+  en: {
+    hook: 'Still thinking about lunch?',
+    punch: "It's two!",
+    question: 'What are you picking?',
+    tagline: 'Fresh from our kitchen today',
+    cta: 'Order now',
+  },
+  bn: {
+    hook: 'আজ দুপুরে কী খাবেন?',
+    punch: 'দুটোই নিন!',
+    question: 'আপনি কোনটা নেবেন?',
+    tagline: 'আজ আমাদের রান্নাঘর থেকে টাটকা',
+    cta: 'এখনই অর্ডার করুন',
+  },
+};
+
+/**
+ * Sample videos (ADR 0061) from cut-outs or photos: --count videos, the kinds taking turns (or --kind),
+ * each with as many dishes as its kind needs, taken in turn from the files given.
+ */
+async function videos(files: string[], out: string) {
+  if (!process.env.CHROME_PATH) throw new Error('Set CHROME_PATH to a local Chrome/Chromium');
+  await mkdir(out, { recursive: true });
+  const lang = arg('lang') === 'bn' ? 'bn' : 'en';
+  const tone = (arg('tone') ?? 'friendly') as SocialTone;
+  const t = createTranslator({
+    locale: lang,
+    messages: lang === 'bn' ? bn : en,
+    namespace: 'social',
+  });
+  const names = (arg('dish') ?? '').split('|').filter(Boolean);
+  const price = Number(arg('price') ?? 35000);
+  const dishes: VideoDish[] = [];
+  for (const [i, file] of files.entries()) {
+    const bytes = new Uint8Array(await readFile(file));
+    const url = dataUrl(bytes, mimeOf(file));
+    const cut = extname(file).toLowerCase() === '.webp';
+    dishes.push({
+      name: names[i] ?? basename(file, extname(file)).replace(/-\d+$/, '').replace(/-/g, ' '),
+      cutUrl: cut ? url : null,
+      photoUrl: url,
+      price: formatBDT(price + i * 5000, lang, { poisha: 'never' }),
+      was: formatBDT(price + i * 5000 + 10000, lang, { poisha: 'never' }),
+      note: null,
+    });
+  }
+  const count = Number(arg('count') ?? VIDEO_KINDS.length);
+  const only = arg('kind') as VideoKind | undefined;
+  const need: Record<VideoKind, number> = {
+    showcase: 1,
+    offer: 1,
+    versus: 2,
+    combo: 2,
+    carousel: 3,
+    ring: 3,
+    search: 3,
+  };
+  const salt = arg('seed') ?? 'sample';
+  const occasion = (arg('occasion') ?? null) as Occasion | null;
+  await withBrowser(async (browser) => {
+    for (let i = 0; i < count; i++) {
+      const kind = only ?? VIDEO_KINDS[i % VIDEO_KINDS.length]!;
+      const n = need[kind];
+      const picked = Array.from({ length: n }, (_, j) => dishes[(i + j) % dishes.length]!);
+      const look = resolveVideoLook(
+        seedOf(`${salt}:${i}`),
+        { tone, dishes: n, offer: kind === 'offer', hot: true },
+        kind,
+      );
+      const content: VideoContent = {
+        look,
+        words:
+          kind === 'showcase'
+            ? { ...VIDEO_SAMPLE[lang], punch: lang === 'bn' ? 'আসল স্বাদ' : 'Taste the legend' }
+            : VIDEO_SAMPLE[lang],
+        labels: { or: t('video.or'), onlyAt: t('video.onlyAt'), now: t('video.now') },
+        restaurant: lang === 'bn' ? 'কাচ্চি ঘর' : 'Kacchi Ghor',
+        area: lang === 'bn' ? 'ধানমন্ডি, ঢাকা' : 'Dhanmondi, Dhaka',
+        phone: '01712-345678',
+        colorMain: arg('main') ?? '#0F5C4A',
+        colorAccent: arg('accent') ?? '#F2B33D',
+        logoUrl: null,
+        dishes: picked,
+        occasion: occasion
+          ? {
+              greeting:
+                occasion === 'custom'
+                  ? (arg('occasion-text') ?? '')
+                  : t(`video.occasions.${occasion}`),
+              theme: OCCASION_THEME[occasion],
+            }
+          : null,
+      };
+      // --voice reads the hook (and greeting) aloud; the hook stays as long as the voice needs.
+      const spoken = content.occasion
+        ? `${content.occasion.greeting}! ${content.words.hook}`
+        : content.words.hook;
+      const voice = process.argv.includes('--voice')
+        ? await speak(
+            spoken,
+            lang,
+            arg('gender') === 'male' ? 'male' : 'female',
+            join(out, `voice-${i}.mp3`),
+          )
+        : null;
+      if (voice) {
+        content.seconds = 12;
+        content.hookSeconds = Math.max(2.2, voice.seconds + 0.7);
+      }
+      const name = `${String(i).padStart(2, '0')}-${kind}-${lang}${occasion ? `-${occasion}` : ''}`;
+      if (process.argv.includes('--html'))
+        await writeFile(join(out, `${name}.html`), videoHtml(content));
+      const t0 = performance.now();
+      const made = await renderVideo(browser, content);
+      // --sound lays music (by the tone's moods), the motion sounds and the voice under the picture.
+      const track = process.argv.includes('--sound')
+        ? await pickTrack(
+            tone === 'premium'
+              ? ['cinematic', 'chill']
+              : tone === 'fun'
+                ? ['upbeat', 'playful']
+                : ['warm', 'upbeat'],
+            `${salt}:${i}`,
+          )
+        : null;
+      const mp4 = process.argv.includes('--sound')
+        ? await scoreVideo(made.mp4, {
+            seconds: made.plan.seconds,
+            track,
+            voice,
+            voiceAt: 0.3,
+            hits: made.plan.hits,
+          })
+        : made.mp4;
+      await writeFile(join(out, `${name}.mp4`), mp4);
+      if (track) console.log(`  music  ${track.title} — ${track.artist} (CC0)`);
+      const label = `${look.scheme} · ${look.type} · ${look.stage}/${look.backdrop} · hook ${look.hook}${look.hookOnPhoto ? ' on photo' : ''} · ${look.enter} · cut ${look.cut} · ${look.ambient}${look.steam ? ' · steam' : ''} · ${look.outro}`;
+      console.log(`${name.padEnd(22)} ${label}  ${Math.round(performance.now() - t0)} ms`);
+    }
   });
 }
 
@@ -231,6 +402,7 @@ async function main() {
   const out = arg('out') ?? join('.cache', 'social-preview');
   if (command === 'cutout') return cutouts(files, out);
   if (command === 'posters') return posters(files, out);
+  if (command === 'videos') return videos(files, join(out, 'videos'));
   console.log(
     'usage: pnpm social:preview cutout|posters <photo…> [--out <dir>] (see the top of this file)',
   );

@@ -1,0 +1,255 @@
+{
+  "note": "Every track is CC0 1.0 (public domain dedication) on the Free Music Archive; no credit is required. Each file is a 14-second excerpt starting at from_second of the original (ADR 0061).",
+  "tracks": [
+    {
+      "id": "loyalty-frea-roller-fever",
+      "file": "loyalty-frea-roller-fever.m4a",
+      "title": "Roller Fever",
+      "artist": "Loyalty Freak Music",
+      "source": "https://freemusicarchive.org/music/Loyalty_Freak_Music/ROLLER_DISCO_DANCE_DANCE/Loyalty_Freak_Music_-_ROLLER_DISCO_DANCE_DANCE_-_01_Roller_Fever/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat", "playful"],
+      "from_second": 99
+    },
+    {
+      "id": "loyalty-frea-can-t-stop-my-feet",
+      "file": "loyalty-frea-can-t-stop-my-feet.m4a",
+      "title": "Can't Stop My Feet !",
+      "artist": "Loyalty Freak Music",
+      "source": "https://freemusicarchive.org/music/Loyalty_Freak_Music/ROLLER_DISCO_DANCE_DANCE/Loyalty_Freak_Music_-_ROLLER_DISCO_DANCE_DANCE_-_04_Cant_Stop_My_Feet_/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat"],
+      "from_second": 64
+    },
+    {
+      "id": "loyalty-frea-grab-a-partner",
+      "file": "loyalty-frea-grab-a-partner.m4a",
+      "title": "Grab A Partner",
+      "artist": "Loyalty Freak Music",
+      "source": "https://freemusicarchive.org/music/Loyalty_Freak_Music/ROLLER_DISCO_DANCE_DANCE/Loyalty_Freak_Music_-_ROLLER_DISCO_DANCE_DANCE_-_05_Grab_A_Partner/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat", "festive"],
+      "from_second": 103
+    },
+    {
+      "id": "loyalty-frea-sweat-time",
+      "file": "loyalty-frea-sweat-time.m4a",
+      "title": "Sweat Time !",
+      "artist": "Loyalty Freak Music",
+      "source": "https://freemusicarchive.org/music/Loyalty_Freak_Music/ROLLER_DISCO_DANCE_DANCE/Loyalty_Freak_Music_-_ROLLER_DISCO_DANCE_DANCE_-_07_Sweat_Time_/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat"],
+      "from_second": 61
+    },
+    {
+      "id": "loyalty-frea-chillin-with-a-drink-at-the-",
+      "file": "loyalty-frea-chillin-with-a-drink-at-the-.m4a",
+      "title": "Chillin with a drink at the club",
+      "artist": "Loyalty Freak Music",
+      "source": "https://freemusicarchive.org/music/Loyalty_Freak_Music/TO_CHILL_AND_STAY_AWAKE/Loyalty_Freak_Music_-_TO_CHILL_AND_STAY_AWAKE_-_03_Chillin_with_a_drink_at_the_club/",
+      "licence": "CC0-1.0",
+      "moods": ["chill"],
+      "from_second": 55
+    },
+    {
+      "id": "komiku-pop-city",
+      "file": "komiku-pop-city.m4a",
+      "title": "Pop City",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/pop-city/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat", "playful"],
+      "from_second": 53
+    },
+    {
+      "id": "komiku-disco-challenge",
+      "file": "komiku-disco-challenge.m4a",
+      "title": "Disco Challenge",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/disco-challenge/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat", "festive"],
+      "from_second": 41
+    },
+    {
+      "id": "komiku-dance-with-two-or-more",
+      "file": "komiku-dance-with-two-or-more.m4a",
+      "title": "Dance with two or more",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/dance-with-two-or-more/",
+      "licence": "CC0-1.0",
+      "moods": ["playful", "festive"],
+      "from_second": 62
+    },
+    {
+      "id": "komiku-everything-is-groovy-how-to-",
+      "file": "komiku-everything-is-groovy-how-to-.m4a",
+      "title": "Everything is groovy (How to move your body)",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/everything-is-groovy-how-to-move-your-body/",
+      "licence": "CC0-1.0",
+      "moods": ["upbeat", "playful"],
+      "from_second": 86
+    },
+    {
+      "id": "komiku-the-big-dancefloor",
+      "file": "komiku-the-big-dancefloor.m4a",
+      "title": "The big dancefloor",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/the-big-dancefloor/",
+      "licence": "CC0-1.0",
+      "moods": ["festive", "upbeat"],
+      "from_second": 14
+    },
+    {
+      "id": "komiku-champ-de-tournesol",
+      "file": "komiku-champ-de-tournesol.m4a",
+      "title": "Champ de tournesol",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Its_time_for_adventure_/Komiku_-_Its_time_for_adventure_-_03_Champ_de_tournesol/",
+      "licence": "CC0-1.0",
+      "moods": ["warm", "cinematic"],
+      "from_second": 52
+    },
+    {
+      "id": "komiku-opening",
+      "file": "komiku-opening.m4a",
+      "title": "Opening",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Its_time_for_adventure__vol_4/Komiku_-_Its_time_for_adventure_vol_4_-_01_Opening/",
+      "licence": "CC0-1.0",
+      "moods": ["cinematic"],
+      "from_second": 99
+    },
+    {
+      "id": "komiku-the-journey-begins",
+      "file": "komiku-the-journey-begins.m4a",
+      "title": "The journey begins",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Helice_Awesome_Dance_Adventure_/the-journey-begins/",
+      "licence": "CC0-1.0",
+      "moods": ["cinematic"],
+      "from_second": 14
+    },
+    {
+      "id": "komiku-victory",
+      "file": "komiku-victory.m4a",
+      "title": "Victory",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Its_time_for_adventure__vol_2/Komiku_-_Its_time_for_adventure_vol_2_-_15_Victory/",
+      "licence": "CC0-1.0",
+      "moods": ["cinematic", "festive"],
+      "from_second": 198
+    },
+    {
+      "id": "komiku-every-myths-are-true-stories",
+      "file": "komiku-every-myths-are-true-stories.m4a",
+      "title": "Every myths are true stories",
+      "artist": "Komiku",
+      "source": "https://freemusicarchive.org/music/Komiku/Its_time_for_adventure__vol_4/Komiku_-_Its_time_for_adventure_vol_4_-_02_Every_myths_are_true_stories/",
+      "licence": "CC0-1.0",
+      "moods": ["cinematic"],
+      "from_second": 123
+    },
+    {
+      "id": "holiznacc0-bubbles-lofi-bright-relaxed",
+      "file": "holiznacc0-bubbles-lofi-bright-relaxed.m4a",
+      "title": "Bubbles ( Lofi , Bright , Relaxed )",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/bubbles-lofi-bright-relaxed/",
+      "licence": "CC0-1.0",
+      "moods": ["chill", "warm"],
+      "from_second": 15
+    },
+    {
+      "id": "holiznacc0-tranquil-mindscape-lofi-happ",
+      "file": "holiznacc0-tranquil-mindscape-lofi-happ.m4a",
+      "title": "Tranquil Mindscape ( Lofi , Happy , Reflection )",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/tranquil-mindscape-lofi-happy-reflection/",
+      "licence": "CC0-1.0",
+      "moods": ["chill"],
+      "from_second": 115
+    },
+    {
+      "id": "holiznacc0-doodles-lofi-happy-mp3",
+      "file": "holiznacc0-doodles-lofi-happy-mp3.m4a",
+      "title": "Doodles ( LoFi , Happy )",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/doodles-lofi-happy-mp3/",
+      "licence": "CC0-1.0",
+      "moods": ["chill", "playful"],
+      "from_second": 109
+    },
+    {
+      "id": "holiznacc0-projector-screen-lofi-happy-",
+      "file": "holiznacc0-projector-screen-lofi-happy-.m4a",
+      "title": "Projector Screen ( LoFi , Happy )",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/projector-screen-lofi-happy-mp3/",
+      "licence": "CC0-1.0",
+      "moods": ["chill", "warm"],
+      "from_second": 46
+    },
+    {
+      "id": "holiznacc0-ocean-breeze-lofi-ukulele-pe",
+      "file": "holiznacc0-ocean-breeze-lofi-ukulele-pe.m4a",
+      "title": "Ocean Breeze ( LoFi , Ukulele , Peaceful )",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/ocean-breeze-lofi-ukulele-peaceful-mp3/",
+      "licence": "CC0-1.0",
+      "moods": ["chill", "warm"],
+      "from_second": 93
+    },
+    {
+      "id": "holiznacc0-tokyo-sunset-lofi-peaceful-s",
+      "file": "holiznacc0-tokyo-sunset-lofi-peaceful-s.m4a",
+      "title": "Tokyo Sunset ( Lofi , Peaceful , Soft )",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/tokyo-sunset-lofi-peaceful-soft/",
+      "licence": "CC0-1.0",
+      "moods": ["chill", "cinematic"],
+      "from_second": 23
+    },
+    {
+      "id": "holiznacc0-spring-in-sight",
+      "file": "holiznacc0-spring-in-sight.m4a",
+      "title": "Spring In Sight",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/spring-in-sight/",
+      "licence": "CC0-1.0",
+      "moods": ["warm"],
+      "from_second": 82
+    },
+    {
+      "id": "holiznacc0-hope-on-repeat",
+      "file": "holiznacc0-hope-on-repeat.m4a",
+      "title": "Hope On Repeat",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/hope-on-repeat/",
+      "licence": "CC0-1.0",
+      "moods": ["warm"],
+      "from_second": 143
+    },
+    {
+      "id": "holiznacc0-one-good-day",
+      "file": "holiznacc0-one-good-day.m4a",
+      "title": "One Good Day",
+      "artist": "HoliznaCC0",
+      "source": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/one-good-day-1/",
+      "licence": "CC0-1.0",
+      "moods": ["warm", "chill"],
+      "from_second": 94
+    },
+    {
+      "id": "monplaisir-a-good-start",
+      "file": "monplaisir-a-good-start.m4a",
+      "title": "A Good Start",
+      "artist": "Monplaisir",
+      "source": "https://freemusicarchive.org/music/Monplaisir/American_Dreams_Soundtrack/Monplaisir_-_American_Dreams_Original_Soundtrack_-_12_A_Good_Start/",
+      "licence": "CC0-1.0",
+      "moods": ["warm", "playful"],
+      "from_second": 35
+    }
+  ]
+}

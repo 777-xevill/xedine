@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-browser';
 import { setSocialLogoAction } from '@/modules/social/actions';
+import { logoColors } from '@/modules/social/logo-colors';
 
 const BUCKET = 'menu-photos';
 const MAX_EDGE = 600;
 
 /** Shrink to a WebP that keeps transparency (PNG where the browser cannot write WebP). */
-async function shrink(file: File): Promise<{ blob: Blob; ext: 'webp' | 'png' }> {
+async function shrink(
+  file: File,
+): Promise<{ blob: Blob; ext: 'webp' | 'png'; colors: { main: string; accent: string } | null }> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
@@ -23,13 +26,15 @@ async function shrink(file: File): Promise<{ blob: Blob; ext: 'webp' | 'png' }> 
   if (!ctx) throw new Error('no canvas');
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
+  // The logo's own two main colours become the posters' and videos' colours (ADR 0061).
+  const colors = logoColors(ctx.getImageData(0, 0, canvas.width, canvas.height).data);
   const toBlob = (type: string) =>
     new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.9));
   const webp = await toBlob('image/webp');
-  if (webp && webp.type === 'image/webp') return { blob: webp, ext: 'webp' };
+  if (webp && webp.type === 'image/webp') return { blob: webp, ext: 'webp', colors };
   const png = await toBlob('image/png');
   if (!png) throw new Error('no image');
-  return { blob: png, ext: 'png' };
+  return { blob: png, ext: 'png', colors };
 }
 
 /** Owner: the logo printed on every autopilot poster and reel (ADR 0040). */
@@ -55,14 +60,14 @@ export function SocialLogoField({
     setError(false);
     let uploaded: string | null = null;
     try {
-      const { blob, ext } = await shrink(file);
+      const { blob, ext, colors } = await shrink(file);
       const next = `${orgId}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await sb.storage
         .from(BUCKET)
         .upload(next, blob, { contentType: blob.type, cacheControl: '31536000' });
       if (upErr) throw upErr;
       uploaded = next;
-      const res = await setSocialLogoAction({ orgId, orgSlug, path: next });
+      const res = await setSocialLogoAction({ orgId, orgSlug, path: next, colors });
       if (!res.ok) throw new Error(res.error);
       if (path) void sb.storage.from(BUCKET).remove([path]);
       setPath(next);

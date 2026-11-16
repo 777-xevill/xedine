@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { gateway, type PromptVersion } from '@/lib/llm-gateway';
+import { type AiVideoWords, VideoWordsSchema } from './video-words';
 import { inventedNumber, SocialWordsSchema, type SocialWords } from './words';
 
 export { asciiDigits, inventedNumber, type SocialWords } from './words';
@@ -106,6 +107,69 @@ export async function writeSocialPost(args: {
     maxTokens: 1800,
   });
   const allowed = `${args.fact} ${args.ownNote ?? ''} ${args.restaurant} ${args.dish} ${args.area ?? ''}`;
+  if (inventedNumber(result.output, allowed)) throw new Error('invented_number');
+  return { ...result.output, model: result.model, promptVersion: result.prompt.version };
+}
+
+/**
+ * The words of a short video (ADR 0061). The hook is also spoken by the AI voice, so it is short and
+ * sayable. A special day's greeting is fixed text added by the app; the AI only writes around it.
+ */
+export const SOCIAL_VIDEO_PROMPT: PromptVersion = {
+  key: 'social_video',
+  version: 1,
+  body: [
+    'You are the social media manager of a restaurant. Write the words for ONE 10-second food video',
+    '(Facebook/Instagram Reels, TikTok). It is published as is, so it must be safe and true.',
+    'Rules:',
+    '- Use only the facts given (and the owner note, if any). Never invent prices, discounts, offers, ratings,',
+    '  awards, ingredients, delivery promises or opening hours. Never write a number unless it is in the facts',
+    '  or the owner note.',
+    '- *_en fields are English; *_bn fields are natural spoken Bangla in Bangla script.',
+    '- hook_*: max 6 words. It is read aloud in the first 2 seconds, so it must be easy to say and stop the',
+    '  scroll: a craving question, a bold claim the facts support, or an invitation. No hashtags, no emojis.',
+    '- punch_*: max 3 words, the answer to a "what is better than one?" style hook (e.g. "It\'s two!").',
+    '- question_*: max 5 words, asks the viewer to choose or comment (e.g. "Grilled or fried?",',
+    '  "Which one is yours?").',
+    '- tagline_*: max 7 words, one warm line about the dish or dishes.',
+    '- If a special day is given, the words fit that day (warm wishes, sharing food with family), without',
+    '  repeating the greeting itself.',
+    '- caption_bn: Bangla script, 2–3 short sentences, then up to 3 hashtags. caption_en: the same in',
+    '  English. Max 2 emojis per caption. End with a call to come or order.',
+    '- Match the tone: friendly (warm, homely), premium (calm, elegant), fun (playful, Gen Z).',
+  ].join('\n'),
+};
+
+export async function writeSocialVideo(args: {
+  orgId: string;
+  restaurant: string;
+  dishes: string[];
+  kind: string;
+  fact: string;
+  occasion: string | null;
+  ownNote: string | null;
+  tone: 'friendly' | 'premium' | 'fun';
+  area: string | null;
+}): Promise<AiVideoWords & { model: string; promptVersion: number }> {
+  const lines = [
+    `Restaurant: ${args.restaurant}${args.area ? ` (${args.area})` : ''}`,
+    `Dishes in the video: ${args.dishes.join(', ')}`,
+    `Video kind: ${args.kind}`,
+    `Facts: ${args.fact}`,
+    args.occasion ? `Special day: ${args.occasion}` : null,
+    args.ownNote ? `Owner note (must be the main message): ${args.ownNote}` : null,
+    `Tone: ${args.tone}`,
+  ].filter(Boolean);
+  const result = await gateway().run({
+    orgId: args.orgId,
+    feature: 'social_video',
+    prompt: SOCIAL_VIDEO_PROMPT,
+    tier: 'fast',
+    content: [{ type: 'text', text: lines.join('\n') }],
+    schema: VideoWordsSchema,
+    maxTokens: 1200,
+  });
+  const allowed = `${args.fact} ${args.ownNote ?? ''} ${args.restaurant} ${args.dishes.join(' ')} ${args.area ?? ''} ${args.occasion ?? ''}`;
   if (inventedNumber(result.output, allowed)) throw new Error('invented_number');
   return { ...result.output, model: result.model, promptVersion: result.prompt.version };
 }

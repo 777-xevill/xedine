@@ -303,6 +303,8 @@ export default async function SocialSettingsPage({
       <Card className="mt-6">
         <CardTitle>{t('autopilotTitle')}</CardTitle>
         <ActionForm
+          // A new logo fills the colours (ADR 0061): the form starts again from them, so Save keeps them.
+          key={`${String(s?.color_main)}${String(s?.color_accent)}`}
           action={saveSocialSettingsAction}
           successKey="common.saved"
           className="grid gap-4 sm:grid-cols-2"

@@ -116,3 +116,109 @@ export function autopilotOrder(
     })),
   ];
 }
+
+// ---------------------------------------------------------------------------------------------
+// Short videos (ADR 0061)
+// ---------------------------------------------------------------------------------------------
+
+/** Good times for the day's videos, in the order they are used (local Asia/Dhaka). */
+export const VIDEO_TIMES = ['12:30', '19:30', '16:00', '21:00', '10:30', '18:00', '14:00'] as const;
+
+const minutesOf = (hhmm: string) => {
+  const m = /^(\d{2}):(\d{2})/.exec(hhmm);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+};
+
+/**
+ * When the day's n videos go out: the good times in order, leaving out any within an hour of the daily
+ * post so two posts never land together.
+ */
+export function videoTimes(postTime: string, n: number): string[] {
+  const post = minutesOf(postTime);
+  return VIDEO_TIMES.filter((t) => Math.abs(minutesOf(t) - post) >= 60).slice(0, Math.max(0, n));
+}
+
+/** The autopilot's video kinds, taking turns across days and slots (each needs 1, 2 or 3 dishes). */
+export const AUTOPILOT_VIDEO_KINDS = [
+  'showcase',
+  'versus',
+  'carousel',
+  'combo',
+  'ring',
+  'search',
+] as const;
+export type AutopilotVideoKind = (typeof AUTOPILOT_VIDEO_KINDS)[number];
+export const KIND_DISHES: Record<AutopilotVideoKind | 'offer', number> = {
+  showcase: 1,
+  offer: 1,
+  versus: 2,
+  combo: 2,
+  carousel: 3,
+  ring: 3,
+  search: 3,
+};
+
+export function videoKindFor(date: BusinessDate, slot: number): AutopilotVideoKind {
+  const n = AUTOPILOT_VIDEO_KINDS.length;
+  return AUTOPILOT_VIDEO_KINDS[(((dayNumber(date) * 3 + slot) % n) + n) % n]!;
+}
+
+/** The kind that fits when fewer dishes are usable than the planned kind needs. */
+export function kindForDishes(kind: AutopilotVideoKind, dishes: number): AutopilotVideoKind {
+  if (dishes >= KIND_DISHES[kind]) return kind;
+  if (kind === 'search' && dishes >= 2) return kind;
+  if (dishes >= 2) return kind === 'carousel' || kind === 'ring' ? 'versus' : 'combo';
+  return 'showcase';
+}
+
+/** Whether this video carries the AI voice: all, none, or every other one ("half"). */
+export function voiceFor(
+  share: 'none' | 'half' | 'all',
+  date: BusinessDate,
+  slot: number,
+): boolean {
+  if (share === 'all') return true;
+  if (share === 'none') return false;
+  return (dayNumber(date) + slot) % 2 === 0;
+}
+
+/**
+ * The special day a video greets: a festival on the restaurant's calendar first (the calendar keys come
+ * from the BD calendar, mapped by the caller), else Jummah on a Friday. Null with greetings off.
+ */
+export function occasionForDay<O extends string>(
+  date: BusinessDate,
+  greetings: boolean,
+  festival: O | null,
+): O | 'jummah' | null {
+  if (!greetings) return null;
+  if (festival) return festival;
+  return weekday(date) === 5 ? 'jummah' : null;
+}
+
+/**
+ * Partners for a dish, the way customers order them: dishes most often in the same order (growth.pairs),
+ * then the best sellers, never the dish itself, only among `allowed`.
+ */
+export function partnersFor(
+  mainId: string,
+  pairs: readonly { item_a: string; item_b: string; orders: number }[],
+  allowed: readonly DishCandidate[],
+  n: number,
+): string[] {
+  const ok = new Set(allowed.map((d) => d.id));
+  const together = pairs
+    .filter((p) => p.item_a === mainId || p.item_b === mainId)
+    .sort((a, b) => b.orders - a.orders)
+    .map((p) => (p.item_a === mainId ? p.item_b : p.item_a))
+    .filter((id) => ok.has(id));
+  const sellers = [...allowed]
+    .sort((a, b) => b.sold - a.sold || a.name.localeCompare(b.name))
+    .map((d) => d.id);
+  const out: string[] = [];
+  for (const id of [...together, ...sellers]) {
+    if (out.length >= n) break;
+    if (id !== mainId && !out.includes(id)) out.push(id);
+  }
+  return out;
+}

@@ -13,6 +13,7 @@ import {
   reelHtml,
   type PostContent,
 } from './templates';
+import { type VideoContent, VIDEO_FPS, VIDEO_SIZE, type VideoPlan, videoPlan } from './video';
 
 /**
  * Turns the poster and reel HTML into a JPEG and an MP4 (ADR 0040). A real Chromium draws them, so
@@ -105,7 +106,10 @@ export async function renderPoster(browser: Browser, content: PostContent): Prom
 
 async function setFrame(page: Page, ms: number) {
   await page.evaluate((t: number) => {
-    for (const a of document.getAnimations()) {
+    // A video keeps its full list (video.ts VFIT_SCRIPT): finished animations leave getAnimations().
+    const all =
+      (window as unknown as { __anims?: Animation[] }).__anims ?? document.getAnimations();
+    for (const a of all) {
       a.pause();
       a.currentTime = t;
     }
@@ -121,6 +125,29 @@ function ffmpegPath(): string {
 
 export async function renderReel(browser: Browser, content: PostContent): Promise<Uint8Array> {
   const page = await open(browser, reelHtml(content), REEL_SIZE);
+  return encode(page, REEL_SECONDS, FPS);
+}
+
+/**
+ * A short video (ADR 0061) as a silent H.264 MP4, a JPEG cover (a frame from its first dish scene) and its
+ * sound plan. Its words are fitted once with every animation at its end (so nothing flying in counts as
+ * overflow), then each frame is stepped and captured.
+ */
+export async function renderVideo(
+  browser: Browser,
+  content: VideoContent,
+): Promise<{ mp4: Uint8Array; cover: Uint8Array; plan: VideoPlan }> {
+  const plan = videoPlan(content);
+  const page = await open(browser, plan.html, VIDEO_SIZE);
+  await page.evaluate(() => (window as unknown as { __vfit?: () => void }).__vfit?.());
+  const coverAt = Math.min(plan.seconds - 3, (content.hookSeconds ?? 2.2) + 1.6);
+  await setFrame(page, coverAt * 1000);
+  const cover = await page.screenshot({ type: 'jpeg', quality: 88 });
+  const mp4 = await encode(page, plan.seconds, VIDEO_FPS);
+  return { mp4, cover, plan };
+}
+
+async function encode(page: Page, seconds: number, fps: number): Promise<Uint8Array> {
   const out = join(tmpdir(), `reel-${process.pid}-${Math.random().toString(36).slice(2)}.mp4`);
   try {
     const ff = spawn(
@@ -132,7 +159,7 @@ export async function renderReel(browser: Browser, content: PostContent): Promis
         '-f',
         'image2pipe',
         '-framerate',
-        String(FPS),
+        String(fps),
         '-c:v',
         'mjpeg',
         '-i',
@@ -153,7 +180,7 @@ export async function renderReel(browser: Browser, content: PostContent): Promis
         '-profile:v',
         'high',
         '-r',
-        String(FPS),
+        String(fps),
         '-c:a',
         'aac',
         '-b:a',
@@ -172,9 +199,9 @@ export async function renderReel(browser: Browser, content: PostContent): Promis
         code === 0 ? resolve() : reject(new Error(`ffmpeg ${code}: ${stderr.slice(0, 300)}`)),
       );
     });
-    const frames = REEL_SECONDS * FPS;
+    const frames = Math.round(seconds * fps);
     for (let i = 0; i < frames; i++) {
-      await setFrame(page, (i * 1000) / FPS);
+      await setFrame(page, (i * 1000) / fps);
       const jpeg = await page.screenshot({ type: 'jpeg', quality: 90, optimizeForSpeed: true });
       if (!ff.stdin.write(jpeg))
         await new Promise<void>((resolve) => ff.stdin.once('drain', () => resolve()));

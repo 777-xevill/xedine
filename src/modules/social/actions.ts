@@ -17,7 +17,15 @@ import {
   type SocialWords,
   SocialWordsSchema,
 } from '@/modules/social/words';
-import { writeSocialPost } from '@/modules/social/writer';
+import { VideoLookSchema, VIDEO_KINDS, type VideoLook } from '@/modules/social/video-look';
+import {
+  ApprovedVideoWordsSchema,
+  type ApprovedVideoWords,
+  OCCASIONS,
+  VideoWordsSchema,
+  type AiVideoWords,
+} from '@/modules/social/video-words';
+import { writeSocialPost, writeSocialVideo } from '@/modules/social/writer';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
@@ -90,9 +98,14 @@ export async function setSocialLogoAction(input: {
   orgId: string;
   orgSlug: string;
   path: string | null;
+  colors?: { main: string; accent: string } | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const parsed = base
     .extend({
+      colors: z
+        .object({ main: z.string().regex(HEX), accent: z.string().regex(HEX) })
+        .nullable()
+        .optional(),
       path: z
         .string()
         .regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(webp|jpg|png)$/)
@@ -102,9 +115,13 @@ export async function setSocialLogoAction(input: {
   if (!parsed.success || (parsed.data.path && !parsed.data.path.startsWith(parsed.data.orgId)))
     return { ok: false, error: 'invalidInput' };
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('social_settings')
-    .upsert({ org_id: parsed.data.orgId, logo_path: parsed.data.path });
+  // A new logo brings its own two main colours (ADR 0061); the owner can still change them in Settings.
+  const colors = parsed.data.path && parsed.data.colors ? parsed.data.colors : null;
+  const { error } = await supabase.from('social_settings').upsert({
+    org_id: parsed.data.orgId,
+    logo_path: parsed.data.path,
+    ...(colors ? { color_main: colors.main, color_accent: colors.accent } : {}),
+  });
   if (error) return { ok: false, error: mapDbError(error) };
   refresh(parsed.data.orgSlug);
   return { ok: true };
@@ -400,5 +417,202 @@ export async function pickSocialPageAction(
   const ok = await connectPendingPage(ctx.org.id, ctx.user.id, parsed.data.pageId, now());
   if (!ok) return { error: 'socialConnectExpired' };
   refresh(ctx.org.slug);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Short videos (ADR 0061): owner and managers alike.
+// ---------------------------------------------------------------------------------------------
+
+/** How many videos a day, the AI voice and special-day greetings. */
+export async function saveSocialVideoSettingsAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      videosPerDay: z.coerce.number().int().min(0).max(5),
+      voiceShare: z.enum(['none', 'half', 'all']),
+      voiceGender: z.enum(['female', 'male']),
+      greetings: z.literal('on').optional(),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('save_social_video_settings', {
+    p_org: d.orgId,
+    p_videos_per_day: d.videosPerDay,
+    p_voice_share: d.voiceShare,
+    p_voice_gender: d.voiceGender,
+    p_greetings: d.greetings === 'on',
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(d.orgSlug);
+  return { ok: true };
+}
+
+/** The owner's or a manager's own video: 1–3 dishes, kind, special day, idea, offer price, look, words. */
+export async function requestSocialVideoAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      kind: z.union([z.enum(VIDEO_KINDS), z.literal('')]).optional(),
+      occasion: z.union([z.enum(OCCASIONS), z.literal('')]).optional(),
+      occasionText: z.string().trim().max(80).optional(),
+      ownText: z.string().trim().max(300).optional(),
+      offer: z.union([z.string().regex(/^\d{1,7}(\.\d{1,2})?$/), z.literal('')]).optional(),
+      when: z.enum(['now', 'later']),
+      date: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]).optional(),
+      time: z.union([z.string().regex(/^\d{2}:\d{2}$/), z.literal('')]).optional(),
+      spec: z.string().max(2000).optional(),
+      words: z.string().max(4000).optional(),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const d = parsed.data;
+  const items = [
+    ...new Set(formData.getAll('dish').filter((v): v is string => typeof v === 'string')),
+  ];
+  if (items.length < 1) return { error: 'socialVideoPickDish' };
+  if (items.length > 3) return { error: 'socialVideoTooMany' };
+  if (!items.every((v) => z.uuid().safeParse(v).success)) return { error: 'invalidInput' };
+  let look: VideoLook | null = null;
+  let words: ApprovedVideoWords | null = null;
+  try {
+    if (d.spec) {
+      const checked = VideoLookSchema.safeParse(JSON.parse(d.spec));
+      if (checked.success) look = checked.data;
+    }
+    if (d.words) {
+      const checked = ApprovedVideoWordsSchema.safeParse(JSON.parse(d.words));
+      if (!checked.success) return { error: 'invalidInput' };
+      words = Object.keys(checked.data).length ? checked.data : null;
+    }
+  } catch {
+    return { error: 'invalidInput' };
+  }
+  const kind = d.kind || null;
+  if (look && kind && look.kind !== kind) look = null;
+  const at = now();
+  let when = at;
+  let planDate = businessDate(at, 0);
+  if (d.when === 'later') {
+    if (!d.date || !d.time) return { error: 'socialPickTime' };
+    when = slotAt(d.date, d.time);
+    planDate = d.date;
+    if (when.getTime() < at.getTime()) return { error: 'socialPickTime' };
+  }
+  const offer = kind === 'offer' && d.offer ? Math.round(Number(d.offer) * 100) : null;
+  if (kind === 'offer' && !offer) return { error: 'socialOfferPrice' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('request_social_video', {
+    p_org: d.orgId,
+    p_items: items,
+    p_kind: kind,
+    p_occasion: d.occasion || null,
+    p_occasion_text: d.occasionText || null,
+    p_own_text: d.ownText ?? '',
+    p_offer_poisha: offer,
+    p_when: when.toISOString(),
+    p_plan_date: planDate,
+    p_words: words,
+    p_spec: look,
+  });
+  if (error) {
+    if (error.code === '23514') return { error: 'socialOfferPrice' };
+    if (error.message.includes('number of dishes')) return { error: 'socialVideoKindCount' };
+    if (error.message.includes('write the special day')) return { error: 'socialOccasionText' };
+    return { error: mapDbError(error) };
+  }
+  refresh(d.orgSlug);
+  return { ok: true };
+}
+
+/**
+ * "Write the words for me" in the video preview: the AI writes the hook and lines for the dishes, kind and
+ * special day picked. Nothing is posted; numbers the AI makes up are refused (CLAUDE.md #1).
+ */
+export async function draftSocialVideoWordsAction(input: {
+  orgId: string;
+  orgSlug: string;
+  itemIds: string[];
+  kind: string;
+  occasion: string | null;
+  idea: string;
+}): Promise<
+  | { ok: true; words: AiVideoWords }
+  | { ok: false; error: 'notAllowed' | 'aiOff' | 'number' | 'failed' }
+> {
+  const parsed = base
+    .extend({
+      itemIds: z.array(z.uuid()).min(1).max(3),
+      kind: z.enum(VIDEO_KINDS),
+      occasion: z.string().trim().max(80).nullable(),
+      idea: z.string().trim().max(300),
+    })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'failed' };
+  const d = parsed.data;
+  const ctx = await getOrgContext(d.orgSlug);
+  if (ctx.org.id !== d.orgId || (!ctx.roles.includes('owner') && !ctx.roles.includes('manager')))
+    return { ok: false, error: 'notAllowed' };
+  if (!aiConfigured()) return { ok: false, error: 'aiOff' };
+  const supabase = await createClient();
+  const [{ data: dishes }, { data: settings }] = await Promise.all([
+    supabase.from('menu_items').select('id, name').eq('org_id', d.orgId).in('id', d.itemIds),
+    supabase
+      .from('social_settings')
+      .select('tone, display_name, area')
+      .eq('org_id', d.orgId)
+      .maybeSingle(),
+  ]);
+  const names = d.itemIds
+    .map((id) => (dishes ?? []).find((x) => x.id === id)?.name as string | undefined)
+    .filter((x): x is string => Boolean(x));
+  if (names.length === 0) return { ok: false, error: 'failed' };
+  try {
+    const written = await writeSocialVideo({
+      orgId: d.orgId,
+      restaurant: (settings?.display_name as string | null) || ctx.org.name,
+      dishes: names,
+      kind: d.kind,
+      fact: `The owner wants to tell people about ${names.join(' and ')}.`,
+      occasion: d.occasion,
+      ownNote: d.idea || null,
+      tone: (settings?.tone as 'friendly' | 'premium' | 'fun' | undefined) ?? 'friendly',
+      area: (settings?.area as string | null) ?? null,
+    });
+    return { ok: true, words: VideoWordsSchema.parse(written) };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error && e.message === 'invented_number' ? 'number' : 'failed',
+    };
+  }
+}
+
+/** A dish's high-quality photo for posts and videos, already uploaded to <org>/hq/ (null removes it). */
+export async function setDishHqPhotoAction(input: {
+  orgId: string;
+  orgSlug: string;
+  itemId: string;
+  path: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = base
+    .extend({ itemId: z.uuid(), path: z.string().max(200).nullable() })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalidInput' };
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_dish_hq_photo', {
+    p_org: d.orgId,
+    p_item: d.itemId,
+    p_path: d.path,
+  });
+  if (error) return { ok: false, error: mapDbError(error) };
+  refresh(d.orgSlug);
   return { ok: true };
 }

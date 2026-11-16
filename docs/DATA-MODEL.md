@@ -142,7 +142,7 @@
 | `weather_hours` | Weather forecast per branch per hour (MET Norway). | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: service role only (weather for the branch; everyone at the branch reads, only the weather job writes (ADR 0051)) | PK org_id, branch_id, at · → branches | forecasting · P11 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (198)
+## RPC functions (202)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -259,6 +259,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `metric_incident_summary` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_incidents` | `p_org uuid, p_branch uuid, p_now timestamp with time zone` |
 | `metric_ingredient_prices` | `p_org uuid, p_now timestamp with time zone` |
+| `metric_item_pairs` | `p_org uuid, p_now timestamp with time zone, p_item uuid DEFAULT NULL::uuid` |
 | `metric_item_qty` | `p_org uuid, p_branch uuid, p_window text, p_now timestamp with time zone, p_from date DEFAULT NULL::date, p_to date DEFAULT NULL::date, p_item uuid DEFAULT NULL::uuid, p_channel uuid DEFAULT NULL::uuid, p_daypart text DEFAULT NULL::text` |
 | `metric_like_for_like` | `p_org uuid, p_from date, p_to date, p_limit integer DEFAULT 20` |
 | `metric_menu_matrix` | `p_org uuid, p_branch uuid, p_from date, p_to date` |
@@ -309,6 +310,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `request_branch` | `p_org uuid, p_name text, p_area text DEFAULT NULL::text` |
 | `request_social_connect` | `p_org uuid, p_way text, p_link text DEFAULT NULL::text` |
 | `request_social_post` | `p_org uuid, p_item uuid, p_format text, p_own_text text, p_when timestamp with time zone, p_plan_date date, p_design text DEFAULT NULL::text, p_words jsonb DEFAULT NULL::jsonb, p_extra_items uuid[] DEFAULT '{}'::uuid[], p_spec jsonb DEFAULT NULL::jsonb` |
+| `request_social_video` | `p_org uuid, p_items uuid[], p_kind text, p_occasion text, p_occasion_text text, p_own_text text, p_offer_poisha bigint, p_when timestamp with time zone, p_plan_date date, p_words jsonb DEFAULT NULL::jsonb, p_spec jsonb DEFAULT NULL::jsonb` |
 | `reset_complaint_link` | `p_org uuid, p_branch uuid` |
 | `reset_member_card` | `p_org uuid, p_customer uuid` |
 | `reset_table_link` | `p_org uuid, p_table uuid` |
@@ -321,11 +323,13 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `save_push_subscription` | `p_card_token text, p_endpoint text, p_p256dh text, p_auth text` |
 | `save_recipe` | `p_org uuid, p_item uuid, p_variant uuid, p_name text, p_yield numeric, p_lines jsonb, p_notes text DEFAULT NULL::text, p_draft uuid DEFAULT NULL::uuid` |
 | `save_salary` | `p_org uuid, p_staff uuid, p_month date, p_salary bigint, p_allowances bigint, p_note text DEFAULT NULL::text` |
+| `save_social_video_settings` | `p_org uuid, p_videos_per_day smallint, p_voice_share text, p_voice_gender text, p_greetings boolean` |
 | `scan_findings` | `p_org uuid, p_now timestamp with time zone` |
 | `send_bazar_list` | `p_list uuid, p_messages jsonb` |
 | `send_to_kitchen` | `p_org uuid, p_branch uuid, p_order uuid, p_device uuid, p_staff uuid` |
 | `send_transfer` | `p_org uuid, p_from uuid, p_to uuid, p_lines jsonb, p_notes text DEFAULT NULL::text` |
 | `set_branch_location` | `p_org uuid, p_branch uuid, p_lat numeric, p_lon numeric` |
+| `set_dish_hq_photo` | `p_org uuid, p_item uuid, p_path text` |
 | `set_finding_status` | `p_finding uuid, p_status finding_status, p_reason text DEFAULT NULL::text, p_snooze_until date DEFAULT NULL::date` |
 | `set_google_review_url` | `p_org uuid, p_branch uuid, p_url text` |
 | `set_ingredient_hidden` | `p_org uuid, p_ingredient uuid, p_hidden boolean, p_now timestamp with time zone, p_none_left boolean DEFAULT false` |

@@ -26,6 +26,12 @@ export function posterPrice(
   return vat.included ? price : `${price} ${vat.plusVat}`;
 }
 
+/** The menu price every branch agrees on, in poisha, or null (the same rule as posterPrice). */
+export function agreedPoisha(p: PriceInput): number | null {
+  if (!Number.isSafeInteger(p.basePoisha) || p.basePoisha <= 0) return null;
+  return p.branchPoisha.every((b) => b === p.basePoisha) ? p.basePoisha : null;
+}
+
 /** Branch prices per dish, from branch_item_prices rows (no variant, on sale). */
 export function branchPricesByItem(
   rows: readonly { menu_item_id: string; price_poisha: number | string }[],

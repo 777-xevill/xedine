@@ -18,6 +18,7 @@ import { type ScreenId, toThree, type V3 } from './story';
 import { friesShown, screenAt, timeOfDay, windowOpen } from './timeline';
 import { landingAsset } from './asset-version';
 import { withMeshopt } from './gltf';
+import { warmUpOnPhone } from './warm-up';
 
 /** Built by scripts/landing-3d/world.py + bake.py + pack.mjs (ADR 0064): one file per zone. */
 export const ZONES = ['st', 'ca', 'ki', 'sr', 'of'] as const;
@@ -94,6 +95,7 @@ function ZoneModel({
   // Tells the world this zone is in, so the next one starts loading (one at a time, the street first).
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
+  const root = useThree((state) => state.scene);
   useEffect(() => {
     // Hand the zone to the graphics card now (textures and shaders), not the first time it comes into view
     // mid-scroll, which made the page stutter (the founder, 2026-11-18).
@@ -108,9 +110,9 @@ function ZoneModel({
         }
       }
     });
-    gl.compile(scene, camera);
+    if (!warmUpOnPhone(gl, scene, camera, root)) gl.compile(scene, camera);
     onLoaded(zone);
-  }, [gl, camera, scene, onLoaded, zone]);
+  }, [gl, camera, root, scene, onLoaded, zone]);
   useLayoutEffect(() => {
     const hinged: THREE.Mesh[] = [];
     scene.traverse((o) => {

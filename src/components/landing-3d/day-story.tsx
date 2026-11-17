@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
   type FormEvent,
+  memo,
   type ReactNode,
   useCallback,
   useEffect,
@@ -22,7 +23,9 @@ import { BEATS, cardAt } from './story';
 import { type DemoCurrency } from './story-ledger';
 import { useAnswers, useCityText, useScreenText } from './story-text';
 
-const DayStage = dynamic(() => import('./day-stage'), { ssr: false });
+// Memoised (like the cards and lists below): the moment's card changing must not re-render the whole 3D scene,
+// which froze a slow phone for ~0.2 s at each change (the founder, 2026-11-18).
+const DayStage = memo(dynamic(() => import('./day-stage'), { ssr: false }));
 // The 3D code starts downloading as soon as this page's script runs, not after the page has hydrated.
 if (typeof window !== 'undefined') void import('./day-stage');
 
@@ -257,7 +260,15 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
   );
 }
 
-function BeatCard({ id, n, features }: { id: string; n: number; features: FeatureId[] }) {
+const BeatCard = memo(function BeatCard({
+  id,
+  n,
+  features,
+}: {
+  id: string;
+  n: number;
+  features: FeatureId[];
+}) {
   const t = useTranslations('landing3d.day');
   return (
     <article className="xedine-chip w-full rounded-3xl p-4 sm:p-6">
@@ -288,13 +299,17 @@ function BeatCard({ id, n, features }: { id: string; n: number; features: Featur
       </ul>
     </article>
   );
-}
+});
 
 type Msg = { from: 'you' | 'xedine'; text: string };
 const QUESTIONS = ['money', 'waste', 'buy', 'profit', 'week'] as const;
 
 /** The ending: ask Xedine like ChatGPT. Ready questions answer from the café's day; anything else invites you in. */
-function AskPanel({ ctx }: { ctx: { currency: DemoCurrency; taxName: string } }) {
+const AskPanel = memo(function AskPanel({
+  ctx,
+}: {
+  ctx: { currency: DemoCurrency; taxName: string };
+}) {
   const t = useTranslations('landing3d.day');
   const answers = useAnswers(ctx);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -390,9 +405,9 @@ function AskPanel({ ctx }: { ctx: { currency: DemoCurrency; taxName: string } })
       </form>
     </article>
   );
-}
+});
 
-function StartCard() {
+const StartCard = memo(function StartCard() {
   const t = useTranslations('landing3d.day');
   return (
     <article className="xedine-chip w-full rounded-3xl p-5 text-center sm:p-8">
@@ -414,10 +429,10 @@ function StartCard() {
       <p className="mt-3 text-xs text-[color:var(--text-muted)]">{t('start.ways')}</p>
     </article>
   );
-}
+});
 
 /** Everything Xedine does, A to Z, each with a link back to where the story showed it. */
-function Everything() {
+const Everything = memo(function Everything() {
   const t = useTranslations('landing3d.day');
   return (
     <section id="everything" className="relative bg-background px-4 py-16 sm:px-8">
@@ -454,4 +469,4 @@ function Everything() {
       </div>
     </section>
   );
-}
+});

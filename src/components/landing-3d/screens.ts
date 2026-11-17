@@ -130,10 +130,11 @@ class Ui {
   readonly h: number;
   readonly c: Colors;
   readonly font: string;
-  constructor(ctx: CanvasRenderingContext2D, c: Colors, font: string) {
+  constructor(ctx: CanvasRenderingContext2D, c: Colors, font: string, w: number, h: number) {
     this.ctx = ctx;
-    this.w = ctx.canvas.width;
-    this.h = ctx.canvas.height;
+    // The painters draw in the screen's own size; the canvas may hold fewer pixels (see createScreen).
+    this.w = w;
+    this.h = h;
     this.c = c;
     this.font = font;
   }
@@ -1056,11 +1057,21 @@ const PAINTERS: Record<Show, Painter> = {
 };
 
 /** A canvas texture that redraws only when what it shows, or its moment, changes. */
+/**
+ * On an upright phone the screens are drawn with 0.6 of their pixels (still sharp at the size a phone shows
+ * them): each repaint goes to the graphics card, and at full size a phone froze for up to 0.2 s the first
+ * time a phone screen lit up (the founder, 2026-11-18). Other devices keep full size.
+ */
+const pixelScale = () =>
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches ? 0.6 : 1;
+
 export function createScreen(width: number, height: number) {
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  const k = pixelScale();
+  canvas.width = Math.round(width * k);
+  canvas.height = Math.round(height * k);
   const ctx = canvas.getContext('2d');
+  ctx?.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
@@ -1068,7 +1079,7 @@ export function createScreen(width: number, height: number) {
   texture.flipY = false;
   const colors = brand();
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
-  const ui = ctx ? new Ui(ctx, colors, font) : null;
+  const ui = ctx ? new Ui(ctx, colors, font, width, height) : null;
   let last = '';
   return {
     texture,
@@ -1079,6 +1090,18 @@ export function createScreen(width: number, height: number) {
       last = key;
       PAINTERS[show](ui, clamp01(t), text);
       texture.needsUpdate = true;
+    },
+    /**
+     * Draws every screen fully shown and makes the browser rasterise each one now, so the text and emoji
+     * the phone screens use are ready before they first light up mid-scroll (a slow phone spent ~60 ms
+     * on that the first time). Use a throwaway screen: reading pixels back can slow a canvas down.
+     */
+    warm(text: ScreenText) {
+      if (!ui) return;
+      for (const show of Object.keys(PAINTERS) as Show[]) {
+        PAINTERS[show](ui, 1, text);
+        ui.ctx.getImageData(0, 0, 1, 1);
+      }
     },
     dispose() {
       texture.dispose();

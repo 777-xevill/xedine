@@ -161,3 +161,13 @@ The founder watched the whole day and asked for 23 changes. What changed, and th
 - **Kept, not fetched again.** `public/_headers` gives `/_next/static/*` (hashed names) and `/landing/3d/*` a
   year-long, immutable cache. Every 3D URL carries `?v=` + a hash of the files (`asset-version.ts`);
   `asset-version.test.ts` fails until the hash is updated after a rebuild, so nobody is served an old world.
+
+## Amendment (2026-11-18): opens at once ("loading too much", the founder)
+
+- The first view is a picture captured from the 3D (`poster-wide.webp` 44 KB, `poster-tall.webp` 18 KB) in
+  the HTML; the live 3D fades in over it when the street is drawn; the loading chip only after 2.5 s.
+  Recapture both after a change to the street at dawn (scratchpad `poster.cjs` recipe: canvas only, p = 0).
+- Rooms load only as the story nears them (`ZONE_FROM` in world.tsx): street and café at once, kitchen and
+  storeroom from p 0.35, office from p 3.
+- Measured on xedine.org (first visit): PC 3D drawn 1.4 s (was 2.4 s); phone on 4G picture 1.1 s, 3D 1.8 s
+  (was 7.7 s at the start of the day); a slow phone (4× CPU) picture 1.5 s, 3D 3.8 s (was 8.5 s).

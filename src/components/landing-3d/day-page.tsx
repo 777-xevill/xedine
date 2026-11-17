@@ -1,3 +1,4 @@
+import { getImageProps } from 'next/image';
 import { headers } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
@@ -32,6 +33,26 @@ export async function DayPage({
     ...(COUNTRY_PLACES[c] ?? { lat: 0, lng: 0 }),
   });
   await getTranslations('landing3d.day');
+  // The first view as a picture (captured from the 3D, 44 KB wide, 18 KB upright), shown at once.
+  const common = { alt: '', unoptimized: true, priority: true } as const;
+  const wide = getImageProps({
+    ...common,
+    src: landingAsset('poster-wide.webp'),
+    width: 2000,
+    height: 1125,
+  }).props;
+  const { src: tall, ...img } = getImageProps({
+    ...common,
+    src: landingAsset('poster-tall.webp'),
+    width: 780,
+    height: 1688,
+  }).props;
+  const backdrop = (
+    <picture>
+      <source media="(min-aspect-ratio: 3/4)" srcSet={wide.src} />
+      <img {...img} alt="" src={tall} fetchPriority="high" className="h-full w-full object-cover" />
+    </picture>
+  );
   return (
     <>
       {/* The first picture (the street and Xedine) starts downloading with the page, before the 3D code runs. */}
@@ -48,6 +69,7 @@ export async function DayPage({
       <DayStory
         corner={<LocaleSwitcher />}
         footer={footer}
+        backdrop={backdrop}
         currency={demoCurrency(currencyOf(country))}
         taxName={taxLabel(locale, country)}
         home={pin(country)}

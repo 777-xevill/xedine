@@ -250,4 +250,4 @@ export const Xedine = forwardRef<XedineHandle, Props>(function Xedine({ target, 
   );
 });
 
-useGLTF.preload(XEDINE_GLB, false, true);
+// Not preloaded on import: the home page starts this download from its HTML (`<link rel="preload">`).

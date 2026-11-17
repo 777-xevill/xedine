@@ -24,6 +24,12 @@ export type Zone = (typeof ZONES)[number];
 export const zoneUrl = (z: Zone) => landingAsset(`world-${z}.glb`);
 const NIGHT_URL = (atlas: string) => landingAsset(`night/${atlas}.webp`);
 
+/**
+ * From which point of the story (p) each zone may load: the café shows through the windows at dawn; the
+ * kitchen and the storeroom are on the way to the bazar (moment 3); the office is moment 6.
+ */
+const ZONE_FROM: Record<Zone, number> = { st: 0, ca: 0, ki: 0.35, sr: 0.35, of: 3 };
+
 /** Shared by every baked surface: how far into the night, and the light's colour (dawn is warm). */
 export const LIGHT = { uNight: { value: 0 }, uTint: { value: new THREE.Color(1, 1, 1) } };
 
@@ -310,7 +316,10 @@ export function World({
   /** Once the first zone is drawn. */
   onStreet?: () => void;
 }) {
+  // Zones load one at a time, and only once the story is near them (`ZONE_FROM`): someone who reads the
+  // first moment downloads the street and the café, not the whole building.
   const [loaded, setLoaded] = useState(1);
+  const [reached, setReached] = useState(1);
   const onLoaded = useCallback(
     (zone: Zone) => {
       const i = zones.indexOf(zone);
@@ -365,6 +374,8 @@ export function World({
 
   useFrame(() => {
     const p = progressRef.current ?? 0;
+    const near = zones.reduce((n, z, i) => (p >= ZONE_FROM[z] ? i + 1 : n), 1);
+    if (near > reached) setReached(near);
     const { hour, night } = timeOfDay(p);
     LIGHT.uNight.value = THREE.MathUtils.smoothstep(night, 0.15, 0.95);
     // Dawn is warm and low; mid-afternoon a touch golden; noon neutral.
@@ -402,7 +413,7 @@ export function World({
 
   return (
     <>
-      {zones.slice(0, loaded).map((z) => (
+      {zones.slice(0, Math.min(loaded, reached)).map((z) => (
         <Suspense key={z} fallback={null}>
           <ZoneModel zone={z} screens={screens} live={live} onLoaded={onLoaded} />
         </Suspense>

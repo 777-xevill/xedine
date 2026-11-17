@@ -34,6 +34,8 @@ type Props = {
   corner?: ReactNode;
   /** After the A–Z list: the site's footer (the privacy and terms links) when this is the home page. */
   footer?: ReactNode;
+  /** The first view as a picture, shown before the 3D is ready (and instead of it without WebGL). */
+  backdrop?: ReactNode;
   currency: DemoCurrency;
   taxName: string;
   home: CountryPin;
@@ -65,7 +67,7 @@ function firstBeat(id: FeatureId) {
  * moments scroll over it. Every feature Xedine has appears in at least one moment (features.test.ts), and the
  * A–Z list after the story names them all.
  */
-export function DayStory({ corner, footer, currency, taxName, home, countries }: Props) {
+export function DayStory({ corner, footer, backdrop, currency, taxName, home, countries }: Props) {
   const t = useTranslations('landing3d.day');
   const tc = useTranslations('common');
   const ctx = useMemo(() => ({ currency, taxName }), [currency, taxName]);
@@ -83,6 +85,12 @@ export function DayStory({ corner, footer, currency, taxName, home, countries }:
   // The loading chip shows until the street is drawn; the other rooms arrive while the visitor reads.
   const [ready, setReady] = useState(false);
   const onReady = useCallback(() => setReady(true), []);
+  // The loading chip only if the 3D is slow: until then the first view's picture is the page.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setSlow(true), 2500);
+    return () => window.clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -141,19 +149,26 @@ export function DayStory({ corner, footer, currency, taxName, home, countries }:
       </div>
       <div ref={story} className="relative" style={{ height: `${BEATS.length * BEAT_VH}vh` }}>
         <div className="sticky top-0 h-dvh w-full overflow-hidden">
-          {can3d ? (
-            <DayStage
-              targetRef={targetRef}
-              easedRef={easedRef}
-              text={text}
-              showCity={showCity}
-              onReady={onReady}
-              city={city}
-            />
-          ) : (
-            <div className="xedine-stage-bg h-full w-full" />
+          {/* The first view as a picture, there at once; the live 3D fades in over it when ready. */}
+          <div className="xedine-stage-bg absolute inset-0">{backdrop}</div>
+          {can3d && (
+            <div
+              className={cn(
+                'absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none',
+                ready ? 'opacity-100' : 'opacity-0',
+              )}
+            >
+              <DayStage
+                targetRef={targetRef}
+                easedRef={easedRef}
+                text={text}
+                showCity={showCity}
+                onReady={onReady}
+                city={city}
+              />
+            </div>
           )}
-          {can3d && !ready && (
+          {can3d && !ready && slow && (
             <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
               <p className="xedine-chip rounded-full px-4 py-1.5 text-xs">{t('intro.loading')}</p>
             </div>

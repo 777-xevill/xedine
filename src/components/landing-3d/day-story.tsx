@@ -152,7 +152,10 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
           {can3d && (
             <div
               className={cn(
-                'absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none',
+                'absolute inset-0 transition-opacity motion-reduce:transition-none',
+                // A slow fade over the matching picture; a quick one if the visitor already scrolled away
+                // from it (the picture shows the first view, the 3D where they are now).
+                moved ? 'duration-150' : 'duration-700',
                 ready ? 'opacity-100' : 'opacity-0',
               )}
             >

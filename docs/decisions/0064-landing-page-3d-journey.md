@@ -184,3 +184,17 @@ The founder watched the whole day and asked for 23 changes. What changed, and th
   decoder, `gltf.ts`); each room's textures and shaders go to the graphics card when it arrives, not the
   first time it comes into view; later rooms load when the browser is idle (or at once when the story nears
   them, `ZONE_NEEDED`), instead of starting exactly when the visitor first scrolls.
+
+## Amendment (2026-11-18): the slow-phone hitch
+
+Traced on a phone emulated at 4× slower: the 150–200 ms frames came right after the moment's card changed.
+- The card changing re-rendered the whole page component, the 3D scene, the cards and the A–Z list with
+  it. The stage, cards, chat and list are now memoised (`memo`): nothing visible changes on any device,
+  the 3D scene simply isn't re-rendered for a card.
+- A phone screen's first upload took ~60 ms (its text and emoji rasterised for the first time). On phones
+  only, every screen kind is drawn once on a throwaway canvas while loading, one per idle moment and never
+  while the visitor scrolls (`warm-up.ts`).
+- Tried and dropped (measured, no gain or worse): compiling rooms and people ahead on phones, a hidden full
+  draw, smaller screen canvases, CPU-backed canvases.
+Live result (slow phone, first scroll): worst frame 183 ms → ~100 ms; the hitches at the card changes are
+gone; what remains is the ordinary cost of drawing the storeroom on a slow phone. PCs measure as before.

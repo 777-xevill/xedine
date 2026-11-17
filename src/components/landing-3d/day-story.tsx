@@ -85,12 +85,9 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
   // The loading chip shows until the street is drawn; the other rooms arrive while the visitor reads.
   const [ready, setReady] = useState(false);
   const onReady = useCallback(() => setReady(true), []);
-  // The loading chip only if the 3D is slow: until then the first view's picture is the page.
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    const id = window.setTimeout(() => setSlow(true), 2500);
-    return () => window.clearTimeout(id);
-  }, []);
+  // The first view's picture matches the 3D exactly, so it needs no loading chip, unless someone scrolls
+  // before the 3D is in (the picture cannot move with them).
+  const [moved, setMoved] = useState(false);
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -110,6 +107,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
         targetRef.current = still.current ? Math.floor(p) + 0.62 : p;
         // The card changes halfway between two moments, as the next room comes into view.
         setActive(cardAt(p));
+        if (p > 0.05) setMoved(true);
         setShowCity(p > 14.6 && p < 17.6);
         // The moment's card shows while the 3D day fills the screen, not over the A–Z list after it.
         setInStory(el.getBoundingClientRect().bottom > window.innerHeight * 0.55);
@@ -168,7 +166,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
               />
             </div>
           )}
-          {can3d && !ready && slow && (
+          {can3d && !ready && moved && (
             <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
               <p className="xedine-chip rounded-full px-4 py-1.5 text-xs">{t('intro.loading')}</p>
             </div>

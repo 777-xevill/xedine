@@ -1,7 +1,7 @@
 'use client';
 
 import { useGLTF } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import {
   type RefObject,
   Suspense,
@@ -17,6 +17,7 @@ import { createScreen, planeUv, SCREEN_SIZES, type ScreenText } from './screens'
 import { type ScreenId, toThree, type V3 } from './story';
 import { friesShown, screenAt, timeOfDay, windowOpen } from './timeline';
 import { landingAsset } from './asset-version';
+import { withMeshopt } from './gltf';
 
 /** Built by scripts/landing-3d/world.py + bake.py + pack.mjs (ADR 0064): one file per zone. */
 export const ZONES = ['st', 'ca', 'ki', 'sr', 'of'] as const;
@@ -25,10 +26,13 @@ export const zoneUrl = (z: Zone) => landingAsset(`world-${z}.glb`);
 const NIGHT_URL = (atlas: string) => landingAsset(`night/${atlas}.webp`);
 
 /**
- * From which point of the story (p) each zone may load: the café shows through the windows at dawn; the
- * kitchen and the storeroom are on the way to the bazar (moment 3); the office is moment 6.
+ * Where in the story (p) each zone is needed at the latest: the café shows through the windows at dawn; the
+ * kitchen and the storeroom are on the way to the bazar (moment 3); the office is moment 6. Zones load one
+ * at a time when the browser is idle, or at once when the story gets this close.
  */
-const ZONE_FROM: Record<Zone, number> = { st: 0, ca: 0, ki: 0.35, sr: 0.35, of: 3 };
+const ZONE_NEEDED: Record<Zone, number> = { st: 0, ca: 0, ki: 1.2, sr: 1.2, of: 4 };
+
+const TEXTURE_SLOTS = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap'];
 
 /** Shared by every baked surface: how far into the night, and the light's colour (dawn is warm). */
 export const LIGHT = { uNight: { value: 0 }, uTint: { value: new THREE.Color(1, 1, 1) } };
@@ -86,9 +90,27 @@ function ZoneModel({
   live: RefObject<LiveParts>;
   onLoaded: (zone: Zone) => void;
 }) {
-  const { scene } = useGLTF(zoneUrl(zone), false, true);
+  const { scene } = useGLTF(zoneUrl(zone), false, false, withMeshopt);
   // Tells the world this zone is in, so the next one starts loading (one at a time, the street first).
-  useEffect(() => onLoaded(zone), [onLoaded, zone]);
+  const gl = useThree((state) => state.gl);
+  const camera = useThree((state) => state.camera);
+  useEffect(() => {
+    // Hand the zone to the graphics card now (textures and shaders), not the first time it comes into view
+    // mid-scroll, which made the page stutter (the founder, 2026-11-18).
+    scene.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      for (const mat of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        const slots = mat as unknown as Record<string, unknown>;
+        for (const slot of TEXTURE_SLOTS) {
+          const tex = slots[slot];
+          if (tex instanceof THREE.Texture) gl.initTexture(tex);
+        }
+      }
+    });
+    gl.compile(scene, camera);
+    onLoaded(zone);
+  }, [gl, camera, scene, onLoaded, zone]);
   useLayoutEffect(() => {
     const hinged: THREE.Mesh[] = [];
     scene.traverse((o) => {
@@ -309,24 +331,34 @@ export function World({
   text,
   zones,
   onStreet,
+  onFirstView,
 }: {
   progressRef: RefObject<number>;
   text: ScreenText;
   zones: readonly Zone[];
-  /** Once the first zone is drawn. */
+  /** Once the first zone (the street) is drawn. */
   onStreet?: () => void;
+  /** Once the first view is whole: the street and the café seen through its windows. */
+  onFirstView?: () => void;
 }) {
-  // Zones load one at a time, and only once the story is near them (`ZONE_FROM`): someone who reads the
-  // first moment downloads the street and the café, not the whole building.
-  const [loaded, setLoaded] = useState(1);
-  const [reached, setReached] = useState(1);
+  // Zones load one at a time: the next one when the browser is idle, or at once when the story nears it
+  // (`ZONE_NEEDED`), so the first picture comes first and later rooms never arrive mid-scroll.
+  const [allowed, setAllowed] = useState(1);
+  const doneRef = useRef(0);
   const onLoaded = useCallback(
     (zone: Zone) => {
       const i = zones.indexOf(zone);
       if (i === 0) onStreet?.();
-      setLoaded((n) => Math.max(n, i + 2));
+      // The café shows through the windows at dawn: the 3D shows only once it is in, so it never pops in.
+      if (i === 1) onFirstView?.();
+      doneRef.current = Math.max(doneRef.current, i + 1);
+      const next = () => setAllowed((n) => Math.max(n, i + 2));
+      if (i === 0) next();
+      else if (typeof window.requestIdleCallback === 'function')
+        window.requestIdleCallback(next, { timeout: 2500 });
+      else globalThis.setTimeout(next, 800);
     },
-    [zones, onStreet],
+    [zones, onStreet, onFirstView],
   );
   const screens = useMemo<Screens>(() => {
     const out: Screens = {};
@@ -374,8 +406,9 @@ export function World({
 
   useFrame(() => {
     const p = progressRef.current ?? 0;
-    const near = zones.reduce((n, z, i) => (p >= ZONE_FROM[z] ? i + 1 : n), 1);
-    if (near > reached) setReached(near);
+    const done = doneRef.current;
+    const upcoming = zones[done];
+    if (upcoming && allowed <= done && p >= ZONE_NEEDED[upcoming]) setAllowed(done + 1);
     const { hour, night } = timeOfDay(p);
     LIGHT.uNight.value = THREE.MathUtils.smoothstep(night, 0.15, 0.95);
     // Dawn is warm and low; mid-afternoon a touch golden; noon neutral.
@@ -413,7 +446,7 @@ export function World({
 
   return (
     <>
-      {zones.slice(0, Math.min(loaded, reached)).map((z) => (
+      {zones.slice(0, allowed).map((z) => (
         <Suspense key={z} fallback={null}>
           <ZoneModel zone={z} screens={screens} live={live} onLoaded={onLoaded} />
         </Suspense>
@@ -425,5 +458,5 @@ export function World({
 }
 
 export function preloadWorld() {
-  for (const z of ZONES) useGLTF.preload(zoneUrl(z), false, true);
+  for (const z of ZONES) useGLTF.preload(zoneUrl(z), false, false, withMeshopt);
 }

@@ -13,6 +13,7 @@ import {
 } from 'react';
 import * as THREE from 'three';
 import { landingAsset } from './asset-version';
+import { withMeshopt } from './gltf';
 
 /** Built by scripts/landing-3d/xedine.py from the chef logo (ADR 0064). */
 export const XEDINE_GLB = landingAsset('xedine.glb');
@@ -86,7 +87,7 @@ type Props = ThreeElements['group'] & {
 
 export const Xedine = forwardRef<XedineHandle, Props>(function Xedine({ target, ...props }, ref) {
   const group = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(XEDINE_GLB, false, true);
+  const { scene, animations } = useGLTF(XEDINE_GLB, false, false, withMeshopt);
   const clips = useMemo(
     () =>
       animations.map((clip) => {

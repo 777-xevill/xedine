@@ -170,7 +170,7 @@ export type StageProps = {
   easedRef: RefObject<number>;
   text: ScreenText;
   showCity: boolean;
-  /** Once the street is drawn: the page's loading chip goes. */
+  /** Once the first view is whole (the street and the café): the 3D fades in over the picture. */
   onReady?: () => void;
   city: {
     branches: BranchLabel[];
@@ -193,10 +193,7 @@ export default function DayStage({
   const showRef = useRef<Show>({ city: 0, globe: 0 });
   // The people's file waits for the street, so the first picture comes first.
   const [street, setStreet] = useState(false);
-  const onStreet = useCallback(() => {
-    setStreet(true);
-    onReady?.();
-  }, [onReady]);
+  const onStreet = useCallback(() => setStreet(true), []);
   const phonesRef = useRef(new Map<CastId, THREE.Vector3>());
   return (
     <Canvas
@@ -215,7 +212,13 @@ export default function DayStage({
         phonesRef={phonesRef}
       />
       <Atmosphere easedRef={easedRef} />
-      <World progressRef={easedRef} text={text} zones={ZONES} onStreet={onStreet} />
+      <World
+        progressRef={easedRef}
+        text={text}
+        zones={ZONES}
+        onStreet={onStreet}
+        onFirstView={onReady}
+      />
       {street && (
         <Suspense fallback={null}>
           <Cast progressRef={easedRef} text={text} phonesRef={phonesRef} />

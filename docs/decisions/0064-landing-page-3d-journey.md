@@ -171,3 +171,16 @@ The founder watched the whole day and asked for 23 changes. What changed, and th
   storeroom from p 0.35, office from p 3.
 - Measured on xedine.org (first visit): PC 3D drawn 1.4 s (was 2.4 s); phone on 4G picture 1.1 s, 3D 1.8 s
   (was 7.7 s at the start of the day); a slow phone (4× CPU) picture 1.5 s, 3D 3.8 s (was 8.5 s).
+
+## Amendment (2026-11-18): no jump, no stutter
+
+- **The picture matches the 3D at every screen shape.** Three pictures (very wide 2.4:1, squarer 1.2:1, very
+  tall 0.42), each anchored where `frameCamera` puts the subject (wide: height fits, 66% across; squarer:
+  width fits, centred; phones: width fits, a third down; `.xedine-poster` in landing-3d.css). Checked at
+  eight sizes from 360×800 to 2560×1080: no shift, about 1/255 difference. The 3D fades in only when the
+  street **and the café** (seen through the windows) are in, so the café never pops in. The loading chip
+  shows only if someone scrolls before the 3D is ready.
+- **No stutter on the first scroll.** The 3D files are unpacked in two background workers (three's meshopt
+  decoder, `gltf.ts`); each room's textures and shaders go to the graphics card when it arrives, not the
+  first time it comes into view; later rooms load when the browser is idle (or at once when the story nears
+  them, `ZONE_NEEDED`), instead of starting exactly when the visitor first scrolls.

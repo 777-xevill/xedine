@@ -8,6 +8,7 @@ import { createScreen, planeUv, SCREEN_SIZES, type ScreenText } from './screens'
 import { CAST_IDS, type CastId, type Pose, type Prop } from './story';
 import { beatAt, castAt } from './timeline';
 import { landingAsset } from './asset-version';
+import { withMeshopt } from './gltf';
 
 /** Built by scripts/landing-3d/cast.py (ADR 0064): the café's people, little blobs from Xedine's family. */
 export const CAST_GLB = landingAsset('cast.glb');
@@ -118,7 +119,7 @@ export function Cast({
   /** Where each held phone is this frame (the camera aims its close looks at the real phone). */
   phonesRef: RefObject<Map<CastId, THREE.Vector3>>;
 }) {
-  const { scene } = useGLTF(CAST_GLB, false, true);
+  const { scene } = useGLTF(CAST_GLB, false, false, withMeshopt);
   const rigsRef = useRef<Partial<Record<CastId, Rig>>>({});
   const tmpRef = useRef({ v: new THREE.Vector3(), w: new THREE.Vector3() });
 

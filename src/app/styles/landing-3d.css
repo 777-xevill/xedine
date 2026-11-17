@@ -24,3 +24,21 @@
     0 1px 0 color-mix(in oklab, var(--brand-silver) 18%, transparent) inset,
     0 18px 40px -18px color-mix(in oklab, var(--brand-grey) 70%, transparent);
 }
+
+/* The 3D day's first view as a picture (day-page.tsx): anchored where frameCamera puts the subject, so the
+   live 3D fades in over it without a jump. Upright phones: a third down; squarer screens: centred (the
+   width fits); wide screens: 66% across (the height fits). */
+.xedine-poster {
+  object-fit: cover;
+  object-position: 50% 33%;
+}
+@media (min-aspect-ratio: 1/1) {
+  .xedine-poster {
+    object-position: 50% 50%;
+  }
+}
+@media (min-aspect-ratio: 16/9) {
+  .xedine-poster {
+    object-position: 66% 50%;
+  }
+}

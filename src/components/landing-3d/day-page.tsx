@@ -33,24 +33,39 @@ export async function DayPage({
     ...(COUNTRY_PLACES[c] ?? { lat: 0, lng: 0 }),
   });
   await getTranslations('landing3d.day');
-  // The first view as a picture (captured from the 3D, 44 KB wide, 18 KB upright), shown at once.
+  // The first view as a picture, shown at once. Three shapes, each framed and anchored like the 3D camera
+  // (frameCamera): wide screens keep the height with the subject 66% across, squarer ones keep the width,
+  // upright phones keep the width with the subject a third down. So the 3D fades in without a jump.
   const common = { alt: '', unoptimized: true, priority: true } as const;
   const wide = getImageProps({
     ...common,
     src: landingAsset('poster-wide.webp'),
-    width: 2000,
-    height: 1125,
+    width: 2400,
+    height: 1000,
+  }).props;
+  const square = getImageProps({
+    ...common,
+    src: landingAsset('poster-square.webp'),
+    width: 1500,
+    height: 1250,
   }).props;
   const { src: tall, ...img } = getImageProps({
     ...common,
     src: landingAsset('poster-tall.webp'),
-    width: 780,
-    height: 1688,
+    width: 720,
+    height: 1714,
   }).props;
   const backdrop = (
     <picture>
-      <source media="(min-aspect-ratio: 3/4)" srcSet={wide.src} />
-      <img {...img} alt="" src={tall} fetchPriority="high" className="h-full w-full object-cover" />
+      <source media="(min-aspect-ratio: 16/9)" srcSet={wide.src} />
+      <source media="(min-aspect-ratio: 1/1)" srcSet={square.src} />
+      <img
+        {...img}
+        alt=""
+        src={tall}
+        fetchPriority="high"
+        className="xedine-poster h-full w-full"
+      />
     </picture>
   );
   return (

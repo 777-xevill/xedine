@@ -6,6 +6,7 @@ import { useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { createTillScreen, type TillLine, type TillWords } from './till-screen';
 import { landingAsset } from './asset-version';
+import { withMeshopt } from './gltf';
 
 /** Built by scripts/landing-3d/cafe.py and bake.py: the still café with its light baked in (ADR 0064). */
 export const CAFE_GLB = landingAsset('cafe-corner.glb');
@@ -24,7 +25,7 @@ export function CafeCorner({
   order: TillLine[];
   total: string;
 }) {
-  const { scene } = useGLTF(CAFE_GLB, false, true);
+  const { scene } = useGLTF(CAFE_GLB, false, false, withMeshopt);
   const screen = useMemo(() => createTillScreen(till, order, total), [till, order, total]);
 
   useLayoutEffect(() => {
@@ -60,4 +61,4 @@ export function CafeCorner({
   return <primitive object={scene} />;
 }
 
-useGLTF.preload(CAFE_GLB, false, true);
+useGLTF.preload(CAFE_GLB, false, false, withMeshopt);

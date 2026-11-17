@@ -2,7 +2,7 @@
 
 One continuous scroll through one café, from dawn to night, guided by Xedine (the chef logo as a floating 3D
 character with two mitten hands). Every moment: a time chip, one sentence, the real screen drawn live, and
-Xedine pointing at it. Hidden preview: **`/landing-preview/day`** (`?country=GB` shows another market's prices;
+Xedine pointing at it. The home page (`/`, since 2026-11-18; also at `/landing-preview/day`) (`?country=GB` shows another market's prices;
 the live site reads the visitor's country from Cloudflare's `cf-ipcountry`). Words: `messages/*.json`
 → `landing3d.day`.
 
@@ -75,6 +75,8 @@ B="E:/Editing/apps/blender/blender.exe"; export BLENDER_USER_RESOURCES=E:/xedine
 | 6 | `"$B" -b --factory-startup -P scripts/landing-3d/cast.py -- [--render]` | the people and their props (`cast-raw.glb`) |
 | 7 | `node scripts/landing-3d/pack.mjs` | `public/landing/3d/world-{st,ca,ki,sr,of}.glb`, `cast.glb` (dedup, prune, meshopt) |
 
+After any rebuild, set `LANDING_3D_VERSION` in `asset-version.ts` to the hash `asset-version.test.ts` prints: the files are cached for a year under that version.
+
 `land.png` (the globe's land) is drawn from Natural Earth's public-domain 110 m land.
 
 ## How the page draws it
@@ -91,7 +93,7 @@ B="E:/Editing/apps/blender/blender.exe"; export BLENDER_USER_RESOURCES=E:/xedine
 | Everyone whole in every view, nobody popping in, Xedine in view between rooms, screens readable (wide and upright phone) | `framing.test.ts` |
 | Every feature and the code that is it | `features.ts` (+ test) |
 
-Sizes: the whole day 6.6 MB; the first screen about 1.4 MB.
+Sizes: the whole day 6.6 MB; the first picture (street + Xedine) 1.3 MB, preloaded from the HTML; the other rooms load one by one after it.
 
 ## How a moment is filmed (the founder's rules, 2026-11-17)
 
@@ -113,4 +115,4 @@ Natural Earth (public domain). The only name in the world is Xedine.
 1. Xedine's look: **given**.
 2. The café corner: **given** (with "show our name on the boards": done).
 3. The whole day on `/landing-preview/day`: **given** (2026-11-18).
-4. Then it replaces the landing page.
+4. It replaces the landing page: **done** (2026-11-18).

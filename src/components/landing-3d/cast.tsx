@@ -7,9 +7,10 @@ import * as THREE from 'three';
 import { createScreen, planeUv, SCREEN_SIZES, type ScreenText } from './screens';
 import { CAST_IDS, type CastId, type Pose, type Prop } from './story';
 import { beatAt, castAt } from './timeline';
+import { landingAsset } from './asset-version';
 
 /** Built by scripts/landing-3d/cast.py (ADR 0064): the café's people, little blobs from Xedine's family. */
-export const CAST_GLB = '/landing/3d/cast.glb';
+export const CAST_GLB = landingAsset('cast.glb');
 
 /** Hand positions per pose, in Blender's character space (x right of the character… y behind, z up). */
 const POSES: Record<Pose, { l: [number, number, number]; r: [number, number, number] }> = {
@@ -283,4 +284,4 @@ export function Cast({
   return <primitive object={scene} />;
 }
 
-useGLTF.preload(CAST_GLB, false, true);
+// Not preloaded on import: the stage loads the people after the street (the first picture comes first).

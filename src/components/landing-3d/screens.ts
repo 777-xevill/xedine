@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Show } from './story';
+import { landingAsset } from './asset-version';
 
 /**
  * The screens inside the 3D café, drawn live on canvases in the real app's look (ADR 0063: grey, silver,
@@ -92,9 +93,9 @@ function brand(): Colors {
 /** Pictures the screens draw: the chef logo, and the logos of the networks Xedine posts to. */
 const LOGO = '/brand/logo-chef-192.png';
 const NETWORKS = [
-  '/landing/3d/logos/facebook.svg',
-  '/landing/3d/logos/instagram.svg',
-  '/landing/3d/logos/tiktok.svg',
+  landingAsset('logos/facebook.svg'),
+  landingAsset('logos/instagram.svg'),
+  landingAsset('logos/tiktok.svg'),
 ] as const;
 const pictures = new Map<string, HTMLImageElement>();
 /** Bumped when a picture arrives, so every screen paints again with it. */

@@ -4,6 +4,7 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { landingAsset } from './asset-version';
 
 /**
  * Above the city at night, then the whole globe (ADR 0064, the branches and countries moment). The city around
@@ -253,7 +254,7 @@ function Globe({
   );
   useEffect(() => {
     const img = new Image();
-    img.src = '/landing/3d/land.png';
+    img.src = landingAsset('land.png');
     img.onload = () => {
       const c = document.createElement('canvas');
       c.width = img.width;

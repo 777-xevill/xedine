@@ -2,17 +2,27 @@
 
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { type RefObject, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+  type RefObject,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import * as THREE from 'three';
 import { createScreen, planeUv, SCREEN_SIZES, type ScreenText } from './screens';
 import { type ScreenId, toThree, type V3 } from './story';
 import { friesShown, screenAt, timeOfDay, windowOpen } from './timeline';
+import { landingAsset } from './asset-version';
 
 /** Built by scripts/landing-3d/world.py + bake.py + pack.mjs (ADR 0064): one file per zone. */
 export const ZONES = ['st', 'ca', 'ki', 'sr', 'of'] as const;
 export type Zone = (typeof ZONES)[number];
-export const zoneUrl = (z: Zone) => `/landing/3d/world-${z}.glb`;
-const NIGHT_URL = (atlas: string) => `/landing/3d/night/${atlas}.webp`;
+export const zoneUrl = (z: Zone) => landingAsset(`world-${z}.glb`);
+const NIGHT_URL = (atlas: string) => landingAsset(`night/${atlas}.webp`);
 
 /** Shared by every baked surface: how far into the night, and the light's colour (dawn is warm). */
 export const LIGHT = { uNight: { value: 0 }, uTint: { value: new THREE.Color(1, 1, 1) } };
@@ -63,12 +73,16 @@ function ZoneModel({
   zone,
   screens,
   live,
+  onLoaded,
 }: {
   zone: Zone;
   screens: Screens;
   live: RefObject<LiveParts>;
+  onLoaded: (zone: Zone) => void;
 }) {
   const { scene } = useGLTF(zoneUrl(zone), false, true);
+  // Tells the world this zone is in, so the next one starts loading (one at a time, the street first).
+  useEffect(() => onLoaded(zone), [onLoaded, zone]);
   useLayoutEffect(() => {
     const hinged: THREE.Mesh[] = [];
     scene.traverse((o) => {
@@ -201,7 +215,7 @@ const QR_CARDS: [V3, number][] = [
 
 function QrCards() {
   const material = useMemo(() => {
-    const tex = loader.load('/landing/3d/qr-card.webp');
+    const tex = loader.load(landingAsset('qr-card.webp'));
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     return new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
@@ -280,18 +294,31 @@ function FriesLabel({ progressRef, label }: { progressRef: RefObject<number>; la
 }
 
 /**
- * The whole café world. Zones appear as they load (the street first), every screen is drawn live from the
- * story, and the light follows the day: dawn, day, night.
+ * The whole café world. Zones load one after another in the story's order, so the street (all the first
+ * moment needs) is drawn first and the rest arrive while the visitor reads; every screen is drawn live from
+ * the story, and the light follows the day: dawn, day, night.
  */
 export function World({
   progressRef,
   text,
   zones,
+  onStreet,
 }: {
   progressRef: RefObject<number>;
   text: ScreenText;
   zones: readonly Zone[];
+  /** Once the first zone is drawn. */
+  onStreet?: () => void;
 }) {
+  const [loaded, setLoaded] = useState(1);
+  const onLoaded = useCallback(
+    (zone: Zone) => {
+      const i = zones.indexOf(zone);
+      if (i === 0) onStreet?.();
+      setLoaded((n) => Math.max(n, i + 2));
+    },
+    [zones, onStreet],
+  );
   const screens = useMemo<Screens>(() => {
     const out: Screens = {};
     for (const id of [
@@ -375,9 +402,9 @@ export function World({
 
   return (
     <>
-      {zones.map((z) => (
+      {zones.slice(0, loaded).map((z) => (
         <Suspense key={z} fallback={null}>
-          <ZoneModel zone={z} screens={screens} live={live} />
+          <ZoneModel zone={z} screens={screens} live={live} onLoaded={onLoaded} />
         </Suspense>
       ))}
       <FriesLabel progressRef={progressRef} label={text.w.friesLabel ?? ''} />

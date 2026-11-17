@@ -1,6 +1,5 @@
 'use client';
 
-import { useProgress } from '@react-three/drei';
 import { ArrowRight, ChevronDown, SendHorizontal, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -8,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import {
   type FormEvent,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -30,6 +30,8 @@ const BEAT_VH = 190;
 type Props = {
   /** The language switch (a server component, passed in by the page). */
   corner?: ReactNode;
+  /** After the A–Z list: the site's footer (the privacy and terms links) when this is the home page. */
+  footer?: ReactNode;
   currency: DemoCurrency;
   taxName: string;
   home: CountryPin;
@@ -61,8 +63,9 @@ function firstBeat(id: FeatureId) {
  * moments scroll over it. Every feature Xedine has appears in at least one moment (features.test.ts), and the
  * A–Z list after the story names them all.
  */
-export function DayStory({ corner, currency, taxName, home, countries }: Props) {
+export function DayStory({ corner, footer, currency, taxName, home, countries }: Props) {
   const t = useTranslations('landing3d.day');
+  const tc = useTranslations('common');
   const ctx = useMemo(() => ({ currency, taxName }), [currency, taxName]);
   const text = useScreenText(ctx);
   const cityText = useCityText(ctx);
@@ -75,7 +78,9 @@ export function DayStory({ corner, currency, taxName, home, countries }: Props) 
   const [inStory, setInStory] = useState(true);
   const can3d = useSyncExternalStore(noSubscribe, webglOk, () => null);
   const bar = useRef<HTMLDivElement>(null);
-  const { active: loading, progress: loaded } = useProgress();
+  // The loading chip shows until the street is drawn; the other rooms arrive while the visitor reads.
+  const [ready, setReady] = useState(false);
+  const onReady = useCallback(() => setReady(true), []);
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -140,26 +145,39 @@ export function DayStory({ corner, currency, taxName, home, countries }: Props) 
               easedRef={easedRef}
               text={text}
               showCity={showCity}
+              onReady={onReady}
               city={city}
             />
           ) : (
             <div className="xedine-stage-bg h-full w-full" />
           )}
-          {can3d && loading && (
+          {can3d && !ready && (
             <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
-              <p className="xedine-chip rounded-full px-4 py-1.5 text-xs">
-                {`${t('intro.loading')} ${Math.round(loaded)}%`}
-              </p>
+              <p className="xedine-chip rounded-full px-4 py-1.5 text-xs">{t('intro.loading')}</p>
             </div>
           )}
           {corner && <div className="absolute top-3 left-3 z-30">{corner}</div>}
-
-          <a
-            href="#everything"
-            className="xedine-chip absolute top-4 right-4 z-30 rounded-full px-3 py-1.5 text-xs font-semibold"
-          >
-            {t('intro.skip')}
-          </a>
+          <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+            {/* Someone who already has an account signs in from here, without scrolling the day. */}
+            <Link
+              href="/sign-in"
+              className="xedine-chip rounded-full px-3 py-1.5 text-xs font-semibold"
+            >
+              {tc('signIn')}
+            </Link>
+            <Link
+              href="/sign-up"
+              className="hidden rounded-full bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-grey)] sm:inline-flex"
+            >
+              {tc('signUp')}
+            </Link>
+            <a
+              href="#everything"
+              className="xedine-chip rounded-full px-3 py-1.5 text-xs font-semibold"
+            >
+              {t('intro.skip')}
+            </a>
+          </div>
         </div>
         {/* The scroll itself: one invisible stretch per moment, with its words for search and screen readers. */}
         <div className="absolute inset-x-0 top-0">
@@ -216,6 +234,7 @@ export function DayStory({ corner, currency, taxName, home, countries }: Props) 
         </p>
       )}
       <Everything />
+      {footer}
     </div>
   );
 }

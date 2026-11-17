@@ -2,7 +2,7 @@
 
 import { Environment } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { type RefObject, Suspense, useRef } from 'react';
+import { type RefObject, Suspense, useCallback, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Cast } from './cast';
 import { City, type BranchLabel, type CountryPin } from './city';
@@ -11,8 +11,9 @@ import type { CastId } from './story';
 import { beatAt, cameraAt, frameCamera, timeOfDay, xedineAt, xedineLook } from './timeline';
 import { World, ZONES } from './world';
 import { Xedine, type XedineHandle } from './xedine';
+import { landingAsset } from './asset-version';
 
-const ENV_DAY = '/landing/3d/env-cafe-day.jpg';
+const ENV_DAY = landingAsset('env-cafe-day.jpg');
 
 /** How much of the city and of the globe to show (the countries moment). */
 type Show = { city: number; globe: number };
@@ -169,6 +170,8 @@ export type StageProps = {
   easedRef: RefObject<number>;
   text: ScreenText;
   showCity: boolean;
+  /** Once the street is drawn: the page's loading chip goes. */
+  onReady?: () => void;
   city: {
     branches: BranchLabel[];
     waiting: string;
@@ -179,8 +182,21 @@ export type StageProps = {
 };
 
 /** The day, live (ADR 0064): the baked café world, its screens, the people, Xedine, the city and the globe. */
-export default function DayStage({ targetRef, easedRef, text, showCity, city }: StageProps) {
+export default function DayStage({
+  targetRef,
+  easedRef,
+  text,
+  showCity,
+  onReady,
+  city,
+}: StageProps) {
   const showRef = useRef<Show>({ city: 0, globe: 0 });
+  // The people's file waits for the street, so the first picture comes first.
+  const [street, setStreet] = useState(false);
+  const onStreet = useCallback(() => {
+    setStreet(true);
+    onReady?.();
+  }, [onReady]);
   const phonesRef = useRef(new Map<CastId, THREE.Vector3>());
   return (
     <Canvas
@@ -199,10 +215,12 @@ export default function DayStage({ targetRef, easedRef, text, showCity, city }: 
         phonesRef={phonesRef}
       />
       <Atmosphere easedRef={easedRef} />
-      <World progressRef={easedRef} text={text} zones={ZONES} />
-      <Suspense fallback={null}>
-        <Cast progressRef={easedRef} text={text} phonesRef={phonesRef} />
-      </Suspense>
+      <World progressRef={easedRef} text={text} zones={ZONES} onStreet={onStreet} />
+      {street && (
+        <Suspense fallback={null}>
+          <Cast progressRef={easedRef} text={text} phonesRef={phonesRef} />
+        </Suspense>
+      )}
       <Suspense fallback={null}>
         <StoryXedine easedRef={easedRef} />
       </Suspense>

@@ -146,3 +146,18 @@ The founder watched the whole day and asked for 23 changes. What changed, and th
   QR), no WhatsApp or SMS, and "Open my member card", all shown the moment the phone is seen.
 - **Approval 3** (the whole day): given by the founder on 2026-11-18 ("all ok", push and deploy). It goes
   live at `/landing-preview/day`; replacing the landing page (step 4) is still a separate request.
+
+## Amendment (2026-11-18): the home page, and fast
+
+- **Step 4 done.** `src/app/page.tsx` is now the 3D day (the founder: "it should be in the main section"). A
+  signed-in visitor still goes straight to their restaurant. The top right has Sign in, Create account (wide
+  screens) and Skip to every feature; the footer keeps the Privacy and Terms links (Google and Meta check
+  them). `/landing-preview/day` stays as a hidden copy. The old landing page's components
+  (`src/components/landing/`) are no longer used.
+- **The first picture first.** Before, the 3D waited for every room (6.5 MB; 7.7 s on a 4G phone). Now the
+  street and Xedine (1.3 MB) start downloading from the HTML itself (`<link rel="preload">`), the 3D draws
+  as soon as they are in, and the other rooms load one after another in the story's order (then the people),
+  while the visitor reads the first moment.
+- **Kept, not fetched again.** `public/_headers` gives `/_next/static/*` (hashed names) and `/landing/3d/*` a
+  year-long, immutable cache. Every 3D URL carries `?v=` + a hash of the files (`asset-version.ts`);
+  `asset-version.test.ts` fails until the hash is updated after a rebuild, so nobody is served an old world.

@@ -12,9 +12,10 @@ import {
   useRef,
 } from 'react';
 import * as THREE from 'three';
+import { landingAsset } from './asset-version';
 
 /** Built by scripts/landing-3d/xedine.py from the chef logo (ADR 0064). */
-export const XEDINE_GLB = '/landing/3d/xedine.glb';
+export const XEDINE_GLB = landingAsset('xedine.glb');
 
 /** Bones the page drives live (look, blink); the recorded moves never touch them. */
 const LIVE_BONES = /^(eyelook|eye)_[LR]$/;

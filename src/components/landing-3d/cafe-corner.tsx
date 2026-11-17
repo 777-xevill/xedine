@@ -5,10 +5,11 @@ import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { createTillScreen, type TillLine, type TillWords } from './till-screen';
+import { landingAsset } from './asset-version';
 
 /** Built by scripts/landing-3d/cafe.py and bake.py: the still café with its light baked in (ADR 0064). */
-export const CAFE_GLB = '/landing/3d/cafe-corner.glb';
-export const CAFE_ENV = '/landing/3d/cafe-env.jpg';
+export const CAFE_GLB = landingAsset('cafe-corner.glb');
+export const CAFE_ENV = landingAsset('cafe-env.jpg');
 
 /**
  * The café corner. Baked meshes (BK_*) draw their texture as-is, unlit: the light is already in it, exactly

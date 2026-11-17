@@ -1,7 +1,7 @@
 'use client';
 
 import { useGLTF } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { createScreen, planeUv, SCREEN_SIZES, type ScreenText } from './screens';
@@ -9,7 +9,7 @@ import { CAST_IDS, type CastId, type Pose, type Prop } from './story';
 import { beatAt, castAt } from './timeline';
 import { landingAsset } from './asset-version';
 import { withMeshopt } from './gltf';
-import { warmUpOnPhone } from './warm-up';
+import { onPhoneWhenQuiet } from './warm-up';
 
 /** Built by scripts/landing-3d/cast.py (ADR 0064): the café's people, little blobs from Xedine's family. */
 export const CAST_GLB = landingAsset('cast.glb');
@@ -122,9 +122,6 @@ export function Cast({
 }) {
   const { scene } = useGLTF(CAST_GLB, false, false, withMeshopt);
   const rigsRef = useRef<Partial<Record<CastId, Rig>>>({});
-  const gl = useThree((state) => state.gl);
-  const camera = useThree((state) => state.camera);
-  const root = useThree((state) => state.scene);
   const tmpRef = useRef({ v: new THREE.Vector3(), w: new THREE.Vector3() });
 
   useLayoutEffect(() => {
@@ -161,16 +158,20 @@ export function Cast({
     };
   }, [scene]);
 
-  // On a phone, the people (hidden until their moment) are compiled now, not when they first walk in.
-  // And every phone screen is drawn once on a throwaway canvas, so its text and emoji are ready.
+  // On a phone, every phone screen is drawn once on a throwaway canvas, one screen per quiet moment, so its
+  // text and emoji are ready before it first lights up mid-scroll (that took ~60 ms on a slow phone).
   useEffect(() => {
-    warmUpOnPhone(gl, scene, camera, root, () => {
-      const [w, h] = SCREEN_SIZES.phone!;
-      const spare = createScreen(w, h);
-      spare.warm(text);
+    const [w, h] = SCREEN_SIZES.phone!;
+    const spare = createScreen(w, h);
+    const stop = onPhoneWhenQuiet([
+      ...spare.shows().map((show) => () => spare.warm(show, text)),
+      () => spare.dispose(),
+    ]);
+    return () => {
+      stop();
       spare.dispose();
-    });
-  }, [gl, scene, camera, root, text]);
+    };
+  }, [text]);
 
   // Phones redraw once the page's fonts (Bangla too) are ready.
   const repaintRef = useRef(true);

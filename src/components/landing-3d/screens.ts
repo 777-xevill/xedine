@@ -1057,21 +1057,11 @@ const PAINTERS: Record<Show, Painter> = {
 };
 
 /** A canvas texture that redraws only when what it shows, or its moment, changes. */
-/**
- * On an upright phone the screens are drawn with 0.6 of their pixels (still sharp at the size a phone shows
- * them): each repaint goes to the graphics card, and at full size a phone froze for up to 0.2 s the first
- * time a phone screen lit up (the founder, 2026-11-18). Other devices keep full size.
- */
-const pixelScale = () =>
-  typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches ? 0.6 : 1;
-
 export function createScreen(width: number, height: number) {
   const canvas = document.createElement('canvas');
-  const k = pixelScale();
-  canvas.width = Math.round(width * k);
-  canvas.height = Math.round(height * k);
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext('2d');
-  ctx?.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
@@ -1091,17 +1081,17 @@ export function createScreen(width: number, height: number) {
       PAINTERS[show](ui, clamp01(t), text);
       texture.needsUpdate = true;
     },
+    /** Every kind of screen, for warm(). */
+    shows: () => Object.keys(PAINTERS) as Show[],
     /**
-     * Draws every screen fully shown and makes the browser rasterise each one now, so the text and emoji
-     * the phone screens use are ready before they first light up mid-scroll (a slow phone spent ~60 ms
-     * on that the first time). Use a throwaway screen: reading pixels back can slow a canvas down.
+     * Draws one screen fully shown and makes the browser rasterise it now, so its text and emoji are ready
+     * before a phone screen first lights up mid-scroll. Use a throwaway screen: reading pixels back can
+     * slow a canvas down.
      */
-    warm(text: ScreenText) {
+    warm(show: Show, text: ScreenText) {
       if (!ui) return;
-      for (const show of Object.keys(PAINTERS) as Show[]) {
-        PAINTERS[show](ui, 1, text);
-        ui.ctx.getImageData(0, 0, 1, 1);
-      }
+      PAINTERS[show](ui, 1, text);
+      ui.ctx.getImageData(0, 0, 1, 1);
     },
     dispose() {
       texture.dispose();

@@ -3,6 +3,7 @@
 @import './styles/charts.css';
 @import './styles/customer.css';
 @import './styles/till.css';
+@import './styles/landing-3d.css';
 
 /*
  * Brand tokens (docs/BRAND.md, ADR 0063). The founder's three colours and nothing else: grey is the

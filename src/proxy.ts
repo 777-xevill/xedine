@@ -30,6 +30,8 @@ const PUBLIC_PREFIXES = [
   '/privacy',
   '/data-deletion',
   '/terms',
+  // The hidden look test of the landing page's 3D character (ADR 0064), before it replaces the landing page.
+  '/landing-preview',
 ];
 
 export async function proxy(request: NextRequest) {
@@ -78,6 +80,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // sw.js must load even after the session expires: a redirected service-worker script fails.
-    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    // The landing page's 3D files (ADR 0064) are public, static and fetched by every visitor.
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|brand/|landing/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|glb|ktx2)$).*)',
   ],
 };

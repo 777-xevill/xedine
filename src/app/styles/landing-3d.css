@@ -1,0 +1,26 @@
+/* The landing page's 3D day (ADR 0064). The 3D world brings its own real colours; everything drawn by the page
+   around it stays grey, silver and yellow (ADR 0063). */
+
+/* The look-test stage: a warm silver studio, so the charcoal character reads like the logo on its tile. */
+.xedine-stage-bg {
+  background: radial-gradient(
+    120% 90% at 50% 38%,
+    color-mix(in oklab, var(--brand-silver) 82%, white),
+    color-mix(in oklab, var(--brand-silver) 88%, var(--brand-yellow)) 55%,
+    color-mix(in oklab, var(--brand-silver) 62%, var(--brand-grey))
+  );
+}
+
+.xedine-stage-bg canvas {
+  touch-action: pan-y;
+}
+
+/* The chip that floats over the stage. */
+.xedine-chip {
+  background: color-mix(in oklab, var(--brand-grey) 88%, transparent);
+  color: var(--brand-silver);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--brand-silver) 18%, transparent) inset,
+    0 18px 40px -18px color-mix(in oklab, var(--brand-grey) 70%, transparent);
+}

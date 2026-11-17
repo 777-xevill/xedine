@@ -4738,5 +4738,636 @@
     "errorTitle": "This page couldn't open",
     "errorBody": "Something went wrong while loading it. Try again, or go back home.",
     "retry": "Try again"
+  },
+  "landing3d": {
+    "preview": {
+      "title": "Meet Xedine",
+      "hint": "Move your mouse or finger: Xedine looks at it. Tap Xedine to wave, or drag to turn it.",
+      "wave": "Wave",
+      "point": "Point",
+      "loading": "Xedine is on its way…",
+      "note": "Look test of the 3D character. The café and the whole day come next."
+    },
+    "cafe": {
+      "title": "A corner of the café",
+      "hint": "Move your mouse or finger: the room leans with you and Xedine watches. Tap Xedine to wave.",
+      "note": "Real 3D, drawn live in your browser. Watch the till: an order comes in."
+    },
+    "till": {
+      "newOrder": "New order",
+      "total": "Total",
+      "placeOrder": "Place order",
+      "sent": "Sent to the kitchen"
+    },
+    "dishes": {
+      "burger": "Burger",
+      "latte": "Latte",
+      "croissant": "Croissant",
+      "pizza": "Pizza",
+      "fries": "Fries"
+    },
+    "day": {
+      "meta": {
+        "title": "One day in a café with Xedine",
+        "description": "Scroll through one day in a real café and watch Xedine, the AI manager, run the till, the kitchen, the stock and the money."
+      },
+      "intro": {
+        "kicker": "One day in a café",
+        "scroll": "Scroll to start the day",
+        "skip": "Skip to every feature",
+        "loading": "Opening the café…",
+        "chapter": "Moment {n} of {total}"
+      },
+      "beats": {
+        "dawn": {
+          "time": "Dawn",
+          "place": "The street",
+          "title": "Meet Xedine, the AI manager",
+          "body": "The café is still asleep. Xedine is already up: it watches the till, the kitchen, the stock and the money, and tells you what to do, in Bangla or English, in your own currency."
+        },
+        "brief": {
+          "time": "7:00",
+          "place": "On the way in",
+          "title": "Your morning brief",
+          "body": "Before the shutter goes up, the owner already knows the day: which dishes will likely sell best, what is running out, the rain, the licence that renews soon."
+        },
+        "bazar": {
+          "time": "7:30",
+          "place": "The back door",
+          "title": "Bazar by chat",
+          "body": "The shopper types what was bought on Telegram, like any message. Xedine asks only what it must (is oat milk new?), saves a draft for the owner to approve, and the shelf shows how many days each thing lasts."
+        },
+        "safety": {
+          "time": "8:00",
+          "place": "The kitchen",
+          "title": "Nothing expired reaches a customer",
+          "body": "Every delivery gets its use-by date by itself. Old milk is written off, held cream takes iced coffee off the till, the checklist shows what nobody did yet, and the licence reminder comes before it lapses."
+        },
+        "staff": {
+          "time": "8:30",
+          "place": "The staff door",
+          "title": "Everyone signs in",
+          "body": "Each person taps in at the tablet by the back door: who came, and when. Managers and the accountant get their own accounts, no email needed, and the till and kitchen screen open with each person’s PIN. Private notes stay with the owner and managers."
+        },
+        "plan": {
+          "time": "9:00",
+          "place": "The office",
+          "title": "Tomorrow, already planned",
+          "body": "Xedine reads the weather where the café is and its calendar: rain after 2 pm means fewer burgers and more hot coffee. It shows which dishes will likely sell best tomorrow and writes the bazar list."
+        },
+        "table": {
+          "time": "12:30",
+          "place": "Table 4",
+          "title": "No app, just a QR code",
+          "body": "A guest scans the table’s QR: the menu at this branch’s prices, calories and protein the owner approved, an allergy filter, the member card, offers only if they say yes, and a game while the food cooks."
+        },
+        "till": {
+          "time": "12:35",
+          "place": "The till",
+          "title": "The order reaches the till",
+          "body": "The waiter brings the order. The cashier scans the member card and types the code EID10, the tax adds itself, the order goes to the kitchen, and at checkout half is paid in cash and half by card. The internet drops: the till keeps selling and catches up later."
+        },
+        "manager": {
+          "time": "12:36",
+          "place": "The floor",
+          "title": "Big discounts need the manager",
+          "body": "A 30% discount asks for the manager’s PIN, once. Every void, discount and price change is recorded: who, what, when. Managers see today’s sales live; profit is only for the owner and the accountant."
+        },
+        "kitchen": {
+          "time": "12:37",
+          "place": "The kitchen screen",
+          "title": "The kitchen sees it at once",
+          "body": "The order is on the kitchen screen the moment it is placed: which table, what to cook, how long it has waited. Oldest first; a ticket turns yellow after 10 minutes. One tap: ready."
+        },
+        "stock": {
+          "time": "12:40",
+          "place": "The storeroom",
+          "title": "Stock goes down with every order",
+          "body": "Each burger takes a bun, the beef and the cheese out of stock: the owner wrote that once. The cook used more cheese than the recipe, and Xedine counts every extra gram as a loss. Dropped fries go in as waste with one button. No counting needed to know what is left."
+        },
+        "social": {
+          "time": "15:00",
+          "place": "The counter",
+          "title": "It posts by itself",
+          "body": "Xedine takes the best seller’s real photo, cuts it out, designs a poster and a 10-second video, and posts them to Facebook, Instagram and TikTok on its own. The owner can skip any post."
+        },
+        "offer": {
+          "time": "16:00",
+          "place": "The quiet hour",
+          "title": "An offer for the quiet hour",
+          "body": "Xedine sees that 4 to 6 pm is quiet and drafts an offer. The owner taps Approve: only the phones of customers who said yes get it, and a few are kept out to measure what the offer really adds. A number is deleted on request."
+        },
+        "reviews": {
+          "time": "17:00",
+          "place": "The door",
+          "title": "Happy guests to Google, unhappy ones to you",
+          "body": "A happy guest is sent to the café’s Google review. An unhappy one writes privately to the owner, and the complaint closes only when the cause is fixed."
+        },
+        "closing": {
+          "time": "23:00",
+          "place": "Closing time",
+          "title": "The day, counted",
+          "body": "The cash in the drawer is checked against what it should be, and a gap is flagged. Today’s sales, the best sellers, and a chart that explains itself when asked."
+        },
+        "leaks": {
+          "time": "23:10",
+          "place": "The office",
+          "title": "Where the money leaked",
+          "body": "Each leak in money, with its proof and what to do next. Rent, salaries and bills go in once, so today’s profit is the true one. Only the owner and the accountant see this page."
+        },
+        "city": {
+          "time": "23:20",
+          "place": "Above the city",
+          "title": "Every branch, every country",
+          "body": "Three branches side by side, a new one waiting for approval, and the café next to similar restaurants. Xedine works in ten countries, each with its own money, tax name, clock and calendar."
+        },
+        "ask": {
+          "time": "Night",
+          "place": "The office sofa",
+          "title": "Ask Xedine anything",
+          "body": "Like ChatGPT, but it knows your restaurant. Ask in Bangla or English: every answer uses your own numbers and ends with what to do."
+        },
+        "start": {
+          "time": "Tomorrow",
+          "place": "Your café",
+          "title": "Now it’s your turn",
+          "body": "Sign in with Google, your phone number or email. A checklist sets you up as your data comes in, and you switch on only the parts you need."
+        }
+      },
+      "groups": {
+        "daily": "Every day",
+        "money": "Money",
+        "customers": "Customers",
+        "team": "Your team and set-up"
+      },
+      "features": {
+        "home": {
+          "name": "Today at a glance",
+          "line": "Sales against a normal day, estimated profit, best sellers, leaks and what is running out."
+        },
+        "assistant": {
+          "name": "Ask Xedine",
+          "line": "A chat that knows your whole restaurant, on every page, in Bangla or English."
+        },
+        "brief": {
+          "name": "Morning brief",
+          "line": "The day ahead on your phone before you open."
+        },
+        "pos": {
+          "name": "The till",
+          "line": "Orders, split payments, cash counts and receipts, on any tablet."
+        },
+        "offline": {
+          "name": "Works offline",
+          "line": "The till keeps selling when the internet drops and catches up later."
+        },
+        "tillHelper": {
+          "name": "Quick order and dish photos",
+          "line": "Type what the customer said and the till fills the order; tap dishes by their photo."
+        },
+        "kds": {
+          "name": "Kitchen screen",
+          "line": "Every order at once, oldest first, with timers and a ready button."
+        },
+        "recipes": {
+          "name": "Dish ingredients",
+          "line": "Write one plate once; every order takes it out of stock. AI can draft it."
+        },
+        "stock": {
+          "name": "Stock in plain words",
+          "line": "What is on the shelf, what was used, and how many days it lasts."
+        },
+        "stockGuard": {
+          "name": "Stock Guard",
+          "line": "Warns before something runs out; items that come and go stay tidy."
+        },
+        "estimate": {
+          "name": "No counting needed",
+          "line": "What is left, worked out from the orders; count only when you want to."
+        },
+        "purchases": {
+          "name": "Bazar",
+          "line": "Purchases by form, a photo of the chit or a voice note; suppliers and price changes."
+        },
+        "telegram": {
+          "name": "Bazar by chat",
+          "line": "The shopper reports purchases on Telegram and gets the list back."
+        },
+        "waste": {
+          "name": "Waste",
+          "line": "One button on the kitchen screen, with the reason."
+        },
+        "loss": {
+          "name": "Every gram counts",
+          "line": "Ingredients used beyond the recipe show up as a loss in money."
+        },
+        "foodSafety": {
+          "name": "Food safety",
+          "line": "A use-by date on every lot; expired or held items leave the till."
+        },
+        "dailyChecks": {
+          "name": "Daily checks",
+          "line": "Hygiene, inspections and paperwork: what is due and what is missing."
+        },
+        "plan": {
+          "name": "Plan",
+          "line": "Tomorrow’s likely best sellers, the prep and the bazar list."
+        },
+        "weather": {
+          "name": "Weather and calendar",
+          "line": "Rain and holidays where you are move the forecast by themselves."
+        },
+        "menu": {
+          "name": "Menu",
+          "line": "Dishes, prices and photos; import a whole menu in one go."
+        },
+        "sales": {
+          "name": "Sales charts",
+          "line": "Busiest hours, days, dishes and payment methods, explained when you ask."
+        },
+        "leaks": {
+          "name": "Where you lose money",
+          "line": "Voids, discounts, refunds, cash gaps and odd stock use, each with proof."
+        },
+        "menuProfit": {
+          "name": "Menu profit",
+          "line": "Which dishes make money, and what a new price or portion would do."
+        },
+        "costs": {
+          "name": "Costs",
+          "line": "Rent, salaries and bills, so the daily profit is the real one."
+        },
+        "moneyVisibility": {
+          "name": "Profit stays private",
+          "line": "Only the owner and the accountant see cost, margin and profit."
+        },
+        "approvals": {
+          "name": "Manager approvals",
+          "line": "Voids and big discounts need a manager’s PIN, once."
+        },
+        "discountCodes": {
+          "name": "Discount codes",
+          "line": "Secret codes like EID10 that the cashier types at the till."
+        },
+        "tax": {
+          "name": "Tax on every bill",
+          "line": "VAT, GST or sales tax at your own rate, and the service charge."
+        },
+        "audit": {
+          "name": "Everything recorded",
+          "line": "Who changed what and when: voids, discounts, prices and stock."
+        },
+        "compliance": {
+          "name": "Licences and tax dates",
+          "line": "Reminders before a licence or a tax return is due."
+        },
+        "benchmarks": {
+          "name": "Compare with others",
+          "line": "Your food cost and sales next to similar restaurants."
+        },
+        "branches": {
+          "name": "Branches",
+          "line": "Every branch side by side, and the gap to the best one."
+        },
+        "newBranch": {
+          "name": "New branches",
+          "line": "Ask for a new branch and set up its tables."
+        },
+        "tableQr": {
+          "name": "Table QR",
+          "line": "One code per table: menu, member card and reviews, no app."
+        },
+        "foodFacts": {
+          "name": "Food facts",
+          "line": "Calories, protein and allergens you approve, with an allergy filter."
+        },
+        "memberCard": {
+          "name": "Member card",
+          "line": "Points and a member discount, a card page by link, scanned at the till."
+        },
+        "games": {
+          "name": "Table games",
+          "line": "Nine games while the food cooks, alone or with friends."
+        },
+        "offers": {
+          "name": "Offers by notification",
+          "line": "Approved offers ring only the phones that said yes."
+        },
+        "customers": {
+          "name": "Customers",
+          "line": "Who comes back and who is slipping away."
+        },
+        "privacy": {
+          "name": "Delete a number",
+          "line": "Remove a customer’s phone number on request; the bills stay."
+        },
+        "reviews": {
+          "name": "Reviews and complaints",
+          "line": "Happy guests to Google, unhappy ones to you, every case closed properly."
+        },
+        "social": {
+          "name": "Social autopilot",
+          "line": "Posts to Facebook and Instagram by itself, from your real dish photos."
+        },
+        "posters": {
+          "name": "Posters",
+          "line": "Endless designs from your dish photos, with the words written for you."
+        },
+        "videos": {
+          "name": "Short videos",
+          "line": "10-second videos with music and a voice, and special-day greetings."
+        },
+        "tiktok": {
+          "name": "TikTok",
+          "line": "Videos to TikTok, as a draft or posted directly."
+        },
+        "staffRecords": {
+          "name": "Staff records",
+          "line": "Attendance in one tap, and private notes."
+        },
+        "team": {
+          "name": "Team",
+          "line": "Invite managers and accountants, even without an email."
+        },
+        "staffPins": {
+          "name": "Staff PINs",
+          "line": "Each person opens the till and the kitchen screen with their own PIN."
+        },
+        "draftApprove": {
+          "name": "You approve",
+          "line": "AI drafts purchases, offers and lists; nothing goes out without you."
+        },
+        "assistantRules": {
+          "name": "Your rules",
+          "line": "Tell Xedine what it must always respect."
+        },
+        "switches": {
+          "name": "Only what you need",
+          "line": "Switch whole sections on and off."
+        },
+        "languages": {
+          "name": "Bangla and English",
+          "line": "Every screen in both, with Bangla digits."
+        },
+        "countries": {
+          "name": "Any country",
+          "line": "Your currency, tax name, time zone and calendar."
+        },
+        "signIn": {
+          "name": "Easy sign-in",
+          "line": "Google, a phone number or email."
+        },
+        "setup": {
+          "name": "Set-up checklist",
+          "line": "Ticks itself as your data comes in."
+        },
+        "billing": {
+          "name": "Plans",
+          "line": "Simple plans, per branch."
+        }
+      },
+      "dishes": {
+        "burger": "Burger",
+        "latte": "Latte",
+        "croissant": "Croissant",
+        "pizza": "Pizza",
+        "fries": "Fries"
+      },
+      "items": {
+        "bun": "Buns",
+        "patty": "Beef",
+        "cheese": "Cheese",
+        "lettuce": "Lettuce",
+        "tomato": "Tomato",
+        "milk": "Milk",
+        "coffee": "Coffee beans",
+        "croissant": "Croissants",
+        "dough": "Pizza dough",
+        "sauce": "Tomato sauce",
+        "potato": "Potatoes",
+        "oil": "Oil",
+        "oatMilk": "oat milk",
+        "cream": "Cream",
+        "icedCoffee": "Iced coffee"
+      },
+      "units": {
+        "pcs": "{n}",
+        "g": "{n} g",
+        "kg": "{n} kg",
+        "ml": "{n} ml",
+        "l": "{n} L",
+        "days": "{n} days",
+        "min": "{n} min"
+      },
+      "staff": {
+        "rahim": "Rahim",
+        "mitu": "Mitu",
+        "sajid": "Sajid",
+        "nadia": "Nadia",
+        "karim": "Karim",
+        "lima": "Lima",
+        "babu": "Babu",
+        "rina": "Rina"
+      },
+      "branches": {
+        "here": "Main Street",
+        "riverside": "Riverside",
+        "oldTown": "Old Town",
+        "lakeRoad": "Lake Road"
+      },
+      "screens": {
+        "brief": "Morning brief",
+        "goodMorning": "Good morning ☀️",
+        "rainAt": "Rain after 2 pm ({mm} mm): fewer burgers, more hot coffee",
+        "runningOut": "Running out: buns, {n} left. The shopper’s list is ready.",
+        "licence": "Trade licence renews in {n} days",
+        "askAnything": "Ask Xedine anything",
+        "telegram": "Telegram · Xedine bot",
+        "newItemQ": "Is “{item}” a new item?",
+        "yesNew": "Yes, new",
+        "sameItem": "No, it’s milk",
+        "savedDraft": "Saved as a draft: {count} items, {total}. The owner approves it.",
+        "lastsFor": "{item} now lasts {days} days",
+        "stock": "Stock",
+        "lasts": "lasts {days} days",
+        "guardOk": "Stock Guard: buns were low, now fine ✓",
+        "bought": "Bought this morning",
+        "foodSafety": "Food safety",
+        "expired": "expired: written off",
+        "useBy": "good for {n} more days",
+        "held": "held: {dish} left the till",
+        "checks": "Today’s checks",
+        "checkFridge": "Fridge at 3 °C",
+        "checkHands": "Hand-wash station",
+        "checkPest": "Pest check: nobody did it yet",
+        "team": "Today’s team",
+        "here": "here",
+        "off": "not in",
+        "present": "{n} of {total} here",
+        "pin": "Opens the till with a PIN",
+        "noEmail": "No email needed",
+        "privateNote": "Private note: owner and managers only",
+        "plan": "Plan",
+        "rainMoves": "Rain after 2 pm: fewer burgers, more hot coffee",
+        "buyList": "Bazar list for tomorrow",
+        "sendList": "Send to the shopper",
+        "holiday": "holiday",
+        "days": "Fri,Sat,Sun,Mon,Tue,Wed,Thu",
+        "table": "Table 4",
+        "menu": "Menu",
+        "kcal": "{n} kcal",
+        "protein": "{n} g protein",
+        "dontEat": "I don’t eat:",
+        "nuts": "nuts",
+        "beef": "beef",
+        "joinMember": "Become a member",
+        "memberPoints": "Member · {n} points",
+        "notifyMe": "Tell me about personal offers",
+        "play": "Play while you wait",
+        "quiz": "Quiz 🎲",
+        "newOrder": "New order",
+        "member": "Member: {name} · {points} points",
+        "code": "Code {code}",
+        "subtotal": "Subtotal",
+        "total": "Total",
+        "cash": "Cash",
+        "card": "Card",
+        "placeOrder": "Place order",
+        "sent": "Sent to the kitchen",
+        "offline": "Offline: saved on this till",
+        "quickOrder": "Quick order: “burger, latte, croissant” ✓",
+        "pointsEarned": "+{n} points",
+        "approval": "Needs your PIN",
+        "approvalAsk": "{name} asks: {pct}% off the bill of {table}",
+        "approved": "Approved, once ✓",
+        "recorded": "Recorded: {who} asked, {by} approved, 12:36",
+        "salesSoFar": "Today so far: {amount} · {bills} bills",
+        "profitLocked": "Profit: only the owner and the accountant",
+        "kds": "Kitchen",
+        "signedIn": "Signed in: {name}",
+        "takeaway": "Takeaway",
+        "tableN": "Table {n}",
+        "ready": "Ready",
+        "scaleRecipe": "recipe {n} g",
+        "used": "Used at lunch",
+        "lossLine": "Loss: cheese {grams} over the recipe = {amount}",
+        "wasteLine": "Waste: fries dropped (kitchen button) = {amount}",
+        "leftNoCount": "Cheese left: about {qty}. No count needed.",
+        "poster": "Best seller this week",
+        "posterHead": "Rainy day? Hot latte",
+        "posterCut": "Cut out from the real photo",
+        "posted": "Posted ✓",
+        "video": "Video · 10 s",
+        "suggests": "Xedine suggests",
+        "quietHours": "4–6 pm is quiet: {pct}% fewer bills than lunch",
+        "offerLine": "{pct}% off pizza, 4–6 pm",
+        "sendTo": "To {n} members who said yes ({hold} kept out to measure)",
+        "approve": "Approve",
+        "sentTo": "Sent ✓ to {n} phones",
+        "regulars": "Regulars {a} · Slipping away {b}",
+        "deleted": "A number deleted on request; bills kept",
+        "notifyTitle": "Xedine · now",
+        "notifyBody": "{pct}% off pizza till 6 pm 🍕",
+        "notifyHead": "A quiet-hour offer for you",
+        "notifyPct": "{pct}% OFF",
+        "notifyWhat": "Every pizza · today 4–6 pm",
+        "notifyHow": "Show your member card at the till and the discount is taken off.",
+        "notifyWhy": "Sent to you because you said yes to offers on the table QR.",
+        "notifyNoSms": "No WhatsApp, no SMS. Turn it off any time.",
+        "notifyOpen": "Open my member card",
+        "howWasIt": "How was your meal?",
+        "thanks": "Thank you! Share it on Google?",
+        "openGoogle": "Opening Google reviews ✓",
+        "complaint": "Complaint · Table 2",
+        "complaintText": "The fries were cold.",
+        "why": "Why",
+        "whyText": "Fryer was at 150 °C",
+        "gave": "The guest got",
+        "gaveText": "Free fries next visit",
+        "fixed": "Fixed",
+        "fixedText": "Fryer set to 180 °C, checked twice a day",
+        "closed": "Case closed ✓",
+        "closeDay": "Close the day",
+        "expected": "Cash should be",
+        "counted": "Cash counted",
+        "short": "Short",
+        "bills": "{n} bills",
+        "best": "Best sellers",
+        "lunchShare": "Lunch brought {pct}% of today’s bills",
+        "leaks": "Where money leaked today",
+        "proof": "Proof",
+        "doNext": "Do this next",
+        "cheeseProof": "{burgers} burgers × {extra} g extra",
+        "cheeseDo": "Give the cook a {recipe} g scoop",
+        "wasteProof": "Old milk, a burnt patty, dropped fries",
+        "wasteDo": "Use the oldest milk first",
+        "cashProof": "Drawer count at 23:00",
+        "cashDo": "Count at every shift change",
+        "leakCheese": "Cheese over the recipe",
+        "leakWaste": "Waste",
+        "leakCash": "Cash short",
+        "trueProfit": "True profit today",
+        "salesLine": "Sales",
+        "foodLine": "Food, waste and loss",
+        "costsLine": "Rent, salaries, bills",
+        "ownerOnly": "Owner and accountant only",
+        "menuStar": "Most profit: {dish}",
+        "home": "Today",
+        "idleOrders": "Orders flowing",
+        "home2": "Sales so far",
+        "branches": "Branches today",
+        "awaiting": "New branch: waiting for approval",
+        "peers": "Food cost {ours}% · similar cafés {peers}%",
+        "countries": "Ten countries",
+        "todayBest": "Likely best sellers today: {dishes}",
+        "tomorrowBest": "Likely best sellers tomorrow",
+        "checkout": "Checkout",
+        "paid": "Paid ✓",
+        "minsWaiting": "{n} min",
+        "late": "Late",
+        "newTicket": "New",
+        "readyDone": "Ready ✓",
+        "approvalTitle": "Discount request",
+        "approvalPin": "Manager PIN",
+        "askTitle": "Ask Xedine",
+        "askReply": "Today you lost {total} in three places: cheese over the recipe, waste and a cash gap. Do this next: give the cook a {recipe} g scoop.",
+        "friesLabel": "Fries dropped → waste"
+      },
+      "ask": {
+        "title": "Ask Xedine anything",
+        "body": "Tap a question. Every answer comes from this café’s day, in numbers.",
+        "placeholder": "Ask about your restaurant…",
+        "send": "Ask",
+        "typing": "Xedine is thinking",
+        "yourOwn": "In your own café, Xedine answers this from your own numbers. Start free and ask it there.",
+        "you": "You",
+        "q": {
+          "money": "Where am I losing money?",
+          "waste": "Where is my stock being wasted?",
+          "buy": "What should I buy tomorrow?",
+          "profit": "Which dish makes me the most profit?",
+          "week": "How did today compare with last week?"
+        },
+        "a": {
+          "money": "Today you lost {total} in three places:\n1. Cheese over the recipe: {cheese} ({grams} extra on {burgers} burgers). Over a month that is {month}.\n2. Waste: {waste} (old milk, a burnt patty, dropped fries).\n3. Cash short at closing: {cash}.\nDo this next: give the cook a {recipe} g cheese scoop, and count the drawer at every shift change.",
+          "waste": "Written off today: {waste}.\n• Milk, expired: {milk}\n• Beef, burnt: {patty}\n• Fries, dropped: {fries}\nThe bigger loss is not in the bin: {grams} of cheese went on burgers beyond the recipe ({cheese}).\nDo this next: use the oldest milk first. Xedine dates every lot for you.",
+          "buy": "For tomorrow (rain after 2 pm; likely best sellers: {best}):\n{list}\nThe list is ready to send to your shopper on Telegram.",
+          "profit": "The most profit today came from {dish1}: {p1}. Then {dish2}: {p2}, and {dish3}: {p3}.\nDo this next: put {dish1} first on the board and in the next post.",
+          "week": "Today: {today}, {change} on the same day last week ({before}). {bills} bills. Best seller: {best}.\nDo this next: lunch brought {lunch}% of the bills, so keep two people on the till from 12 to 3."
+        }
+      },
+      "start": {
+        "title": "Run your restaurant with Xedine",
+        "body": "Free to start. Bangla or English. Your own currency.",
+        "signUp": "Start free",
+        "signIn": "Sign in",
+        "ways": "Google · phone number · email"
+      },
+      "az": {
+        "title": "Everything Xedine does, A to Z",
+        "body": "Every feature in the story, and where it appeared.",
+        "seeIt": "See it"
+      }
+    }
   }
 }

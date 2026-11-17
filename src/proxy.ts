@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { APP_COOKIE, APP_COOKIE_MAX_AGE, APP_COOKIE_VALUE, isAppLaunch } from '@/lib/android-app';
 
 /**
  * Next 16 "proxy" (formerly middleware). Refreshes the Supabase session cookie on every request and
@@ -67,6 +68,17 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname, search } = request.nextUrl;
+
+  // The Android app (ADR 0065) opens /?source=app. Someone signed out goes straight to sign-in, not
+  // to the 3D café; someone signed in goes on to their restaurant (the home page does that).
+  const appLaunch = isAppLaunch(pathname, request.nextUrl.searchParams);
+  if (appLaunch && !user) {
+    const signIn = request.nextUrl.clone();
+    signIn.pathname = '/sign-in';
+    signIn.search = '';
+    return rememberApp(NextResponse.redirect(signIn));
+  }
+
   const isPublic = pathname === '/' || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
   if (!user && !isPublic) {
     const redirect = request.nextUrl.clone();
@@ -74,6 +86,18 @@ export async function proxy(request: NextRequest) {
     redirect.search = `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(redirect);
   }
+  return appLaunch ? rememberApp(response) : response;
+}
+
+/** "This phone uses the Android app" (ADR 0065), renewed at every app launch. */
+function rememberApp(response: NextResponse): NextResponse {
+  response.cookies.set(APP_COOKIE, APP_COOKIE_VALUE, {
+    path: '/',
+    maxAge: APP_COOKIE_MAX_AGE,
+    sameSite: 'lax',
+    secure: true,
+    httpOnly: true,
+  });
   return response;
 }
 
@@ -81,6 +105,8 @@ export const config = {
   matcher: [
     // sw.js must load even after the session expires: a redirected service-worker script fails.
     // The landing page's 3D files (ADR 0064) are public, static and fetched by every visitor.
-    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|brand/|landing/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|glb|ktx2)$).*)',
+    // The web manifest and /.well-known/assetlinks.json (ADR 0065) must load signed out: Chrome and
+    // Google Play read them to trust the Android app.
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|offline\\.html|brand/|landing/|\\.well-known/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|glb|ktx2)$).*)',
   ],
 };

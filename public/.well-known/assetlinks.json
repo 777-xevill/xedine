@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.xedine.app",
+      "sha256_cert_fingerprints": [
+        "AC:CE:D9:4A:9F:C7:82:4E:E5:AB:D7:BB:0D:D4:25:EA:55:CC:39:0F:A3:80:97:5F:15:2D:F2:3A:E7:28:A3:FF"
+      ]
+    }
+  }
+]

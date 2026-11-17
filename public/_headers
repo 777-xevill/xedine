@@ -3,6 +3,16 @@
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
 
+# The Android app (ADR 0065): Chrome and Google Play read these to trust the app. Short cache, so a
+# new signing-key fingerprint reaches them within the hour.
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: public, max-age=3600
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=3600
+
 # The landing page's 3D day (ADR 0064): every URL carries ?v=<hash of the files> (asset-version.ts).
 /landing/3d/*
   Cache-Control: public, max-age=31536000, immutable

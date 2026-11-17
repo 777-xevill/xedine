@@ -1,0 +1,64 @@
+{
+  "packageId": "org.xedine.app",
+  "host": "xedine.org",
+  "name": "Xedine",
+  "launcherName": "Xedine",
+  "display": "standalone",
+  "themeColor": "#2B2D31",
+  "themeColorDark": "#2B2D31",
+  "navigationColor": "#2B2D31",
+  "navigationColorDark": "#2B2D31",
+  "navigationDividerColor": "#2B2D31",
+  "navigationDividerColorDark": "#2B2D31",
+  "backgroundColor": "#2B2D31",
+  "enableNotifications": true,
+  "startUrl": "/?source=app",
+  "iconUrl": "https://xedine.org/brand/logo-chef-512.png",
+  "maskableIconUrl": "https://xedine.org/brand/app-maskable-512.png",
+  "monochromeIconUrl": "https://xedine.org/brand/app-monochrome-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "E:/Xedine-Android-Keys/xedine-upload.jks",
+    "alias": "xedine-upload"
+  },
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Till",
+      "shortName": "Till",
+      "url": "https://xedine.org/pos",
+      "chosenIconUrl": "https://xedine.org/brand/shortcut-till-192.png",
+      "chosenMaskableIconUrl": "https://xedine.org/brand/shortcut-till-192.png"
+    },
+    {
+      "name": "Kitchen screen",
+      "shortName": "Kitchen",
+      "url": "https://xedine.org/kds",
+      "chosenIconUrl": "https://xedine.org/brand/shortcut-kitchen-192.png",
+      "chosenMaskableIconUrl": "https://xedine.org/brand/shortcut-kitchen-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://xedine.org/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://xedine.org/",
+  "minSdkVersion": 24,
+  "orientation": "default",
+  "fingerprints": [
+    {
+      "name": "upload key (E:/Xedine-Android-Keys)",
+      "value": "AC:CE:D9:4A:9F:C7:82:4E:E5:AB:D7:BB:0D:D4:25:EA:55:CC:39:0F:A3:80:97:5F:15:2D:F2:3A:E7:28:A3:FF"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "displayOverride": []
+}

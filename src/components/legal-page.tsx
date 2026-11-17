@@ -33,15 +33,19 @@ export const DATA_DELETION_SECTIONS = ['how', 'facebook', 'what', 'when'] as con
 export async function LegalPage({
   doc,
   sections,
+  action,
 }: {
   doc: 'privacy' | 'terms' | 'dataDeletion';
   sections: readonly string[];
+  /** Shown right under the introduction (the data-deletion page's request button). */
+  action?: React.ReactNode;
 }) {
   const t = await getTranslations('legal');
   return (
     <Card>
       <PageTitle title={t(`${doc}.title`)} subtitle={t('updated')} />
       <p className="mb-6 text-sm leading-relaxed">{t(`${doc}.intro`)}</p>
+      {action ? <div className="mb-6">{action}</div> : null}
       <div className="space-y-5">
         {sections.map((s) => (
           <section key={s}>

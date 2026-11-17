@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { Inter, Noto_Sans_Bengali } from 'next/font/google';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { AppServiceWorker } from '@/components/app-service-worker';
 import { PointerLight } from '@/components/pointer-light';
 import { cn } from '@/lib/utils';
 import './globals.css';
@@ -28,6 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: t('appName'), template: `%s · ${t('appName')}` },
     description: t('tagline'),
     applicationName: t('appName'),
+    // The installable app and the Android app on Google Play read this (ADR 0065).
+    manifest: '/manifest.webmanifest',
   };
 }
 
@@ -49,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <span />
         </div>
         <PointerLight />
+        <AppServiceWorker />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

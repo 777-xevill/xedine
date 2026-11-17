@@ -24,10 +24,11 @@ export async function Sidebar({
   nav: Navigation;
   chats: ChatSummary[];
 }) {
-  const [t, tc, roles] = await Promise.all([
+  const [t, tc, roles, tl] = await Promise.all([
     getTranslations('nav'),
     getTranslations('common'),
     getTranslations('roles'),
+    getTranslations('legal'),
   ]);
   const base = `/${ctx.org.slug}`;
   const selectedBranch = ctx.branches.find((b) => b.id === ctx.selectedBranchId);
@@ -196,6 +197,22 @@ export async function Sidebar({
           </form>
         </div>
         <LocaleSwitcher className="w-full [&>form]:flex-1 [&_button]:w-full" />
+        {/* Google Play asks for a way to delete the account inside the app, next to the account (ADR 0065). */}
+        <nav
+          aria-label={tl('accountLinks')}
+          className="flex flex-wrap justify-center gap-x-3 gap-y-1 px-1 text-xs text-muted"
+        >
+          <Link href="/privacy" className="hover:text-foreground hover:underline">
+            {tl('privacyLink')}
+          </Link>
+          <Link
+            href="/data-deletion"
+            className="hover:text-foreground hover:underline"
+            data-testid="delete-account"
+          >
+            {tl('deleteAccountLink')}
+          </Link>
+        </nav>
       </div>
     </div>
   );

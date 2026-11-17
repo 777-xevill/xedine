@@ -4658,9 +4658,15 @@
       }
     },
     "dataDeletionLink": "Delete my data",
+    "deleteAccountLink": "Delete my account",
+    "accountLinks": "Your account",
     "dataDeletion": {
       "title": "Delete your data",
-      "intro": "You can have your Xedine account and the personal data we keep about you deleted at any time.",
+      "intro": "You can have your Xedine account and the personal data we keep about you deleted at any time. The Xedine app on Google Play and the website xedine.org use the same account, so this page is for both.",
+      "button": "Email us to delete my account",
+      "buttonHint": "This opens your email app with the message ready to send. You can also write to {email} yourself.",
+      "mailSubject": "Delete my Xedine account",
+      "mailBody": "Please delete my Xedine account and the personal data you keep about me.\n\nThe email, phone number or name I sign in with: ",
       "how": {
         "title": "How to ask",
         "body": "Email {email} from the address you sign in with, and write \"Delete my account\". If you signed in with Facebook or a phone number, tell us the name on your account so we can find it."

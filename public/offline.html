@@ -1,0 +1,94 @@
+<!doctype html>
+<!--
+  Shown by the service worker (public/sw.js) when a page opens with no internet, most often the Android app
+  starting at /?source=app (ADR 0065). Plain HTML so it works with nothing else loaded: both languages at
+  once, and the founder's three colours written out because no stylesheet can load here (ADR 0063).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2b2d31" />
+    <title>Xedine · Offline</title>
+    <style>
+      :root {
+        --grey: #2b2d31;
+        --silver: #d9dadc;
+        --yellow: #ffc93c;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+        background: var(--grey);
+        color: var(--silver);
+        font-family: system-ui, 'Noto Sans Bengali', sans-serif;
+        text-align: center;
+      }
+      main {
+        max-width: 22rem;
+      }
+      img {
+        width: 72px;
+        height: 72px;
+        border-radius: 21%;
+      }
+      h1 {
+        margin: 20px 0 4px;
+        font-size: 1.5rem;
+      }
+      p {
+        margin: 0 0 4px;
+        line-height: 1.5;
+        color: color-mix(in srgb, var(--silver) 78%, var(--grey));
+      }
+      .bn {
+        margin-bottom: 20px;
+      }
+      a,
+      button {
+        display: block;
+        width: 100%;
+        min-height: 48px;
+        margin-top: 12px;
+        border-radius: 999px;
+        font: inherit;
+        font-weight: 600;
+        text-decoration: none;
+        line-height: 48px;
+        cursor: pointer;
+      }
+      a {
+        background: var(--yellow);
+        color: var(--grey);
+        border: 0;
+      }
+      button {
+        background: transparent;
+        color: var(--silver);
+        border: 1px solid color-mix(in srgb, var(--silver) 35%, transparent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/brand/logo-chef-192.png" alt="" />
+      <h1>No internet</h1>
+      <h1 lang="bn">ইন্টারনেট নেই</h1>
+      <p>The till keeps taking orders and sends them when the internet is back.</p>
+      <p class="bn" lang="bn">ইন্টারনেট ছাড়াও ক্যাশ অর্ডার নেয়, লাইন ফিরলে পাঠিয়ে দেয়।</p>
+      <a href="/pos">Open the till · ক্যাশ খুলুন</a>
+      <button type="button" onclick="location.reload()">Try again · আবার চেষ্টা করুন</button>
+      <p style="margin-top: 16px; font-size: 0.8rem">
+        The till opens offline once it has been used on this phone with internet.<br />
+        <span lang="bn">এই ফোনে একবার ইন্টারনেটসহ ক্যাশ খোলা হলে পরে অফলাইনেও খোলে।</span>
+      </p>
+    </main>
+  </body>
+</html>

@@ -49,3 +49,14 @@ Thumbs.db
 
 # Downloaded AI models and local poster previews (pnpm social:preview, ADR 0057)
 /.cache/
+
+# Android app (ADR 0065): Gradle output and signing keys never go in git. The upload key lives in
+# E:\Xedine-Android-Keys, outside the repo.
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/release/
+android/keystore.properties
+*.jks
+*.keystore

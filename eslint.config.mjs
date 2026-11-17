@@ -40,7 +40,7 @@ export default defineConfig([
   },
   {
     // CLIs print to the terminal on purpose.
-    files: ['scripts/**', 'tests/**'],
+    files: ['scripts/**', 'tests/**', 'android/tools/**', 'docs/play-store/*.mjs'],
     rules: { 'no-console': 'off' },
   },
   {

@@ -1,5 +1,7 @@
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { APP_COOKIE, isAppCookie } from '@/lib/android-app';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, Hint, PageTitle, Stat } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
@@ -24,8 +26,9 @@ export default async function BillingPage({ params }: { params: Promise<{ org: s
   const { org } = await params;
   const ctx = await getOrgContext(org);
   if (!ctx.roles.includes('owner') && !ctx.roles.includes('accountant')) notFound();
-  const [t, locale] = await Promise.all([getTranslations('billing'), getLocale()]);
+  const [t, locale, jar] = await Promise.all([getTranslations('billing'), getLocale(), cookies()]);
   const loc = locale as Locale;
+  const inApp = isAppCookie(jar.get(APP_COOKIE)?.value);
   const supabase = await createClient();
   const { data } = await supabase.rpc('metric_billing', {
     p_org: ctx.org.id,
@@ -92,7 +95,8 @@ export default async function BillingPage({ params }: { params: Promise<{ org: s
             <dt className="text-secondary">{t('messages')}</dt>
             <dd className="text-end">{formatNumber(Number(b.messages_month), loc)}</dd>
           </dl>
-          <Hint className="mt-3">{t('paymentNote')}</Hint>
+          {/* Google Play does not allow naming a payment method outside Play inside the app (ADR 0065). */}
+          {inApp ? null : <Hint className="mt-3">{t('paymentNote')}</Hint>}
         </Card>
       </div>
     </>

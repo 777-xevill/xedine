@@ -5,12 +5,30 @@
  *
  * - Navigations to /pos and /kds: network first, cached copy when offline.
  * - /_next/static/*: content-hashed and immutable, so cache first.
- * - Everything else (the dashboard, Supabase API calls, other origins) is left alone.
+ * - Any other page opened with no internet: /offline.html, which points to the till (ADR 0065: the
+ *   Android app starts at /?source=app, so without it a cashier would see the browser's error page).
+ * - Everything else (Supabase API calls, other origins) is left alone.
  */
 const CACHE = 'xedine-till-v1';
 const TILL_PAGES = ['/pos', '/kds'];
+const OFFLINE_PAGE = '/offline.html';
 
-self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  // Best effort: a failed download here must never stop the till's worker from installing.
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        Promise.all(
+          [OFFLINE_PAGE, '/brand/logo-chef-192.png'].map((url) =>
+            cache.add(url).catch(() => undefined),
+          ),
+        ),
+      )
+      .catch(() => undefined),
+  );
+});
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -34,6 +52,20 @@ async function networkFirst(request) {
   } catch (error) {
     const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
+    // A till never opened on this phone with internet has no copy yet: say so instead of an error.
+    const offline = await cache.match(OFFLINE_PAGE);
+    if (offline) return offline;
+    throw error;
+  }
+}
+
+/** Any page but the till's: the network, or the offline page when there is no internet (ADR 0065). */
+async function networkOrOfflinePage(request) {
+  try {
+    return await fetch(request);
+  } catch (error) {
+    const offline = await caches.match(OFFLINE_PAGE);
+    if (offline) return offline;
     throw error;
   }
 }
@@ -91,6 +123,10 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   if (request.mode === 'navigate' && isTillPage(url)) {
     event.respondWith(networkFirst(request));
+    return;
+  }
+  if (request.mode === 'navigate') {
+    event.respondWith(networkOrOfflinePage(request));
     return;
   }
   if (url.pathname.startsWith('/_next/static/')) {

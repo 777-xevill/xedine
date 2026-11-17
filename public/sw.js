@@ -20,11 +20,10 @@ self.addEventListener('install', (event) => {
     caches
       .open(CACHE)
       .then((cache) =>
-        Promise.all(
-          [OFFLINE_PAGE, '/brand/logo-chef-192.png'].map((url) =>
-            cache.add(url).catch(() => undefined),
-          ),
-        ),
+        Promise.all([
+          storeFresh(cache, OFFLINE_PAGE),
+          cache.add('/brand/logo-chef-192.png').catch(() => undefined),
+        ]),
       )
       .catch(() => undefined),
   );
@@ -38,6 +37,24 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim()),
   );
 });
+
+/*
+ * Cloudflare answers /offline.html with a redirect to /offline, and Chrome refuses a redirected response
+ * for a page navigation. Store a fresh copy of the body instead, so it can be served under any address.
+ */
+async function storeFresh(cache, url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return;
+    const body = await response.blob();
+    await cache.put(
+      url,
+      new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } }),
+    );
+  } catch {
+    // Offline while installing: the next install tries again.
+  }
+}
 
 const isTillPage = (url) =>
   TILL_PAGES.some((p) => url.pathname === p || url.pathname.startsWith(`${p}/`));

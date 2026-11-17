@@ -23,6 +23,8 @@ import { type DemoCurrency } from './story-ledger';
 import { useAnswers, useCityText, useScreenText } from './story-text';
 
 const DayStage = dynamic(() => import('./day-stage'), { ssr: false });
+// The 3D code starts downloading as soon as this page's script runs, not after the page has hydrated.
+if (typeof window !== 'undefined') void import('./day-stage');
 
 /** Scroll length of one moment, in screen heights (slow enough to follow Xedine from room to room). */
 const BEAT_VH = 190;

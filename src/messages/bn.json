@@ -5440,7 +5440,11 @@
           },
           "everything": "প্রো-র সবকিছু"
         },
-        "perMonthShort": "/মাস"
+        "perMonthShort": "/মাস",
+        "yearly": "বছরে একবার পেমেন্ট",
+        "save": "{pct}% ছাড়",
+        "billedMonth": "প্রতি মাসে পেমেন্ট",
+        "billedYear": "বছরে একবার {total}"
       },
       "moments": {
         "button": "মুহূর্ত",

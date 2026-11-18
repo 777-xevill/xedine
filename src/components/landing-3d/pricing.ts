@@ -149,3 +149,10 @@ export const PARTNER = {
     'deepAi',
   ] as const satisfies readonly PartnerServiceId[],
 } as const;
+
+/** Paying for a year at once takes this much off every plan (the founder, 2026-11-18). */
+export const YEARLY_OFF_PERCENT = 25;
+
+/** A plan's price a month when paid yearly, in cents (rounded to the cent). */
+export const yearlyMonthly = (minor: number): number =>
+  Math.round((minor * (100 - YEARLY_OFF_PERCENT)) / 100);

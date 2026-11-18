@@ -4,7 +4,15 @@ import { describe, expect, it } from 'vitest';
 import en from '@/messages/en.json';
 import bn from '@/messages/bn.json';
 import { FEATURES } from './features';
-import { limitOf, PARTNER, PLAN_ROWS, PLANS, TRIAL_DAYS } from './pricing';
+import {
+  limitOf,
+  PARTNER,
+  PLAN_ROWS,
+  PLANS,
+  TRIAL_DAYS,
+  YEARLY_OFF_PERCENT,
+  yearlyMonthly,
+} from './pricing';
 
 const MIGRATIONS = join(process.cwd(), 'supabase', 'migrations');
 const sql = readdirSync(MIGRATIONS)
@@ -95,6 +103,13 @@ describe('home page plans', () => {
     ]);
   });
 
+  it('take 25% off when paid yearly', () => {
+    expect(YEARLY_OFF_PERCENT).toBe(25);
+    expect([1900, 2700, 25000].map(yearlyMonthly)).toEqual([1425, 2025, 18750]);
+    // A year at once: $171, $243, $2,250.
+    expect([1900, 2700, 25000].map((m) => yearlyMonthly(m) * 12)).toEqual([17100, 24300, 225000]);
+  });
+
   it('has every line in English and Bangla', () => {
     for (const messages of [en, bn]) {
       const p = messages.landing3d.day.pricing as unknown as Record<string, unknown> & {
@@ -102,7 +117,19 @@ describe('home page plans', () => {
         plans: Record<string, { name: string; body: string }>;
         partner: Record<string, unknown> & { services: Record<string, string> };
       };
-      for (const key of ['title', 'perMonthShort', 'cta', 'noCard', 'soon', 'badge', 'unlimited']) {
+      for (const key of [
+        'title',
+        'perMonthShort',
+        'cta',
+        'noCard',
+        'soon',
+        'badge',
+        'unlimited',
+        'yearly',
+        'save',
+        'billedMonth',
+        'billedYear',
+      ]) {
         expect(p[key]).toBeTruthy();
       }
       for (const code of ['starter', 'pro', 'partner']) {

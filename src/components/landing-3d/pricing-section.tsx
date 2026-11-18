@@ -21,7 +21,16 @@ import {
 } from '@/lib/i18n/format';
 import { LEGAL_CONTACT } from '@/lib/contact';
 import { cn } from '@/lib/utils';
-import { limitOf, PARTNER, PLAN_ROWS, PLANS, TRIAL_DAYS, type Limit } from './pricing';
+import {
+  limitOf,
+  PARTNER,
+  PLAN_ROWS,
+  PLANS,
+  TRIAL_DAYS,
+  YEARLY_OFF_PERCENT,
+  yearlyMonthly,
+  type Limit,
+} from './pricing';
 
 /** How tall a plan's list is before "See more" (about seven rows). */
 const CLOSED_PX = 286;
@@ -43,6 +52,17 @@ export const PricingSection = memo(function PricingSection() {
   const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
   const n = (v: number) => formatNumber(v, locale);
   const [open, setOpen] = useState(false);
+  const [yearly, setYearly] = useState(false);
+  // The price a month, and what the year comes to when paid yearly (25% off, every plan).
+  const priceOf = (minor: number, currency: string) => {
+    const month = yearly ? yearlyMonthly(minor) : minor;
+    return {
+      price: formatMoney(month, locale, currency),
+      billing: yearly
+        ? t('billedYear', { total: formatMoney(month * 12, locale, currency) })
+        : t('billedMonth'),
+    };
+  };
   const toggle = () => setOpen((o) => !o);
   const days = n(TRIAL_DAYS);
   const badge = (limit: Limit) =>
@@ -79,7 +99,7 @@ export const PricingSection = memo(function PricingSection() {
               variant={plan.featured ? 'featured' : 'plain'}
               name={t(`plans.${plan.code}.name`)}
               badge={plan.featured ? t('badge') : undefined}
-              price={formatMoney(plan.minor, locale, plan.currency)}
+              {...priceOf(plan.minor, plan.currency)}
               body={t(`plans.${plan.code}.body`)}
               open={open}
               onToggle={toggle}
@@ -112,7 +132,7 @@ export const PricingSection = memo(function PricingSection() {
             variant="gold"
             name={t('plans.partner.name')}
             badge={t('partner.badge')}
-            price={formatMoney(PARTNER.minor, locale, PARTNER.currency)}
+            {...priceOf(PARTNER.minor, PARTNER.currency)}
             body={t('plans.partner.body')}
             open={open}
             onToggle={toggle}
@@ -136,7 +156,35 @@ export const PricingSection = memo(function PricingSection() {
             }
           />
         </div>
-        <p className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[color:var(--text-muted)]">
+        {/* Monthly or yearly, like the reference: a switch under the cards. */}
+        <div className="mt-6 flex items-center justify-center gap-3 md:justify-start">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={yearly}
+            aria-label={t('yearly')}
+            onClick={() => setYearly((y) => !y)}
+            className={cn(
+              'relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-300',
+              yearly
+                ? 'border-[var(--brand-yellow)] bg-[var(--brand-yellow)]'
+                : 'border-[color-mix(in_srgb,var(--brand-silver)_25%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_10%,transparent)]',
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'absolute top-1/2 left-0.5 size-[18px] -translate-y-1/2 rounded-full shadow transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none',
+                yearly ? 'translate-x-5 bg-[var(--brand-grey)]' : 'bg-[var(--brand-silver)]',
+              )}
+            />
+          </button>
+          <span className="text-sm font-medium">{t('yearly')}</span>
+          <span className="rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_50%,transparent)] px-2 py-0.5 text-[11px] font-bold text-[var(--brand-yellow)]">
+            {t('save', { pct: n(YEARLY_OFF_PERCENT) })}
+          </span>
+        </div>
+        <p className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[color:var(--text-muted)]">
           <span className="flex items-center gap-1">
             <Mark yes /> {t('legendYes')}
           </span>
@@ -158,6 +206,7 @@ function PlanCard({
   name,
   badge,
   price,
+  billing,
   body,
   rows,
   foot,
@@ -169,6 +218,7 @@ function PlanCard({
   name: string;
   badge?: string;
   price: string;
+  billing: string;
   body: string;
   rows: readonly Row[];
   foot?: string;
@@ -222,12 +272,17 @@ function PlanCard({
               </span>
             )}
           </div>
-          <p className="mt-4 text-[2.6rem] leading-none font-bold tracking-[-0.03em]">
+          {/* Re-keyed on every change so the new price rises in. */}
+          <p
+            key={price}
+            className="animate-rise-in mt-4 text-[2.6rem] leading-none font-bold tracking-[-0.03em]"
+          >
             {price}
             <span className="text-[color-mix(in_srgb,var(--brand-silver)_55%,transparent)]">
               {t('perMonthShort')}
             </span>
           </p>
+          <p className="mt-2 text-[11px] font-medium text-[color:var(--text-muted)]">{billing}</p>
           <p className="mt-3 min-h-[3.75rem] text-[13px] leading-relaxed text-[color:var(--text-muted)]">
             {body}
           </p>

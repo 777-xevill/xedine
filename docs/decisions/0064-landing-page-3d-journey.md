@@ -289,3 +289,5 @@ build in Xedine for it: docs/PARTNER-PLAN.md.
 - Same day, the founder's reference: the three plans side by side in one row of clean glass cards (name, price,
   a line, ticks and crosses, the button at the bottom, all three the same height); the limit tiles are gone (the
   limits stay on their rows); Partner's website is now "website and app".
+- Same day: a "Billed yearly" switch under the cards takes 25% off every plan ($14.25, $20.25 and $187.50 a
+  month; $171, $243 and $2,250 once a year); each card says how it is billed, and the new price rises in.

@@ -5440,7 +5440,11 @@
           },
           "everything": "Everything in Pro"
         },
-        "perMonthShort": "/mo"
+        "perMonthShort": "/mo",
+        "yearly": "Billed yearly",
+        "save": "Save {pct}%",
+        "billedMonth": "Billed monthly",
+        "billedYear": "{total} billed once a year"
       },
       "moments": {
         "button": "Moments",

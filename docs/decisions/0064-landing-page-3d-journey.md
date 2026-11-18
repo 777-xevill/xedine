@@ -198,3 +198,18 @@ Traced on a phone emulated at 4× slower: the 150–200 ms frames came right aft
   draw, smaller screen canvases, CPU-backed canvases.
 Live result (slow phone, first scroll): worst frame 183 ms → ~100 ms; the hitches at the card changes are
 gone; what remains is the ordinary cost of drawing the storeroom on a slow phone. PCs measure as before.
+
+## Amendment (2026-11-18): no rush between rooms
+
+The founder: after the first phone screen (the owner's brief) the scroll ran far too fast. Every moment had
+the same scroll (1.9 screen heights), so the 18 m walk from the street through the café and the
+kitchen to the storeroom got the same short stretch as a 3 m turn: 66 m of camera travel per screen of scroll,
+against 3–16 for the calm ones. And inside a walk every waypoint got an equal share, so the long stretches
+between doorways rushed while the short ones crawled.
+- A road between rooms now gets at least 12% of a screen height of scroll per metre (`ROAD_VH_PER_M`,
+  `BEAT_SCROLL_VH`, `scrollToP` in `story.ts`), shared between the end of one moment and the start of the next
+  so the speed doesn't change at the line. Each moment's own part keeps its scroll; the city flights keep
+  their pacing.
+- Every road is spread by distance along its waypoints (`timeline.ts`), as the city flight already was.
+- `pace.test.ts` holds every road under 20 m per screen of scroll (now 18 at most; the first walk 66 → 18).
+  The day is about a tenth longer, only where the camera walks.

@@ -100,6 +100,8 @@ Sizes: the whole day 6.6 MB; the first picture (street + Xedine) 1.3 MB, preload
 - A moment opens on a wide view: its people whole, head to floor, clear of the card, and Xedine with them.
   Its close look (a screen or a phone) arrives early (the beat's `pace`) and holds while the screen plays.
 - Every view holds for half the way to the next one, so wherever the scroll stops the picture is settled.
+- A long way between rooms gets more scroll (at least 12% of a screen height per metre, `pace.test.ts`), so the camera
+  never rushes; a moment itself always scrolls the same.
 - Between rooms the camera holds, turns to Xedine and follows it about two metres behind through the doors (or
   the office window, which opens for the flight to the city). Within a room (`hop`) Xedine glides to its next
   place while the camera turns.

@@ -769,6 +769,74 @@ export function cardAt(p: number) {
   return Math.min(BEATS.length - 1, Math.max(0, Math.floor(p + (1 - OUT - half))));
 }
 
+/** Scroll length of one moment, in screen heights (slow enough to follow Xedine from room to room). */
+export const BEAT_VH = 190;
+/**
+ * The camera's way between two rooms gets at least this much scroll per metre. Every moment once had the same
+ * scroll, so the 18 m walk from the street to the storeroom after the first phone flew past in one flick
+ * (the founder, 2026-11-18) while a 3 m turn crawled.
+ */
+export const ROAD_VH_PER_M = 12;
+
+/** Metres the camera travels from beat b's last view, along its path, to the next beat's first view. */
+export function roadLength(b: number) {
+  const beat = BEATS[b];
+  const next = BEATS[b + 1];
+  if (!beat || !next) return 0;
+  const stops = [beat.cam[beat.cam.length - 1]!.pos, ...(beat.path ?? []), next.cam[0]!.pos];
+  let total = 0;
+  for (let i = 1; i < stops.length; i++) {
+    const [a, c] = [stops[i - 1]!, stops[i]!];
+    total += Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
+  }
+  return total;
+}
+
+/**
+ * Extra scroll for the road out of beat b (screen heights): enough for ROAD_VH_PER_M on every metre. A road runs
+ * from b + OUT to b + 1 + IN, so the extra is shared between the end of beat b and the start of the next one,
+ * in proportion, and the camera keeps one speed across the line between the two. The moments themselves
+ * (IN to OUT) never change. The flights to and from the city keep their own pacing (timeline.ts spreads them
+ * by distance and Xedine's lead is tuned to them).
+ */
+const ROAD_SPAN = 1 - OUT + IN;
+const ROAD_EXTRA: readonly number[] = BEATS.map((beat, b) => {
+  const next = BEATS[b + 1];
+  if (!next || beat.city || next.city) return 0;
+  return Math.max(0, Math.round(roadLength(b) * ROAD_VH_PER_M - ROAD_SPAN * BEAT_VH));
+});
+
+/** Each beat's scroll in three parts: arriving [0, IN], the moment [IN, OUT], leaving [OUT, 1]. */
+const PARTS = BEATS.map((_, b) => {
+  const before = b > 0 ? (ROAD_EXTRA[b - 1]! * IN) / ROAD_SPAN : 0;
+  const after = (ROAD_EXTRA[b]! * (1 - OUT)) / ROAD_SPAN;
+  return [IN * BEAT_VH + before, (OUT - IN) * BEAT_VH, (1 - OUT) * BEAT_VH + after] as const;
+});
+
+/** Each beat's scroll, in screen heights (BEAT_VH, more around a long road). */
+export const BEAT_SCROLL_VH: readonly number[] = PARTS.map(([a, m, l]) => a + m + l);
+
+/** The whole day's scroll, in screen heights. */
+export const STORY_VH = BEAT_SCROLL_VH.reduce((sum, vh) => sum + vh, 0);
+
+/** p (0..BEATS.length) at `vh` screen heights scrolled into the day. */
+export function scrollToP(vh: number) {
+  const bounds = [0, IN, OUT, 1];
+  let start = 0;
+  for (let b = 0; b < BEATS.length; b++) {
+    let local = Math.max(0, vh - start);
+    for (let part = 0; part < 3; part++) {
+      const height = PARTS[b]![part]!;
+      if (local < height) {
+        return b + bounds[part]! + (local / height) * (bounds[part + 1]! - bounds[part]!);
+      }
+      local -= height;
+    }
+    start += BEAT_SCROLL_VH[b]!;
+  }
+  return BEATS.length;
+}
+
 /** Where each person is when no beat places them (the café keeps working in the background). */
 export const HOME: Partial<
   Record<

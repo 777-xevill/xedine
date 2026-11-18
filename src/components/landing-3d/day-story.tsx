@@ -19,7 +19,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CountryPin } from './city';
 import { FEATURE_GROUPS, FEATURES, type FeatureId } from './features';
-import { BEATS, cardAt } from './story';
+import { BEAT_SCROLL_VH, BEATS, cardAt, scrollToP, STORY_VH } from './story';
 import { type DemoCurrency } from './story-ledger';
 import { useAnswers, useCityText, useScreenText } from './story-text';
 
@@ -28,9 +28,6 @@ import { useAnswers, useCityText, useScreenText } from './story-text';
 const DayStage = memo(dynamic(() => import('./day-stage'), { ssr: false }));
 // The 3D code starts downloading as soon as this page's script runs, not after the page has hydrated.
 if (typeof window !== 'undefined') void import('./day-stage');
-
-/** Scroll length of one moment, in screen heights (slow enough to follow Xedine from room to room). */
-const BEAT_VH = 190;
 
 type Props = {
   /** The language switch (a server component, passed in by the page). */
@@ -101,11 +98,9 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
       frame = requestAnimationFrame(() => {
         const el = story.current;
         if (!el) return;
-        const beatPx = (BEAT_VH / 100) * window.innerHeight;
-        const p = Math.min(
-          BEATS.length - 0.001,
-          Math.max(0, -el.getBoundingClientRect().top / beatPx),
-        );
+        // A long way between two rooms has more scroll (story.ts BEAT_SCROLL_VH), so it never rushes.
+        const scrolledVh = (-el.getBoundingClientRect().top / window.innerHeight) * 100;
+        const p = Math.min(BEATS.length - 0.001, scrollToP(scrolledVh));
         // Reduced motion: no flight between moments; each one is shown at its settled view.
         targetRef.current = still.current ? Math.floor(p) + 0.62 : p;
         // The card changes halfway between two moments, as the next room comes into view.
@@ -148,7 +143,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
           style={{ transform: 'scaleX(0)' }}
         />
       </div>
-      <div ref={story} className="relative" style={{ height: `${BEATS.length * BEAT_VH}vh` }}>
+      <div ref={story} className="relative" style={{ height: `${STORY_VH}vh` }}>
         <div className="sticky top-0 h-dvh w-full overflow-hidden">
           {/* The first view as a picture, there at once; the live 3D fades in over it when ready. */}
           <div className="xedine-stage-bg absolute inset-0">{backdrop}</div>
@@ -202,12 +197,12 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
         </div>
         {/* The scroll itself: one invisible stretch per moment, with its words for search and screen readers. */}
         <div className="absolute inset-x-0 top-0">
-          {BEATS.map((beat) => (
+          {BEATS.map((beat, b) => (
             <section
               key={beat.id}
               id={`beat-${beat.id}`}
               className="relative"
-              style={{ height: `${BEAT_VH}vh` }}
+              style={{ height: `${BEAT_SCROLL_VH[b]}vh` }}
             >
               <div className="sr-only">
                 <h2>{t(`beats.${beat.id}.title`)}</h2>

@@ -95,12 +95,13 @@ function buildTrack(): Key[] {
     if (path.length === 0) return;
     const from = b + OUT + HOLD;
     const to = b + 1 + IN;
-    // The flight up to the city spreads its road by distance (at least 3 m a step), so the long climb
-    // doesn't rush past while the short steps through the window crawl (the founder saw it shake).
+    // Every road is spread by distance, so a long stretch doesn't rush past while the short steps through a
+    // doorway crawl (the founder saw it on the walk to the storeroom, 2026-11-18). The flight up to the city
+    // counts at least 3 m a step, so the short steps through the window don't shake.
     const stops = [last.pos, ...path, first.pos];
     const steps = stops
       .slice(1)
-      .map((w, i) => (next.city ? Math.max(3, v3(w).distanceTo(v3(stops[i]!))) : 1));
+      .map((w, i) => Math.max(next.city ? 3 : 0.6, v3(w).distanceTo(v3(stops[i]!))));
     const total = steps.reduce((s, x) => s + x, 0);
     let walked = 0;
     path.forEach((w, i) => {

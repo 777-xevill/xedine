@@ -206,3 +206,16 @@ describe('OpenAI provider mapping (ADR 0024)', () => {
     });
   });
 });
+
+describe('Groq vision budget', () => {
+  it('clamps the answer to the free tier per-minute limit and keeps thinking low', async () => {
+    const { visionBudget } = await import('./index');
+    expect(visionBudget({ model: 'qwen', max_completion_tokens: 8000 })).toMatchObject({
+      max_completion_tokens: 1000,
+      reasoning_effort: 'low',
+    });
+    expect(visionBudget({ model: 'qwen', max_completion_tokens: 400 })).toMatchObject({
+      max_completion_tokens: 400,
+    });
+  });
+});

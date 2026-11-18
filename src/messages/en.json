@@ -2609,9 +2609,12 @@
       "page": "Page {n}",
       "remove": "Remove page {n}",
       "read": "Read {n} page(s)",
-      "reading": "Reading {n} page(s)… this takes about 20 seconds a page",
-      "hint": "Flat, bright and straight-on works best. Prices the AI cannot read are left empty for you; nothing is invented.",
+      "reading": "Reading page {page} of {n}…",
+      "hint": "Flat, bright and straight-on works best. A long page? Take it in two photos (top half, bottom half). Prices the AI cannot read are left empty for you; nothing is invented.",
       "waiting": "A menu read from your photos is waiting for you to check.",
+      "saving": "Putting your menu together…",
+      "readNone": "Read the photos",
+      "waitingAi": "The free AI can only read a little each minute. Waiting a few seconds, then trying this page again…",
       "review": "Review"
     },
     "review": {

@@ -2,12 +2,11 @@
 
 import { ImagePlus, Loader2, Sparkles, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, Hint } from '@/components/ui/form';
 import { DEFAULT_LOCALE, formatNumber, isLocale } from '@/lib/i18n/format';
-import { readMenuPhotoAction } from '@/modules/menu/import-actions';
-import { initialState } from '@/modules/tenancy/form-state';
+import { readMenuPageAction, saveMenuReadingAction } from '@/modules/menu/import-actions';
 
 const MAX_PHOTOS = 8;
 /** Long enough an edge for small print to stay sharp; one page comes to about 300–700 KB. */
@@ -49,7 +48,9 @@ export function MenuPhotoForm({
   const t = useTranslations();
   const raw = useLocale();
   const n = (v: number) => formatNumber(v, isLocale(raw) ? raw : DEFAULT_LOCALE);
-  const [state, action, pending] = useActionState(readMenuPhotoAction, initialState);
+  const [error, setError] = useState<{ key: string; data?: Record<string, string> } | null>(null);
+  const [pending, setPending] = useState(false);
+  const [progress, setProgress] = useState<{ page: number; waiting: boolean } | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
   const [busy, setBusy] = useState(false);
   const [bad, setBad] = useState(false);
@@ -82,18 +83,71 @@ export function MenuPhotoForm({
     setPages((p) => p.filter((_, j) => j !== i));
   }
 
-  function submit() {
+  /**
+   * The pages go one by one: each request stays short, and when the free AI says "too many this minute"
+   * the form waits and tries that page again (up to three times) instead of failing the whole menu.
+   */
+  async function submit() {
+    setPending(true);
+    setError(null);
+    const read: string[][] = [];
+    let unread = 0;
+    let model = '';
+    let v = '';
+    let lastError: { key: string; data?: Record<string, string> } | null = null;
+    for (const [i, p] of pages.entries()) {
+      let lines: string[] | null = null;
+      for (let attempt = 0; attempt < 4 && lines === null; attempt++) {
+        setProgress({ page: i + 1, waiting: attempt > 0 });
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 20_000));
+        const fd = new FormData();
+        fd.set('orgId', orgId);
+        fd.set('orgSlug', orgSlug);
+        fd.set('page', String(i + 1));
+        fd.set('pages', String(pages.length));
+        fd.set('photo', p.file);
+        let res;
+        try {
+          res = await readMenuPageAction(fd);
+        } catch {
+          res = { error: 'aiFailed', data: { busy: '1' } };
+        }
+        if (res.ok && res.data?.lines) {
+          lines = JSON.parse(res.data.lines) as string[];
+          model = res.data.model ?? model;
+          v = res.data.v ?? v;
+        } else {
+          lastError = { key: res.error ?? 'aiFailed', data: res.data };
+          // Only a busy AI is worth waiting for; a wrong photo or a missing key is not.
+          if (res.data?.busy !== '1' && res.error !== 'aiFailed') break;
+        }
+      }
+      if (lines === null) unread++;
+      read.push(lines ?? []);
+    }
+    setProgress(null);
+    if (unread === pages.length) {
+      setError(lastError ?? { key: 'aiFailed' });
+      setPending(false);
+      return;
+    }
     const fd = new FormData();
     fd.set('orgId', orgId);
     fd.set('orgSlug', orgSlug);
-    for (const p of pages) fd.append('photo', p.file);
-    startTransition(() => action(fd));
+    fd.set('pages', JSON.stringify(read));
+    fd.set('unread', String(unread));
+    fd.set('model', model);
+    fd.set('v', v);
+    // On success the action opens the review page.
+    const res = await saveMenuReadingAction(fd).catch(() => null);
+    if (res?.error) setError({ key: res.error, data: res.data });
+    setPending(false);
   }
 
   const working = pending || busy;
   return (
     <div className="space-y-4" aria-busy={working}>
-      {state.error ? <Alert tone="danger">{t(`errors.${state.error}`, state.data)}</Alert> : null}
+      {error ? <Alert tone="danger">{t(`errors.${error.key}`, error.data)}</Alert> : null}
       {bad ? <Alert tone="danger">{t('errors.photoInvalid')}</Alert> : null}
       <ol className="grid grid-cols-3 gap-2 sm:grid-cols-4">
         {pages.map((p, i) => (
@@ -142,16 +196,29 @@ export function MenuPhotoForm({
           </li>
         ) : null}
       </ol>
-      <Button type="button" onClick={submit} disabled={!enabled || working || pages.length === 0}>
+      <Button
+        type="button"
+        onClick={() => void submit()}
+        disabled={!enabled || working || pages.length === 0}
+      >
         {pending ? (
           <Loader2 aria-hidden className="size-4 animate-spin" />
         ) : (
           <Sparkles aria-hidden className="size-4" />
         )}
-        {pending
-          ? t('setup.menuPhotos.reading', { n: n(pages.length) })
-          : t('setup.menuPhotos.read', { n: n(pages.length) })}
+        {progress
+          ? t('setup.menuPhotos.reading', { page: n(progress.page), n: n(pages.length) })
+          : pending
+            ? t('setup.menuPhotos.saving')
+            : pages.length === 0
+              ? t('setup.menuPhotos.readNone')
+              : t('setup.menuPhotos.read', { n: n(pages.length) })}
       </Button>
+      {progress?.waiting ? (
+        <p role="status" className="text-sm font-semibold text-warning">
+          {t('setup.menuPhotos.waitingAi')}
+        </p>
+      ) : null}
       <Hint>{enabled ? t('setup.menuPhotos.hint') : t('setup.aiOff')}</Hint>
     </div>
   );

@@ -222,6 +222,21 @@ function forModel(body: Record<string, unknown>, model: string): Record<string, 
   };
 }
 
+/**
+ * Groq's free tier lets the vision model write only 1,000 tokens a minute, and it refuses outright ("request
+ * too large") any request whose max_completion_tokens is above that, so the cap is clamped to it. The model
+ * thinks before answering and that thinking counts too: "low" keeps it to a few hundred tokens ("none"
+ * returned empty menus in testing, 2026-11-19). Both can be raised by env on a paid tier.
+ */
+export function visionBudget(body: Record<string, unknown>): Record<string, unknown> {
+  const cap = Number(process.env.GROQ_VISION_MAX_TOKENS ?? 1000);
+  return {
+    ...body,
+    max_completion_tokens: Math.min(Number(body.max_completion_tokens) || cap, cap),
+    reasoning_effort: process.env.GROQ_VISION_REASONING ?? 'low',
+  };
+}
+
 /** How long a 429 says to wait (retry-after seconds, or Groq's token reset such as "41.3s" or "690ms"). */
 function retryAfterMs(res: Response): number | null {
   const after = Number(res.headers.get('retry-after'));
@@ -241,6 +256,7 @@ async function openAiComplete(
   // A photo on Groq goes to the model that can see it, whatever the tier asked for.
   if (p === 'groq' && hasImage(body) && body.model !== GROQ_VISION_MODEL())
     body = forModel(body, GROQ_VISION_MODEL());
+  if (p === 'groq' && body.model === GROQ_VISION_MODEL()) body = visionBudget(body);
   let res = await post(w, body);
   const fallback = GROQ_FALLBACK_MODEL(body.model);
   if (

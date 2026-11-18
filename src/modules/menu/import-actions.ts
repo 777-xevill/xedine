@@ -4,9 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
-import { aiErrorKey } from '@/lib/llm-gateway';
-import { parseMenuCsv } from '@/modules/menu/import';
-import { MENU_PHOTO_PROMPT, readMenuPhotos } from '@/modules/menu/photo';
+import { AiError, aiErrorKey } from '@/lib/llm-gateway';
+import { draftToCsv, parseMenuCsv } from '@/modules/menu/import';
+import { MENU_PHOTO_PROMPT, menuLinesToRows, readMenuPage } from '@/modules/menu/photo';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -61,9 +61,6 @@ export async function importMenuAction(_prev: FormState, formData: FormData): Pr
   };
 }
 
-/** Several pages of one menu, each shrunk in the browser first (the whole upload stays under 6 MB). */
-const MAX_PHOTOS = 8;
-
 async function isOwner(orgId: string) {
   const supabase = await createClient();
   // Reading `organizations` only proves membership (any active role), not ownership: ask memberships.
@@ -80,54 +77,94 @@ async function isOwner(orgId: string) {
   return Boolean(data);
 }
 
-export async function readMenuPhotoAction(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = base.safeParse({ orgId: formData.get('orgId'), orgSlug: formData.get('orgSlug') });
+/**
+ * One page of the menu (the browser sends the pages one by one, so each request stays short and a busy
+ * free AI can be waited for between pages). Returns the page's lines; nothing is saved yet.
+ */
+export async function readMenuPageAction(formData: FormData): Promise<FormState> {
+  const parsed = base
+    .extend({
+      page: z.coerce.number().int().min(1).max(8),
+      pages: z.coerce.number().int().min(1).max(8),
+    })
+    .safeParse({
+      orgId: formData.get('orgId'),
+      orgSlug: formData.get('orgSlug'),
+      page: formData.get('page'),
+      pages: formData.get('pages'),
+    });
   if (!parsed.success) return { error: 'invalidInput' };
-  const photos = formData.getAll('photo');
+  const photo = formData.get('photo');
   if (
-    photos.length === 0 ||
-    photos.length > MAX_PHOTOS ||
-    photos.some(
-      (p) =>
-        !(p instanceof File) ||
-        p.size === 0 ||
-        p.size > MAX_IMAGE_BYTES ||
-        !(IMAGE_TYPES as readonly string[]).includes(p.type),
-    )
+    !(photo instanceof File) ||
+    photo.size === 0 ||
+    photo.size > MAX_IMAGE_BYTES ||
+    !(IMAGE_TYPES as readonly string[]).includes(photo.type)
   )
     return { error: 'photoInvalid' };
   // Only an owner may create drafts (RLS insert policy) — checked before spending the org's AI allowance.
   if (!(await isOwner(parsed.data.orgId))) return { error: 'notAllowed' };
-  let read;
   try {
-    read = await readMenuPhotos({
+    const read = await readMenuPage({
       orgId: parsed.data.orgId,
-      photos: await Promise.all(
-        (photos as File[]).map(async (p) => ({
-          mediaType: p.type as (typeof IMAGE_TYPES)[number],
-          base64: Buffer.from(await p.arrayBuffer()).toString('base64'),
-        })),
-      ),
+      photo: {
+        mediaType: photo.type as (typeof IMAGE_TYPES)[number],
+        base64: Buffer.from(await photo.arrayBuffer()).toString('base64'),
+      },
+      page: parsed.data.page,
+      pages: parsed.data.pages,
     });
+    return {
+      ok: true,
+      data: { lines: JSON.stringify(read.lines), model: read.model, v: String(read.promptVersion) },
+    };
   } catch (e) {
-    return { error: aiErrorKey(e) };
+    return {
+      error: aiErrorKey(e),
+      data: { busy: e instanceof AiError && e.code === 'rate_limited' ? '1' : '' },
+    };
   }
-  if (read.rows === 0) return { error: 'menuPhotoEmpty' };
+}
+
+/** All pages read: merge them into categories → dishes, keep the one draft, and open the review page. */
+export async function saveMenuReadingAction(formData: FormData): Promise<FormState> {
+  const parsed = base
+    .extend({
+      pages: z.string().max(200_000),
+      unread: z.coerce.number().int().min(0).max(8),
+      model: z.string().max(100),
+      v: z.string().max(10),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  let json: unknown;
+  try {
+    json = JSON.parse(parsed.data.pages || '[]');
+  } catch {
+    return { error: 'invalidInput' };
+  }
+  const pages = z
+    .array(z.array(z.string().max(400)).max(300))
+    .max(8)
+    .safeParse(json);
+  if (!pages.success) return { error: 'invalidInput' };
+  if (!(await isOwner(parsed.data.orgId))) return { error: 'notAllowed' };
+  const rows = menuLinesToRows(pages.data);
+  if (rows.length === 0) return { error: 'menuPhotoEmpty' };
   const supabase = await createClient();
   // One draft at a time: a new reading replaces the one before.
   await supabase.from('menu_import_drafts').delete().eq('org_id', parsed.data.orgId);
   const { error } = await supabase.from('menu_import_drafts').insert({
     org_id: parsed.data.orgId,
-    csv: read.csv,
-    model: read.model,
-    prompt_version: `${MENU_PHOTO_PROMPT.key}@${read.promptVersion}`,
+    csv: draftToCsv(rows.slice(0, 500)),
+    model: parsed.data.model || null,
+    prompt_version: `${MENU_PHOTO_PROMPT.key}@${parsed.data.v || MENU_PHOTO_PROMPT.version}`,
   });
   if (error) return { error: mapDbError(error) };
   revalidatePath(`/${parsed.data.orgSlug}/setup`);
-  redirect(`/${parsed.data.orgSlug}/setup/menu${read.unread > 0 ? `?unread=${read.unread}` : ''}`);
+  redirect(
+    `/${parsed.data.orgSlug}/setup/menu${parsed.data.unread > 0 ? `?unread=${parsed.data.unread}` : ''}`,
+  );
 }
 
 /** Throw the reading away (the owner starts again or types the menu instead). */

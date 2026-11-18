@@ -69,3 +69,69 @@ export function parseMenuCsv(text: string): { rows: MenuRow[]; badLines: number[
   });
   return { rows, badLines };
 }
+
+/**
+ * A menu read from photos, as the review page edits it: the price stays text (so an empty or doubtful one
+ * can be shown and fixed) and `check` marks a row the AI was unsure of. Stored as CSV with a fifth column,
+ * `check` ("?"), which `parseMenuCsv` ignores.
+ */
+export interface DraftRow {
+  category: string;
+  name: string;
+  name_bn: string;
+  price: string;
+  check: boolean;
+}
+
+export const DRAFT_HEADER = 'category,name,name_bn,price,check';
+
+/** Plain RFC 4180 quoting. This CSV only travels between Xedine's own pages, never into a spreadsheet. */
+function quote(s: string): string {
+  const v = s.replace(/[\r\n]+/g, ' ');
+  return /[",]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+export function draftToCsv(rows: DraftRow[]): string {
+  return [
+    DRAFT_HEADER,
+    ...rows.map((r) =>
+      [r.category, r.name, r.name_bn, r.price, r.check ? '?' : ''].map(quote).join(','),
+    ),
+  ].join('\n');
+}
+
+export function parseMenuDraft(text: string): DraftRow[] {
+  const rows: DraftRow[] = [];
+  text
+    .replace(/^﻿/, '')
+    .split(/\r?\n/)
+    .forEach((raw, i) => {
+      if (raw.trim() === '') return;
+      const cells = splitCsvLine(raw);
+      if (i === 0 && /^(category|ক্যাটাগরি|বিভাগ)$/i.test(cells[0] ?? '')) return;
+      const [category = '', name = '', nameBn = '', price = '', check = ''] =
+        cells.length === 2
+          ? ['', cells[0], '', cells[1]]
+          : cells.length === 3
+            ? [cells[0], cells[1], '', cells[2]]
+            : cells;
+      rows.push({
+        category,
+        name,
+        name_bn: nameBn,
+        price,
+        check: check.trim() !== '',
+      });
+    });
+  return rows;
+}
+
+/** Why a reviewed row cannot be imported yet, or null when it can. */
+export function draftRowProblem(row: Pick<DraftRow, 'name' | 'price' | 'category'>) {
+  if (!row.name.trim()) return 'name' as const;
+  if (row.name.trim().length > 120) return 'nameLong' as const;
+  if (row.category.trim().length > 80) return 'categoryLong' as const;
+  const p = parseTakaToPoisha(row.price);
+  if (p === null || p < 0) return 'price' as const;
+  return null;
+}

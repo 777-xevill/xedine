@@ -3,14 +3,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardTitle, Hint, Input, Label, PageTitle, Textarea } from '@/components/ui/form';
+import { Card, CardTitle, Hint, Label, PageTitle, Textarea } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
 import { aiConfigured } from '@/lib/llm-gateway';
 import { formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
-import { importMenuAction, readMenuPhotoAction } from '@/modules/menu/import-actions';
+import { importMenuAction } from '@/modules/menu/import-actions';
+import { MenuPhotoForm } from '@/modules/menu/menu-photo-form';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
 
@@ -31,8 +31,8 @@ const HREF: Record<string, string> = {
 
 /**
  * Setup (ROADMAP Phase 10 onboarding, target: live in under two hours). Each step is ticked by the data
- * itself (metric_setup_progress), so the list can never claim more than is true. The menu can be pasted
- * as CSV or read from a photo into an editable draft.
+ * itself (metric_setup_progress), so the list can never claim more than is true. The menu is read from
+ * photos of its pages and confirmed on Setup → Menu review, or pasted as CSV.
  */
 export default async function SetupPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
@@ -45,7 +45,7 @@ export default async function SetupPage({ params }: { params: Promise<{ org: str
     supabase.rpc('metric_setup_progress', { p_org: ctx.org.id, p_now: now().toISOString() }),
     supabase
       .from('menu_import_drafts')
-      .select('id, csv')
+      .select('id')
       .eq('org_id', ctx.org.id)
       .order('created_at', { ascending: false })
       .limit(1),
@@ -114,55 +114,40 @@ export default async function SetupPage({ params }: { params: Promise<{ org: str
 
         <div className="space-y-6">
           <Card>
+            <CardTitle>{t('menuPhotos.title')}</CardTitle>
+            <p className="mb-4 text-sm text-secondary">{t('menuPhotos.body')}</p>
+            {draft ? (
+              <Link
+                href={`/${ctx.org.slug}/setup/menu`}
+                className="mb-4 flex items-center gap-3 rounded-input border border-warning/45 bg-warning/8 px-3.5 py-3 text-sm font-semibold transition-colors hover:bg-warning/15"
+              >
+                <Sparkles aria-hidden className="size-4 shrink-0 text-warning" />
+                <span className="flex-1">{t('menuPhotos.waiting')}</span>
+                <span className="text-warning">{t('menuPhotos.review')}</span>
+              </Link>
+            ) : null}
+            <MenuPhotoForm orgId={ctx.org.id} orgSlug={ctx.org.slug} enabled={aiConfigured()} />
+          </Card>
+          <Card>
             <CardTitle>{t('importTitle')}</CardTitle>
             <ActionForm action={importMenuAction} successKey="setup.imported" className="space-y-3">
               {hidden}
-              <input type="hidden" name="draftId" value={draft?.id ?? ''} />
-              {draft ? (
-                <Badge tone="accent" icon={<Sparkles />}>
-                  {t('aiDraft')}
-                </Badge>
-              ) : null}
               <div>
                 <Label htmlFor="menu-csv">{t('csvLabel')}</Label>
                 <Textarea
                   id="menu-csv"
                   name="csv"
-                  rows={12}
+                  rows={8}
                   required
                   maxLength={60000}
-                  defaultValue={draft?.csv ?? ''}
                   placeholder={t('csvPlaceholder')}
                   className="font-mono text-xs"
                 />
               </div>
-              <Hint>{draft ? t('draftHint') : t('csvHint')}</Hint>
-              <Button type="submit">{t('import')}</Button>
-            </ActionForm>
-          </Card>
-          <Card>
-            <CardTitle>{t('photoTitle')}</CardTitle>
-            <ActionForm
-              action={readMenuPhotoAction}
-              successKey="setup.photoRead"
-              className="space-y-3"
-            >
-              {hidden}
-              <div>
-                <Label htmlFor="menu-photo">{t('photo')}</Label>
-                <Input
-                  id="menu-photo"
-                  name="photo"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  required
-                />
-              </div>
-              <Button type="submit" variant="secondary" disabled={!aiConfigured()}>
-                <Sparkles aria-hidden className="size-4" />
-                {t('readPhoto')}
+              <Hint>{t('csvHint')}</Hint>
+              <Button type="submit" variant="secondary">
+                {t('import')}
               </Button>
-              <Hint>{aiConfigured() ? t('photoHint') : t('aiOff')}</Hint>
             </ActionForm>
           </Card>
         </div>

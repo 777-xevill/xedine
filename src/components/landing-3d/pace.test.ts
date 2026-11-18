@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BEAT_SCROLL_VH, BEAT_VH, BEATS, IN, OUT, scrollToP, STORY_VH } from './story';
+import { BEAT_VH, BEATS, IN, OUT, scrollToP, STORY_VH } from './story';
 import { cameraAt } from './timeline';
 
 /**
@@ -48,13 +48,23 @@ describe('pace of the day', () => {
       last = p;
     }
     expect(scrollToP(STORY_VH)).toBeCloseTo(BEATS.length, 5);
-    // The first moment scrolls as before: only the roads between rooms are longer.
-    expect(scrollToP(OUT * BEAT_VH)).toBeCloseTo(OUT, 5);
-    // Every moment's own part (IN to OUT) keeps its scroll.
-    BEATS.forEach((_, b) => {
-      expect(scrollAt(b + OUT) - scrollAt(b + IN)).toBeCloseTo((OUT - IN) * BEAT_VH, 3);
-      expect(BEAT_SCROLL_VH[b]).toBeGreaterThanOrEqual(BEAT_VH - 1e-9);
+    // Every moment's own part (IN to OUT) keeps its own scroll: only the roads between rooms are longer.
+    BEATS.forEach((beat, b) => {
+      expect(scrollAt(b + OUT) - scrollAt(b + IN)).toBeCloseTo(
+        (OUT - IN) * (beat.vh ?? BEAT_VH),
+        3,
+      );
     });
+  });
+
+  it('brings the first phone screen in quickly (the founder, 2026-11-18)', () => {
+    // The owner's brief on the phone, in full view: about 1.3 screens of scroll (it was 2.75).
+    const brief = BEATS.findIndex((beat) => beat.id === 'brief');
+    const phone = brief + IN + (BEATS[brief]!.pace ?? 1) * (OUT - IN);
+    if (process.env.PACE_REPORT)
+      process.stderr.write(`phone in full view at ${scrollAt(phone).toFixed(0)}vh
+`);
+    expect(scrollAt(phone)).toBeLessThan(140);
   });
 
   it('never rushes from room to room', () => {

@@ -135,6 +135,11 @@ export type Beat = {
    * its screen plays, so the close look arrives early and stays.
    */
   pace?: number;
+  /**
+   * This moment's scroll in screen heights (default BEAT_VH). The first two are shorter: the founder wants the
+   * first phone screen to come in quickly, on a PC and a phone alike (2026-11-18).
+   */
+  vh?: number;
   xedine: {
     route: XedineKey[];
     look?: V3;
@@ -255,6 +260,7 @@ const OWNER_DESK: V3 = [8.4, -2.12, 0];
 export const BEATS: Beat[] = [
   {
     id: 'dawn',
+    vh: 70,
     hour: 6.25,
     night: 0.55,
     features: ['languages', 'countries'],
@@ -269,6 +275,7 @@ export const BEATS: Beat[] = [
   },
   {
     id: 'brief',
+    vh: 130,
     hour: 7,
     night: 0.3,
     pace: 0.6,
@@ -796,24 +803,28 @@ export function roadLength(b: number) {
  * Extra scroll for the road out of beat b (screen heights): enough for ROAD_VH_PER_M on every metre. A road runs
  * from b + OUT to b + 1 + IN, so the extra is shared between the end of beat b and the start of the next one,
  * in proportion, and the camera keeps one speed across the line between the two. The moments themselves
- * (IN to OUT) never change. The flights to and from the city keep their own pacing (timeline.ts spreads them
+ * (IN to OUT) keep their own `vh`. The flights to and from the city keep their own pacing (timeline.ts spreads them
  * by distance and Xedine's lead is tuned to them).
  */
 const ROAD_SPAN = 1 - OUT + IN;
-const ROAD_EXTRA: readonly number[] = BEATS.map((beat, b) => {
+/** A moment's own scroll length, in screen heights. */
+const vhOf = (b: number) => BEATS[b]?.vh ?? BEAT_VH;
+/** The scroll a road gets in all, at least ROAD_VH_PER_M on every metre (0: no road). */
+const ROAD_VH: readonly number[] = BEATS.map((beat, b) => {
   const next = BEATS[b + 1];
   if (!next || beat.city || next.city) return 0;
-  return Math.max(0, Math.round(roadLength(b) * ROAD_VH_PER_M - ROAD_SPAN * BEAT_VH));
+  return roadLength(b) * ROAD_VH_PER_M;
 });
 
 /** Each beat's scroll in three parts: arriving [0, IN], the moment [IN, OUT], leaving [OUT, 1]. */
 const PARTS = BEATS.map((_, b) => {
-  const before = b > 0 ? (ROAD_EXTRA[b - 1]! * IN) / ROAD_SPAN : 0;
-  const after = (ROAD_EXTRA[b]! * (1 - OUT)) / ROAD_SPAN;
-  return [IN * BEAT_VH + before, (OUT - IN) * BEAT_VH, (1 - OUT) * BEAT_VH + after] as const;
+  const vh = vhOf(b);
+  const before = b > 0 ? (ROAD_VH[b - 1]! * IN) / ROAD_SPAN : 0;
+  const after = (ROAD_VH[b]! * (1 - OUT)) / ROAD_SPAN;
+  return [Math.max(IN * vh, before), (OUT - IN) * vh, Math.max((1 - OUT) * vh, after)] as const;
 });
 
-/** Each beat's scroll, in screen heights (BEAT_VH, more around a long road). */
+/** Each beat's scroll, in screen heights (its own `vh`, more around a long road). */
 export const BEAT_SCROLL_VH: readonly number[] = PARTS.map(([a, m, l]) => a + m + l);
 
 /** The whole day's scroll, in screen heights. */

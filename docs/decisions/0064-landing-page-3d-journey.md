@@ -213,3 +213,7 @@ between doorways rushed while the short ones crawled.
 - Every road is spread by distance along its waypoints (`timeline.ts`), as the city flight already was.
 - `pace.test.ts` holds every road under 20 m per screen of scroll (now 18 at most; the first walk 66 → 18).
   The day is about a tenth longer, only where the camera walks.
+- Then (the founder, same day): the first phone screen must come in faster, on a PC and a phone. A moment can
+  now have its own scroll (`vh` on the beat): dawn 70 and the brief 130 screen hundredths instead of 190, so
+  the owner's brief on the phone is in full view after 1.33 screens of scroll instead of 2.75
+  (`pace.test.ts`). The walk after it keeps its calm pace.

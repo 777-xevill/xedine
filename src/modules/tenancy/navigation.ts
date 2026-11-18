@@ -57,6 +57,7 @@ export type IconKey =
   | 'memberCard'
   | 'costs'
   | 'billing'
+  | 'usage'
   | 'setup'
   | 'assistantRules'
   | 'telegram'
@@ -146,6 +147,7 @@ const SETTINGS: LinkRule[] = [
   { key: 'discountCodes', path: '/discount-codes', roles: ['owner', 'manager'] },
   { key: 'costs', path: '/costs', roles: ['owner'] },
   { key: 'billing', path: '/billing', roles: MONEY },
+  { key: 'usage', path: '/settings/usage', roles: MONEY },
   { key: 'setup', path: '/setup', roles: ['owner'] },
 ];
 
@@ -163,6 +165,7 @@ const SETTINGS_GROUP_OF: Partial<Record<IconKey, SettingsGroupKey>> = {
   discountCodes: 'money',
   memberCard: 'money',
   billing: 'money',
+  usage: 'money',
   assistantRules: 'growth',
   social: 'growth',
 };

@@ -1,15 +1,31 @@
-import { Check, ChevronsUpDown, LogOut, SquarePen } from 'lucide-react';
+import { Check, ChevronsUpDown, SquarePen } from 'lucide-react';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Suspense } from 'react';
 import { BrandMark } from '@/components/brand-mark';
-import { LocaleSwitcher } from '@/components/locale-switcher';
+import { APP_COOKIE, isAppCookie } from '@/lib/android-app';
+import { LEGAL_CONTACT } from '@/lib/contact';
+import { createClient } from '@/lib/db/supabase-server';
+import { now } from '@/lib/time/clock';
 import { cn } from '@/lib/utils';
-import { setBranchAction, signOutAction } from '@/modules/tenancy/actions';
+import { setBranchAction } from '@/modules/tenancy/actions';
 import type { OrgContext } from '@/modules/tenancy/context';
 import { groupNavigation, type Navigation } from '@/modules/tenancy/navigation';
+import { AccountMenu, SettingsButton } from './account-menu';
 import { ChatHistory, type ChatSummary } from './chat-history';
 import { SidebarNav, sidebarItem, type SidebarLink } from './sidebar-nav';
+
+/** The plan's code for the account menu (owner/accountant; metric_billing refuses anyone else). */
+async function currentPlan(orgId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc('metric_billing', {
+    p_org: orgId,
+    p_now: now().toISOString(),
+  });
+  const code = ((data ?? []) as { plan_code?: string }[])[0]?.plan_code;
+  return code === 'starter' || code === 'growth' || code === 'chain' ? code : null;
+}
 
 const menuItem =
   'flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-start text-sm hover:bg-surface-hover';
@@ -24,28 +40,25 @@ export async function Sidebar({
   nav: Navigation;
   chats: ChatSummary[];
 }) {
-  const [t, tc, roles, tl] = await Promise.all([
+  const canSeeBilling = ctx.roles.some((r) => r === 'owner' || r === 'accountant');
+  const [t, tc, roles, tl, tb, locale, jar, planCode] = await Promise.all([
     getTranslations('nav'),
     getTranslations('common'),
     getTranslations('roles'),
     getTranslations('legal'),
+    getTranslations('billing'),
+    getLocale(),
+    cookies(),
+    canSeeBilling ? currentPlan(ctx.org.id) : Promise.resolve(null),
   ]);
+  const inApp = isAppCookie(jar.get(APP_COOKIE)?.value);
   const base = `/${ctx.org.slug}`;
   const selectedBranch = ctx.branches.find((b) => b.id === ctx.selectedBranchId);
   const label = (links: Navigation['core']): SidebarLink[] =>
     links.map((l) => ({ ...l, label: t(l.key) }));
-  const settingsLink: SidebarLink[] =
-    nav.settings.length > 0
-      ? [
-          {
-            key: 'settings',
-            // The first settings page this role may open (owners: General; managers: Staff).
-            href: nav.settings[0]!.href,
-            label: t('settings'),
-            alsoActive: nav.settings.map((s) => s.href),
-          },
-        ]
-      : [];
+  // The first settings page this role may open (owners: General; managers: Staff).
+  const settingsHref = nav.settings[0]?.href ?? null;
+  const usageHref = nav.settings.find((s) => s.key === 'usage')?.href ?? null;
   const initialsOf = (name: string) =>
     name
       .split(/\s+/)
@@ -164,55 +177,48 @@ export async function Sidebar({
         ) : null}
       </div>
 
-      <div className="space-y-2 border-t border-edge px-3 pt-2.5 pb-3">
-        <SidebarNav links={settingsLink} label={t('settings')} />
-        <div className="flex items-center gap-2.5 px-1">
-          <span
-            aria-hidden
-            className="initials-tile inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-          >
-            {initials || '·'}
-          </span>
-          <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-sm font-semibold">{ctx.fullName}</span>
-            <span className="block truncate text-xs text-secondary">
-              <span data-testid="role">{ctx.roles.map((r) => roles(r)).join(' · ')}</span>
-              {' · '}
-              <span data-testid="branches">
-                {ctx.branches.length > 0 && ctx.isOwner
-                  ? t('everyBranch')
-                  : ctx.branches.map((b) => b.name).join(' · ')}
-              </span>
-            </span>
-          </span>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              aria-label={tc('signOut')}
-              title={tc('signOut')}
-              className="inline-flex size-8 items-center justify-center rounded-full text-secondary hover:bg-surface-hover hover:text-foreground"
-            >
-              <LogOut aria-hidden className="size-4" />
-            </button>
-          </form>
-        </div>
-        <LocaleSwitcher className="w-full [&>form]:flex-1 [&_button]:w-full" />
-        {/* Google Play asks for a way to delete the account inside the app, next to the account (ADR 0065). */}
-        <nav
-          aria-label={tl('accountLinks')}
-          className="flex flex-wrap justify-center gap-x-3 gap-y-1 px-1 text-xs text-muted"
-        >
-          <Link href="/privacy" className="hover:text-foreground hover:underline">
-            {tl('privacyLink')}
-          </Link>
-          <Link
-            href="/data-deletion"
-            className="hover:text-foreground hover:underline"
-            data-testid="delete-account"
-          >
-            {tl('deleteAccountLink')}
-          </Link>
-        </nav>
+      <div className="space-y-1.5 border-t border-edge px-3 pt-2.5 pb-3">
+        {settingsHref ? (
+          <SettingsButton
+            href={settingsHref}
+            label={t('settings')}
+            shortcut={t('settingsShortcut')}
+            alsoActive={nav.settings.map((s) => s.href)}
+          />
+        ) : null}
+        <AccountMenu
+          email={ctx.user.email}
+          name={ctx.fullName}
+          initials={initials}
+          role={ctx.roles.map((r) => roles(r)).join(' · ')}
+          branches={
+            ctx.branches.length > 0 && ctx.isOwner
+              ? t('everyBranch')
+              : ctx.branches.map((b) => b.name).join(' · ')
+          }
+          plan={planCode ? t('planLine', { plan: tb(`plans.${planCode}`) }) : null}
+          locale={locale === 'bn' ? 'bn' : 'en'}
+          settingsHref={settingsHref}
+          usageHref={usageHref}
+          upgradeHref={canSeeBilling && !inApp ? `${base}/billing` : null}
+          helpHref={`mailto:${LEGAL_CONTACT}`}
+          labels={{
+            menu: t('accountMenu'),
+            settings: t('settings'),
+            shortcut: t('settingsShortcut'),
+            usage: t('usage'),
+            language: tc('language'),
+            bangla: tc('bangla'),
+            english: tc('english'),
+            getHelp: t('getHelp'),
+            learnMore: t('learnMore'),
+            privacy: tl('privacyLink'),
+            terms: tl('termsLink'),
+            deleteAccount: tl('deleteAccountLink'),
+            upgradePlan: t('upgradePlan'),
+            signOut: tc('signOut'),
+          }}
+        />
       </div>
     </div>
   );

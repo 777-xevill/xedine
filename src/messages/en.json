@@ -364,7 +364,14 @@
       "people": "People",
       "money": "Money and offers",
       "growth": "AI and growth"
-    }
+    },
+    "usage": "Usage",
+    "accountMenu": "Account menu",
+    "getHelp": "Get help",
+    "learnMore": "Learn more",
+    "upgradePlan": "Upgrade plan",
+    "planLine": "{plan} plan",
+    "settingsShortcut": "Ctrl+Shift+,"
   },
   "discountCodes": {
     "title": "Discount codes",
@@ -5837,5 +5844,25 @@
         "close": "Close"
       }
     }
+  },
+  "usage": {
+    "title": "Usage",
+    "subtitle": "How much of your plan's limits you have used. It updates by itself.",
+    "limitsTitle": "Plan usage limits",
+    "planBadge": "{plan} plan",
+    "aiToday": "AI helper today",
+    "resetsAt": "Resets at {time}",
+    "usedPct": "{pct}% used",
+    "noAi": "Your plan does not include AI.",
+    "seePlan": "See your plan",
+    "aiBody": "Every AI answer, draft, menu read and brief uses a little of today's allowance. {count} AI requests so far today.",
+    "fullBody": "Today's AI allowance is used up. AI buttons pause until {time}; the till, stock and everything else keep working.",
+    "weekTitle": "Last 7 days",
+    "weekBody": "Each bar shows how much of that day's AI allowance was used.",
+    "today": "Today",
+    "requests": "{count} AI requests",
+    "monthAi": "AI requests this month",
+    "monthMessages": "Messages queued this month",
+    "moreLimits": "The daily AI allowance is the only limit. Your branches and price are on Billing."
   }
 }

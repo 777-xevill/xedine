@@ -28,11 +28,13 @@ export default async function SettingsLayout({
   }));
 
   return (
+    // On a computer the panel is a window of fixed height: the title bar and the list stay still and only
+    // the page on the right scrolls (main's lg:py-10 leaves 5rem). On a phone the page scrolls as usual.
     <section
       aria-labelledby="settings-panel-title"
-      className="glass-tile overflow-hidden rounded-card border border-edge"
+      className="glass-tile overflow-hidden rounded-card border border-edge lg:flex lg:h-[calc(100dvh-5rem)] lg:min-h-[32rem] lg:flex-col"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <h2 id="settings-panel-title" className="text-base font-semibold">
           {t('settings')}
         </h2>
@@ -44,8 +46,8 @@ export default async function SettingsLayout({
           <X aria-hidden className="size-5" />
         </Link>
       </header>
-      <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <aside className="border-b border-line px-4 py-3 lg:sticky lg:top-0 lg:self-start lg:border-r lg:border-b-0 lg:p-4">
+      <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[15rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <aside className="border-b border-line px-4 py-3 lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-b-0 lg:p-4">
           <SettingsMenu
             groups={groups}
             label={t('settings')}
@@ -53,7 +55,12 @@ export default async function SettingsLayout({
             noMatch={t('settingsNoMatch')}
           />
         </aside>
-        <div className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</div>
+        <div
+          id="settings-scroll"
+          className="min-w-0 px-4 py-5 sm:px-6 lg:overflow-y-auto lg:overscroll-contain lg:px-8 lg:py-7"
+        >
+          {children}
+        </div>
       </div>
     </section>
   );

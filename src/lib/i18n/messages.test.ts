@@ -39,6 +39,8 @@ describe('i18n message catalogues', () => {
     const allowedLatin = new Set([
       'common.appName',
       'common.english',
+      // Key names on the keyboard are printed in Latin letters.
+      'nav.settingsShortcut',
       'onboarding.slugPrefix',
       'pos.vat',
       'social.poster.plusVat',

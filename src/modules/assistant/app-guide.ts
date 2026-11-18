@@ -163,7 +163,7 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
   },
   growth: {
     name: 'Growth',
-    what: "The social autopilot: Xedine makes a Facebook/Instagram poster or short reel from the restaurant's own dish photos and its sales, and posts it by itself every posting day. Shows the coming posts (skip any) and the ones that went out, and lets the owner or a manager make a post of their own about one dish, choosing among endless designs (\"More designs\"). The Dishes tab marks a dish \"Post this\", \"Xedine decides\" or \"Never\"; with none marked the autopilot posts the 5 best sellers of the last 30 days in turn. A new restaurant sees a Get started list: dish photos, logo and phone, connect Facebook and Instagram, switch the autopilot on. The Video tab makes 10–12 second videos of 1–3 dishes (seven kinds, endless looks) with free music, food sounds and sometimes an AI voice, for any special day (Eid, Jummah, Pohela Boishakh … or the owner's own words); it sets how many videos a day (0–5), the voice and special-day greetings, and takes a high-quality photo per dish. Owner and managers can use it.",
+    what: 'The social autopilot: Xedine makes a Facebook/Instagram poster or short reel from the restaurant\'s own dish photos and its sales, and posts it by itself every posting day. Shows the coming posts (skip any) and the ones that went out, and lets the owner or a manager make a post of their own about one dish, choosing among endless designs ("More designs"). The Dishes tab marks a dish "Post this", "Xedine decides" or "Never"; with none marked the autopilot posts the 5 best sellers of the last 30 days in turn. A new restaurant sees a Get started list: dish photos, logo and phone, connect Facebook and Instagram, switch the autopilot on. The Video tab makes 10–12 second videos of 1–3 dishes (seven kinds, endless looks) with free music, food sounds and sometimes an AI voice, for any special day (Eid, Jummah, Pohela Boishakh … or the owner\'s own words); it sets how many videos a day (0–5), the voice and special-day greetings, and takes a high-quality photo per dish. Owner and managers can use it.',
     words: [
       'growth',
       'marketing',
@@ -395,6 +395,11 @@ export const PAGE_GUIDE: Record<IconKey, Guide> = {
     name: 'Billing',
     what: 'The plan, what it includes and what next month costs. Owner and accountant.',
     words: ['billing', 'plan', 'subscription', 'invoice', 'pay xedine', 'upgrade'],
+  },
+  usage: {
+    name: 'Usage',
+    what: "Settings → Usage: how much of today's AI allowance is used, when it resets (04:00), the last 7 days and this month's AI requests. When the allowance is used up, AI buttons pause until the reset; the till and stock keep working. Owner and accountant.",
+    words: ['usage', 'limit', 'ai limit', 'allowance', 'used up', 'quota', 'resets'],
   },
   setup: {
     name: 'Setup',

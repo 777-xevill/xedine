@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Activity,
   CreditCard,
   Gauge,
   IdCard,
@@ -35,6 +36,7 @@ const ICONS: Partial<Record<IconKey, LucideIcon>> = {
   discountCodes: TicketPercent,
   memberCard: IdCard,
   billing: CreditCard,
+  usage: Activity,
   assistantRules: Sparkles,
   social: Share2,
 };
@@ -77,6 +79,11 @@ export function SettingsMenu({
     all
       .filter((l) => pathname === l.href || pathname.startsWith(`${l.href}/`))
       .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null;
+
+  // The page side scrolls on its own on a computer: a newly opened setting starts at its top.
+  useEffect(() => {
+    if (!window.location.hash) document.getElementById('settings-scroll')?.scrollTo({ top: 0 });
+  }, [pathname]);
 
   // On a phone the row starts at the first setting; bring the open one into view.
   useEffect(() => {

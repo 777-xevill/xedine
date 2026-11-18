@@ -92,7 +92,7 @@ describe('navigation (ADR 0024)', () => {
     for (const role of ['manager', 'cashier', 'kitchen', 'purchaser'] as const) {
       const nav = buildNavigation({ slug: 'd', roles: [role], enabled: [...FEATURE_KEYS] });
       const all = keys([...nav.core, ...nav.more, ...nav.settings]);
-      for (const money of ['leaks', 'menuProfit', 'benchmarks', 'billing', 'costs'])
+      for (const money of ['leaks', 'menuProfit', 'benchmarks', 'billing', 'usage', 'costs'])
         expect(all, `${role} → ${money}`).not.toContain(money);
     }
   });

@@ -108,6 +108,11 @@ function extraRates(): Record<string, { input: number; output: number }> {
 /** Per org per day; default $1. Plans set their own caps in Phase 10. */
 const DAILY_CAP_USD_MICROS = Number(process.env.AI_DAILY_CAP_USD_MICROS ?? 1_000_000);
 
+/** The same daily allowance, for Settings → Usage's meter (metric_ai_usage takes it as an input). */
+export function aiDailyCapUsdMicros(): number {
+  return DAILY_CAP_USD_MICROS;
+}
+
 /** The errors.* key for a failed AI call, shared by every action that drafts with AI. */
 export function aiErrorKey(e: unknown): string {
   if (!(e instanceof AiError)) return 'aiFailed';

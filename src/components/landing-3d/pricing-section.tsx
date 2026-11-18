@@ -297,6 +297,12 @@ function PartnerCard() {
   const raw = useLocale();
   const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
   const n = (v: number) => formatNumber(v, locale);
+  // The counts any service's words may name (Bangla digits in Bangla).
+  const counts = {
+    films: n(PARTNER.filmsPerMonth),
+    reels: n(PARTNER.reelsPerMonth),
+    n: n(PARTNER.deepAiPerWeek),
+  };
   const mail = `mailto:${LEGAL_CONTACT}?subject=${encodeURIComponent(t('partner.mailSubject'))}`;
   return (
     <article className="plan-gold relative mt-5 rounded-[1.75rem] shadow-[0_0_80px_-30px_color-mix(in_srgb,var(--brand-yellow)_55%,transparent)]">
@@ -350,11 +356,7 @@ function PartnerCard() {
                   </span>
                   <span className="min-w-0">
                     <span className="flex flex-wrap items-center gap-x-2 text-sm font-semibold">
-                      {t(`partner.services.${id}.name`, {
-                        films: n(PARTNER.filmsPerMonth),
-                        reels: n(PARTNER.reelsPerMonth),
-                        n: n(PARTNER.deepAiPerWeek),
-                      })}
+                      {t(`partner.services.${id}.name`, counts)}
                       {id === 'deepAi' && (
                         <span className="text-[10px] font-semibold text-[var(--brand-yellow)]">
                           {t('soon')}
@@ -362,7 +364,7 @@ function PartnerCard() {
                       )}
                     </span>
                     <span className="mt-0.5 block text-xs leading-snug text-[color:var(--text-muted)]">
-                      {t(`partner.services.${id}.line`)}
+                      {t(`partner.services.${id}.line`, counts)}
                     </span>
                   </span>
                 </li>

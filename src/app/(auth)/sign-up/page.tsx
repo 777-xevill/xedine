@@ -6,6 +6,7 @@ import {
   facebookSignInEnabled,
   googleSignInEnabled,
   phoneSignInEnabled,
+  xSignInEnabled,
 } from '@/modules/tenancy/oauth';
 
 export default async function SignUpPage({
@@ -22,6 +23,7 @@ export default async function SignUpPage({
         next={safe}
         google={googleSignInEnabled()}
         facebook={facebookSignInEnabled()}
+        x={xSignInEnabled()}
         phone={phoneSignInEnabled()}
       />
       <SignUpForm next={safe} />

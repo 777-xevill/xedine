@@ -174,7 +174,7 @@ export async function signInAction(_prev: FormState, formData: FormData): Promis
   redirect(safeNext(formData.get('next')) ?? '/');
 }
 
-/** Off to Facebook or Google through Supabase Auth; /auth/callback finishes the sign-in (ADR 0041, 0050). */
+/** Off to Facebook, Google or X through Supabase Auth; /auth/callback finishes the sign-in (ADR 0041, 0050). */
 export async function signInWithProviderAction(formData: FormData): Promise<void> {
   const provider = oauthProvider(formData.get('provider'));
   const next = safeNext(formData.get('next'));
@@ -186,7 +186,13 @@ export async function signInWithProviderAction(formData: FormData): Promise<void
     provider,
     options: {
       redirectTo: callback.toString(),
-      scopes: provider === 'facebook' ? 'email,public_profile' : 'email profile',
+      // X: its OAuth 2.0 scopes, with the confirmed email (an account needs one).
+      scopes:
+        provider === 'facebook'
+          ? 'email,public_profile'
+          : provider === 'x'
+            ? 'users.read tweet.read users.email'
+            : 'email profile',
       // Google: always let the person pick which Google account (a shared shop phone has several).
       ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
     },

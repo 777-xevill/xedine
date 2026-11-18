@@ -6,6 +6,7 @@ import {
   facebookSignInEnabled,
   googleSignInEnabled,
   phoneSignInEnabled,
+  xSignInEnabled,
   OAUTH_ERRORS,
 } from '@/modules/tenancy/oauth';
 
@@ -28,6 +29,7 @@ export default async function SignInPage({
         next={safe}
         google={googleSignInEnabled()}
         facebook={facebookSignInEnabled()}
+        x={xSignInEnabled()}
         phone={phoneSignInEnabled()}
       />
       <SignInForm next={safe} urlError={error && OAUTH_ERRORS.has(error) ? error : undefined} />

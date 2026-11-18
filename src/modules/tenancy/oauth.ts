@@ -4,7 +4,7 @@
  * Supabase dashboard, and an env flag shows its button (the app cannot see the dashboard setting by itself).
  * Phone sign-in needs the Telegram bot, which proves the number for free.
  */
-export type OAuthProvider = 'facebook' | 'google';
+export type OAuthProvider = 'facebook' | 'google' | 'x';
 
 export function facebookSignInEnabled(): boolean {
   return process.env.FACEBOOK_SIGN_IN === 'on';
@@ -12,6 +12,11 @@ export function facebookSignInEnabled(): boolean {
 
 export function googleSignInEnabled(): boolean {
   return process.env.GOOGLE_SIGN_IN === 'on';
+}
+
+/** "Continue with X" (X / Twitter OAuth 2.0 through Supabase; the founder, 2026-11-18). */
+export function xSignInEnabled(): boolean {
+  return process.env.X_SIGN_IN === 'on';
 }
 
 export function phoneSignInEnabled(): boolean {
@@ -23,7 +28,7 @@ export function phoneSignInEnabled(): boolean {
 }
 
 export function oauthProvider(value: unknown): OAuthProvider {
-  return value === 'google' ? 'google' : 'facebook';
+  return value === 'google' || value === 'x' ? value : 'facebook';
 }
 
 /**
@@ -38,6 +43,10 @@ export function oauthErrorKey(
   if (provider === 'google') {
     return description && /denied|cancel/i.test(description) ? 'googleCancelled' : 'googleFailed';
   }
+  if (provider === 'x') {
+    if (description && /email/i.test(description)) return 'xNoEmail';
+    return description && /denied|cancel/i.test(description) ? 'xCancelled' : 'xFailed';
+  }
   if (description && /email/i.test(description)) return 'facebookNoEmail';
   if (description && /denied|cancel/i.test(description)) return 'facebookCancelled';
   return 'facebookFailed';
@@ -50,6 +59,9 @@ export const OAUTH_ERRORS = new Set([
   'facebookFailed',
   'googleCancelled',
   'googleFailed',
+  'xNoEmail',
+  'xCancelled',
+  'xFailed',
   // /auth/confirm: an email link that is old, used already, or broken.
   'confirmFailed',
 ]);

@@ -34,3 +34,14 @@ describe('Google sign-in (ADR 0050)', () => {
     expect(oauthProvider(null)).toBe('facebook');
   });
 });
+
+describe('X sign-in (the founder, 2026-11-18)', () => {
+  it('reads x from the form and words its errors as X', () => {
+    expect(oauthProvider('x')).toBe('x');
+    expect(oauthErrorKey('access_denied', 'x')).toBe('xCancelled');
+    expect(oauthErrorKey('Error getting user email from external provider', 'x')).toBe('xNoEmail');
+    expect(oauthErrorKey('boom', 'x')).toBe('xFailed');
+    for (const d of ['email missing', 'access_denied', 'boom', null])
+      expect(OAUTH_ERRORS.has(oauthErrorKey(d, 'x'))).toBe(true);
+  });
+});

@@ -38,26 +38,34 @@ export function QuickSignIn({
   next,
   google,
   facebook,
+  x = false,
   phone,
 }: {
   next?: string;
   google: boolean;
   facebook: boolean;
+  x?: boolean;
   phone: boolean;
 }) {
   const t = useTranslations('auth');
-  if (!google && !facebook && !phone) return null;
+  if (!google && !facebook && !x && !phone) return null;
+  const shown = { google, facebook, x };
+  const label = {
+    google: 'continueWithGoogle',
+    facebook: 'continueWithFacebook',
+    x: 'continueWithX',
+  } as const;
   const phoneHref = next ? `/sign-in/phone?next=${encodeURIComponent(next)}` : '/sign-in/phone';
   return (
     <div className="mb-4 space-y-3">
-      {(['google', 'facebook'] as const)
-        .filter((p) => (p === 'google' ? google : facebook))
+      {(['google', 'facebook', 'x'] as const)
+        .filter((p) => shown[p])
         .map((provider) => (
           <form key={provider} action={signInWithProviderAction}>
             <input type="hidden" name="provider" value={provider} />
             <input type="hidden" name="next" value={next ?? ''} />
             <Button type="submit" variant="secondary" className="w-full">
-              {t(provider === 'google' ? 'continueWithGoogle' : 'continueWithFacebook')}
+              {t(label[provider])}
             </Button>
           </form>
         ))}

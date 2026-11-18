@@ -61,7 +61,7 @@ export const MomentsMenu = memo(function MomentsMenu({ active, onPick }: Props) 
         aria-label={t('moments.button')}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'xedine-chip inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold',
+          'xedine-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold',
           open && 'border-[var(--brand-yellow)]',
         )}
       >

@@ -185,11 +185,11 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             </div>
           )}
           {corner && <div className="absolute top-3 left-3 z-30">{corner}</div>}
-          <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          <div className="absolute top-4 right-3 z-30 flex items-center gap-1 sm:right-4 sm:gap-2">
             {/* Someone who already has an account signs in from here, without scrolling the day. */}
             <Link
               href="/sign-in"
-              className="xedine-chip rounded-full px-3 py-1.5 text-xs font-semibold"
+              className="xedine-chip rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold"
             >
               {tc('signIn')}
             </Link>
@@ -202,7 +202,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             <MomentsMenu active={active} onPick={goToMoment} />
             <a
               href="#everything"
-              className="xedine-chip rounded-full px-3 py-1.5 text-xs font-semibold"
+              className="xedine-chip rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold"
             >
               {/* Short on a phone, so the row stays clear of the language switch. */}
               <span className="sm:hidden">{t('intro.skipShort')}</span>

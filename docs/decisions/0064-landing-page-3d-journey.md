@@ -235,3 +235,13 @@ between doorways rushed while the short ones crawled.
   the next rises from below a tenth of a second later; scrolling back rolls the other way. Reduced motion:
   a plain fade.
 - On a phone (the founder, same day): the moments button reads "All features" and opens the list of moments; next to it a short "Skip" goes past the day. PC keeps "Moments" and "Skip to every feature".
+
+## Amendment (2026-11-18): no jump when the 3D arrives on a phone
+
+The founder (Samsung S24, a Redmi, a slow phone): on entering, scrolling moved nothing, then the morning brief
+appeared all at once. Measured live on an emulated phone: the 3D was ready 2.7 s (fast) to 4.4 s (4× slower)
+after the visitor began to scroll; meanwhile the picture of the first view could not move, the scroll went on,
+and the 3D faded in wherever the scroll had got to (with dawn now short, the brief).
+- Until the 3D is drawn the story holds at its first view (the "Xedine is on its way…" chip shows once the
+  visitor scrolls); then the 3D fades in over the matching picture and glides to the scroll in 1.4 s
+  (ease in and out). Already past the second moment (a reload halfway, a hard flick): straight there.

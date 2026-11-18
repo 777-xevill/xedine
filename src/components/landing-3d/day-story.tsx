@@ -44,6 +44,12 @@ type Props = {
   countries: CountryPin[];
 };
 
+/** The glide from the first view to the scroll once the 3D is in, and how long it waits for the fade. */
+const GLIDE_MS = 1400;
+const GLIDE_DELAY_MS = 350;
+/** Beyond this point in the story (p) the 3D goes straight to the scroll instead of gliding. */
+const GLIDE_MAX_P = 2;
+
 let webgl: boolean | undefined;
 /** Can this browser draw 3D? Asked once; the server says "not yet" (null) so the first paint matches. */
 function webglOk() {
@@ -86,7 +92,21 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
   const bar = useRef<HTMLDivElement>(null);
   // The loading chip shows until the street is drawn; the other rooms arrive while the visitor reads.
   const [ready, setReady] = useState(false);
-  const onReady = useCallback(() => setReady(true), []);
+  /*
+   * Until the 3D is drawn the story holds at its first view (the founder, 2026-11-18: on every phone the 3D
+   * came in 3–4 s after the picture, and someone already scrolling saw nothing move, then the morning brief
+   * all at once). Then it fades in over the matching picture and glides to where the visitor has scrolled.
+   */
+  const holdRef = useRef(true);
+  const glideRef = useRef<number | null>(null);
+  const updateRef = useRef<() => void>(() => undefined);
+  const onReady = useCallback(() => {
+    setReady(true);
+    holdRef.current = false;
+    // After the fade has mostly happened, so the picture and the 3D still match while they cross.
+    glideRef.current = performance.now() + GLIDE_DELAY_MS;
+    updateRef.current();
+  }, []);
   // The first view's picture matches the 3D exactly, so it needs no loading chip, unless someone scrolls
   // before the 3D is in (the picture cannot move with them).
   const [moved, setMoved] = useState(false);
@@ -102,18 +122,32 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
         if (!el) return;
         // A long way between two rooms has more scroll (story.ts BEAT_SCROLL_VH), so it never rushes.
         const scrolledVh = (-el.getBoundingClientRect().top / window.innerHeight) * 100;
-        const p = Math.min(BEATS.length - 0.001, scrollToP(scrolledVh));
+        const real = Math.min(BEATS.length - 0.001, scrollToP(scrolledVh));
+        // What the 3D and the card show: the first view while the 3D loads, then a glide to the scroll.
+        let p = real;
+        if (holdRef.current && webglOk()) p = 0;
+        else if (glideRef.current !== null && real > GLIDE_MAX_P) {
+          // Far down already (a reload halfway, a hard flick): straight there, not a race through the rooms.
+          glideRef.current = null;
+          easedRef.current = still.current ? Math.floor(real) + 0.62 : real;
+        } else if (glideRef.current !== null) {
+          const t = Math.max(0, Math.min(1, (performance.now() - glideRef.current) / GLIDE_MS));
+          p = real * (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+          if (t >= 1) glideRef.current = null;
+          else onScroll();
+        }
         // Reduced motion: no flight between moments; each one is shown at its settled view.
         targetRef.current = still.current ? Math.floor(p) + 0.62 : p;
         // The card changes halfway between two moments, as the next room comes into view.
         setActive(cardAt(p));
-        if (p > 0.05) setMoved(true);
+        if (real > 0.05) setMoved(true);
         setShowCity(p > 14.6 && p < 17.6);
         // The moment's card shows while the 3D day fills the screen, not over the A–Z list after it.
         setInStory(el.getBoundingClientRect().bottom > window.innerHeight * 0.55);
-        if (bar.current) bar.current.style.transform = `scaleX(${p / BEATS.length})`;
+        if (bar.current) bar.current.style.transform = `scaleX(${real / BEATS.length})`;
       });
     };
+    updateRef.current = onScroll;
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
@@ -163,9 +197,8 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             <div
               className={cn(
                 'absolute inset-0 transition-opacity motion-reduce:transition-none',
-                // A slow fade over the matching picture; a quick one if the visitor already scrolled away
-                // from it (the picture shows the first view, the 3D where they are now).
-                moved ? 'duration-150' : 'duration-700',
+                // A slow fade over the matching picture: the story holds at the first view until now.
+                'duration-700',
                 ready ? 'opacity-100' : 'opacity-0',
               )}
             >

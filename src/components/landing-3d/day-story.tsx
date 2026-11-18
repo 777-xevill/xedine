@@ -270,10 +270,13 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
       <div
         className={cn(
           'pointer-events-none fixed inset-x-3 bottom-3 z-20 transition-opacity duration-300 sm:inset-x-auto sm:top-[16vh] sm:bottom-auto sm:left-8',
+          // A laptop screen is short (1366×768, or a 1080p screen at 150%, the founder's Lenovo, 2026-11-19):
+          // the card shrinks as a whole, so it never covers the café.
+          '[@media(min-width:640px)_and_(max-height:800px)]:top-[12vh] [@media(min-width:640px)_and_(max-height:800px)]:[zoom:0.85] [@media(min-width:640px)_and_(max-height:620px)]:left-5 [@media(min-width:640px)_and_(max-height:620px)]:[zoom:0.72]',
           inStory ? 'opacity-100' : 'opacity-0',
         )}
       >
-        <div className="relative w-full sm:w-[28rem]">
+        <div className="relative w-full sm:w-[min(28rem,40vw)]">
           {BEATS.map((beat, i) => (
             <div
               key={beat.id}
@@ -342,7 +345,7 @@ const BeatCard = memo(function BeatCard({
       <p className="mt-1.5 text-[13px] leading-relaxed sm:mt-2 sm:text-[0.95rem]">
         {t(`beats.${id}.body`)}
       </p>
-      <ul className="mt-3 hidden flex-wrap gap-1.5 sm:flex">
+      <ul className="mt-3 hidden flex-wrap gap-1.5 sm:flex [@media(max-height:620px)]:!hidden">
         {features.map((f) => (
           <li
             key={f}

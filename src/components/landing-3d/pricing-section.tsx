@@ -160,7 +160,7 @@ function PlanCard({ plan, open, onToggle }: { plan: Plan; open: boolean; onToggl
             return (
               <li
                 key={id}
-                className="plan-tile relative rounded-2xl border border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_5%,transparent)] p-3"
+                className="plan-tile relative min-h-24 rounded-2xl border border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_5%,transparent)] p-3"
               >
                 {soon && (
                   <span className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-yellow)]">

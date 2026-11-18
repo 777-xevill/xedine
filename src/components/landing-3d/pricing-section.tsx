@@ -12,24 +12,70 @@ import {
   type Locale,
 } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
-import { PLAN_PRICE, PLAN_ROWS, TRIAL_DAYS, WEEKLY_LIMITS } from './pricing';
+import {
+  DAYS_PER_MONTH,
+  limitOf,
+  PLAN_ROWS,
+  PLANS,
+  TRIAL_DAYS,
+  type Limit,
+  type Plan,
+} from './pricing';
 
-/** How tall the feature list is before "See more" (about five rows a column). */
-const CLOSED_PX = 232;
-/** Rows from here on are under the fold even on a PC (two columns of five): they come in one by one. */
-const LATE_FROM = 10;
+/** How tall a plan's feature list is before "See more" (about six rows). */
+const CLOSED_PX = 262;
+/** Rows from here on are under the fold: they come in one by one when it opens. */
+const LATE_FROM = 6;
 
 /**
- * The home page's pricing, between the 3D day and the A–Z list (the founder, 2026-11-18): one plan from $19 a
- * month on glass over a huge word. Its weekly limits as four tiles, then every feature Xedine has with a tick
- * (in this plan) or a cross (a bigger plan), folded under "See more" so the page stays short. A yellow light
- * runs round the card's edge; the rows come in one after another when it opens.
+ * The home page's pricing, between the 3D day and the A–Z list (the founder, 2026-11-18): two plans on glass
+ * over a huge word, Starter ($19) and Pro ($27, the one Xedine sells: first on a phone, the yellow button and a
+ * light running round its edge). Each shows its limits as four tiles, then Xedine's big features with a tick or
+ * a cross, folded under "See more" (both plans open together, so their rows line up).
  */
 export const PricingSection = memo(function PricingSection() {
-  const t = useTranslations('landing3d.day');
+  const t = useTranslations('landing3d.day.pricing');
+  const [open, setOpen] = useState(false);
+  return (
+    <section
+      id="pricing"
+      aria-labelledby="pricing-title"
+      className="relative overflow-hidden bg-background px-4 pt-14 pb-16 sm:px-8 sm:pt-20 sm:pb-24"
+    >
+      {/* The big word: the cards cover its lower half and blur it, like frosted glass. */}
+      <p
+        aria-hidden
+        className="pointer-events-none mx-auto text-center text-[25vw] leading-[0.8] font-bold tracking-[-0.05em] text-[var(--brand-silver)] select-none sm:text-[11rem] lg:text-[13rem]"
+      >
+        {t('title')}
+      </p>
+      <div className="relative mx-auto -mt-[9vw] max-w-5xl sm:-mt-20 lg:-mt-24">
+        <h2 id="pricing-title" className="sr-only">
+          {t('title')}
+        </h2>
+        <div className="grid items-start gap-5 md:grid-cols-2">
+          {PLANS.map((plan) => (
+            <PlanCard key={plan.code} plan={plan} open={open} onToggle={() => setOpen((o) => !o)} />
+          ))}
+        </div>
+        <p className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[color:var(--text-muted)]">
+          <span className="flex items-center gap-1">
+            <Mark yes /> {t('legendYes')}
+          </span>
+          <span className="flex items-center gap-1">
+            <Mark yes={false} /> {t('legendNo')}
+          </span>
+          <span>{t('note')}</span>
+        </p>
+      </div>
+    </section>
+  );
+});
+
+function PlanCard({ plan, open, onToggle }: { plan: Plan; open: boolean; onToggle: () => void }) {
+  const t = useTranslations('landing3d.day.pricing');
   const raw = useLocale();
   const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
-  const [open, setOpen] = useState(false);
   const listId = useId();
   const listRef = useRef<HTMLUListElement>(null);
   const [fullPx, setFullPx] = useState<number | null>(null);
@@ -45,172 +91,176 @@ export const PricingSection = memo(function PricingSection() {
     return () => ro.disconnect();
   }, []);
 
-  const days = formatNumber(TRIAL_DAYS, locale);
   const n = (v: number) => formatNumber(v, locale);
+  const days = n(TRIAL_DAYS);
+  const badge = (limit: Limit) =>
+    limit === 'unlimited'
+      ? t('unlimited')
+      : t(limit.per === 'day' ? 'perDay' : 'perWeek', { n: n(limit.n) });
 
   return (
-    <section
-      id="pricing"
-      aria-labelledby="pricing-title"
-      className="relative overflow-hidden bg-background px-4 pt-14 pb-16 sm:px-8 sm:pt-20 sm:pb-24"
+    <article
+      className={cn(
+        'relative rounded-[1.75rem] shadow-[var(--rim)]',
+        plan.featured
+          ? 'plan-rim order-first md:order-none'
+          : 'border border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)]',
+      )}
     >
-      {/* The big word: the card covers its lower half and blurs it, like frosted glass. */}
-      <p
-        aria-hidden
-        className="pointer-events-none mx-auto text-center text-[25vw] leading-[0.8] font-bold tracking-[-0.05em] text-[var(--brand-silver)] select-none sm:text-[11rem] lg:text-[13rem]"
-      >
-        {t('pricing.title')}
-      </p>
-      <div className="relative mx-auto -mt-[9vw] max-w-3xl sm:-mt-20 lg:-mt-24">
-        <h2 id="pricing-title" className="sr-only">
-          {t('pricing.title')}
-        </h2>
-        <article className="plan-rim relative rounded-[1.75rem] shadow-[var(--rim)]">
-          <div className="rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_70%,transparent)] backdrop-blur-2xl">
-            {/* Name, price and the button */}
-            <div
-              data-reveal
-              className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8"
+      <div className="rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_70%,transparent)] backdrop-blur-2xl">
+        {/* Name, price and the button */}
+        <div data-reveal className="p-6 pb-5 sm:p-7 sm:pb-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+                plan.featured
+                  ? 'border-[color-mix(in_srgb,var(--brand-yellow)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-yellow)_10%,transparent)] text-[var(--brand-yellow)]'
+                  : 'border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] text-[color:var(--text-secondary)]',
+              )}
             >
-              <div>
-                <p className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-yellow)_10%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--brand-yellow)]">
-                  <Sparkles aria-hidden className="size-3.5" />
-                  {t('pricing.name')}
-                </p>
-                <p className="mt-4 flex items-baseline gap-1">
-                  <span className="text-xs font-semibold text-[color:var(--text-muted)]">
-                    {t('pricing.from')}
-                  </span>
-                  <span className="text-5xl font-bold tracking-[-0.04em] sm:text-6xl">
-                    {formatMoney(PLAN_PRICE.minor, locale, PLAN_PRICE.currency)}
-                  </span>
-                  <span className="text-xl font-semibold text-[color:var(--text-muted)]">
-                    {t('pricing.perMonth')}
-                  </span>
-                </p>
-                <p className="mt-2 max-w-sm text-sm text-[color:var(--text-secondary)]">
-                  {t('pricing.body')}
-                </p>
-              </div>
-              <div className="sm:w-60">
-                <Link
-                  href="/sign-up"
-                  className="btn-shine plan-cta relative block overflow-hidden rounded-full bg-[var(--brand-yellow)] py-3.5 text-center text-sm font-semibold text-[var(--brand-grey)] transition-transform active:scale-[0.98]"
-                >
-                  {t('pricing.cta', { days })}
-                </Link>
-                <p className="mt-2 text-center text-xs text-[color:var(--text-muted)]">
-                  {t('pricing.noCard')}
-                </p>
-              </div>
-            </div>
-
-            {/* The weekly limits */}
-            <ul data-reveal className="grid grid-cols-2 gap-2 px-6 sm:grid-cols-4 sm:gap-3 sm:px-8">
-              {WEEKLY_LIMITS.map((l) => (
-                <li
-                  key={l.id}
-                  className="plan-tile relative rounded-2xl border border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_5%,transparent)] p-3"
-                >
-                  {l.soon && (
-                    <span className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-yellow)]">
-                      <span className="animate-pulse-dot size-1.5 rounded-full bg-[var(--brand-yellow)]" />
-                      {t('pricing.soon')}
-                    </span>
-                  )}
-                  <p className="text-2xl font-bold text-[var(--brand-yellow)]">{n(l.perWeek)}</p>
-                  <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-secondary)]">
-                    {t(`pricing.limits.${l.id}`)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-
-            {/* Every feature: a tick or a cross */}
-            <div className="mt-6 h-px bg-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]" />
-            <div className="px-6 pt-5 pb-5 sm:px-8">
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <h3 className="text-sm font-semibold">{t('pricing.allTitle')}</h3>
-                <p className="flex items-center gap-3 text-xs text-[color:var(--text-muted)]">
-                  <span className="flex items-center gap-1">
-                    <Mark yes /> {t('pricing.legendYes')}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Mark yes={false} /> {t('pricing.legendNo')}
-                  </span>
-                </p>
-              </div>
-              <div
-                className="relative mt-4 overflow-hidden transition-[height] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-                style={{ height: open ? (fullPx ?? 'auto') : CLOSED_PX }}
-              >
-                <ul
-                  ref={listRef}
-                  id={listId}
-                  data-open={open}
-                  className="plan-list grid gap-x-6 sm:grid-cols-2"
-                >
-                  {PLAN_ROWS.map((r, i) => (
-                    <li
-                      key={r.id}
-                      data-late={i >= LATE_FROM || undefined}
-                      style={{ '--i': i - LATE_FROM } as CSSProperties}
-                      className="flex items-center gap-2.5 border-b border-[color-mix(in_srgb,var(--brand-silver)_8%,transparent)] py-2.5 text-sm"
-                    >
-                      <Mark yes={r.included} />
-                      <span
-                        className={cn(
-                          'min-w-0 flex-1',
-                          r.included
-                            ? 'text-[color:var(--text-secondary)]'
-                            : 'text-[color:var(--text-muted)]',
-                        )}
-                      >
-                        {t(`pricing.rows.${r.id}`)}
-                        {!r.included && <span className="sr-only"> — {t('pricing.legendNo')}</span>}
-                      </span>
-                      {r.perWeek !== undefined && (
-                        <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_40%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--brand-yellow)]">
-                          {r.soon ? t('pricing.soon') : t('pricing.perWeek', { n: n(r.perWeek) })}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {/* The fold fades into the card while it is closed. */}
-                <div
-                  aria-hidden
-                  className={cn(
-                    'pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[color-mix(in_srgb,var(--brand-grey)_96%,transparent)] transition-opacity duration-500',
-                    open && 'opacity-0',
-                  )}
-                />
-              </div>
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-controls={listId}
-                onClick={() => setOpen((o) => !o)}
-                className="mx-auto mt-5 flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] px-4 py-2 text-xs font-semibold transition-[border-color,scale] hover:border-[var(--brand-yellow)] active:scale-[0.97]"
-              >
-                {open ? t('pricing.less') : t('pricing.more')}
-                <ChevronDown
-                  aria-hidden
-                  className={cn('size-4 transition-transform duration-500', open && 'rotate-180')}
-                />
-              </button>
-            </div>
+              {plan.featured && <Sparkles aria-hidden className="size-3.5" />}
+              {t(`plans.${plan.code}.name`)}
+            </p>
+            {plan.featured && (
+              <p className="rounded-full bg-[var(--brand-yellow)] px-2.5 py-1 text-[11px] font-bold text-[var(--brand-grey)]">
+                {t('badge')}
+              </p>
+            )}
           </div>
-        </article>
-        <p className="mt-6 text-center text-xs text-[color:var(--text-muted)]">
-          {t('pricing.note')}
-        </p>
-      </div>
-    </section>
-  );
-});
+          <p className="mt-4 flex items-baseline gap-1">
+            <span className="text-5xl font-bold tracking-[-0.04em]">
+              {formatMoney(plan.minor, locale, plan.currency)}
+            </span>
+            <span className="text-xl font-semibold text-[color:var(--text-muted)]">
+              {t('perMonth')}
+            </span>
+          </p>
+          <p className="mt-2 min-h-10 text-sm text-[color:var(--text-secondary)]">
+            {t(`plans.${plan.code}.body`)}
+          </p>
+          <Link
+            href="/sign-up"
+            className={cn(
+              'relative mt-5 block overflow-hidden rounded-full py-3.5 text-center text-sm font-semibold transition-transform active:scale-[0.98]',
+              plan.featured
+                ? 'btn-shine plan-cta bg-[var(--brand-yellow)] text-[var(--brand-grey)]'
+                : 'border border-[color-mix(in_srgb,var(--brand-silver)_16%,transparent)] bg-[var(--brand-grey)] hover:border-[var(--brand-yellow)]',
+            )}
+          >
+            {t('cta', { days })}
+          </Link>
+          <p className="mt-2 text-center text-xs text-[color:var(--text-muted)]">{t('noCard')}</p>
+        </div>
 
-/** A tick in a yellow ring (in this plan) or a cross in a dim one (needs a bigger plan). */
+        {/* The limits */}
+        <ul data-reveal className="grid grid-cols-2 gap-2 px-6 sm:px-7">
+          {plan.limits.map(({ id, limit }) => {
+            const soon = PLAN_ROWS.find((r) => r.id === id)?.soon;
+            return (
+              <li
+                key={id}
+                className="plan-tile relative rounded-2xl border border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_5%,transparent)] p-3"
+              >
+                {soon && (
+                  <span className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-yellow)]">
+                    <span className="animate-pulse-dot size-1.5 rounded-full bg-[var(--brand-yellow)]" />
+                    {t('soon')}
+                  </span>
+                )}
+                <p
+                  className={cn(
+                    'font-bold text-[var(--brand-yellow)]',
+                    limit === 'unlimited' ? 'pt-1 text-lg leading-7' : 'text-2xl',
+                  )}
+                >
+                  {limit === 'unlimited' ? t('unlimited') : n(limit.n)}
+                </p>
+                <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-secondary)]">
+                  {t('tileLabel', {
+                    what: t(`limits.${id}`),
+                    per: limit === 'unlimited' ? 'none' : limit.per,
+                  })}
+                </p>
+                {limit !== 'unlimited' && limit.per === 'day' && (
+                  <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">
+                    {t('aboutMonth', { n: n(limit.n * DAYS_PER_MONTH) })}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Xedine's big features: a tick or a cross */}
+        <div className="mt-5 h-px bg-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]" />
+        <div className="px-6 pt-4 pb-5 sm:px-7">
+          <h3 className="text-sm font-semibold">{t('allTitle')}</h3>
+          <div
+            className="relative mt-2 overflow-hidden transition-[height] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+            style={{ height: open ? (fullPx ?? 'auto') : CLOSED_PX }}
+          >
+            <ul ref={listRef} id={listId} data-open={open} className="plan-list">
+              {PLAN_ROWS.map((r, i) => {
+                const has = !plan.without.has(r.id);
+                const limit = limitOf(plan, r.id);
+                return (
+                  <li
+                    key={r.id}
+                    data-late={i >= LATE_FROM || undefined}
+                    style={{ '--i': i - LATE_FROM } as CSSProperties}
+                    className="flex items-center gap-2.5 border-b border-[color-mix(in_srgb,var(--brand-silver)_8%,transparent)] py-2.5 text-sm"
+                  >
+                    <Mark yes={has} />
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1',
+                        has
+                          ? 'text-[color:var(--text-secondary)]'
+                          : 'text-[color:var(--text-muted)]',
+                      )}
+                    >
+                      {t(`rows.${r.id}`)}
+                      {!has && <span className="sr-only"> — {t('legendNo')}</span>}
+                    </span>
+                    {has && (r.soon || limit) && (
+                      <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_40%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--brand-yellow)]">
+                        {r.soon ? t('soon') : limit && badge(limit)}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            {/* The fold fades into the card while it is closed. */}
+            <div
+              aria-hidden
+              className={cn(
+                'pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[color-mix(in_srgb,var(--brand-grey)_96%,transparent)] transition-opacity duration-500',
+                open && 'opacity-0',
+              )}
+            />
+          </div>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={listId}
+            onClick={onToggle}
+            className="mx-auto mt-4 flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] px-4 py-2 text-xs font-semibold transition-[border-color,scale] hover:border-[var(--brand-yellow)] active:scale-[0.97]"
+          >
+            {open ? t('less') : t('more')}
+            <ChevronDown
+              aria-hidden
+              className={cn('size-4 transition-transform duration-500', open && 'rotate-180')}
+            />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/** A tick in a yellow ring (in the plan) or a cross in a dim one (a bigger plan). */
 function Mark({ yes }: { yes: boolean }) {
   return (
     <span

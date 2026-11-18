@@ -5377,26 +5377,23 @@
       },
       "pricing": {
         "title": "Pricing",
-        "name": "Starter",
-        "from": "from",
         "perMonth": "/month",
-        "body": "Everything to run your restaurant: till, kitchen, stock, money and AI, with a few weekly limits.",
         "cta": "Start {days} days free",
         "noCard": "No card needed to start.",
         "soon": "Coming soon",
         "perWeek": "{n} a week",
         "limits": {
-          "posters": "posters a week",
-          "videos": "videos a week",
-          "assistant": "AI questions a week",
-          "deepAi": "answers from the strongest AI a week"
+          "assistant": "AI questions",
+          "deepAi": "answers from the strongest AI",
+          "posters": "posters",
+          "videos": "videos"
         },
         "allTitle": "What you get",
         "legendYes": "In this plan",
         "legendNo": "Bigger plan",
         "more": "See more",
         "less": "Show less",
-        "note": "Prices in US dollars. Bigger plans with everything are on the way.",
+        "note": "Prices in US dollars. One more plan is on the way.",
         "rows": {
           "assistant": "Ask Xedine: AI that knows your whole restaurant",
           "deepAi": "Strongest AI for hard questions",
@@ -5415,7 +5412,22 @@
           "offers": "Offers on your customers’ phones",
           "memberCard": "Member card and points",
           "deliveryApps": "Delivery apps (foodpanda and others)"
-        }
+        },
+        "plans": {
+          "starter": {
+            "name": "Starter",
+            "body": "The essentials to run your restaurant, with weekly limits."
+          },
+          "pro": {
+            "name": "Pro",
+            "body": "All of Xedine: every feature, everyday AI without a limit, and new posters and videos every day."
+          }
+        },
+        "badge": "Recommended",
+        "perDay": "{n} a day",
+        "unlimited": "Unlimited",
+        "tileLabel": "{what}{per, select, day { a day} week { a week} other {}}",
+        "aboutMonth": "about {n} a month"
       },
       "moments": {
         "button": "Moments",

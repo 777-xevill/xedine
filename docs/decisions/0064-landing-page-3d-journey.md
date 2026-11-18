@@ -259,3 +259,19 @@ foodpanda, last. A week allows 10 AI questions, 3 answers from the strongest AI 
   nothing counts posters, videos or AI questions per week.
 - Motion: a yellow light runs round the card's edge, the button shines every few seconds, the limit tiles lift on
   hover and the rows under the fold come in one after another; all of it stops for reduced motion.
+
+## Amendment, 2026-11-18: Pro at $27 beside Starter
+
+The founder: Pro at $27 a month is the plan Xedine sells most. It has everything (no crosses), the everyday AI
+without a limit, the strongest AI 20 times a week (not built yet), 5 posters and 2 videos a day ("about 150 / 60 a
+month" under the tiles). Pro is first on a phone and carries the badge, the yellow button and the running light;
+Starter's button is grey. Both cards open together under "See more" so their rows line up. One more plan comes
+later.
+- Effort behind the daily numbers: a poster is ~20 s on the GitHub runner plus one AI dish picture (Cloudflare
+  FLUX, ~110 of the 10,000 free neurons a day, then about $0.0012 each); a video ~1–2 min of runner (the repo is
+  public, so runner minutes are free). One Pro restaurant at the full 5 + 2 a day costs well under $1 a month.
+- The real limit is throughput, not money: GitHub runs the "every 10 minutes" social tick only 3–4 times a day,
+  and a tick makes at most 6 items in 4 minutes. That is ~20 items a day for all restaurants together, i.e. about
+  three Pro restaurants at full use. Before selling Pro widely the tick must be triggered reliably (pg_cron →
+  workflow_dispatch) and split across parallel runners, and the 10,000 free neurons (~90 pictures a day) will need
+  the paid Workers AI tier.

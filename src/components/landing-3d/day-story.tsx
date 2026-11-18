@@ -46,7 +46,7 @@ type Props = {
 
 /** The glide from the first view to the scroll once the 3D is in, and how long it waits for the fade. */
 const GLIDE_MS = 1400;
-const GLIDE_DELAY_MS = 350;
+const GLIDE_DELAY_MS = 600;
 /** Beyond this point in the story (p) the 3D goes straight to the scroll instead of gliding. */
 const GLIDE_MAX_P = 2;
 
@@ -213,7 +213,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             </div>
           )}
           {can3d && !ready && moved && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
+            <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center sm:top-auto sm:bottom-6">
               <p className="xedine-chip rounded-full px-4 py-1.5 text-xs">{t('intro.loading')}</p>
             </div>
           )}

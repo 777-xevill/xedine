@@ -879,3 +879,26 @@ export const COUNTRY_PLACES: Record<string, { lat: number; lng: number }> = {
   GB: { lat: 51.5, lng: -0.13 },
   US: { lat: 40.7, lng: -74.0 },
 };
+
+/**
+ * Where moment b is settled (its last view, the close look in place): the moment picker jumps here, and the
+ * moment's card shows (cardAt).
+ */
+export function momentP(b: number) {
+  return b + IN + (BEATS[b]?.pace ?? 1) * (OUT - IN);
+}
+
+/** Screen heights (in hundredths) scrolled into the day where the story reaches p: scrollToP turned around. */
+export function pToScroll(p: number) {
+  const bounds = [0, IN, OUT, 1];
+  const b = Math.min(BEATS.length - 1, Math.max(0, Math.floor(p)));
+  let vh = BEAT_SCROLL_VH.slice(0, b).reduce((sum, x) => sum + x, 0);
+  const local = Math.min(1, p - b);
+  for (let part = 0; part < 3; part++) {
+    const [from, to] = [bounds[part]!, bounds[part + 1]!];
+    const height = PARTS[b]![part]!;
+    if (local <= to) return vh + ((local - from) / (to - from)) * height;
+    vh += height;
+  }
+  return vh;
+}

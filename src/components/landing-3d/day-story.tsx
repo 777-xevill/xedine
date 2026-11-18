@@ -20,7 +20,8 @@ import { cn } from '@/lib/utils';
 import type { CountryPin } from './city';
 import { FEATURE_GROUPS, FEATURES, type FeatureId } from './features';
 import { PricingSection } from './pricing-section';
-import { BEAT_SCROLL_VH, BEATS, cardAt, scrollToP, STORY_VH } from './story';
+import { MomentsMenu } from './moments-menu';
+import { BEAT_SCROLL_VH, BEATS, cardAt, momentP, pToScroll, scrollToP, STORY_VH } from './story';
 import { type DemoCurrency } from './story-ledger';
 import { useAnswers, useCityText, useScreenText } from './story-text';
 
@@ -123,6 +124,16 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
     };
   }, []);
 
+  // The moment picker: straight to the moment, a cut rather than a flight through every room on the way.
+  const goToMoment = useCallback((b: number) => {
+    const el = story.current;
+    if (!el) return;
+    const p = momentP(b);
+    easedRef.current = still.current ? Math.floor(p) + 0.62 : p;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: top + (pToScroll(p) / 100) * window.innerHeight, behavior: 'instant' });
+  }, []);
+
   const city = useMemo(
     () => ({
       branches: cityText.branches,
@@ -188,6 +199,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             >
               {tc('signUp')}
             </Link>
+            <MomentsMenu active={active} onPick={goToMoment} />
             <a
               href="#everything"
               className="xedine-chip rounded-full px-3 py-1.5 text-xs font-semibold"

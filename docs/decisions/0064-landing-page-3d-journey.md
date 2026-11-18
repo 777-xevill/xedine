@@ -228,3 +228,6 @@ between doorways rushed while the short ones crawled.
   `plans` table and `metric_billing` (`pricing.ts`; `pricing.test.ts` reads the migrations, so a price
   change there fails until the page follows). In taka for every visitor: no other currency has a price yet.
   The reference's "Billed yearly" switch is left out: there is no yearly billing.
+- "Moments" next to Skip (the founder, same day): a list of all the day's moments (number, title, place); a
+  tap goes straight to that moment's settled view (`momentP`, `pToScroll` in `story.ts`) as a cut, not a
+  flight through every room on the way. The list opens in a portal over the moment's card.

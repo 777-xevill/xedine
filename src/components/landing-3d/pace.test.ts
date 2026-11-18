@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BEAT_VH, BEATS, IN, OUT, scrollToP, STORY_VH } from './story';
+import { BEAT_VH, BEATS, cardAt, IN, momentP, OUT, pToScroll, scrollToP, STORY_VH } from './story';
 import { cameraAt } from './timeline';
 
 /**
@@ -54,6 +54,15 @@ describe('pace of the day', () => {
         (OUT - IN) * (beat.vh ?? BEAT_VH),
         3,
       );
+    });
+  });
+
+  it('finds every moment in the scroll (the moment picker)', () => {
+    BEATS.forEach((_, b) => {
+      const p = momentP(b);
+      expect(scrollToP(pToScroll(p))).toBeCloseTo(p, 6);
+      // The picked moment's own card shows there.
+      expect(cardAt(p)).toBe(b);
     });
   });
 

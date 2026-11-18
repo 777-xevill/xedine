@@ -310,3 +310,9 @@ The founder's changes to the pricing section, Starter's card left as it was:
 - **Partner's gold light**, calm where Pro is a storm: a slow warm glow turns behind the glass, a beam of light
   sweeps across every 7 s, gold dust floats up and twinkles, the price shines gold and a crown on the badge
   glints. Brand colours only; Pro's and Partner's motion is still for reduced motion.
+- **Create account starts with the plans** (the founder: "it went straight to create account"). `/sign-up` with no
+  plan shows Starter, Pro and Partner with the monthly/yearly switch and the free days; Starter or Pro goes on
+  to the account form with `?plan=&billing=` and a "Your plan … Change" bar; Partner is "Talk to us". The plan
+  buttons on the home page skip straight to the form with their plan. The choice waits in the `xedine_plan`
+  cookie (so Google, Facebook, X and phone sign-in keep it) and is saved on the account (`plan_choice`,
+  `plan_billing` in the user's metadata) when the restaurant is made. Joining by invite skips the plans.

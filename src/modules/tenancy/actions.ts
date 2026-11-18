@@ -13,6 +13,7 @@ import { createInvitedAccount } from './invite-account';
 import { oauthProvider } from './oauth';
 import { checkPhoneSignIn } from './phone-sign-in';
 import { COUNTRY_CODES, isCurrency, timezonesOf } from '@/modules/social/culture';
+import { parsePlanChoice, PLAN_CHOICE_COOKIE } from '@/components/landing-3d/pricing';
 
 const ROLES = ['manager', 'cashier', 'kitchen', 'purchaser', 'accountant'] as const;
 const SLUG = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
@@ -277,6 +278,18 @@ export async function createOrganizationAction(
     p_org: orgId as string,
   });
   if (defaultsError) console.error('ensure_org_defaults', defaultsError.code);
+  // The plan they picked before making the account (the founder, 2026-11-19), kept on their account. Nothing
+  // charges it yet: after the free days a platform admin sets the subscription once they pay (ADR 0023).
+  const jar = await cookies();
+  const [plan, billing] = (jar.get(PLAN_CHOICE_COOKIE)?.value ?? '').split(':');
+  const choice = parsePlanChoice(plan, billing);
+  if (choice) {
+    const { error: planError } = await supabase.auth.updateUser({
+      data: { plan_choice: choice.plan, plan_billing: choice.billing },
+    });
+    if (planError) console.error('plan choice', planError.code);
+    jar.delete(PLAN_CHOICE_COOKIE);
+  }
   redirect(`/${parsed.data.slug}`);
 }
 

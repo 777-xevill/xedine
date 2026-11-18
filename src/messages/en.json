@@ -190,7 +190,14 @@
     "wrongEmail": "Typed the wrong email?",
     "signUpAgain": "Sign up again",
     "confirmedContinue": "I've confirmed, continue",
-    "confirmedSignIn": "Your email is confirmed. Sign in with the email and password you just chose."
+    "confirmedSignIn": "Your email is confirmed. Sign in with the email and password you just chose.",
+    "plan": {
+      "title": "Pick your plan",
+      "subtitle": "Every plan starts with {days} days free. No card needed. You can change it later.",
+      "choose": "Start with {name}",
+      "chosen": "Your plan",
+      "change": "Change"
+    }
   },
   "landing": {
     "eyebrow": "The restaurant app for Bangladesh, South Asia, the Gulf and beyond",

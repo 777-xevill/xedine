@@ -162,3 +162,15 @@ export const YEARLY_OFF_PERCENT = 25;
 /** A plan's price a month when paid yearly, in cents (rounded to the cent). */
 export const yearlyMonthly = (minor: number): number =>
   Math.round((minor * (100 - YEARLY_OFF_PERCENT)) / 100);
+
+/** The plan someone picks before making an account (the founder, 2026-11-19): kept in this cookie until their
+ * restaurant is made, then saved on their account (`plan_choice`, `plan_billing` in the user's metadata). */
+export const PLAN_CHOICE_COOKIE = 'xedine_plan';
+
+export type PlanChoice = { plan: PlanCode | 'partner'; billing: 'monthly' | 'yearly' };
+
+/** A plan from the address or the cookie, or null when it is not one of ours. */
+export function parsePlanChoice(plan?: string | null, billing?: string | null): PlanChoice | null {
+  if (plan !== 'starter' && plan !== 'pro' && plan !== 'partner') return null;
+  return { plan, billing: billing === 'yearly' ? 'yearly' : 'monthly' };
+}

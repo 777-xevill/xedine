@@ -147,7 +147,7 @@ export const PricingSection = memo(function PricingSection() {
               })}
               action={
                 <Link
-                  href="/sign-up"
+                  href={`/sign-up?plan=${plan.code}&billing=${yearly ? 'yearly' : 'monthly'}`}
                   className={cn(
                     'relative block overflow-hidden rounded-full py-3 text-center text-sm font-semibold transition-transform active:scale-[0.98]',
                     plan.featured

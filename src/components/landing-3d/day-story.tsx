@@ -240,12 +240,17 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             <div
               key={beat.id}
               aria-hidden={active !== i}
+              // The cards roll like a list (the founder, 2026-11-18): the moment that is over slides up and
+              // out, the next rises from below a beat later; scrolling back, they roll the other way.
               className={cn(
-                'transition-[opacity,transform] duration-500',
+                'transition-[opacity,transform,visibility] duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-opacity motion-reduce:duration-300',
                 i === 0 ? 'relative' : 'absolute inset-x-0 bottom-0 sm:top-0 sm:bottom-auto',
                 active === i && inStory
-                  ? 'pointer-events-auto translate-y-0 opacity-100'
-                  : 'pointer-events-none translate-y-2 opacity-0',
+                  ? 'pointer-events-auto translate-y-0 scale-100 opacity-100 delay-100'
+                  : cn(
+                      'pointer-events-none scale-[0.96] opacity-0',
+                      i < active ? '-translate-y-16' : 'translate-y-16',
+                    ),
                 i === 0 && active !== 0 && 'invisible',
               )}
             >

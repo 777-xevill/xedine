@@ -231,3 +231,6 @@ between doorways rushed while the short ones crawled.
 - "Moments" next to Skip (the founder, same day): a list of all the day's moments (number, title, place); a
   tap goes straight to that moment's settled view (`momentP`, `pToScroll` in `story.ts`) as a cut, not a
   flight through every room on the way. The list opens in a portal over the moment's card.
+- The moment's card rolls like a list (the founder, same day): the moment that is over slides up and out,
+  the next rises from below a tenth of a second later; scrolling back rolls the other way. Reduced motion:
+  a plain fade.

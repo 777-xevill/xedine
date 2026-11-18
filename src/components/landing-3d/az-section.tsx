@@ -106,7 +106,6 @@ function GroupCard({
 
   return (
     <article
-      data-reveal
       className={cn(
         'plan-tile relative flex flex-col rounded-[1.5rem] shadow-[var(--rim)]',
         featured
@@ -116,7 +115,7 @@ function GroupCard({
     >
       <div className="flex flex-1 flex-col rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_58%,transparent)] backdrop-blur-2xl">
         {/* The group */}
-        <div className="px-6 pt-6 pb-5">
+        <div data-reveal className="px-6 pt-6 pb-5">
           <div className="flex items-center gap-3">
             <span
               aria-hidden

@@ -70,10 +70,10 @@ export const PricingSection = memo(function PricingSection() {
         <h2 id="pricing-title" className="sr-only">
           {t('pricing.title')}
         </h2>
-        <article data-reveal className="plan-rim relative rounded-[1.75rem] shadow-[var(--rim)]">
+        <article className="plan-rim relative rounded-[1.75rem] shadow-[var(--rim)]">
           <div className="rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_70%,transparent)] backdrop-blur-2xl">
             {/* Name, price and the button */}
-            <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
+            <div data-reveal className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
               <div>
                 <p className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-yellow)_10%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--brand-yellow)]">
                   <Sparkles aria-hidden className="size-3.5" />
@@ -108,7 +108,7 @@ export const PricingSection = memo(function PricingSection() {
             </div>
 
             {/* The weekly limits */}
-            <ul className="grid grid-cols-2 gap-2 px-6 sm:grid-cols-4 sm:gap-3 sm:px-8">
+            <ul data-reveal className="grid grid-cols-2 gap-2 px-6 sm:grid-cols-4 sm:gap-3 sm:px-8">
               {WEEKLY_LIMITS.map((l) => (
                 <li
                   key={l.id}

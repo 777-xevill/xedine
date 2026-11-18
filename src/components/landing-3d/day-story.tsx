@@ -18,8 +18,9 @@ import {
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CountryPin } from './city';
-import { FEATURE_GROUPS, FEATURES, type FeatureId } from './features';
+import { type FeatureId } from './features';
 import { PricingSection } from './pricing-section';
+import { AzSection } from './az-section';
 import { MomentsMenu } from './moments-menu';
 import { BEAT_SCROLL_VH, BEATS, cardAt, momentP, pToScroll, scrollToP, STORY_VH } from './story';
 import { type DemoCurrency } from './story-ledger';
@@ -64,11 +65,6 @@ function webglOk() {
   return webgl;
 }
 const noSubscribe = () => () => {};
-
-/** The first beat each feature appears in (the A–Z list links back to it). */
-function firstBeat(id: FeatureId) {
-  return BEATS.find((b) => b.features.includes(id))?.id ?? BEATS[0]!.id;
-}
 
 /**
  * One day in a café with Xedine (ADR 0064, approval 3): the 3D café stays on screen while the story's
@@ -319,7 +315,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
         </p>
       )}
       <PricingSection />
-      <Everything />
+      <AzSection />
       {footer}
     </div>
   );
@@ -493,45 +489,5 @@ const StartCard = memo(function StartCard() {
       </div>
       <p className="mt-3 text-xs text-[color:var(--text-muted)]">{t('start.ways')}</p>
     </article>
-  );
-});
-
-/** Everything Xedine does, A to Z, each with a link back to where the story showed it. */
-const Everything = memo(function Everything() {
-  const t = useTranslations('landing3d.day');
-  return (
-    <section id="everything" className="relative bg-background px-4 py-16 sm:px-8">
-      <div className="mx-auto max-w-6xl">
-        <h2 className="text-3xl font-bold tracking-[-0.02em] text-balance">{t('az.title')}</h2>
-        <p className="mt-2 text-[color:var(--text-muted)]">{t('az.body')}</p>
-        <div className="mt-10 grid gap-10 lg:grid-cols-2">
-          {FEATURE_GROUPS.map((g) => (
-            <div key={g}>
-              <h3 className="text-sm font-bold tracking-wide text-[var(--brand-yellow)] uppercase">
-                {t(`groups.${g}`)}
-              </h3>
-              <ul className="mt-3 divide-y divide-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)]">
-                {FEATURES.filter((f) => f.group === g).map((f) => (
-                  <li key={f.id} className="flex items-start justify-between gap-4 py-3">
-                    <div>
-                      <p className="font-semibold">{t(`features.${f.id}.name`)}</p>
-                      <p className="text-sm text-[color:var(--text-muted)]">
-                        {t(`features.${f.id}.line`)}
-                      </p>
-                    </div>
-                    <a
-                      href={`#beat-${firstBeat(f.id)}`}
-                      className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_30%,transparent)] px-3 py-1 text-xs font-semibold hover:border-[var(--brand-yellow)]"
-                    >
-                      {t('az.seeIt')}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 });

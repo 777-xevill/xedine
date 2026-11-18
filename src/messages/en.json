@@ -5373,7 +5373,15 @@
       "az": {
         "title": "Everything Xedine does, A to Z",
         "body": "Every feature in the story, and where it appeared.",
-        "seeIt": "See it"
+        "seeIt": "See it",
+        "word": "A–Z",
+        "count": "{n} features",
+        "lines": {
+          "daily": "The till, the kitchen, stock and the bazar — the work of every day.",
+          "money": "Where the money goes, where it leaks, and who can see it.",
+          "customers": "Bring them in, keep them coming back, hear what they say.",
+          "team": "Your people, your rules, your languages and your set-up."
+        }
       },
       "pricing": {
         "title": "Pricing",

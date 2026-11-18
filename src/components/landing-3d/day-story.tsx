@@ -189,7 +189,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             {/* Someone who already has an account signs in from here, without scrolling the day. */}
             <Link
               href="/sign-in"
-              className="xedine-chip rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold"
+              className="xedine-chip rounded-full px-2 py-1.5 sm:px-3 text-xs font-semibold"
             >
               {tc('signIn')}
             </Link>
@@ -202,7 +202,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             <MomentsMenu active={active} onPick={goToMoment} />
             <a
               href="#everything"
-              className="xedine-chip rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold"
+              className="xedine-chip rounded-full px-2 py-1.5 sm:px-3 text-xs font-semibold"
             >
               {/* Just "Skip" on a phone: "All features" there opens the moments (MomentsMenu). */}
               <span className="sm:hidden">{t('intro.skipShort')}</span>

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { IconKey } from '@/modules/tenancy/navigation';
 
@@ -63,6 +63,7 @@ export function SettingsMenu({
   const pathname = usePathname();
   const router = useRouter();
   const [q, setQ] = useState('');
+  const row = useRef<HTMLDivElement>(null);
   const needle = q.trim().toLowerCase();
   const shown = groups
     .map((g) => ({
@@ -76,6 +77,13 @@ export function SettingsMenu({
     all
       .filter((l) => pathname === l.href || pathname.startsWith(`${l.href}/`))
       .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null;
+
+  // On a phone the row starts at the first setting; bring the open one into view.
+  useEffect(() => {
+    row.current
+      ?.querySelector('[aria-current=page]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [activeHref]);
 
   const item = (l: SettingsMenuGroup['links'][number], compact: boolean) => {
     const Icon = ICONS[l.key] ?? SlidersHorizontal;
@@ -112,7 +120,9 @@ export function SettingsMenu({
     <>
       {/* Phone and tablet: one sideways row. */}
       <nav aria-label={label} className="-mx-4 overflow-x-auto px-4 pb-1 lg:hidden">
-        <div className="flex gap-2">{all.map((l) => item(l, true))}</div>
+        <div ref={row} className="flex gap-2">
+          {all.map((l) => item(l, true))}
+        </div>
       </nav>
 
       {/* Desktop: search + grouped list. */}

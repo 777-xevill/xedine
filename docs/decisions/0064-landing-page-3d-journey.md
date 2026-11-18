@@ -234,3 +234,4 @@ between doorways rushed while the short ones crawled.
 - The moment's card rolls like a list (the founder, same day): the moment that is over slides up and out,
   the next rises from below a tenth of a second later; scrolling back rolls the other way. Reduced motion:
   a plain fade.
+- On a phone (the founder, same day): the moments button reads "All features" and opens the list of moments; next to it a short "Skip" goes past the day. PC keeps "Moments" and "Skip to every feature".

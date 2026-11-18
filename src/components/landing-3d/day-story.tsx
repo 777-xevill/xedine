@@ -204,7 +204,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
               href="#everything"
               className="xedine-chip rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold"
             >
-              {/* Short on a phone, so the row stays clear of the language switch. */}
+              {/* Just "Skip" on a phone: "All features" there opens the moments (MomentsMenu). */}
               <span className="sm:hidden">{t('intro.skipShort')}</span>
               <span className="hidden sm:inline">{t('intro.skip')}</span>
             </a>

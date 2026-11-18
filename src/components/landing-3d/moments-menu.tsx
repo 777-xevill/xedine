@@ -58,7 +58,6 @@ export const MomentsMenu = memo(function MomentsMenu({ active, onPick }: Props) 
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        aria-label={t('moments.button')}
         onClick={() => setOpen((o) => !o)}
         className={cn(
           'xedine-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 sm:px-3 text-xs font-semibold',
@@ -66,6 +65,8 @@ export const MomentsMenu = memo(function MomentsMenu({ active, onPick }: Props) 
         )}
       >
         <ListOrdered aria-hidden className="size-3.5" />
+        {/* On a phone this is the "All features" button (the founder, 2026-11-18); Skip sits next to it. */}
+        <span className="sm:hidden">{t('moments.phoneButton')}</span>
         <span className="hidden sm:inline">{t('moments.button')}</span>
       </button>
       {open &&

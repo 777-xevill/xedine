@@ -1,8 +1,9 @@
 'use client';
 
-import { ArrowRight, ChevronDown, SendHorizontal, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, FastForward, SendHorizontal, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import {
   type FormEvent,
@@ -244,14 +245,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
               {tc('signUp')}
             </Link>
             <MomentsMenu active={active} onPick={goToMoment} />
-            <a
-              href="#everything"
-              className="xedine-chip rounded-full px-2 py-1.5 sm:px-3 text-xs font-semibold"
-            >
-              {/* Just "Skip" on a phone: "All features" there opens the moments (MomentsMenu). */}
-              <span className="sm:hidden">{t('intro.skipShort')}</span>
-              <span className="hidden sm:inline">{t('intro.skip')}</span>
-            </a>
+            <SkipButton />
           </div>
         </div>
         {/* The scroll itself: one invisible stretch per moment, with its words for search and screen readers.
@@ -491,3 +485,78 @@ const StartCard = memo(function StartCard() {
     </article>
   );
 });
+
+/** When the screen is covered and the page jumps (ms): half of `.skip-warp`'s 1.1 s. */
+const SKIP_JUMP_MS = 520;
+
+/**
+ * "Skip": fast-forwards to the plans, then the A–Z below them (the founder, 2026-11-19: it used to land on the
+ * A–Z, past the pricing). A grey curtain with yellow speed lines rushes up over the day, the page jumps to the
+ * pricing behind it, and the curtain flies on up to show the plans. Reduced motion: a plain jump.
+ */
+function SkipButton() {
+  const t = useTranslations('landing3d.day');
+  const [warp, setWarp] = useState(0);
+  const skip = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const target = document.getElementById('pricing');
+    if (!target) return;
+    e.preventDefault();
+    const jump = () => {
+      window.scrollTo({
+        top: target.getBoundingClientRect().top + window.scrollY,
+        behavior: 'instant',
+      });
+      history.replaceState(null, '', '#pricing');
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return jump();
+    setWarp((w) => w + 1);
+    window.setTimeout(jump, SKIP_JUMP_MS);
+  };
+  return (
+    <>
+      <a
+        href="#pricing"
+        onClick={skip}
+        className="xedine-chip group inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-semibold sm:px-3"
+      >
+        <FastForward
+          aria-hidden
+          className="size-3.5 text-[var(--brand-yellow)] transition-transform group-hover:translate-x-0.5"
+          fill="currentColor"
+        />
+        {/* Just "Skip" on a phone: "All features" there opens the moments (MomentsMenu). */}
+        <span className="sm:hidden">{t('intro.skipShort')}</span>
+        <span className="hidden sm:inline">{t('intro.skip')}</span>
+      </a>
+      {/* On the page itself, so it covers the moment's card and the 3D (their layers sit lower). */}
+      {warp > 0 &&
+        createPortal(
+          <div
+            key={warp}
+            aria-hidden
+            className="skip-warp"
+            onAnimationEnd={(e) => e.target === e.currentTarget && setWarp(0)}
+          >
+            {Array.from({ length: 14 }, (_, i) => (
+              <span
+                key={i}
+                className="skip-line"
+                style={
+                  {
+                    '--x': `${(i * 37) % 100}%`,
+                    '--d': `${(i % 5) * 40}ms`,
+                    '--h': `${18 + ((i * 23) % 30)}vh`,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+            <span className="skip-mark">
+              <FastForward className="size-7" fill="currentColor" />
+              {t('intro.skipping')}
+            </span>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}

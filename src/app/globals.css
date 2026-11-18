@@ -2095,3 +2095,78 @@ html:has(.landing) .aurora {
     transition: none;
   }
 }
+
+/* "Skip" on the home page: a grey curtain with yellow speed lines rushes up over the 3D day, the page jumps to
+   the plans behind it, and the curtain flies on up (the founder, 2026-11-19). */
+.skip-warp {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--brand-yellow) 55%, var(--brand-grey)) 0,
+    var(--brand-grey) 6% 94%,
+    color-mix(in srgb, var(--brand-yellow) 55%, var(--brand-grey)) 100%
+  );
+  animation: skip-warp 1.1s cubic-bezier(0.7, 0, 0.3, 1) both;
+}
+@keyframes skip-warp {
+  0% {
+    transform: translate3d(0, 100%, 0);
+  }
+  45%,
+  55% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, -100%, 0);
+  }
+}
+.skip-line {
+  position: absolute;
+  left: var(--x);
+  top: 100%;
+  width: 2px;
+  height: var(--h);
+  border-radius: 2px;
+  background: linear-gradient(to top, transparent, var(--brand-yellow), transparent);
+  opacity: 0.7;
+  animation: skip-line 0.55s linear var(--d) 2 both;
+}
+@keyframes skip-line {
+  to {
+    transform: translate3d(0, calc(-100vh - 100%), 0);
+  }
+}
+.skip-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--brand-yellow);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: skip-mark 1.1s ease-out both;
+}
+@keyframes skip-mark {
+  0%,
+  25% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  45%,
+  60% {
+    opacity: 1;
+    transform: translate(-30%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10%, -50%) scale(1.05);
+  }
+}

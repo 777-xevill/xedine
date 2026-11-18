@@ -5192,10 +5192,11 @@
       "intro": {
         "kicker": "One day in a café",
         "scroll": "Scroll to start the day",
-        "skip": "Skip to every feature",
+        "skip": "Skip to plans and features",
         "skipShort": "Skip",
         "loading": "Opening the café",
-        "chapter": "Moment {n} of {total}"
+        "chapter": "Moment {n} of {total}",
+        "skipping": "Skipping to the plans"
       },
       "beats": {
         "dawn": {

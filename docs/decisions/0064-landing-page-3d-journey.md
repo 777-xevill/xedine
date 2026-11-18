@@ -316,3 +316,7 @@ The founder's changes to the pricing section, Starter's card left as it was:
   buttons on the home page skip straight to the form with their plan. The choice waits in the `xedine_plan`
   cookie (so Google, Facebook, X and phone sign-in keep it) and is saved on the account (`plan_choice`,
   `plan_billing` in the user's metadata) when the restaurant is made. Joining by invite skips the plans.
+- **"Skip" lands on the plans** (it used to land on the A–Z, past the pricing) and now reads "Skip to plans and
+  features" with a fast-forward icon. Pressing it plays a 1.1 s fast-forward: a grey curtain with yellow speed
+  lines and "Skipping to the plans" rushes up over the day, the page jumps to the pricing behind it, and the
+  curtain flies on up. Reduced motion: a plain jump.

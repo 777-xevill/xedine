@@ -4782,7 +4782,7 @@
         "scroll": "Scroll to start the day",
         "skip": "Skip to every feature",
         "skipShort": "Skip",
-        "loading": "Opening the café…",
+        "loading": "Opening the café",
         "chapter": "Moment {n} of {total}"
       },
       "beats": {

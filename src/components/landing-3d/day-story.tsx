@@ -214,7 +214,22 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
           )}
           {can3d && !ready && moved && (
             <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center sm:top-auto sm:bottom-6">
-              <p className="xedine-chip rounded-full px-4 py-1.5 text-xs">{t('intro.loading')}</p>
+              {/* It moves, so nobody thinks the page froze (the founder, 2026-11-18). */}
+              <p
+                role="status"
+                className="xedine-chip cafe-loading animate-rise-in relative flex items-center gap-2 overflow-hidden rounded-full py-1.5 pr-4 pl-2.5 text-xs font-semibold"
+              >
+                <span
+                  aria-hidden
+                  className="size-3.5 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--brand-yellow)_25%,transparent)] border-t-[var(--brand-yellow)] motion-reduce:animate-none"
+                />
+                <span>{t('intro.loading')}</span>
+                <span aria-hidden className="flex gap-0.5">
+                  <span className="cafe-loading-dot" />
+                  <span className="cafe-loading-dot" />
+                  <span className="cafe-loading-dot" />
+                </span>
+              </p>
             </div>
           )}
           {corner && <div className="absolute top-3 left-3 z-30">{corner}</div>}

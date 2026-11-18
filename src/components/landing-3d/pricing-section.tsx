@@ -1,9 +1,9 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, ChevronDown, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { memo } from 'react';
+import { memo, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   DEFAULT_LOCALE,
   formatMoney,
@@ -12,95 +12,225 @@ import {
   type Locale,
 } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
-import { PRICE_CURRENCY, PRICING_PLANS, TRIAL_DAYS } from './pricing';
+import { PLAN_PRICE, PLAN_ROWS, TRIAL_DAYS, WEEKLY_LIMITS, type PlanRowId } from './pricing';
+
+/** How tall the feature list is before "See more" (about five rows a column). */
+const CLOSED_PX = 232;
+/** Rows from here on are under the fold even on a PC (two columns of five): they come in one by one. */
+const LATE_FROM = 10;
 
 /**
- * The home page's pricing, between the 3D day and the A–Z list (the founder's reference, 2026-11-18): a huge
- * word behind three glass cards that blur it, each with its price, what it includes and a button. In the
- * founder's grey, silver and yellow; the recommended plan's button is yellow.
+ * The home page's pricing, between the 3D day and the A–Z list (the founder, 2026-11-18): one plan from $19 a
+ * month on glass over a huge word. Its weekly limits as four tiles, then every feature Xedine has with a tick
+ * (in this plan) or a cross (a bigger plan), folded under "See more" so the page stays short. A yellow light
+ * runs round the card's edge; the rows come in one after another when it opens.
  */
 export const PricingSection = memo(function PricingSection() {
-  const t = useTranslations('landing3d.day.pricing');
+  const t = useTranslations('landing3d.day');
   const raw = useLocale();
   const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
-  // Bangla digits in Bangla (৩০), like every other number.
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const listRef = useRef<HTMLUListElement>(null);
+  const [fullPx, setFullPx] = useState<number | null>(null);
+
+  // The open height is the list's own height, so the fold slides exactly (and follows a resize / language).
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const measure = () => setFullPx(el.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const days = formatNumber(TRIAL_DAYS, locale);
+  const n = (v: number) => formatNumber(v, locale);
+  const name = (id: PlanRowId) =>
+    id === 'deliveryChannels' || id === 'deepAi'
+      ? t(`pricing.extra.${id}`)
+      : t(`features.${id}.name`);
+  const included = PLAN_ROWS.filter((r) => r.included).length;
+
   return (
     <section
       id="pricing"
       aria-labelledby="pricing-title"
       className="relative overflow-hidden bg-background px-4 pt-14 pb-16 sm:px-8 sm:pt-20 sm:pb-24"
     >
-      {/* The big word: the cards cover its lower half and blur it, like frosted glass. */}
+      {/* The big word: the card covers its lower half and blurs it, like frosted glass. */}
       <p
         aria-hidden
         className="pointer-events-none mx-auto text-center text-[25vw] leading-[0.8] font-bold tracking-[-0.05em] text-[var(--brand-silver)] select-none sm:text-[11rem] lg:text-[13rem]"
       >
-        {t('title')}
+        {t('pricing.title')}
       </p>
-      <div className="relative mx-auto -mt-[9vw] max-w-6xl sm:-mt-20 lg:-mt-24">
+      <div className="relative mx-auto -mt-[9vw] max-w-3xl sm:-mt-20 lg:-mt-24">
         <h2 id="pricing-title" className="sr-only">
-          {t('title')}
+          {t('pricing.title')}
         </h2>
-        <div className="grid gap-4 md:grid-cols-3 md:gap-5">
-          {PRICING_PLANS.map((plan) => (
-            <article
-              key={plan.code}
-              className={cn(
-                'flex flex-col rounded-3xl border bg-[color-mix(in_srgb,var(--brand-grey)_62%,transparent)] shadow-[var(--rim)] backdrop-blur-2xl',
-                plan.featured
-                  ? 'border-[color-mix(in_srgb,var(--brand-silver)_30%,transparent)]'
-                  : 'border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)]',
-              )}
-            >
-              <div className="p-6 pb-5 sm:p-7 sm:pb-6">
-                <h3 className="text-sm text-[color:var(--text-muted)]">
-                  {t(`plans.${plan.code}.name`)}
-                </h3>
-                <p className="mt-3 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold tracking-[-0.03em] sm:text-[2.6rem]">
-                    {formatMoney(plan.minor, locale, PRICE_CURRENCY)}
+        <article data-reveal className="plan-rim rounded-[1.75rem] p-px shadow-[var(--rim)]">
+          <div className="rounded-[calc(1.75rem-1px)] bg-[color-mix(in_srgb,var(--brand-grey)_70%,transparent)] backdrop-blur-2xl">
+            {/* Name, price and the button */}
+            <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
+              <div>
+                <p className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-yellow)_10%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--brand-yellow)]">
+                  <Sparkles aria-hidden className="size-3.5" />
+                  {t('pricing.name')}
+                </p>
+                <p className="mt-4 flex items-baseline gap-1">
+                  <span className="text-xs font-semibold text-[color:var(--text-muted)]">
+                    {t('pricing.from')}
                   </span>
-                  <span className="text-2xl font-semibold text-[color:var(--text-muted)]">
-                    {t('perMonth')}
+                  <span className="text-5xl font-bold tracking-[-0.04em] sm:text-6xl">
+                    {formatMoney(PLAN_PRICE.minor, locale, PLAN_PRICE.currency)}
+                  </span>
+                  <span className="text-xl font-semibold text-[color:var(--text-muted)]">
+                    {t('pricing.perMonth')}
                   </span>
                 </p>
-                <p className="mt-1 text-xs text-[color:var(--text-muted)]">{t('perBranch')}</p>
+                <p className="mt-2 max-w-sm text-sm text-[color:var(--text-secondary)]">
+                  {t('pricing.body')}
+                </p>
               </div>
-              <div className="h-px bg-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]" />
-              <ul className="flex flex-1 flex-col gap-4 p-6 sm:p-7">
-                {Array.from({ length: plan.points }, (_, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm">
-                    <span className="grid size-6 shrink-0 place-items-center rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_8%,transparent)]">
-                      <Check aria-hidden className="size-3.5" />
-                    </span>
-                    <span className="text-[color:var(--text-secondary)]">
-                      {t(`plans.${plan.code}.p${i + 1}`)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="p-6 pt-2 sm:p-7 sm:pt-2">
+              <div className="sm:w-60">
                 <Link
                   href="/sign-up"
-                  className={cn(
-                    'block rounded-full py-3 text-center text-sm font-semibold transition-transform active:scale-[0.98]',
-                    plan.featured
-                      ? 'bg-[var(--brand-yellow)] text-[var(--brand-grey)]'
-                      : 'border border-[color-mix(in_srgb,var(--brand-silver)_16%,transparent)] bg-[var(--brand-grey)] hover:border-[var(--brand-yellow)]',
-                  )}
+                  className="btn-shine plan-cta relative block overflow-hidden rounded-full bg-[var(--brand-yellow)] py-3.5 text-center text-sm font-semibold text-[var(--brand-grey)] transition-transform active:scale-[0.98]"
                 >
-                  {t('cta', { days })}
+                  {t('pricing.cta', { days })}
                 </Link>
+                <p className="mt-2 text-center text-xs text-[color:var(--text-muted)]">
+                  {t('pricing.noCard')}
+                </p>
               </div>
-            </article>
-          ))}
-        </div>
-        <p className="mt-8 text-center text-sm text-[color:var(--text-muted)]">
-          {t('body', { days })}
+            </div>
+
+            {/* The weekly limits */}
+            <ul className="grid grid-cols-2 gap-2 px-6 sm:grid-cols-4 sm:gap-3 sm:px-8">
+              {WEEKLY_LIMITS.map((l) => (
+                <li
+                  key={l.id}
+                  className="plan-tile relative rounded-2xl border border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_5%,transparent)] p-3"
+                >
+                  {l.soon && (
+                    <span className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-semibold text-[var(--brand-yellow)]">
+                      <span className="animate-pulse-dot size-1.5 rounded-full bg-[var(--brand-yellow)]" />
+                      {t('pricing.soon')}
+                    </span>
+                  )}
+                  <p className="text-2xl font-bold text-[var(--brand-yellow)]">{n(l.perWeek)}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-secondary)]">
+                    {t(`pricing.limits.${l.id}`)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+
+            {/* Every feature: a tick or a cross */}
+            <div className="mt-6 h-px bg-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]" />
+            <div className="px-6 pt-5 sm:px-8">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                <h3 className="text-sm font-semibold">
+                  {t('pricing.allTitle', { n: n(included), total: n(PLAN_ROWS.length) })}
+                </h3>
+                <p className="flex items-center gap-3 text-xs text-[color:var(--text-muted)]">
+                  <span className="flex items-center gap-1">
+                    <Mark yes /> {t('pricing.legendYes')}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Mark yes={false} /> {t('pricing.legendNo')}
+                  </span>
+                </p>
+              </div>
+              <div
+                className="relative mt-4 overflow-hidden transition-[height] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+                style={{ height: open ? (fullPx ?? 'auto') : CLOSED_PX }}
+              >
+                <ul
+                  ref={listRef}
+                  id={listId}
+                  data-open={open}
+                  className="plan-list grid gap-x-6 sm:grid-cols-2"
+                >
+                  {PLAN_ROWS.map((r, i) => (
+                    <li
+                      key={r.id}
+                      data-late={i >= LATE_FROM || undefined}
+                      style={{ '--i': i - LATE_FROM } as CSSProperties}
+                      className="flex items-center gap-2.5 border-b border-[color-mix(in_srgb,var(--brand-silver)_8%,transparent)] py-2.5 text-sm"
+                    >
+                      <Mark yes={r.included} />
+                      <span
+                        className={cn(
+                          'min-w-0 flex-1',
+                          r.included
+                            ? 'text-[color:var(--text-secondary)]'
+                            : 'text-[color:var(--text-muted)]',
+                        )}
+                      >
+                        {name(r.id)}
+                        {!r.included && <span className="sr-only"> — {t('pricing.legendNo')}</span>}
+                      </span>
+                      {r.perWeek !== undefined && (
+                        <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_40%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--brand-yellow)]">
+                          {r.soon ? t('pricing.soon') : t('pricing.perWeek', { n: n(r.perWeek) })}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {/* The fold fades into the card while it is closed. */}
+                <div
+                  aria-hidden
+                  className={cn(
+                    'pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-[color-mix(in_srgb,var(--brand-grey)_96%,transparent)] transition-opacity duration-500',
+                    open && 'opacity-0',
+                  )}
+                />
+              </div>
+              <button
+                type="button"
+                aria-expanded={open}
+                aria-controls={listId}
+                onClick={() => setOpen((o) => !o)}
+                className="mx-auto my-5 flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] px-4 py-2 text-xs font-semibold transition-[border-color,scale] hover:border-[var(--brand-yellow)] active:scale-[0.97]"
+              >
+                {open ? t('pricing.less') : t('pricing.more', { total: n(PLAN_ROWS.length) })}
+                <ChevronDown
+                  aria-hidden
+                  className={cn('size-4 transition-transform duration-500', open && 'rotate-180')}
+                />
+              </button>
+            </div>
+          </div>
+        </article>
+        <p className="mt-6 text-center text-xs text-[color:var(--text-muted)]">
+          {t('pricing.note')}
         </p>
-        <p className="mt-1 text-center text-xs text-[color:var(--text-muted)]">{t('note')}</p>
       </div>
     </section>
   );
 });
+
+/** A tick in a yellow ring (in this plan) or a cross in a dim one (needs a bigger plan). */
+function Mark({ yes }: { yes: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'grid size-5 shrink-0 place-items-center rounded-full border',
+        yes
+          ? 'border-[color-mix(in_srgb,var(--brand-yellow)_50%,transparent)] bg-[color-mix(in_srgb,var(--brand-yellow)_14%,transparent)] text-[var(--brand-yellow)]'
+          : 'border-[color-mix(in_srgb,var(--brand-silver)_18%,transparent)] text-[color:var(--text-muted)]',
+      )}
+    >
+      {yes ? (
+        <Check className="size-3" strokeWidth={3} />
+      ) : (
+        <X className="size-3" strokeWidth={3} />
+      )}
+    </span>
+  );
+}

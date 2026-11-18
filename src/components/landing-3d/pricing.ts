@@ -1,23 +1,78 @@
+import { FEATURES, FEATURE_GROUPS, type FeatureGroup, type FeatureId } from './features';
+
 /**
- * The plans shown on the home page's pricing (ADR 0064, prices from ADR 0008). The same numbers as the
- * `plans` table (pricing.test.ts reads the migration that seeds it), in poisha per branch per month.
+ * The plan on the home page's pricing (the founder, 2026-11-18): one plan from $19 a month that lists every
+ * feature Xedine has, each with a tick (in the plan) or a cross (needs a bigger plan, named later), and the
+ * weekly limits. The bigger plans come later. The app does not charge or enforce this plan yet: the `plans`
+ * table still holds the taka plans of ADR 0008.
  */
-export const PRICE_CURRENCY = 'BDT';
+export const PLAN_PRICE = { minor: 1900, currency: 'USD' } as const;
 
 /** Every plan starts with this many free days (`metric_billing`, migration 20261008000001). */
 export const TRIAL_DAYS = 30;
 
-export type PlanCode = 'starter' | 'growth' | 'chain';
+/** Rows the plan lists that are not a feature of their own on the A–Z list. */
+export type ExtraRow = 'deliveryChannels' | 'deepAi';
+export type PlanRowId = FeatureId | ExtraRow;
 
-export const PRICING_PLANS: readonly {
-  code: PlanCode;
-  minor: number;
-  /** How many lines its list has (`landing3d.day.pricing.plans.<code>.p1…pN`). */
-  points: number;
-  /** The plan the section points to (the yellow button). */
-  featured?: boolean;
-}[] = [
-  { code: 'starter', minor: 250000, points: 5 },
-  { code: 'growth', minor: 450000, points: 5, featured: true },
-  { code: 'chain', minor: 350000, points: 4 },
+/**
+ * Not in the $19 plan: the QR code system (the table QR and what only works through it: games at the table,
+ * food facts on the table menu, offer notifications the customer allows on the table page), delivery apps
+ * like foodpanda, and the member card.
+ */
+export const NOT_IN_PLAN: ReadonlySet<PlanRowId> = new Set<PlanRowId>([
+  'tableQr',
+  'games',
+  'foodFacts',
+  'offers',
+  'memberCard',
+  'deliveryChannels',
+]);
+
+/** How many times a week the plan allows each one (`soon`: not built yet). */
+export const WEEKLY_LIMITS: readonly { id: PlanRowId; perWeek: number; soon?: boolean }[] = [
+  { id: 'posters', perWeek: 3 },
+  { id: 'videos', perWeek: 3 },
+  { id: 'assistant', perWeek: 10 },
+  { id: 'deepAi', perWeek: 3, soon: true },
 ];
+
+/** Where the extra rows sit: right after this feature. */
+const EXTRA_AFTER: Record<ExtraRow, { after: FeatureId; group: FeatureGroup }> = {
+  deliveryChannels: { after: 'offline', group: 'daily' },
+  deepAi: { after: 'assistant', group: 'daily' },
+};
+
+export type PlanRow = {
+  id: PlanRowId;
+  group: FeatureGroup;
+  included: boolean;
+  perWeek?: number;
+  soon?: boolean;
+};
+
+/** Every row in A–Z order, with the extra rows in place: what the plan card shows. */
+export const PLAN_ROWS: readonly PlanRow[] = (() => {
+  const rows: PlanRow[] = [];
+  const row = (id: PlanRowId, group: FeatureGroup): PlanRow => {
+    const limit = WEEKLY_LIMITS.find((l) => l.id === id);
+    return {
+      id,
+      group,
+      included: !NOT_IN_PLAN.has(id),
+      ...(limit ? { perWeek: limit.perWeek, ...(limit.soon ? { soon: true } : {}) } : {}),
+    };
+  };
+  for (const g of FEATURE_GROUPS) {
+    for (const f of FEATURES.filter((x) => x.group === g)) {
+      rows.push(row(f.id, g));
+      for (const [extra, at] of Object.entries(EXTRA_AFTER) as [
+        ExtraRow,
+        (typeof EXTRA_AFTER)[ExtraRow],
+      ][]) {
+        if (at.after === f.id) rows.push(row(extra, at.group));
+      }
+    }
+  }
+  return rows;
+})();

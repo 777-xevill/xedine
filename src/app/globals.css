@@ -844,6 +844,74 @@ details[open] > :not(summary) {
   }
 }
 
+/* The home page's plan (pricing): a yellow light runs round the card's edge, the button shines now and then,
+   and when "See more" opens, the rows come in one after another. */
+@property --plan-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.plan-rim {
+  background:
+    conic-gradient(
+      from var(--plan-angle),
+      transparent 0 62%,
+      color-mix(in srgb, var(--brand-yellow) 85%, transparent) 76%,
+      color-mix(in srgb, var(--brand-silver) 70%, transparent) 84%,
+      transparent 94%
+    ),
+    color-mix(in srgb, var(--brand-silver) 16%, transparent);
+  animation: plan-rim-turn 7s linear infinite;
+}
+@keyframes plan-rim-turn {
+  to {
+    --plan-angle: 360deg;
+  }
+}
+.plan-cta::after {
+  animation: plan-cta-shine 3.6s var(--ease-smooth) 1.2s infinite;
+}
+@keyframes plan-cta-shine {
+  0% {
+    translate: -130% 0;
+  }
+  35%,
+  100% {
+    translate: 130% 0;
+  }
+}
+.plan-tile {
+  transition:
+    translate 0.4s var(--ease-spring),
+    border-color 0.3s;
+}
+@media (hover: hover) {
+  .plan-tile:hover {
+    translate: 0 -3px;
+    border-color: color-mix(in srgb, var(--brand-yellow) 55%, transparent);
+  }
+}
+.plan-list[data-open='true'] > li[data-late] {
+  animation: plan-row-in 0.5s var(--ease-smooth) both;
+  animation-delay: calc(min(var(--i), 40) * 14ms);
+}
+@keyframes plan-row-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-rim,
+  .plan-cta::after,
+  .plan-list[data-open='true'] > li {
+    animation: none;
+  }
+  .plan-tile {
+    transition: none;
+  }
+}
+
 /* The till and the kitchen screen move less: a cashier taps all day, so only the press feedback stays. */
 [data-surface='till'] .page-enter > *,
 [data-surface='till'] [data-reveal] {

@@ -245,3 +245,16 @@ and the 3D faded in wherever the scroll had got to (with dawn now short, the bri
 - Until the 3D is drawn the story holds at its first view (the "Xedine is on its way…" chip shows once the
   visitor scrolls); then the 3D fades in over the matching picture and glides to the scroll in 1.4 s
   (ease in and out). Already past the second moment (a reload halfway, a hard flick): straight there.
+
+## Amendment, 2026-11-18: one plan from $19 on the pricing
+
+The founder: the pricing shows one plan, from $19 a month (the bigger plans come later). It lists every feature on
+the A–Z list plus delivery apps and the strongest AI, each with a tick (in the plan) or a cross (a bigger plan),
+folded under "See more" so the page stays short. Not in it: the QR code system (the table QR, and the table games,
+food facts on the table menu and offer notifications that only work through it), delivery apps like foodpanda, and
+the member card. A week allows 3 posters, 3 videos, 10 AI questions and 3 answers from the strongest AI (not built
+yet, "Coming soon"). The data is `src/components/landing-3d/pricing.ts`, checked by `pricing.test.ts`.
+- The app does not charge or enforce this plan yet: the `plans` table still holds the taka plans of ADR 0008, and
+  nothing counts posters, videos or AI questions per week.
+- Motion: a yellow light runs round the card's edge, the button shines every few seconds, the limit tiles lift on
+  hover and the rows under the fold come in one after another; all of it stops for reduced motion.

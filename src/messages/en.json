@@ -5377,35 +5377,29 @@
       },
       "pricing": {
         "title": "Pricing",
-        "body": "Every plan starts with {days} days free, with everything switched on. Then pay per branch, per month.",
+        "name": "Starter",
+        "from": "from",
         "perMonth": "/month",
-        "perBranch": "per branch",
+        "body": "Everything to run your restaurant: till, kitchen, stock, money and AI, with a few weekly limits.",
         "cta": "Start {days} days free",
-        "note": "Prices in Bangladeshi taka. No card needed to start.",
-        "plans": {
-          "starter": {
-            "name": "Starter",
-            "p1": "Till that works without internet",
-            "p2": "Kitchen screen",
-            "p3": "Orders and cash",
-            "p4": "Health check of the day",
-            "p5": "Leak checks with nothing to type"
-          },
-          "growth": {
-            "name": "Growth",
-            "p1": "Everything in Starter",
-            "p2": "AI assistant and morning brief",
-            "p3": "Recipes and profit per dish",
-            "p4": "Bazar, stock and waste",
-            "p5": "Forecasts, customers and posters"
-          },
-          "chain": {
-            "name": "Chain · 6+ branches",
-            "p1": "Everything in Growth",
-            "p2": "Every branch side by side",
-            "p3": "Benchmarks against similar restaurants",
-            "p4": "A lower price per branch"
-          }
+        "noCard": "No card needed to start.",
+        "soon": "Coming soon",
+        "perWeek": "{n} a week",
+        "limits": {
+          "posters": "posters a week",
+          "videos": "videos a week",
+          "assistant": "AI questions a week",
+          "deepAi": "answers from the strongest AI a week"
+        },
+        "allTitle": "{n} of {total} features in this plan",
+        "legendYes": "In this plan",
+        "legendNo": "Bigger plan",
+        "more": "See all {total} features",
+        "less": "Show less",
+        "note": "Prices in US dollars. Bigger plans with everything are on the way.",
+        "extra": {
+          "deliveryChannels": "Delivery apps (foodpanda and others)",
+          "deepAi": "Strongest AI for hard questions"
         }
       },
       "moments": {

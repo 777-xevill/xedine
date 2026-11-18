@@ -5377,18 +5377,10 @@
       },
       "pricing": {
         "title": "Pricing",
-        "perMonth": "/month",
         "cta": "Start {days} days free",
         "noCard": "No card needed to start.",
         "soon": "Coming soon",
         "perWeek": "{n} a week",
-        "limits": {
-          "assistant": "AI questions",
-          "deepAi": "answers from the strongest AI",
-          "posters": "posters",
-          "videos": "videos"
-        },
-        "allTitle": "What you get",
         "legendYes": "In this plan",
         "legendNo": "Bigger plan",
         "more": "See more",
@@ -5412,7 +5404,7 @@
           "offers": "Offers on your customers’ phones",
           "memberCard": "Member card and points",
           "deliveryApps": "Delivery apps (foodpanda and others)",
-          "doneForYou": "Our team works with you: films, ads, website, visits"
+          "doneForYou": "Our team works with you: films, ads, website, app, visits"
         },
         "plans": {
           "starter": {
@@ -5431,50 +5423,24 @@
         "badge": "Recommended",
         "perDay": "{n} a day",
         "unlimited": "Unlimited",
-        "tileLabel": "{what}{per, select, day { a day} week { a week} other {}}",
-        "aboutMonth": "about {n} a month",
         "partner": {
           "badge": "Most powerful",
           "cta": "Talk to us",
           "mailSubject": "Partner plan",
-          "places": "We take a few restaurants at a time.",
-          "plus": "Everything in Pro, plus our team:",
           "excluded": "Not in the price: the ad money, printing, building work and hardware. We quote them first, and you decide. Visits in Dhaka; elsewhere by video call.",
           "services": {
-            "films": {
-              "name": "Cinematic films",
-              "line": "Every month {films} story film (about 30 seconds) and {reels} short reels of your dishes: movie quality, with music and sound."
-            },
-            "ads": {
-              "name": "Ads run for you",
-              "line": "We plan, run and improve your Facebook and Instagram ads. The ad money is yours, paid straight to Meta."
-            },
-            "visit": {
-              "name": "A visit and a makeover plan",
-              "line": "We study your place, then show AI pictures of what your walls, light and entrance could become."
-            },
-            "website": {
-              "name": "Your own website",
-              "line": "Made for your brand and your menu, built and looked after by us."
-            },
-            "brand": {
-              "name": "Your brand look",
-              "line": "Logo touch-up, menu design and one style for every post."
-            },
-            "build": {
-              "name": "One custom build a month",
-              "line": "A page, an automation or a report made just for your restaurant."
-            },
-            "review": {
-              "name": "Monthly growth review",
-              "line": "What we did and what changed in your sales, in your own currency, on a call with you."
-            },
-            "deepAi": {
-              "name": "Strongest AI, {n} a week",
-              "line": "For the hardest questions about your restaurant."
-            }
-          }
-        }
+            "films": "{films} cinematic film + {reels} reels a month",
+            "ads": "Ads run for you (the ad money is yours)",
+            "visit": "A visit and AI makeover pictures",
+            "website": "Your own website and app",
+            "brand": "Your brand look: logo, menu, posts",
+            "build": "One custom build a month",
+            "review": "Monthly growth review on a call",
+            "deepAi": "Strongest AI, {n} a week"
+          },
+          "everything": "Everything in Pro"
+        },
+        "perMonthShort": "/mo"
       },
       "moments": {
         "button": "Moments",

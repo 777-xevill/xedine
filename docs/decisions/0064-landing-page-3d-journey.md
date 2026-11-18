@@ -286,3 +286,6 @@ brand look, one custom build, a monthly growth review and the strongest AI 50 ti
 email to support@xedine.org; "We take a few restaurants at a time". Starter and Pro gain one crossed row, "Our
 team works with you", pointing to it. Deliverables, costs, the founder's capacity (~4–5 restaurants) and what to
 build in Xedine for it: docs/PARTNER-PLAN.md.
+- Same day, the founder's reference: the three plans side by side in one row of clean glass cards (name, price,
+  a line, ticks and crosses, the button at the bottom, all three the same height); the limit tiles are gone (the
+  limits stay on their rows); Partner's website is now "website and app".

@@ -12,9 +12,6 @@ import type { FeatureId } from './features';
 /** Every plan starts with this many free days (`metric_billing`, migration 20261008000001). */
 export const TRIAL_DAYS = 30;
 
-/** Days in the "about N a month" next to a daily limit. */
-export const DAYS_PER_MONTH = 30;
-
 export type PlanRowId =
   | 'assistant'
   | 'deepAi'
@@ -81,7 +78,7 @@ export type Plan = {
   featured?: boolean;
   /** Rows the plan does not have (a cross: a bigger plan). */
   without: ReadonlySet<PlanRowId>;
-  /** The four tiles, in order; the same limits show on their rows. */
+  /** Its limits, shown on their rows. */
   limits: readonly { id: PlanRowId; limit: Limit }[];
 };
 

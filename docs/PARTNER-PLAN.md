@@ -12,7 +12,7 @@ home page card is `PartnerCard` in `src/components/landing-3d/pricing-section.ts
 | Cinematic films | 1 story film (~30 s) + 4 short reels of its dishes, made in Higgsfield | Xedine (Higgsfield, ~$55–60 a restaurant) |
 | Ads run for you | Facebook and Instagram ads planned, run and improved | **The restaurant** (the ad money, paid straight to Meta) |
 | A visit and a makeover plan | The founder studies the place; AI pictures of walls, light, entrance | Xedine (Higgsfield images or Cloudflare FLUX, free tier) |
-| Your own website | Made for its brand and menu, built with Claude Code, hosted on Cloudflare | Xedine (free hosting); the domain is the restaurant's |
+| Your own website and app | Made for its brand and menu with Claude Code: a website on Cloudflare and an app (a PWA, or a Play Store app the way Xedine's own is made, ADR 0065) | Xedine (free hosting); the domain and the Play developer fee are the restaurant's |
 | Your brand look | Logo touch-up, menu design, one style for every post | — (printing is the restaurant's) |
 | One custom build | A page, an automation or a report just for that restaurant | Xedine (Claude Code) |
 | Monthly growth review | What was done and what changed in sales, from Xedine's metrics, on a call | — |

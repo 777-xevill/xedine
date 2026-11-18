@@ -97,38 +97,27 @@ describe('home page plans', () => {
 
   it('has every line in English and Bangla', () => {
     for (const messages of [en, bn]) {
-      const p = messages.landing3d.day.pricing as Record<string, unknown> & {
-        limits: Record<string, string>;
+      const p = messages.landing3d.day.pricing as unknown as Record<string, unknown> & {
         rows: Record<string, string>;
         plans: Record<string, { name: string; body: string }>;
+        partner: Record<string, unknown> & { services: Record<string, string> };
       };
-      for (const key of ['title', 'perMonth', 'cta', 'noCard', 'soon', 'badge', 'unlimited']) {
+      for (const key of ['title', 'perMonthShort', 'cta', 'noCard', 'soon', 'badge', 'unlimited']) {
         expect(p[key]).toBeTruthy();
       }
-      for (const pl of PLANS) {
-        expect(p.plans[pl.code]?.name).toBeTruthy();
-        expect(p.plans[pl.code]?.body).toBeTruthy();
-        for (const l of pl.limits) expect(p.limits[l.id]).toBeTruthy();
+      for (const code of ['starter', 'pro', 'partner']) {
+        expect(p.plans[code]?.name).toBeTruthy();
+        expect(p.plans[code]?.body).toBeTruthy();
       }
       expect(Object.keys(p.rows).sort()).toEqual(PLAN_ROWS.map((r) => r.id).sort());
-      expect(p.plans.partner?.name).toBeTruthy();
-      const partner = (
-        messages.landing3d.day.pricing as unknown as {
-          partner: Record<string, unknown> & {
-            services: Record<string, { name: string; line: string }>;
-          };
-        }
-      ).partner;
-      for (const key of ['badge', 'cta', 'mailSubject', 'places', 'plus', 'excluded']) {
-        expect(partner[key]).toBeTruthy();
+      for (const key of ['badge', 'cta', 'mailSubject', 'everything', 'excluded']) {
+        expect(p.partner[key]).toBeTruthy();
       }
-      for (const id of PARTNER.services) {
-        expect(partner.services[id]?.name).toBeTruthy();
-        expect(partner.services[id]?.line).toBeTruthy();
-      }
+      expect(Object.keys(p.partner.services).sort()).toEqual([...PARTNER.services].sort());
     }
-    // The ad money is the restaurant's, said on the card itself.
+    // The ad money is the restaurant's, said on the card itself; the team builds a website and an app.
     expect(en.landing3d.day.pricing.partner.excluded).toContain('ad money');
-    expect(en.landing3d.day.pricing.partner.services.ads.line).toContain('The ad money is yours');
+    expect(en.landing3d.day.pricing.partner.services.ads).toContain('the ad money is yours');
+    expect(en.landing3d.day.pricing.partner.services.website).toContain('app');
   });
 });

@@ -943,12 +943,331 @@ details[open] > :not(summary) {
     transform: translate3d(0, 8px, 0);
   }
 }
+/* A phone: the plans swipe side by side, with no scrollbar. */
+.plan-rail {
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.plan-rail::-webkit-scrollbar {
+  display: none;
+}
+/* Pro's thunder: a 6 s storm. The bolt draws itself in a blink, flickers and fades; the glass flashes with it,
+   the card's glow pulses, the price shines like a lit wire and sparks drift up. */
+.plan-pro {
+  animation: plan-pro-glow 6s linear infinite;
+}
+@keyframes plan-pro-glow {
+  0%,
+  100% {
+    box-shadow:
+      var(--rim),
+      0 0 50px -30px color-mix(in srgb, var(--brand-yellow) 45%, transparent);
+  }
+  3%,
+  9% {
+    box-shadow:
+      var(--rim),
+      0 0 80px -14px color-mix(in srgb, var(--brand-yellow) 70%, transparent);
+  }
+  6% {
+    box-shadow:
+      var(--rim),
+      0 0 60px -26px color-mix(in srgb, var(--brand-yellow) 50%, transparent);
+  }
+  20% {
+    box-shadow:
+      var(--rim),
+      0 0 50px -30px color-mix(in srgb, var(--brand-yellow) 45%, transparent);
+  }
+}
+.plan-storm {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.plan-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 82% 8%,
+    color-mix(in srgb, var(--brand-yellow) 34%, transparent),
+    color-mix(in srgb, var(--brand-yellow) 8%, transparent) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  animation: plan-flash 6s linear infinite;
+}
+@keyframes plan-flash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  4% {
+    opacity: 0.15;
+  }
+  6% {
+    opacity: 0.8;
+  }
+  14% {
+    opacity: 0;
+  }
+}
+.plan-bolt {
+  position: absolute;
+  top: -6px;
+  right: 6%;
+  width: 72px;
+  height: 108px;
+  stroke: var(--brand-yellow);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  opacity: 0;
+  filter: drop-shadow(0 0 4px var(--brand-yellow))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--brand-yellow) 60%, transparent));
+  animation: plan-strike 6s linear infinite;
+}
+.plan-bolt-branch {
+  stroke-width: 1.6;
+}
+.plan-bolt-late {
+  right: 26%;
+  width: 46px;
+  height: 70px;
+  stroke-width: 1.8;
+  animation-delay: 0.18s;
+}
+@keyframes plan-strike {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 220;
+  }
+  1% {
+    opacity: 1;
+  }
+  2.5% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  4% {
+    opacity: 0.2;
+    stroke-dashoffset: 0;
+  }
+  6% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+  13%,
+  100% {
+    opacity: 0;
+    stroke-dashoffset: 0;
+  }
+}
+.plan-spark {
+  position: absolute;
+  bottom: 18%;
+  left: var(--x);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--brand-yellow);
+  box-shadow: 0 0 8px var(--brand-yellow);
+  opacity: 0;
+  animation: plan-spark 4.5s var(--ease-smooth) var(--d) infinite;
+}
+@keyframes plan-spark {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(14px, -220px, 0) scale(0.3);
+  }
+}
+.plan-zap {
+  animation: plan-zap 6s linear infinite;
+}
+@keyframes plan-zap {
+  0%,
+  100% {
+    transform: none;
+  }
+  2%,
+  6% {
+    transform: scale(1.35) rotate(-8deg);
+  }
+  4% {
+    transform: scale(0.9);
+  }
+  12% {
+    transform: none;
+  }
+}
+.plan-pro-price {
+  background: linear-gradient(
+    100deg,
+    var(--brand-silver) 0 38%,
+    var(--brand-yellow) 48%,
+    color-mix(in srgb, var(--brand-yellow) 40%, var(--brand-silver)) 54%,
+    var(--brand-silver) 64% 100%
+  );
+  background-size: 260% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: plan-price-shine 6s linear infinite;
+}
+@keyframes plan-price-shine {
+  0%,
+  4% {
+    background-position: 100% 0;
+  }
+  24%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+/* Partner's light: a slow warm glow turning behind the glass, a beam sweeping across every 7 s, gold dust
+   floating up and twinkling, a gold shine on the price and a glint on the crown. */
+.plan-aura {
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 20%,
+    color-mix(in srgb, var(--brand-yellow) 16%, transparent) 32%,
+    transparent 46% 70%,
+    color-mix(in srgb, var(--brand-silver) 10%, transparent) 82%,
+    transparent 94%
+  );
+  filter: blur(30px);
+  animation: plan-aura-turn 18s linear infinite;
+}
+@keyframes plan-aura-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.plan-sweep {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 38%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--brand-yellow) 14%, transparent) 40%,
+    color-mix(in srgb, var(--brand-silver) 22%, transparent) 50%,
+    color-mix(in srgb, var(--brand-yellow) 14%, transparent) 60%,
+    transparent
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  animation: plan-sweep 7s var(--ease-smooth) 1.5s infinite;
+}
+@keyframes plan-sweep {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  28%,
+  100% {
+    transform: translateX(340%) skewX(-18deg);
+  }
+}
+.plan-dust {
+  position: absolute;
+  bottom: 6%;
+  left: var(--x);
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: var(--brand-yellow);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--brand-yellow) 80%, transparent);
+  opacity: 0;
+  animation: plan-dust 7.5s ease-in-out var(--d) infinite;
+}
+@keyframes plan-dust {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    opacity: 0.8;
+  }
+  40% {
+    opacity: 0.25;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-10px, -380px, 0);
+  }
+}
+.plan-gold-price {
+  background: linear-gradient(
+    100deg,
+    var(--brand-silver) 0 30%,
+    var(--brand-yellow) 45%,
+    color-mix(in srgb, var(--brand-yellow) 55%, var(--brand-silver)) 52%,
+    var(--brand-yellow) 58%,
+    var(--brand-silver) 72% 100%
+  );
+  background-size: 260% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: plan-price-shine 7s linear 1.5s infinite;
+}
+.plan-crown {
+  animation: plan-crown 7s ease-in-out 1.5s infinite;
+}
+@keyframes plan-crown {
+  0%,
+  100% {
+    transform: none;
+    filter: none;
+  }
+  14% {
+    transform: translateY(-1px) rotate(-10deg) scale(1.25);
+    filter: drop-shadow(0 0 4px var(--brand-yellow));
+  }
+  24% {
+    transform: none;
+    filter: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .plan-rim::after,
   .plan-gold::after,
   .plan-cta::after,
-  .plan-list[data-open='true'] > li {
+  .plan-list[data-open='true'] > li,
+  .plan-pro,
+  .plan-flash,
+  .plan-zap,
+  .plan-pro-price,
+  .plan-aura,
+  .plan-gold-price,
+  .plan-crown {
     animation: none;
+  }
+  .plan-bolt,
+  .plan-spark,
+  .plan-sweep,
+  .plan-dust {
+    display: none;
   }
   .plan-tile {
     transition: none;

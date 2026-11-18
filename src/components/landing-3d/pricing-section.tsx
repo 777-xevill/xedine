@@ -1,10 +1,11 @@
 'use client';
 
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, Crown, X, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   memo,
+  useCallback,
   useId,
   useLayoutEffect,
   useRef,
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils';
 import {
   limitOf,
   PARTNER,
+  PAY_WITH,
   PLAN_ROWS,
   PLANS,
   TRIAL_DAYS,
@@ -52,7 +54,33 @@ export const PricingSection = memo(function PricingSection() {
   const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
   const n = (v: number) => formatNumber(v, locale);
   const [open, setOpen] = useState(false);
+  // Monthly when the page opens (the founder, 2026-11-19); the switch shows the yearly price.
   const [yearly, setYearly] = useState(false);
+  const rail = useRef<HTMLDivElement>(null);
+  const featuredAt = PLANS.findIndex((p) => p.featured);
+  const [active, setActive] = useState(featuredAt);
+  // On a phone the cards sit side by side and swipe (the founder, 2026-11-19); the rail opens on Pro, the
+  // plan the section points to, with Starter and Partner peeking at the edges.
+  const centre = useCallback((i: number, smooth: boolean) => {
+    const el = rail.current;
+    const card = el?.children[i] as HTMLElement | undefined;
+    if (!el || !card || el.scrollWidth <= el.clientWidth) return;
+    el.scrollTo({
+      left: card.offsetLeft - (el.clientWidth - card.clientWidth) / 2,
+      behavior: smooth ? 'smooth' : 'instant',
+    });
+  }, []);
+  useLayoutEffect(() => centre(featuredAt, false), [centre, featuredAt]);
+  const onRail = () => {
+    const el = rail.current;
+    if (!el) return;
+    const mid = el.scrollLeft + el.clientWidth / 2;
+    const gaps = (Array.from(el.children) as HTMLElement[]).map((c) =>
+      Math.abs(c.offsetLeft + c.clientWidth / 2 - mid),
+    );
+    setActive(gaps.indexOf(Math.min(...gaps)));
+  };
+  const names = [...PLANS.map((p) => t(`plans.${p.code}.name`)), t('plans.partner.name')];
   // The price a month, and what the year comes to when paid yearly (25% off, every plan).
   const priceOf = (minor: number, currency: string) => {
     const month = yearly ? yearlyMonthly(minor) : minor;
@@ -92,7 +120,11 @@ export const PricingSection = memo(function PricingSection() {
         <h2 id="pricing-title" className="sr-only">
           {t('title')}
         </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+        <div
+          ref={rail}
+          onScroll={onRail}
+          className="plan-rail relative -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pt-1 pb-3 md:mx-0 md:grid md:snap-none md:grid-cols-2 md:gap-4 md:overflow-visible md:p-0 lg:grid-cols-3 lg:gap-5"
+        >
           {PLANS.map((plan) => (
             <PlanCard
               key={plan.code}
@@ -156,6 +188,31 @@ export const PricingSection = memo(function PricingSection() {
             }
           />
         </div>
+        {/* A phone: which plan is in view, and a tap on a dot brings that one in. */}
+        <div className="mt-2 flex flex-col items-center gap-1 md:hidden">
+          <div className="flex items-center gap-1">
+            {names.map((name, i) => (
+              <button
+                key={name}
+                type="button"
+                aria-label={t('showPlan', { name })}
+                aria-current={active === i || undefined}
+                onClick={() => centre(i, true)}
+                className="grid h-6 place-items-center px-1"
+              >
+                <span
+                  className={cn(
+                    'block h-1.5 rounded-full transition-[width,background-color] duration-300',
+                    active === i
+                      ? 'w-6 bg-[var(--brand-yellow)]'
+                      : 'w-1.5 bg-[color-mix(in_srgb,var(--brand-silver)_30%,transparent)]',
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-[color:var(--text-muted)]">{t('swipe')}</p>
+        </div>
         {/* Monthly or yearly, like the reference: a switch under the cards. */}
         <div className="mt-6 flex items-center justify-center gap-3 md:justify-start">
           <button
@@ -192,6 +249,17 @@ export const PricingSection = memo(function PricingSection() {
             <Mark yes={false} /> {t('legendNo')}
           </span>
           <span>{t('noCard')}</span>
+          <span className="flex items-center gap-1.5">
+            {t('payThen', { days })}
+            {PAY_WITH.map((w) => (
+              <span
+                key={w}
+                className="rounded-md border border-[color-mix(in_srgb,var(--brand-yellow)_45%,transparent)] px-1.5 py-px font-bold text-[var(--brand-yellow)]"
+              >
+                {t(`wallets.${w}`)}
+              </span>
+            ))}
+          </span>
           <span>{t('note')}</span>
         </p>
       </div>
@@ -246,15 +314,17 @@ function PlanCard({
   return (
     <article
       className={cn(
-        'relative flex flex-col rounded-[1.5rem] shadow-[var(--rim)]',
-        variant === 'featured' && 'plan-rim order-first lg:order-none',
+        'relative flex w-[84vw] max-w-[22rem] shrink-0 snap-center flex-col rounded-[1.5rem] shadow-[var(--rim)] md:w-auto md:max-w-none',
+        variant === 'featured' && 'plan-rim plan-pro md:order-first lg:order-none',
         variant === 'gold' &&
-          'plan-gold shadow-[0_0_70px_-34px_color-mix(in_srgb,var(--brand-yellow)_60%,transparent)] md:col-span-2 lg:col-span-1',
+          'plan-gold plan-partner shadow-[0_0_70px_-34px_color-mix(in_srgb,var(--brand-yellow)_60%,transparent)] md:col-span-2 lg:col-span-1',
         variant === 'plain' &&
           'border border-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]',
       )}
     >
-      <div className="flex flex-1 flex-col rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_58%,transparent)] backdrop-blur-2xl">
+      <div className="relative flex flex-1 flex-col rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_58%,transparent)] backdrop-blur-2xl">
+        {variant === 'featured' && <Storm />}
+        {variant === 'gold' && <GoldLight />}
         {/* Name and price */}
         <div data-reveal className="px-6 pt-6 pb-5">
           <div className="flex items-center gap-2">
@@ -268,6 +338,16 @@ function PlanCard({
                     : 'border border-[color-mix(in_srgb,var(--brand-yellow)_60%,transparent)] text-[var(--brand-yellow)]',
                 )}
               >
+                {variant === 'gold' && (
+                  <Crown aria-hidden className="plan-crown -mt-px mr-0.5 inline size-3" />
+                )}
+                {variant === 'featured' && (
+                  <Zap
+                    aria-hidden
+                    className="plan-zap -mt-px mr-0.5 inline size-3"
+                    fill="currentColor"
+                  />
+                )}
                 {badge}
               </span>
             )}
@@ -277,7 +357,14 @@ function PlanCard({
             key={price}
             className="animate-rise-in mt-4 text-[2.6rem] leading-none font-bold tracking-[-0.03em]"
           >
-            {price}
+            <span
+              className={cn(
+                variant === 'featured' && 'plan-pro-price',
+                variant === 'gold' && 'plan-gold-price',
+              )}
+            >
+              {price}
+            </span>
             <span className="text-[color-mix(in_srgb,var(--brand-silver)_55%,transparent)]">
               {t('perMonthShort')}
             </span>
@@ -381,6 +468,55 @@ function Mark({ yes }: { yes: boolean }) {
       ) : (
         <X className="size-[11px]" strokeWidth={3} />
       )}
+    </span>
+  );
+}
+
+/**
+ * Pro's thunder (the founder, 2026-11-19): every few seconds a bolt strikes in the card's top corner, the glass
+ * flashes yellow and a few sparks drift up. Decoration only, behind the words; still for reduced motion.
+ */
+function Storm() {
+  return (
+    <span aria-hidden className="plan-storm">
+      <span className="plan-flash" />
+      <svg viewBox="0 0 100 150" className="plan-bolt" fill="none">
+        <path d="M66 0 L52 40 L63 43 L44 84 L57 87 L34 150" />
+        <path d="M52 40 L36 56 L42 59 L28 76" className="plan-bolt-branch" />
+      </svg>
+      <svg viewBox="0 0 100 150" className="plan-bolt plan-bolt-late" fill="none">
+        <path d="M40 0 L50 34 L41 37 L58 70 L48 73 L62 112" />
+      </svg>
+      {[12, 30, 48, 66, 82].map((x, i) => (
+        <span
+          key={x}
+          className="plan-spark"
+          style={{ '--x': `${x}%`, '--d': `${i * 0.9}s` } as CSSProperties}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Partner's light (the founder, 2026-11-19): calm and rich where Pro is a storm. A slow warm glow turns behind
+ * the glass, a beam of light sweeps across the card now and then, and gold dust floats up and twinkles.
+ * Decoration only; still for reduced motion.
+ */
+function GoldLight() {
+  return (
+    <span aria-hidden className="plan-storm">
+      <span className="plan-aura" />
+      <span className="plan-sweep" />
+      {[8, 22, 37, 51, 64, 78, 90].map((x, i) => (
+        <span
+          key={x}
+          className="plan-dust"
+          style={
+            { '--x': `${x}%`, '--d': `${i * 1.1}s`, '--s': `${2 + (i % 3)}px` } as CSSProperties
+          }
+        />
+      ))}
     </span>
   );
 }

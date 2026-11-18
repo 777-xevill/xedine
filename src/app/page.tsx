@@ -1,8 +1,6 @@
-import Image from 'next/image';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
 import { DayPage } from '@/components/landing-3d/day-page';
+import { SiteFooter } from '@/components/landing-3d/site-footer';
 import { createClient } from '@/lib/db/supabase-server';
 
 /**
@@ -25,40 +23,7 @@ export default async function HomePage() {
     redirect(first ? `/${first.slug}` : '/onboarding');
   }
 
-  const [t, tl, tlegal] = await Promise.all([
-    getTranslations('common'),
-    getTranslations('landing'),
-    getTranslations('legal'),
-  ]);
-
-  // The privacy and terms links stay on the home page: Google and Meta check them for sign-in.
-  const footer = (
-    <footer className="border-t border-[color-mix(in_srgb,var(--brand-silver)_14%,transparent)] bg-background">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-[color:var(--text-muted)] sm:flex-row sm:px-8">
-        <span className="inline-flex items-center gap-2.5">
-          <Image
-            src="/brand/logo-chef-192.png"
-            alt=""
-            width={30}
-            height={30}
-            className="rounded-[21%]"
-          />
-          <span className="text-base font-bold tracking-tight text-[var(--brand-silver)]">
-            {t('appName')}
-          </span>
-        </span>
-        <p>{tl('footer')}</p>
-        <nav className="flex gap-4">
-          <Link href="/privacy" className="hover:text-[var(--brand-silver)] hover:underline">
-            {tlegal('privacyLink')}
-          </Link>
-          <Link href="/terms" className="hover:text-[var(--brand-silver)] hover:underline">
-            {tlegal('termsLink')}
-          </Link>
-        </nav>
-      </div>
-    </footer>
-  );
-
-  return <DayPage footer={footer} />;
+  // The end of the page: a last ask, the footer's columns and the privacy and terms links (Google and Meta
+  // check them for sign-in).
+  return <DayPage footer={<SiteFooter />} />;
 }

@@ -283,7 +283,29 @@
     "chipCountries": "10 countries and counting",
     "countriesEyebrow": "Where Xedine works",
     "countriesTitle": "Built for restaurants in these countries",
-    "countriesBody": "Each restaurant runs on its own clock, money and tax name, greets its own festivals and takes its customers' local phone numbers."
+    "countriesBody": "Each restaurant runs on its own clock, money and tax name, greets its own festivals and takes its customers' local phone numbers.",
+    "end": {
+      "decideTitle": "Still deciding whether Xedine is right for you?",
+      "decideBody": "Try it. Your first {days} days are free and no card is needed. If it isn't right for your restaurant, you just stop. Nothing to cancel.",
+      "seePlans": "See the plans",
+      "nextEyebrow": "Next step",
+      "nextTitle": "Tell us about your restaurant.",
+      "nextBody": "We reply within one business day, in Bangla or English. If Xedine isn't the right fit, we'll say so.",
+      "start": "Start free",
+      "talk": "Talk to us",
+      "mailSubject": "About my restaurant",
+      "tagline": "The AI manager for restaurants: the till, stock, money and customers in one place.",
+      "links": {
+        "features": "Everything it does",
+        "pricing": "Pricing"
+      },
+      "whatTitle": "What it does",
+      "elsewhere": "Find us",
+      "email": "Email us",
+      "facebook": "Xedine on Facebook",
+      "rights": "© {year} {name}. All rights reserved.",
+      "promise": "Bangla and English · No card to start"
+    }
   },
   "onboarding": {
     "title": "Set up your restaurant",
@@ -5777,6 +5799,13 @@
         "more": "See more",
         "less": "Show less",
         "note": "Prices in US dollars.",
+        "payThen": "{days} days free, then pay with",
+        "wallets": {
+          "bkash": "bKash",
+          "nagad": "Nagad"
+        },
+        "swipe": "Swipe to see every plan",
+        "showPlan": "Show {name}",
         "rows": {
           "assistant": "Ask Xedine: AI that knows your whole restaurant",
           "deepAi": "Strongest AI for hard questions",
@@ -5823,7 +5852,7 @@
             "films": "{films} cinematic film + {reels} reels a month",
             "ads": "Ads run for you (the ad money is yours)",
             "visit": "A visit and AI makeover pictures",
-            "website": "Your own website and app",
+            "website": "Free website and apps",
             "brand": "Your brand look: logo, menu, posts",
             "build": "One custom build a month",
             "review": "Monthly growth review on a call",

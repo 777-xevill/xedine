@@ -1,5 +1,5 @@
 /**
- * Phase 10 plans and billing (ADR 0008 prices, ADR 0023). A new org is on a 30-day Growth trial; plan
+ * Phase 10 plans and billing (ADR 0008 prices, ADR 0023). A new org is on a 14-day Growth trial (30 before 2026-11-19); plan
  * limits (AI, WhatsApp) are decided in SQL; only platform admins set subscriptions, and that is audited.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -37,7 +37,7 @@ describe('plans and billing', () => {
   const billing = (at: string) =>
     asUser(org.owner, (s) => s.q<Row>('select * from public.metric_billing($1, $2)', [org.id, at]));
 
-  it('a new org is on a 30-day Growth trial with AI and WhatsApp; after it, both stop', async () => {
+  it('a new org is on a 14-day Growth trial with AI and WhatsApp; after it, both stop', async () => {
     const [b] = await billing(inDays(1));
     expect([b!.plan_code, b!.status, n(b!.branches), n(b!.monthly_amount_poisha)]).toEqual([
       'growth',
@@ -46,6 +46,8 @@ describe('plans and billing', () => {
       900000,
     ]);
     expect((await allowed('org_ai_allowed', inDays(1)))[0]!.ok).toBe(true);
+    expect((await allowed('org_ai_allowed', inDays(13)))[0]!.ok).toBe(true);
+    expect((await allowed('org_ai_allowed', inDays(15)))[0]!.ok).toBe(false);
     expect((await allowed('org_ai_allowed', inDays(31)))[0]!.ok).toBe(false);
     expect((await allowed('org_whatsapp_allowed', inDays(31)))[0]!.ok).toBe(false);
     const [late] = await billing(inDays(31));

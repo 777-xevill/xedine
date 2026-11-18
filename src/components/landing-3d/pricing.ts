@@ -9,8 +9,14 @@ import type { FeatureId } from './features';
  * these plans yet: the `plans` table still holds the taka plans of ADR 0008.
  */
 
-/** Every plan starts with this many free days (`metric_billing`, migration 20261008000001). */
-export const TRIAL_DAYS = 30;
+/**
+ * Every plan starts with this many free days (`private.org_plan`, migration 20261201000001; the founder,
+ * 2026-11-19). Restaurants that signed up before then keep 30.
+ */
+export const TRIAL_DAYS = 14;
+
+/** After the free days, a plan is paid with these Bangladeshi mobile wallets (the founder, 2026-11-19). */
+export const PAY_WITH = ['bkash', 'nagad'] as const;
 
 export type PlanRowId =
   | 'assistant'

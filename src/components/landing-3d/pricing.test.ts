@@ -37,7 +37,12 @@ describe('home page plans', () => {
   });
 
   it('promise the free trial the billing code gives', () => {
-    expect(sql).toContain(`interval '${TRIAL_DAYS} days' >= p_now then 'trialing'`);
+    // The latest definition of the trial: new restaurants get TRIAL_DAYS, older ones keep the 30 they had.
+    const latest = sql.slice(sql.lastIndexOf('function private.org_plan('));
+    expect(latest).toContain(`else interval '${TRIAL_DAYS} days' end as trial`);
+    expect(latest).toContain(
+      `(select created_at from o) + (select trial from len) >= p_now then 'trialing'`,
+    );
   });
 
   it('list only big features, each standing for features Xedine has', () => {

@@ -291,3 +291,22 @@ build in Xedine for it: docs/PARTNER-PLAN.md.
   limits stay on their rows); Partner's website is now "website and app".
 - Same day: a "Billed yearly" switch under the cards takes 25% off every plan ($14.25, $20.25 and $187.50 a
   month; $171, $243 and $2,250 once a year); each card says how it is billed, and the new price rises in.
+
+## Amendment — pricing: 14 free days, bKash and Nagad, swipe on a phone, Pro's thunder, Partner's gold light (2026-11-19)
+
+The founder's changes to the pricing section, Starter's card left as it was:
+
+- **Monthly when the page opens** (yearly was on first, then the founder asked for it off); the switch shows the
+  yearly price.
+- **The free trial is 14 days** (`TRIAL_DAYS`). Migration `20261201000001_trial_14_days.sql` changes `private.org_plan`
+  to match: restaurants that signed up before 2026-11-19 (Dhaka) keep the 30 days they were promised.
+- **"14 days free, then pay with bKash · Nagad"** sits under the cards. This is the promise on the page only:
+  there is no bKash or Nagad checkout yet (both need a merchant account), so a platform admin still sets the
+  subscription by hand after the payment (ADR 0023).
+- **On a phone the plans swipe sideways** (scroll snap, ~84% wide so the next card peeks), opening on Pro, with
+  dots under them. From the tablet width up, the grid is unchanged.
+- **Pro's thunder:** every 6 s a bolt draws itself in the card's top corner, the glass flashes yellow, the glow
+  pulses, the price shines and sparks drift up; a bolt on the badge.
+- **Partner's gold light**, calm where Pro is a storm: a slow warm glow turns behind the glass, a beam of light
+  sweeps across every 7 s, gold dust floats up and twinkles, the price shines gold and a crown on the badge
+  glints. Brand colours only; Pro's and Partner's motion is still for reduced motion.

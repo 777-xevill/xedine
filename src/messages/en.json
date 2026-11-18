@@ -5373,6 +5373,39 @@
         "title": "Everything Xedine does, A to Z",
         "body": "Every feature in the story, and where it appeared.",
         "seeIt": "See it"
+      },
+      "pricing": {
+        "title": "Pricing",
+        "body": "Every plan starts with {days} days free, with everything switched on. Then pay per branch, per month.",
+        "perMonth": "/month",
+        "perBranch": "per branch",
+        "cta": "Start {days} days free",
+        "note": "Prices in Bangladeshi taka. No card needed to start.",
+        "plans": {
+          "starter": {
+            "name": "Starter",
+            "p1": "Till that works without internet",
+            "p2": "Kitchen screen",
+            "p3": "Orders and cash",
+            "p4": "Health check of the day",
+            "p5": "Leak checks with nothing to type"
+          },
+          "growth": {
+            "name": "Growth",
+            "p1": "Everything in Starter",
+            "p2": "AI assistant and morning brief",
+            "p3": "Recipes and profit per dish",
+            "p4": "Bazar, stock and waste",
+            "p5": "Forecasts, customers and posters"
+          },
+          "chain": {
+            "name": "Chain · 6+ branches",
+            "p1": "Everything in Growth",
+            "p2": "Every branch side by side",
+            "p3": "Benchmarks against similar restaurants",
+            "p4": "A lower price per branch"
+          }
+        }
       }
     }
   }

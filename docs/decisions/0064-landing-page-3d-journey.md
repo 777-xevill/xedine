@@ -217,3 +217,14 @@ between doorways rushed while the short ones crawled.
   now have its own scroll (`vh` on the beat): dawn 70 and the brief 130 screen hundredths instead of 190, so
   the owner's brief on the phone is in full view after 1.33 screens of scroll instead of 2.75
   (`pace.test.ts`). The walk after it keeps its calm pace.
+
+## Amendment (2026-11-18): working top buttons, and pricing
+
+- Sign in, Create account, Skip to every feature and the language switch did nothing: the invisible scroll
+  stretches (one per moment) lay over the sticky view and took every tap. They are now `pointer-events-none`.
+- A pricing section between the 3D day and the A–Z list, after the founder's reference: the huge word behind
+  three glass cards that blur it; each card has its price per branch per month, what it includes and a
+  button to sign up (the recommended Growth plan's is yellow). Prices and the 30 free days come from the
+  `plans` table and `metric_billing` (`pricing.ts`; `pricing.test.ts` reads the migrations, so a price
+  change there fails until the page follows). In taka for every visitor: no other currency has a price yet.
+  The reference's "Billed yearly" switch is left out: there is no yearly billing.

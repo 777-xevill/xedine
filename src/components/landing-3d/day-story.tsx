@@ -19,6 +19,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CountryPin } from './city';
 import { FEATURE_GROUPS, FEATURES, type FeatureId } from './features';
+import { PricingSection } from './pricing-section';
 import { BEAT_SCROLL_VH, BEATS, cardAt, scrollToP, STORY_VH } from './story';
 import { type DemoCurrency } from './story-ledger';
 import { useAnswers, useCityText, useScreenText } from './story-text';
@@ -195,8 +196,9 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
             </a>
           </div>
         </div>
-        {/* The scroll itself: one invisible stretch per moment, with its words for search and screen readers. */}
-        <div className="absolute inset-x-0 top-0">
+        {/* The scroll itself: one invisible stretch per moment, with its words for search and screen readers.
+            It lies over the sticky view, so taps go through it to the buttons and the language switch. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0">
           {BEATS.map((beat, b) => (
             <section
               key={beat.id}
@@ -249,6 +251,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
           {t('intro.scroll')} <ChevronDown aria-hidden className="size-3.5" />
         </p>
       )}
+      <PricingSection />
       <Everything />
       {footer}
     </div>

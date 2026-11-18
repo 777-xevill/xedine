@@ -22,7 +22,6 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
 import { AutoRefresh } from '@/components/auto-refresh';
-import { SettingsNav } from '@/components/settings-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, Hint, Label, PageTitle, Textarea } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
@@ -101,7 +100,6 @@ export default async function SetupPage({ params }: { params: Promise<{ org: str
   return (
     <>
       <AutoRefresh />
-      <SettingsNav ctx={ctx} current="setup" />
       <PageTitle title={t('title')} subtitle={t('centreSubtitle')} />
 
       {/* Health dashboard: the ring is required steps done; bars show each group. */}

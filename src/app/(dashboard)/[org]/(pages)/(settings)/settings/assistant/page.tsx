@@ -2,7 +2,6 @@ import { Sparkles, X } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
-import { SettingsNav } from '@/components/settings-nav';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,7 +56,6 @@ export default async function AssistantSettingsPage({
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="assistantRules" />
       <PageTitle title={t('settingsTitle')} subtitle={t('settingsSubtitle')} />
 
       <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 p-5">

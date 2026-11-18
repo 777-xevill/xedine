@@ -2,7 +2,6 @@ import { Send } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
-import { SettingsNav } from '@/components/settings-nav';
 import { TelegramLinkForm } from '@/components/telegram-link-form';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -131,7 +130,6 @@ export default async function TelegramSettingsPage({
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="telegram" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
       {!ready ? (

@@ -149,6 +149,32 @@ const SETTINGS: LinkRule[] = [
   { key: 'setup', path: '/setup', roles: ['owner'] },
 ];
 
+/** How the settings panel groups its links (left list, like a desktop app's preferences). */
+export type SettingsGroupKey = 'restaurant' | 'people' | 'money' | 'growth';
+const SETTINGS_GROUP_OF: Partial<Record<IconKey, SettingsGroupKey>> = {
+  general: 'restaurant',
+  setup: 'restaurant',
+  branchSetup: 'restaurant',
+  features: 'restaurant',
+  team: 'people',
+  staff: 'people',
+  telegram: 'people',
+  costs: 'money',
+  discountCodes: 'money',
+  memberCard: 'money',
+  billing: 'money',
+  assistantRules: 'growth',
+  social: 'growth',
+};
+const SETTINGS_GROUP_ORDER: SettingsGroupKey[] = ['restaurant', 'people', 'money', 'growth'];
+
+export function groupSettings(links: NavLink[]): { group: SettingsGroupKey; links: NavLink[] }[] {
+  return SETTINGS_GROUP_ORDER.map((group) => ({
+    group,
+    links: links.filter((l) => (SETTINGS_GROUP_OF[l.key] ?? 'restaurant') === group),
+  })).filter((g) => g.links.length > 0);
+}
+
 /** Which features each switch turns on, for the Features page. */
 export const FEATURE_LINKS: Record<FeatureKey, IconKey[]> = Object.fromEntries(
   FEATURE_KEYS.map((f) => [f, OPTIONAL.filter((l) => l.feature === f).map((l) => l.key)]),

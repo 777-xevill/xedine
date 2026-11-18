@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { AdjustPointsForm, MemberRulesForm, ResetCardButton } from '@/components/member-card-forms';
 import { QrCode } from '@/components/qr-code';
-import { SettingsNav } from '@/components/settings-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle, EmptyState, Hint, Input, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
@@ -56,7 +55,6 @@ export default async function MemberCardSettingsPage({
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="memberCard" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       <div className="max-w-3xl space-y-6">
         <Card>

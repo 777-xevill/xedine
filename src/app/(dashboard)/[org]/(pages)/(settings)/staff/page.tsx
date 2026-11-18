@@ -24,7 +24,6 @@ import {
   toggleStaffActiveAction,
 } from '@/modules/staff/actions';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
-import { SettingsNav } from '@/components/settings-nav';
 
 export default async function StaffPage({
   params,
@@ -79,7 +78,6 @@ export default async function StaffPage({
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="staff" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       {ctx.branches.length > 1 ? (
         <PillNav

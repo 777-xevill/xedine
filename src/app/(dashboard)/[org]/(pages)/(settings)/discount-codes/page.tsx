@@ -5,7 +5,6 @@ import {
   DiscountCodeForm,
   ToggleCodeButton,
 } from '@/components/discount-code-forms';
-import { SettingsNav } from '@/components/settings-nav';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
@@ -49,7 +48,6 @@ export default async function DiscountCodesPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="discountCodes" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       <div className="max-w-3xl space-y-6">
         <Card>

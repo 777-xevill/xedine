@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { PillNav } from '@/components/ui/pill-nav';
 import { PageTitle } from '@/components/ui/form';
-import { SettingsNav } from '@/components/settings-nav';
 import { createClient } from '@/lib/db/supabase-server';
 import { businessDate } from '@/lib/time/business-date';
 import { now } from '@/lib/time/clock';
@@ -49,7 +48,6 @@ export default async function CostsPage({
 
   const nav = (
     <>
-      <SettingsNav ctx={ctx} current="costs" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       <PillNav
         label={t('sections')}

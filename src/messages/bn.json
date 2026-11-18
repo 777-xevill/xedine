@@ -355,7 +355,16 @@
     "dailyChecks": "দৈনিক চেক",
     "complaints": "রিভিউ ও অভিযোগ",
     "tableQr": "টেবিল কিউআর",
-    "nutrition": "খাবারের তথ্য"
+    "nutrition": "খাবারের তথ্য",
+    "settingsSearch": "সেটিং খুঁজুন",
+    "settingsNoMatch": "এই নামে কোনো সেটিং নেই।",
+    "closeSettings": "সেটিংস বন্ধ করুন",
+    "settingsGroups": {
+      "restaurant": "রেস্টুরেন্ট",
+      "people": "মানুষ",
+      "money": "টাকা আর অফার",
+      "growth": "এআই আর প্রচার"
+    }
   },
   "discountCodes": {
     "title": "ডিসকাউন্ট কোড",

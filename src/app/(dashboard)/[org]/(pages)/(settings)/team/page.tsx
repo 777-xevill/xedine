@@ -13,7 +13,6 @@ import {
   updateMemberBranchesAction,
 } from '@/modules/tenancy/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
-import { SettingsNav } from '@/components/settings-nav';
 
 export default async function TeamPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
@@ -63,7 +62,6 @@ export default async function TeamPage({ params }: { params: Promise<{ org: stri
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="team" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
       <Card className="mb-6">

@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { FeatureToggle } from '@/components/feature-toggle';
-import { SettingsNav } from '@/components/settings-nav';
 import { Card, PageTitle } from '@/components/ui/form';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { FEATURE_KEYS, FEATURE_LINKS } from '@/modules/tenancy/navigation';
@@ -23,7 +22,6 @@ export default async function FeaturesPage({ params }: { params: Promise<{ org: 
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="features" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       <Card className="p-0">
         <ul className="divide-y divide-line">

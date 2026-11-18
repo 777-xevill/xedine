@@ -4,6 +4,7 @@ import {
   FEATURE_KEYS,
   FEATURE_LINKS,
   groupNavigation,
+  groupSettings,
   parseFeatures,
 } from './navigation';
 
@@ -107,5 +108,23 @@ describe('navigation (ADR 0024)', () => {
     for (const f of FEATURE_KEYS) expect(FEATURE_LINKS[f].length, f).toBeGreaterThan(0);
     expect(parseFeatures(['branches', 'nope', 42])).toEqual(['branches']);
     expect(parseFeatures(null)).toEqual([]);
+  });
+});
+
+describe('settings panel groups', () => {
+  it('puts every owner settings link in exactly one group, in a fixed order', () => {
+    const links = buildNavigation({ slug: 'x', roles: ['owner'], enabled: [] }).settings;
+    const groups = groupSettings(links);
+    expect(groups.map((g) => g.group)).toEqual(['restaurant', 'people', 'money', 'growth']);
+    expect(groups.flatMap((g) => keys(g.links)).sort()).toEqual(keys(links).sort());
+  });
+
+  it('a manager sees only the groups that hold their links', () => {
+    const links = buildNavigation({ slug: 'x', roles: ['manager'], enabled: [] }).settings;
+    const groups = groupSettings(links);
+    expect(groups.flatMap((g) => keys(g.links)).sort()).toEqual(
+      ['branchSetup', 'discountCodes', 'staff'].sort(),
+    );
+    expect(groups.map((g) => g.group)).toEqual(['restaurant', 'people', 'money']);
   });
 });

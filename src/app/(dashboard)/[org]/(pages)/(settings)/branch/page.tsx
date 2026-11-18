@@ -10,7 +10,6 @@ import { createClient } from '@/lib/db/supabase-server';
 import { toggleTableActiveAction } from '@/modules/branch/actions';
 import { cancelBranchRequestAction } from '@/modules/settings/actions';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
-import { SettingsNav } from '@/components/settings-nav';
 
 export default async function BranchPage({
   params,
@@ -61,7 +60,6 @@ export default async function BranchPage({
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="branchSetup" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       {ctx.isOwner ? (
         <Card className="mb-6 max-w-3xl">

@@ -355,7 +355,16 @@
     "dailyChecks": "Daily checks",
     "complaints": "Reviews & complaints",
     "tableQr": "Table QR",
-    "nutrition": "Food facts"
+    "nutrition": "Food facts",
+    "settingsSearch": "Search settings",
+    "settingsNoMatch": "No setting by that name.",
+    "closeSettings": "Close settings",
+    "settingsGroups": {
+      "restaurant": "Restaurant",
+      "people": "People",
+      "money": "Money and offers",
+      "growth": "AI and growth"
+    }
   },
   "discountCodes": {
     "title": "Discount codes",

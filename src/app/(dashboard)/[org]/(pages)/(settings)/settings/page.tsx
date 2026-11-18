@@ -17,7 +17,6 @@ import {
 } from '@/modules/settings/actions';
 import { CUISINES } from '@/modules/settings/cuisines';
 import { getOrgContext } from '@/modules/tenancy/context';
-import { SettingsNav } from '@/components/settings-nav';
 import { PlaceFields } from '@/components/place-fields';
 import { now } from '@/lib/time/clock';
 import { placeOptions, taxKindOf } from '@/modules/social/culture';
@@ -91,7 +90,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="general" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
       <Card id="profile" className="mb-6 scroll-mt-24">

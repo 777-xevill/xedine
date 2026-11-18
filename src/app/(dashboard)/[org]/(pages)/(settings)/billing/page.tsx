@@ -8,7 +8,6 @@ import { createClient } from '@/lib/db/supabase-server';
 import { formatMoney, formatBps, formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
 import { getOrgContext } from '@/modules/tenancy/context';
-import { SettingsNav } from '@/components/settings-nav';
 
 const TONE = {
   trialing: 'info',
@@ -41,7 +40,6 @@ export default async function BillingPage({ params }: { params: Promise<{ org: s
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="billing" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       <Card className="mb-6 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
-import { SettingsNav } from '@/components/settings-nav';
 import { SocialLogoField } from '@/components/social-logo-field';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -126,7 +125,6 @@ export default async function SocialSettingsPage({
 
   return (
     <>
-      <SettingsNav ctx={ctx} current="social" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
       {notice ? (
         <Alert tone={NOTICES[notice]} className="mb-6">

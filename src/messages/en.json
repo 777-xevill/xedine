@@ -4781,6 +4781,7 @@
         "kicker": "One day in a café",
         "scroll": "Scroll to start the day",
         "skip": "Skip to every feature",
+        "skipShort": "All features",
         "loading": "Opening the café…",
         "chapter": "Moment {n} of {total}"
       },

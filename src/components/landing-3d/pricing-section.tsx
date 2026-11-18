@@ -70,8 +70,8 @@ export const PricingSection = memo(function PricingSection() {
         <h2 id="pricing-title" className="sr-only">
           {t('pricing.title')}
         </h2>
-        <article data-reveal className="plan-rim rounded-[1.75rem] p-px shadow-[var(--rim)]">
-          <div className="rounded-[calc(1.75rem-1px)] bg-[color-mix(in_srgb,var(--brand-grey)_70%,transparent)] backdrop-blur-2xl">
+        <article data-reveal className="plan-rim relative rounded-[1.75rem] shadow-[var(--rim)]">
+          <div className="rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_70%,transparent)] backdrop-blur-2xl">
             {/* Name, price and the button */}
             <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
               <div>
@@ -130,7 +130,7 @@ export const PricingSection = memo(function PricingSection() {
 
             {/* Every feature: a tick or a cross */}
             <div className="mt-6 h-px bg-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]" />
-            <div className="px-6 pt-5 sm:px-8">
+            <div className="px-6 pt-5 pb-5 sm:px-8">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <h3 className="text-sm font-semibold">
                   {t('pricing.allTitle', { n: n(included), total: n(PLAN_ROWS.length) })}
@@ -195,7 +195,7 @@ export const PricingSection = memo(function PricingSection() {
                 aria-expanded={open}
                 aria-controls={listId}
                 onClick={() => setOpen((o) => !o)}
-                className="mx-auto my-5 flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] px-4 py-2 text-xs font-semibold transition-[border-color,scale] hover:border-[var(--brand-yellow)] active:scale-[0.97]"
+                className="mx-auto mt-5 flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] px-4 py-2 text-xs font-semibold transition-[border-color,scale] hover:border-[var(--brand-yellow)] active:scale-[0.97]"
               >
                 {open ? t('pricing.less') : t('pricing.more', { total: n(PLAN_ROWS.length) })}
                 <ChevronDown

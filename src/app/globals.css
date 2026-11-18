@@ -851,7 +851,14 @@ details[open] > :not(summary) {
   inherits: false;
   initial-value: 0deg;
 }
-.plan-rim {
+/* Only the 1px ring is painted (the mask cuts out the middle), so the light never shows through the glass. */
+.plan-rim::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
   background:
     conic-gradient(
       from var(--plan-angle),
@@ -861,6 +868,10 @@ details[open] > :not(summary) {
       transparent 94%
     ),
     color-mix(in srgb, var(--brand-silver) 16%, transparent);
+  mask:
+    linear-gradient(var(--brand-grey) 0 0) content-box exclude,
+    linear-gradient(var(--brand-grey) 0 0);
+  -webkit-mask-composite: xor;
   animation: plan-rim-turn 7s linear infinite;
 }
 @keyframes plan-rim-turn {
@@ -902,7 +913,7 @@ details[open] > :not(summary) {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .plan-rim,
+  .plan-rim::after,
   .plan-cta::after,
   .plan-list[data-open='true'] > li {
     animation: none;

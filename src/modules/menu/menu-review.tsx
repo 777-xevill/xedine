@@ -340,8 +340,8 @@ export function MenuReview({
         </Button>
       ) : null}
 
-      {/* The confirm bar stays on screen while the owner scrolls the menu. */}
-      <div className="sticky bottom-3 z-20 rounded-card border border-edge-strong bg-surface/85 p-3 shadow-soft backdrop-blur-xl">
+      {/* The confirm bar stays on screen while the owner scrolls, above the floating "Ask Xedine" button. */}
+      <div className="sticky bottom-20 z-20 rounded-card border border-edge-strong bg-surface/85 p-3 shadow-soft backdrop-blur-xl">
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1 text-sm">
             {state.error ? (

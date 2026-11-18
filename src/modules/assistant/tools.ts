@@ -434,7 +434,7 @@ const SETUP_STEPS: Record<string, { step: string; page: string }> = {
   fixed_costs: { step: 'Fixed costs', page: 'Costs' },
   salaries: { step: "This month's salaries", page: 'Costs' },
   opening_count: { step: 'Opening stock count', page: 'Stock' },
-  owner_whatsapp: { step: 'Owner WhatsApp', page: 'Settings (General)' },
+  owner_whatsapp: { step: 'Owner Telegram briefs', page: 'Settings → Telegram' },
   first_order: { step: 'First order', page: 'POS till' },
 };
 

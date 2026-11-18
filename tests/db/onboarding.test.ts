@@ -104,3 +104,78 @@ describe('onboarding', () => {
     expect(p.ok).toBe(false);
   });
 });
+
+describe('setup health', () => {
+  let org: TestOrg;
+  let manager: TestUser;
+  beforeAll(async () => {
+    org = await createOrg({ branches: ['Main'] });
+    manager = await addMember(org, 'manager', [org.branchIds[0]!]);
+  });
+
+  const health = async () =>
+    await asUser(org.owner, (s) =>
+      s.q<Row>('select * from public.metric_setup_health($1, $2)', [org.id, NOW]),
+    );
+  const byStep = async () =>
+    Object.fromEntries(
+      (await health()).map((r) => [r.step as string, [r.done, Number(r.have), Number(r.need)]]),
+    );
+
+  it('lists every step once, in groups, with the twelve onboarding steps marked required', async () => {
+    const rows = await health();
+    const steps = rows.map((r) => r.step as string);
+    expect(new Set(steps).size).toBe(steps.length);
+    expect(new Set(rows.map((r) => r.category))).toEqual(
+      new Set([
+        'basics',
+        'menu',
+        'selling',
+        'costs',
+        'stock',
+        'team',
+        'alerts',
+        'customers',
+        'golive',
+      ]),
+    );
+    const required = rows.filter((r) => r.required).map((r) => r.step);
+    for (const s of ['profile', 'menu', 'channels', 'recipes', 'owner_whatsapp', 'first_order']) {
+      expect(required).toContain(s);
+    }
+    expect(rows.find((r) => r.step === 'member_card')!.required).toBe(false);
+    // Groups come out together, in order, so the page needs no sorting of its own.
+    const cats = rows.map((r) => r.category as string);
+    expect(cats).toEqual([...cats].sort((a, b) => cats.indexOf(a) - cats.indexOf(b)));
+  });
+
+  it('ticks from real data: place and tax exist from sign-up, profile once cuisine and city are in', async () => {
+    let p = await byStep();
+    expect(p.place![0]).toBe(true);
+    expect(p.tax![0]).toBe(true);
+    expect(p.profile![0]).toBe(false);
+    await admin(
+      `insert into public.org_profile (org_id, cuisine, city) values ($1, 'biryani', 'Dhaka')
+       on conflict (org_id) do update set cuisine = excluded.cuisine, city = excluded.city`,
+      [org.id],
+    );
+    p = await byStep();
+    expect(p.profile![0]).toBe(true);
+  });
+
+  it('a delivery-app channel without its commission is not done; none at all is not needed', async () => {
+    expect((await byStep()).commissions).toEqual([true, 0, 0]);
+    await admin(
+      `insert into public.channels (org_id, name, kind, is_active) values ($1, 'foodpanda', 'foodpanda', true)`,
+      [org.id],
+    );
+    expect((await byStep()).commissions).toEqual([false, 0, 1]);
+  });
+
+  it('only the owner may read it', async () => {
+    const res = await asUser(manager, (s) =>
+      s.attempt('select * from public.metric_setup_health($1, $2)', [org.id, NOW]),
+    );
+    expect(res.ok ? 'ok' : res.code).toBe('42501');
+  });
+});

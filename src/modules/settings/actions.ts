@@ -9,6 +9,7 @@ import { orgToday } from '@/modules/tenancy/context';
 import { normalizeBdPhone } from '@/lib/messaging/phone';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 import { FEATURE_KEYS, parseFeatures } from '@/modules/tenancy/navigation';
+import { CUISINES } from './cuisines';
 
 /** Owner-only restaurant setup: receipt header, channels + commissions (money-gated), reason codes. */
 
@@ -263,6 +264,55 @@ export async function setOwnerWhatsappAction(
   });
   if (error) return { error: mapDbError(error) };
   refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
+/**
+ * About the restaurant (Settings → General): cuisine, city and area. Setup's first step and the benchmark
+ * group read these. Only these three change; the brief language and WhatsApp fields on the row stay.
+ */
+export async function updateProfileAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      cuisine: z.enum(CUISINES),
+      city: z.string().trim().min(1).max(80),
+      area: text(80),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { orgId, orgSlug, cuisine, city, area } = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('org_profile')
+    .upsert({ org_id: orgId, cuisine, city, area, updated_at: now().toISOString() });
+  if (error) return { error: mapDbError(error) };
+  refresh(orgSlug);
+  revalidatePath(`/${orgSlug}/setup`);
+  return { ok: true };
+}
+
+/**
+ * The language of the owner's briefs (Settings → Telegram). Only the language changes: the WhatsApp number
+ * and its opt-in on the same row are left exactly as they are.
+ */
+export async function setBriefLanguageAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ language: z.enum(['bn', 'en']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('org_profile')
+    .upsert({ org_id: parsed.data.orgId, brief_language: parsed.data.language });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  revalidatePath(`/${parsed.data.orgSlug}/settings/telegram`);
   return { ok: true };
 }
 

@@ -13,7 +13,9 @@ import {
   ensureDefaultsAction,
   setOwnerWhatsappAction,
   toggleChannelActiveAction,
+  updateProfileAction,
 } from '@/modules/settings/actions';
+import { CUISINES } from '@/modules/settings/cuisines';
 import { getOrgContext } from '@/modules/tenancy/context';
 import { SettingsNav } from '@/components/settings-nav';
 import { PlaceFields } from '@/components/place-fields';
@@ -65,7 +67,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
       .order('effective_from', { ascending: false }),
     supabase
       .from('org_profile')
-      .select('owner_whatsapp, brief_language, owner_whatsapp_opt_in_at')
+      .select('owner_whatsapp, brief_language, owner_whatsapp_opt_in_at, cuisine, city, area')
       .eq('org_id', ctx.org.id)
       .maybeSingle(),
     // One order is enough to lock the price basis (the database enforces it; this only shows it).
@@ -92,6 +94,64 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
       <SettingsNav ctx={ctx} current="general" />
       <PageTitle title={t('title')} subtitle={t('subtitle')} />
 
+      <Card id="profile" className="mb-6 scroll-mt-24">
+        <CardTitle>{t('profileTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('profileBody')}</p>
+        <ActionForm
+          action={updateProfileAction}
+          successKey="common.saved"
+          className="grid gap-3 sm:grid-cols-3"
+        >
+          <input type="hidden" name="orgId" value={ctx.org.id} />
+          <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+          <div>
+            <Label htmlFor="profile-cuisine">{t('cuisine')}</Label>
+            <Select
+              id="profile-cuisine"
+              name="cuisine"
+              required
+              defaultValue={
+                CUISINES.includes(profile?.cuisine as (typeof CUISINES)[number])
+                  ? (profile?.cuisine as string)
+                  : ''
+              }
+            >
+              <option value="" disabled>
+                {t('cuisinePick')}
+              </option>
+              {CUISINES.map((c) => (
+                <option key={c} value={c}>
+                  {t(`cuisines.${c}`)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="profile-city">{t('city')}</Label>
+            <Input
+              id="profile-city"
+              name="city"
+              required
+              maxLength={80}
+              autoComplete="address-level2"
+              defaultValue={profile?.city ?? ''}
+            />
+          </div>
+          <div>
+            <Label htmlFor="profile-area">{t('area')}</Label>
+            <Input
+              id="profile-area"
+              name="area"
+              maxLength={80}
+              defaultValue={profile?.area ?? ''}
+            />
+          </div>
+          <div className="sm:col-span-3">
+            <Button type="submit">{t('save')}</Button>
+          </div>
+        </ActionForm>
+      </Card>
+
       <Card className="mb-6">
         <CardTitle>{tp('title')}</CardTitle>
         <ActionForm action={updatePlaceAction} successKey="common.saved" className="space-y-4">
@@ -108,7 +168,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
         </ActionForm>
       </Card>
 
-      <Card>
+      <Card id="tax" className="scroll-mt-24">
         <SettingsForm
           orgId={ctx.org.id}
           orgSlug={ctx.org.slug}
@@ -124,7 +184,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
         />
       </Card>
 
-      <Card className="mt-6">
+      <Card id="receipt" className="mt-6 scroll-mt-24">
         <CardTitle>{t('receiptTitle')}</CardTitle>
         <p className="-mt-2 mb-4 text-sm text-secondary">
           {ctx.place.country === 'BD' ? t('receiptSubtitle') : t('receiptSubtitleOther')}
@@ -142,7 +202,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
         />
       </Card>
 
-      <Card className="mt-6">
+      <Card id="channels" className="mt-6 scroll-mt-24">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="mb-0">{t('channelsTitle')}</CardTitle>
           <form action={ensureDefaultsAction}>
@@ -209,48 +269,52 @@ export default async function SettingsPage({ params }: { params: Promise<{ org: 
         )}
       </Card>
 
-      <Card className="mt-6">
-        <CardTitle>{t('whatsappTitle')}</CardTitle>
-        <p className="-mt-2 mb-2 max-w-2xl text-sm text-secondary">{t('whatsappBody')}</p>
-        <p className="mb-4 max-w-2xl text-sm text-secondary">{t('whatsappHint')}</p>
-        <ActionForm
-          action={setOwnerWhatsappAction}
-          successKey="common.saved"
-          className="grid gap-3 sm:grid-cols-2"
-        >
-          <input type="hidden" name="orgId" value={ctx.org.id} />
-          <input type="hidden" name="orgSlug" value={ctx.org.slug} />
-          <div>
-            <Label htmlFor="wa-phone">{t('whatsappNumber')}</Label>
-            <Input
-              id="wa-phone"
-              name="phone"
-              inputMode="tel"
-              autoComplete="tel"
-              defaultValue={profile?.owner_whatsapp ?? ''}
-            />
-          </div>
-          <div>
-            <Label htmlFor="wa-lang">{t('briefLanguage')}</Label>
-            <Select id="wa-lang" name="language" defaultValue={profile?.brief_language ?? 'bn'}>
-              <option value="bn">{tc('bangla')}</option>
-              <option value="en">{tc('english')}</option>
-            </Select>
-          </div>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              name="consent"
-              defaultChecked={Boolean(profile?.owner_whatsapp_opt_in_at)}
-              className="size-4 accent-purple"
-            />
-            {t('whatsappConsent')}
-          </label>
-          <div className="sm:col-span-2">
-            <Button type="submit">{t('save')}</Button>
-          </div>
-        </ActionForm>
-      </Card>
+      {/* WhatsApp runs on Meta's free test number, so it is not offered any more: the card shows only for an
+          owner who already opted in, so they can still change or stop it. Briefs come by Telegram. */}
+      {profile?.owner_whatsapp_opt_in_at ? (
+        <Card className="mt-6">
+          <CardTitle>{t('whatsappTitle')}</CardTitle>
+          <p className="-mt-2 mb-2 max-w-2xl text-sm text-secondary">{t('whatsappBody')}</p>
+          <p className="mb-4 max-w-2xl text-sm text-secondary">{t('whatsappHint')}</p>
+          <ActionForm
+            action={setOwnerWhatsappAction}
+            successKey="common.saved"
+            className="grid gap-3 sm:grid-cols-2"
+          >
+            <input type="hidden" name="orgId" value={ctx.org.id} />
+            <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+            <div>
+              <Label htmlFor="wa-phone">{t('whatsappNumber')}</Label>
+              <Input
+                id="wa-phone"
+                name="phone"
+                inputMode="tel"
+                autoComplete="tel"
+                defaultValue={profile?.owner_whatsapp ?? ''}
+              />
+            </div>
+            <div>
+              <Label htmlFor="wa-lang">{t('briefLanguage')}</Label>
+              <Select id="wa-lang" name="language" defaultValue={profile?.brief_language ?? 'bn'}>
+                <option value="bn">{tc('bangla')}</option>
+                <option value="en">{tc('english')}</option>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                name="consent"
+                defaultChecked={Boolean(profile?.owner_whatsapp_opt_in_at)}
+                className="size-4 accent-purple"
+              />
+              {t('whatsappConsent')}
+            </label>
+            <div className="sm:col-span-2">
+              <Button type="submit">{t('save')}</Button>
+            </div>
+          </ActionForm>
+        </Card>
+      ) : null}
 
       <Card className="mt-6">
         <CardTitle>{t('branchesTitle')}</CardTitle>

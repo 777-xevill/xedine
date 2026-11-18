@@ -621,11 +621,30 @@
     "deleteReasonConfirm": "Delete this reason for good? Old records stay, but they will no longer show this reason. To just stop using it, press Deactivate instead.",
     "whatsappTitle": "WhatsApp briefs",
     "whatsappBody": "A morning brief at 9:00, an evening close at 23:00 and a weekly review, and you can ask questions by message. Nothing is sent until you tick the box.",
-    "whatsappHint": "To receive on WhatsApp, first send \"hi\" to the Xedine WhatsApp number from this phone. The brief arrives after that. Prefer not to? Connect Telegram in Settings: it needs no setup and costs nothing.",
+    "whatsappHint": "WhatsApp briefs are being phased out. Connect Telegram in Settings → Telegram: it needs no setup, costs nothing and works for everyone. Untick the box below to stop WhatsApp briefs.",
     "whatsappNumber": "Your WhatsApp number",
     "briefLanguage": "Language",
     "whatsappConsent": "Yes, send my briefs and answers to this number on WhatsApp.",
-    "receiptSubtitleOther": "Printed on receipts and kitchen tickets. Check the details your country asks for with your accountant."
+    "receiptSubtitleOther": "Printed on receipts and kitchen tickets. Check the details your country asks for with your accountant.",
+    "profileTitle": "About your restaurant",
+    "profileBody": "Your cuisine and city. Xedine compares you only with restaurants like yours.",
+    "cuisine": "Cuisine",
+    "cuisinePick": "Pick one",
+    "city": "City",
+    "area": "Area (optional)",
+    "cuisines": {
+      "bangladeshi": "Bangladeshi",
+      "kacchi_biryani": "Kacchi and biryani",
+      "kabab_grill": "Kabab and grill",
+      "chinese_thai": "Chinese and Thai",
+      "indian": "Indian",
+      "fast_food": "Fast food",
+      "cafe": "Café",
+      "bakery_sweets": "Bakery and sweets",
+      "continental": "Continental",
+      "mixed": "Mixed",
+      "other": "Other"
+    }
   },
   "weekdays": {
     "0": "Sunday",
@@ -2531,62 +2550,7 @@
   },
   "setup": {
     "title": "Setup",
-    "subtitle": "{done} of {total} steps done. Each step ticks itself when the data is in.",
-    "checklist": "Checklist",
-    "doneLabel": "Done:",
-    "todoLabel": "To do:",
     "progress": "({have} of {need})",
-    "go": "Open",
-    "steps": {
-      "profile": {
-        "title": "Restaurant profile",
-        "body": "Cuisine and city, for reports and benchmarks."
-      },
-      "menu": {
-        "title": "Menu",
-        "body": "At least five items with prices — import them on the right."
-      },
-      "channels": {
-        "title": "Sales channels",
-        "body": "Dine-in, takeaway, foodpanda… with their commission."
-      },
-      "staff_pins": {
-        "title": "Staff PINs",
-        "body": "Cashiers sign in to the till with a PIN."
-      },
-      "pos_device": {
-        "title": "Pair the till",
-        "body": "Approve the tablet or phone that runs the POS."
-      },
-      "recipes": {
-        "title": "Recipes",
-        "body": "Recipes for 90% of the menu, so food cost is real."
-      },
-      "ingredient_prices": {
-        "title": "Ingredient prices",
-        "body": "Record your bazar: each ingredient takes the price you last paid."
-      },
-      "fixed_costs": {
-        "title": "Fixed costs",
-        "body": "Rent, utilities and other monthly costs."
-      },
-      "salaries": {
-        "title": "This month’s salaries",
-        "body": "For labour cost and break-even."
-      },
-      "opening_count": {
-        "title": "Opening stock count",
-        "body": "The starting point for stock and variance."
-      },
-      "owner_whatsapp": {
-        "title": "Owner WhatsApp",
-        "body": "For the morning brief and reminders."
-      },
-      "first_order": {
-        "title": "First order",
-        "body": "Ring up a real order on the POS."
-      }
-    },
     "importTitle": "Import the menu",
     "csvLabel": "One item per line",
     "csvPlaceholder": "category,name,name_bn,price\nBiryani,Kacchi (full),কাচ্চি,450",
@@ -2659,7 +2623,342 @@
       "openMenu": "Open the menu",
       "backToSetup": "Back to Setup"
     },
-    "stepTitle": "{n}. {title}"
+    "centreSubtitle": "Everything your restaurant needs, A to Z. Open a group to see each setting.",
+    "showHow": "How to set it up",
+    "setUp": "Set up",
+    "change": "Change",
+    "groupDone": "{done} of {total} done",
+    "groupComplete": "All done",
+    "groupExtras": "{done} of {total} extras",
+    "status": {
+      "done": "Done",
+      "todo": "To do",
+      "optional": "Optional",
+      "on": "Switched on"
+    },
+    "health": {
+      "title": "Setup health",
+      "ringLabel": "Setup health {n} percent",
+      "mustDo": "{done} of {total} must-do steps done",
+      "extras": "{done} of {total} extras switched on",
+      "missing": "{n} must-do step(s) left. Start with the one below.",
+      "allDone": "Every must-do step is done. Your numbers are complete.",
+      "byGroup": "By group"
+    },
+    "next": {
+      "label": "Your next step · {n} of {total}",
+      "go": "Do it now",
+      "doneTitle": "You are all set up",
+      "doneBody": "Everything your numbers need is in. Open the groups below to switch on extras when you want them."
+    },
+    "guide": {
+      "title": "How Setup works",
+      "s1": "Work down from the top. The yellow card always shows the next thing to do.",
+      "s2": "Each step ticks itself when the data is in. You never tick anything by hand.",
+      "s3": "Must-do steps make your numbers right. Optional steps switch on extra features.",
+      "s4": "Come back any time. This page updates as soon as you change a setting."
+    },
+    "categories": {
+      "basics": {
+        "title": "Your restaurant",
+        "body": "Who you are, where you are, tax and what prints on the bill."
+      },
+      "menu": {
+        "title": "Menu",
+        "body": "What you sell, with prices, photos and food facts."
+      },
+      "selling": {
+        "title": "Selling at the till",
+        "body": "How orders come in and who rings them up."
+      },
+      "costs": {
+        "title": "Costs and profit",
+        "body": "What each dish and each month costs, so profit is real."
+      },
+      "stock": {
+        "title": "Stock and food safety",
+        "body": "What you have, who you buy from, and when food goes off."
+      },
+      "team": {
+        "title": "Your team",
+        "body": "Managers, and the person who does the bazar."
+      },
+      "alerts": {
+        "title": "Your daily brief",
+        "body": "The morning and night summary on your own phone."
+      },
+      "customers": {
+        "title": "Customers and growth",
+        "body": "Bring customers back and get found online."
+      },
+      "golive": {
+        "title": "Go live",
+        "body": "Your first real order."
+      }
+    },
+    "items": {
+      "profile": {
+        "title": "About your restaurant",
+        "what": "Your cuisine and city. Xedine uses them to compare you with restaurants like yours.",
+        "how": {
+          "s1": "Open Settings → General.",
+          "s2": "Under “About your restaurant”, pick your cuisine and type your city.",
+          "s3": "Press Save."
+        }
+      },
+      "place": {
+        "title": "Country, time zone and money",
+        "what": "Set when you signed up. Every time and amount in Xedine follows it.",
+        "how": {
+          "s1": "Open Settings → General.",
+          "s2": "Check “Where your restaurant is”.",
+          "s3": "The currency cannot change after the first order, so check it now."
+        }
+      },
+      "tax": {
+        "title": "VAT, service charge and closing time",
+        "what": "Already filled with the usual numbers. Check they match what you charge.",
+        "how": {
+          "s1": "Open Settings → General.",
+          "s2": "Check the VAT rate, the service charge and whether menu prices include VAT.",
+          "s3": "Set when your business day ends (for example 4:00 at night) and press Save."
+        }
+      },
+      "receipt": {
+        "title": "What prints on the bill",
+        "what": "Your legal name and phone number at the top of every bill.",
+        "how": {
+          "s1": "Open Settings → General and find the receipt card.",
+          "s2": "Type the legal name and phone. Add the BIN and address if you have them.",
+          "s3": "Press Save."
+        }
+      },
+      "branch_location": {
+        "title": "Branch location",
+        "what": "Pin each branch so Xedine knows its weather and warns you before heavy rain.",
+        "how": {
+          "s1": "Open Settings → Branch setup.",
+          "s2": "Press “Use this device’s location” while you are at the branch, or type the place.",
+          "s3": "Press Save location. Do it for each branch."
+        }
+      },
+      "menu": {
+        "title": "Menu items",
+        "what": "At least five dishes with prices, so the till can sell them.",
+        "how": {
+          "s1": "Take a photo of each menu page and add it below, or paste the menu as text.",
+          "s2": "Check what the AI read and fix any wrong name or price.",
+          "s3": "Press Confirm. You can change dishes later on the Menu page."
+        }
+      },
+      "dish_photos": {
+        "title": "Dish photos",
+        "what": "A photo of every dish. They show on the table menu and in your Facebook posts.",
+        "how": {
+          "s1": "Open Menu.",
+          "s2": "Open a dish and add a clear, bright photo.",
+          "s3": "Do the same for each dish."
+        }
+      },
+      "food_facts": {
+        "title": "Food facts",
+        "what": "Calories and allergens for each dish. The AI guesses, you check and approve.",
+        "how": {
+          "s1": "Open Food facts.",
+          "s2": "Let the AI make its guesses, then read each dish.",
+          "s3": "Approve the ones that look right."
+        }
+      },
+      "discount_codes": {
+        "title": "Discount codes",
+        "what": "Secret codes you give customers, like 10% off. The cashier types the code at the till.",
+        "how": {
+          "s1": "Open Settings → Discount codes.",
+          "s2": "Make a code and set the percent, and an end date if you want one.",
+          "s3": "Give the code to your customers."
+        }
+      },
+      "channels": {
+        "title": "Ways you sell",
+        "what": "Dine-in, takeaway, foodpanda… The till asks which one for each order.",
+        "how": {
+          "s1": "Open Settings → General and find Sales channels.",
+          "s2": "Press the button to add the usual ones, or add your own.",
+          "s3": "Switch off any you do not use."
+        }
+      },
+      "commissions": {
+        "title": "Delivery app commission",
+        "what": "The cut foodpanda or Pathao Food takes, so profit from app orders is true. Done by itself if you use no delivery app.",
+        "how": {
+          "s1": "Open Settings → General and find Sales channels.",
+          "s2": "Next to each delivery app, set its commission.",
+          "s3": "Type the percent and any fixed fee, then Save."
+        }
+      },
+      "staff_pins": {
+        "title": "Staff PINs",
+        "what": "Each cashier gets a short PIN to open the till, so you see who did what.",
+        "how": {
+          "s1": "Open Settings → Staff.",
+          "s2": "Add each cashier by name.",
+          "s3": "Give each one a PIN."
+        }
+      },
+      "pos_device": {
+        "title": "Connect the till",
+        "what": "Set up the phone or tablet the till runs on.",
+        "how": {
+          "s1": "On the till phone or tablet, sign in and open the POS till.",
+          "s2": "Give the device a name and press Pair device.",
+          "s3": "After that, cashiers open it with their PIN."
+        }
+      },
+      "tables": {
+        "title": "Tables",
+        "what": "Your tables, so orders and table QR codes know which table is which.",
+        "how": {
+          "s1": "Open Settings → Branch setup.",
+          "s2": "Add each table with a name or number.",
+          "s3": "Print each table’s QR code from Table QR."
+        }
+      },
+      "recipes": {
+        "title": "Dish ingredients",
+        "what": "What goes into one plate of each dish. Then Xedine knows what each dish costs and takes stock down as you sell.",
+        "how": {
+          "s1": "Open Dish ingredients.",
+          "s2": "Pick a dish and add what goes into one plate, with amounts.",
+          "s3": "Do it for most of your menu (9 dishes in 10)."
+        }
+      },
+      "ingredient_prices": {
+        "title": "Ingredient prices",
+        "what": "Write down what you buy. Each ingredient takes the last price you paid.",
+        "how": {
+          "s1": "Open Purchases, or send it to the Telegram bot.",
+          "s2": "Type what you bought, how much and the price.",
+          "s3": "Save. Prices update by themselves after that."
+        }
+      },
+      "fixed_costs": {
+        "title": "Monthly costs",
+        "what": "Rent, electricity, gas and other bills that come every month.",
+        "how": {
+          "s1": "Open Settings → Costs.",
+          "s2": "Add each monthly cost with its amount.",
+          "s3": "Press Save."
+        }
+      },
+      "salaries": {
+        "title": "This month’s salaries",
+        "what": "What you pay your staff this month, so profit counts wages.",
+        "how": {
+          "s1": "Open Settings → Costs.",
+          "s2": "Add this month’s salaries.",
+          "s3": "Do it again at the start of each month."
+        }
+      },
+      "opening_count": {
+        "title": "First stock count",
+        "what": "Count what you have once, so Xedine starts from the real amount.",
+        "how": {
+          "s1": "Open Stock.",
+          "s2": "Start a count and type what is on the shelf.",
+          "s3": "Submit it. After this, stock follows by itself."
+        }
+      },
+      "suppliers": {
+        "title": "Suppliers",
+        "what": "The shops and people you buy from, so you can compare their prices.",
+        "how": {
+          "s1": "Open Purchases.",
+          "s2": "Add the supplier when you record a purchase.",
+          "s3": "Xedine remembers them next time."
+        }
+      },
+      "shelf_life": {
+        "title": "How long food keeps",
+        "what": "How many days each ingredient stays good. Xedine warns you before something goes off.",
+        "how": {
+          "s1": "Open Food safety.",
+          "s2": "For each ingredient, type how many days it keeps.",
+          "s3": "Press Save."
+        }
+      },
+      "daily_checks": {
+        "title": "Daily checks",
+        "what": "Your own cleaning and safety list, like the fridge temperature.",
+        "how": {
+          "s1": "Open Daily checks.",
+          "s2": "Add the checks your kitchen does.",
+          "s3": "Staff tick them off each day."
+        }
+      },
+      "managers": {
+        "title": "Managers",
+        "what": "Invite a manager or accountant to help. Each sees only what their role allows.",
+        "how": {
+          "s1": "Open Settings → Team.",
+          "s2": "Invite a person and choose their role.",
+          "s3": "They join with the link you send them."
+        }
+      },
+      "purchaser_telegram": {
+        "title": "Bazar by Telegram",
+        "what": "The person who does the bazar sends what they bought to the Telegram bot, by text or voice.",
+        "how": {
+          "s1": "Open Settings → Telegram.",
+          "s2": "Pick the person and make a connect link.",
+          "s3": "They open the link in Telegram on their phone."
+        }
+      },
+      "owner_whatsapp": {
+        "title": "Your Telegram brief",
+        "what": "The morning brief, the night close and alerts on your own Telegram.",
+        "how": {
+          "s1": "Open Settings → Telegram.",
+          "s2": "Pick yourself and make a connect link.",
+          "s3": "Open the link in Telegram, then choose the brief language."
+        }
+      },
+      "google_review": {
+        "title": "Google review link",
+        "what": "Happy customers can review you on Google straight from the table QR.",
+        "how": {
+          "s1": "Open Table QR.",
+          "s2": "Paste your Google review link for each branch.",
+          "s3": "Press Save."
+        }
+      },
+      "member_card": {
+        "title": "Member card",
+        "what": "Customers earn points and get a member discount, so they come back.",
+        "how": {
+          "s1": "Open Settings → Member card.",
+          "s2": "Set the points and the discount.",
+          "s3": "Switch it on."
+        }
+      },
+      "social": {
+        "title": "Facebook posting",
+        "what": "Connect your Facebook Page so Xedine can post your dishes for you.",
+        "how": {
+          "s1": "Open Settings → Social.",
+          "s2": "Connect Facebook and pick your Page.",
+          "s3": "Switch on autopilot when you are ready."
+        }
+      },
+      "first_order": {
+        "title": "First real order",
+        "what": "Ring up a real order at the till. From then on, Xedine shows your real numbers.",
+        "how": {
+          "s1": "Open the POS till.",
+          "s2": "Add the dishes and take payment.",
+          "s3": "That is it. Your Home page starts filling."
+        }
+      }
+    }
   },
   "billing": {
     "title": "Billing",
@@ -2828,7 +3127,12 @@
     "noAccess": "{name} (no access yet)",
     "moreBranches": "To buy for another branch, give them that branch first on the Team page.",
     "openTeam": "Open Team",
-    "ownerNote": "This connects you for the whole restaurant: your morning and evening brief, alerts, and questions to Xedine."
+    "ownerNote": "This connects you for the whole restaurant: your morning and evening brief, alerts, and questions to Xedine.",
+    "briefsTitle": "Your briefs",
+    "briefsBody": "Xedine sends a morning brief at 9:00, an evening close at 23:00 and a weekly review to the owner's connected Telegram, plus alerts like rain soon. Nothing is sent until you connect.",
+    "briefLanguage": "Language of the briefs",
+    "saveLanguage": "Save",
+    "briefsNeedConnect": "No briefs will arrive until you connect your own Telegram above (pick yourself in the list)."
   },
   "chatBot": {
     "ownerHelp": "Ask me about your restaurant. Tap a topic below or just type your question, in Bangla or English. For example: \"How were sales today?\"\n\nTo record the bazar, send a list like:\nmurgi 10 kg 1800\npiyaj 5 kg 300\n\n/stop disconnects this chat.",

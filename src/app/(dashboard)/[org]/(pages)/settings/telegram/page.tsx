@@ -1,11 +1,13 @@
 import { Send } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { ActionForm } from '@/components/action-form';
 import { SettingsNav } from '@/components/settings-nav';
 import { TelegramLinkForm } from '@/components/telegram-link-form';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, Card, CardTitle, EmptyState, PageTitle } from '@/components/ui/form';
+import { Alert, Card, CardTitle, EmptyState, Label, PageTitle, Select } from '@/components/ui/form';
+import { setBriefLanguageAction } from '@/modules/settings/actions';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatDate, type Locale } from '@/lib/i18n/format';
 import { speechConfigured } from '@/lib/llm-gateway';
@@ -25,35 +27,42 @@ export default async function TelegramSettingsPage({
   const { org } = await params;
   const ctx = await getOrgContext(org);
   if (!ctx.isOwner) notFound();
-  const [t, roles, locale] = await Promise.all([
+  const [t, tc, roles, locale] = await Promise.all([
     getTranslations('telegramPage'),
+    getTranslations('common'),
     getTranslations('roles'),
     getLocale(),
   ]);
   const loc = locale as Locale;
   const supabase = await createClient();
-  const [{ data: memberships }, { data: scoped }, { data: branches }, { data: links }] =
-    await Promise.all([
-      supabase
-        .from('memberships')
-        .select('id, user_id, role, branch_scope')
-        .eq('org_id', ctx.org.id)
-        .eq('status', 'active')
-        .in('role', ['owner', 'purchaser'])
-        .order('created_at'),
-      supabase
-        .from('membership_branches')
-        .select('membership_id, branch_id')
-        .eq('org_id', ctx.org.id),
-      supabase.from('branches').select('id, name').eq('org_id', ctx.org.id).order('name'),
-      supabase
-        .from('chat_links')
-        .select('id, user_id, branch_id, external_id, linked_at, code_expires_at, created_at')
-        .eq('org_id', ctx.org.id)
-        .eq('channel', 'telegram')
-        .is('revoked_at', null)
-        .order('created_at', { ascending: false }),
-    ]);
+  const [
+    { data: memberships },
+    { data: scoped },
+    { data: branches },
+    { data: links },
+    { data: profile },
+  ] = await Promise.all([
+    supabase
+      .from('memberships')
+      .select('id, user_id, role, branch_scope')
+      .eq('org_id', ctx.org.id)
+      .eq('status', 'active')
+      .in('role', ['owner', 'purchaser'])
+      .order('created_at'),
+    supabase
+      .from('membership_branches')
+      .select('membership_id, branch_id')
+      .eq('org_id', ctx.org.id),
+    supabase.from('branches').select('id, name').eq('org_id', ctx.org.id).order('name'),
+    supabase
+      .from('chat_links')
+      .select('id, user_id, branch_id, external_id, linked_at, code_expires_at, created_at')
+      .eq('org_id', ctx.org.id)
+      .eq('channel', 'telegram')
+      .is('revoked_at', null)
+      .order('created_at', { ascending: false }),
+    supabase.from('org_profile').select('brief_language').eq('org_id', ctx.org.id).maybeSingle(),
+  ]);
   const userIds = [
     ...new Set([
       ...(memberships ?? []).map((m) => m.user_id as string),
@@ -96,6 +105,10 @@ export default async function TelegramSettingsPage({
   const pending = (links ?? []).filter(
     (l) => l.external_id === null && new Date(l.code_expires_at as string) > at,
   );
+  const ownerIds = new Set(
+    (memberships ?? []).filter((m) => m.role === 'owner').map((m) => m.user_id as string),
+  );
+  const ownerConnected = connected.some((l) => ownerIds.has(l.user_id as string));
   const ready = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME);
 
   const row = (l: NonNullable<typeof links>[number], status: React.ReactNode) => (
@@ -142,6 +155,34 @@ export default async function TelegramSettingsPage({
             people={people}
             ready={ready}
           />
+        )}
+      </Card>
+
+      <Card className="mb-6 max-w-3xl">
+        <CardTitle>{t('briefsTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 text-sm text-secondary">{t('briefsBody')}</p>
+        <ActionForm
+          action={setBriefLanguageAction}
+          successKey="common.saved"
+          className="flex flex-wrap items-end gap-3"
+        >
+          <input type="hidden" name="orgId" value={ctx.org.id} />
+          <input type="hidden" name="orgSlug" value={ctx.org.slug} />
+          <div className="min-w-48">
+            <Label htmlFor="brief-lang">{t('briefLanguage')}</Label>
+            <Select
+              id="brief-lang"
+              name="language"
+              defaultValue={(profile?.brief_language as string | null) ?? 'bn'}
+            >
+              <option value="bn">{tc('bangla')}</option>
+              <option value="en">{tc('english')}</option>
+            </Select>
+          </div>
+          <Button type="submit">{t('saveLanguage')}</Button>
+        </ActionForm>
+        {ownerConnected ? null : (
+          <p className="mt-3 text-sm text-secondary">{t('briefsNeedConnect')}</p>
         )}
       </Card>
 

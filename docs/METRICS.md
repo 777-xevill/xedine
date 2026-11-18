@@ -140,6 +140,9 @@ A lot is one arrival at a branch: a confirmed purchase line, or a received trans
 ## Discipline score (per branch per day, 0–100)
 Bazar entries recorded (25) · waste log touched (15) · cash close done (20) · scheduled count done (25) · recipe coverage ≥ 90% (15).
 
+## Setup health (owner only)
+`metric_setup_health(org, now)` lists every configuration step in nine groups (basics, menu, selling, costs, stock, team, alerts, customers, go live), each `required` or optional, ticked from the data (`have ≥ need`; the twelve onboarding steps keep their `metric_setup_progress` rules). An optional step with nothing to do counts as done: delivery-app commission is done when there is no active foodpanda / Pathao Food channel. **`setup.health`** = required steps done ÷ required steps × 100, rounded down, so 100 means every required step is done; optional steps are shown apart (`setup.extras` = optional done of optional total) and never lower it. **Next step** = the first required step not done, in the function's order. Summed in `src/modules/tenancy/setup-health.ts`.
+
 ## Branches (ADR 0022)
 - `branch.gap_to_best` (per component) = amount − best branch's rate × this branch's base, floored at 0. Components (lower is better): unexplained usage (÷ variance-bridge sales), logged waste value (÷ sales.net), labour (÷ sales.net), discounts (÷ gross), voids after KOT (÷ gross). Needs ≥ 2 branches with the figure. Food cost % is excluded (menu mix); compare items like-for-like instead.
 - `branch.like_for_like` = for items sold in ≥ 2 branches: units ÷ trading days, and net ÷ units.

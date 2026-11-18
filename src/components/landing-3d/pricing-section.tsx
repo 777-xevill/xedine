@@ -4,7 +4,13 @@ import { Check } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { memo } from 'react';
-import { DEFAULT_LOCALE, formatMoney, isLocale, type Locale } from '@/lib/i18n/format';
+import {
+  DEFAULT_LOCALE,
+  formatMoney,
+  formatNumber,
+  isLocale,
+  type Locale,
+} from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import { PRICE_CURRENCY, PRICING_PLANS, TRIAL_DAYS } from './pricing';
 
@@ -17,6 +23,8 @@ export const PricingSection = memo(function PricingSection() {
   const t = useTranslations('landing3d.day.pricing');
   const raw = useLocale();
   const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
+  // Bangla digits in Bangla (৩০), like every other number.
+  const days = formatNumber(TRIAL_DAYS, locale);
   return (
     <section
       id="pricing"
@@ -82,14 +90,14 @@ export const PricingSection = memo(function PricingSection() {
                       : 'border border-[color-mix(in_srgb,var(--brand-silver)_16%,transparent)] bg-[var(--brand-grey)] hover:border-[var(--brand-yellow)]',
                   )}
                 >
-                  {t('cta', { days: TRIAL_DAYS })}
+                  {t('cta', { days })}
                 </Link>
               </div>
             </article>
           ))}
         </div>
         <p className="mt-8 text-center text-sm text-[color:var(--text-muted)]">
-          {t('body', { days: TRIAL_DAYS })}
+          {t('body', { days })}
         </p>
         <p className="mt-1 text-center text-xs text-[color:var(--text-muted)]">{t('note')}</p>
       </div>

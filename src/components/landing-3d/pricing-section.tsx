@@ -1,6 +1,21 @@
 'use client';
 
-import { Check, ChevronDown, Sparkles, X } from 'lucide-react';
+import {
+  BrainCircuit,
+  Check,
+  ChevronDown,
+  Clapperboard,
+  Crown,
+  Globe,
+  Megaphone,
+  Palette,
+  Sparkles,
+  Store,
+  TrendingUp,
+  Wrench,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { memo, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
@@ -12,13 +27,16 @@ import {
   type Locale,
 } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
+import { LEGAL_CONTACT } from '@/lib/contact';
 import {
   DAYS_PER_MONTH,
   limitOf,
+  PARTNER,
   PLAN_ROWS,
   PLANS,
   TRIAL_DAYS,
   type Limit,
+  type PartnerServiceId,
   type Plan,
 } from './pricing';
 
@@ -31,7 +49,8 @@ const LATE_FROM = 6;
  * The home page's pricing, between the 3D day and the A–Z list (the founder, 2026-11-18): two plans on glass
  * over a huge word, Starter ($19) and Pro ($27, the one Xedine sells: first on a phone, the yellow button and a
  * light running round its edge). Each shows its limits as four tiles, then Xedine's big features with a tick or
- * a cross, folded under "See more" (both plans open together, so their rows line up).
+ * a cross, folded under "See more" (both plans open together, so their rows line up). Below them, the whole
+ * width, Partner ($250): the most powerful plan, the founder's team working with the restaurant every month.
  */
 export const PricingSection = memo(function PricingSection() {
   const t = useTranslations('landing3d.day.pricing');
@@ -58,6 +77,7 @@ export const PricingSection = memo(function PricingSection() {
             <PlanCard key={plan.code} plan={plan} open={open} onToggle={() => setOpen((o) => !o)} />
           ))}
         </div>
+        <PartnerCard />
         <p className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-[color:var(--text-muted)]">
           <span className="flex items-center gap-1">
             <Mark yes /> {t('legendYes')}
@@ -254,6 +274,104 @@ function PlanCard({ plan, open, onToggle }: { plan: Plan; open: boolean; onToggl
               className={cn('size-4 transition-transform duration-500', open && 'rotate-180')}
             />
           </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+const SERVICE_ICON: Record<PartnerServiceId, LucideIcon> = {
+  films: Clapperboard,
+  ads: Megaphone,
+  visit: Store,
+  website: Globe,
+  brand: Palette,
+  build: Wrench,
+  review: TrendingUp,
+  deepAi: BrainCircuit,
+};
+
+/** The most powerful plan, the whole width under the other two: everything in Pro plus the team's work. */
+function PartnerCard() {
+  const t = useTranslations('landing3d.day.pricing');
+  const raw = useLocale();
+  const locale: Locale = isLocale(raw) ? raw : DEFAULT_LOCALE;
+  const n = (v: number) => formatNumber(v, locale);
+  const mail = `mailto:${LEGAL_CONTACT}?subject=${encodeURIComponent(t('partner.mailSubject'))}`;
+  return (
+    <article className="plan-gold relative mt-5 rounded-[1.75rem] shadow-[0_0_80px_-30px_color-mix(in_srgb,var(--brand-yellow)_55%,transparent)]">
+      <div className="grid gap-6 rounded-[inherit] bg-[color-mix(in_srgb,var(--brand-grey)_72%,transparent)] p-6 backdrop-blur-2xl sm:p-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] lg:gap-10">
+        {/* Name, price and the button */}
+        <div data-reveal className="flex flex-col">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-yellow)_10%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--brand-yellow)]">
+              <Crown aria-hidden className="size-3.5" />
+              {t('plans.partner.name')}
+            </p>
+            <p className="rounded-full border border-[color-mix(in_srgb,var(--brand-yellow)_60%,transparent)] px-2.5 py-1 text-[11px] font-bold text-[var(--brand-yellow)]">
+              {t('partner.badge')}
+            </p>
+          </div>
+          <p className="mt-4 flex items-baseline gap-1">
+            <span className="text-5xl font-bold tracking-[-0.04em]">
+              {formatMoney(PARTNER.minor, locale, PARTNER.currency)}
+            </span>
+            <span className="text-xl font-semibold text-[color:var(--text-muted)]">
+              {t('perMonth')}
+            </span>
+          </p>
+          <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
+            {t('plans.partner.body')}
+          </p>
+          <a
+            href={mail}
+            className="btn-shine relative mt-5 block overflow-hidden rounded-full border border-[var(--brand-yellow)] py-3.5 text-center text-sm font-semibold text-[var(--brand-yellow)] transition-[transform,background-color] hover:bg-[color-mix(in_srgb,var(--brand-yellow)_12%,transparent)] active:scale-[0.98]"
+          >
+            {t('partner.cta')}
+          </a>
+          <p className="mt-2 text-center text-xs text-[color:var(--text-muted)]">
+            {t('partner.places')}
+          </p>
+        </div>
+
+        {/* Everything in Pro, plus the team's work */}
+        <div data-reveal>
+          <h3 className="text-sm font-semibold">{t('partner.plus')}</h3>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {PARTNER.services.map((id) => {
+              const Icon = SERVICE_ICON[id];
+              return (
+                <li
+                  key={id}
+                  className="plan-tile flex gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)] bg-[color-mix(in_srgb,var(--brand-silver)_4%,transparent)] p-3"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--brand-yellow)_14%,transparent)] text-[var(--brand-yellow)]">
+                    <Icon aria-hidden className="size-[18px]" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-x-2 text-sm font-semibold">
+                      {t(`partner.services.${id}.name`, {
+                        films: n(PARTNER.filmsPerMonth),
+                        reels: n(PARTNER.reelsPerMonth),
+                        n: n(PARTNER.deepAiPerWeek),
+                      })}
+                      {id === 'deepAi' && (
+                        <span className="text-[10px] font-semibold text-[var(--brand-yellow)]">
+                          {t('soon')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-[color:var(--text-muted)]">
+                      {t(`partner.services.${id}.line`)}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-4 text-xs leading-relaxed text-[color:var(--text-muted)]">
+            {t('partner.excluded')}
+          </p>
         </div>
       </div>
     </article>

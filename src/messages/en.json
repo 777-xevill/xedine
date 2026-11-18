@@ -5393,7 +5393,7 @@
         "legendNo": "Bigger plan",
         "more": "See more",
         "less": "Show less",
-        "note": "Prices in US dollars. One more plan is on the way.",
+        "note": "Prices in US dollars.",
         "rows": {
           "assistant": "Ask Xedine: AI that knows your whole restaurant",
           "deepAi": "Strongest AI for hard questions",
@@ -5411,7 +5411,8 @@
           "tableQr": "Table QR: menu, games and food facts",
           "offers": "Offers on your customers’ phones",
           "memberCard": "Member card and points",
-          "deliveryApps": "Delivery apps (foodpanda and others)"
+          "deliveryApps": "Delivery apps (foodpanda and others)",
+          "doneForYou": "Our team works with you: films, ads, website, visits"
         },
         "plans": {
           "starter": {
@@ -5421,13 +5422,59 @@
           "pro": {
             "name": "Pro",
             "body": "All of Xedine: every feature, everyday AI without a limit, and new posters and videos every day."
+          },
+          "partner": {
+            "name": "Partner",
+            "body": "We work with you every month to make yours the best restaurant around: all of Xedine, plus our team on films, ads, design and custom software."
           }
         },
         "badge": "Recommended",
         "perDay": "{n} a day",
         "unlimited": "Unlimited",
         "tileLabel": "{what}{per, select, day { a day} week { a week} other {}}",
-        "aboutMonth": "about {n} a month"
+        "aboutMonth": "about {n} a month",
+        "partner": {
+          "badge": "Most powerful",
+          "cta": "Talk to us",
+          "mailSubject": "Partner plan",
+          "places": "We take a few restaurants at a time.",
+          "plus": "Everything in Pro, plus our team:",
+          "excluded": "Not in the price: the ad money, printing, building work and hardware. We quote them first, and you decide. Visits in Dhaka; elsewhere by video call.",
+          "services": {
+            "films": {
+              "name": "Cinematic films",
+              "line": "Every month {films} story film (about 30 seconds) and {reels} short reels of your dishes: movie quality, with music and sound."
+            },
+            "ads": {
+              "name": "Ads run for you",
+              "line": "We plan, run and improve your Facebook and Instagram ads. The ad money is yours, paid straight to Meta."
+            },
+            "visit": {
+              "name": "A visit and a makeover plan",
+              "line": "We study your place, then show AI pictures of what your walls, light and entrance could become."
+            },
+            "website": {
+              "name": "Your own website",
+              "line": "Made for your brand and your menu, built and looked after by us."
+            },
+            "brand": {
+              "name": "Your brand look",
+              "line": "Logo touch-up, menu design and one style for every post."
+            },
+            "build": {
+              "name": "One custom build a month",
+              "line": "A page, an automation or a report made just for your restaurant."
+            },
+            "review": {
+              "name": "Monthly growth review",
+              "line": "What we did and what changed in your sales, in your own currency, on a call with you."
+            },
+            "deepAi": {
+              "name": "Strongest AI, {n} a week",
+              "line": "For the hardest questions about your restaurant."
+            }
+          }
+        }
       },
       "moments": {
         "button": "Moments",

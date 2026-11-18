@@ -1,10 +1,12 @@
 import type { FeatureId } from './features';
 
 /**
- * The plans on the home page's pricing (the founder, 2026-11-18): Starter at $19 and Pro at $27, the plan Xedine
- * sells most (all of Xedine, the strongest AI 20 times a week, the everyday AI without a limit, 5 posters and 2
- * videos a day). A third plan comes later. Both list Xedine's big features only, each with a tick or a cross.
- * The app does not charge or enforce these plans yet: the `plans` table still holds the taka plans of ADR 0008.
+ * The plans on the home page's pricing (the founder, 2026-11-18): Starter at $19, Pro at $27 (the plan Xedine
+ * sells most: all of Xedine, the strongest AI 20 times a week, the everyday AI without a limit, 5 posters and 2
+ * videos a day) and Partner at $250, the most powerful: all of Pro plus the founder's team doing the work with
+ * the restaurant (cinematic films, ads, a visit with a makeover plan, a website, a brand look, custom builds).
+ * Starter and Pro list Xedine's big features, each with a tick or a cross. The app does not charge or enforce
+ * these plans yet: the `plans` table still holds the taka plans of ADR 0008.
  */
 
 /** Every plan starts with this many free days (`metric_billing`, migration 20261008000001). */
@@ -30,7 +32,8 @@ export type PlanRowId =
   | 'tableQr'
   | 'offers'
   | 'memberCard'
-  | 'deliveryApps';
+  | 'deliveryApps'
+  | 'doneForYou';
 
 /** A big feature the plans list: its words are `landing3d.day.pricing.rows.<id>`. */
 export type PlanRow = {
@@ -60,6 +63,8 @@ export const PLAN_ROWS: readonly PlanRow[] = [
   { id: 'offers', features: ['offers'] },
   { id: 'memberCard', features: ['memberCard'] },
   { id: 'deliveryApps', features: [] },
+  // The Partner plan's team: crossed on Starter and Pro, so both point to it.
+  { id: 'doneForYou', features: [] },
 ];
 
 /** How often a plan allows something: a number a day or a week, or no limit. */
@@ -86,7 +91,7 @@ export const PLANS: readonly Plan[] = [
     minor: 1900,
     currency: 'USD',
     // No QR code system (the table QR and what only works through it), delivery apps or member card.
-    without: new Set<PlanRowId>(['tableQr', 'offers', 'memberCard', 'deliveryApps']),
+    without: new Set<PlanRowId>(['tableQr', 'offers', 'memberCard', 'deliveryApps', 'doneForYou']),
     limits: [
       { id: 'assistant', limit: { n: 10, per: 'week' } },
       { id: 'deepAi', limit: { n: 3, per: 'week' } },
@@ -99,7 +104,7 @@ export const PLANS: readonly Plan[] = [
     minor: 2700,
     currency: 'USD',
     featured: true,
-    without: new Set<PlanRowId>(),
+    without: new Set<PlanRowId>(['doneForYou']),
     limits: [
       { id: 'assistant', limit: 'unlimited' },
       { id: 'deepAi', limit: { n: 20, per: 'week' } },
@@ -113,3 +118,37 @@ export const PLANS: readonly Plan[] = [
 
 export const limitOf = (plan: Plan, id: PlanRowId): Limit | undefined =>
   plan.limits.find((l) => l.id === id)?.limit;
+
+export type PartnerServiceId =
+  'films' | 'ads' | 'visit' | 'website' | 'brand' | 'build' | 'review' | 'deepAi';
+
+/**
+ * The most powerful plan: everything in Pro, plus the founder's team working with the restaurant every month.
+ * Every deliverable is counted (the founder's brief: no unlimited promises). What the restaurant pays for itself
+ * (the ad money, printing, building work, hardware) is quoted first and never hidden in the price.
+ */
+export const PARTNER = {
+  code: 'partner',
+  /** Cents a month. */
+  minor: 25000,
+  currency: 'USD',
+  /**
+   * Cinematic films made with Higgsfield, the one paid tool the founder uses. Its credits cost about $0.05 (the
+   * Plus plan: 1,000 for $49); an 8-second clip with sound about 58. A ~30-second film is about four shots at
+   * ~three takes each, a reel one shot at two takes: about 1,150 credits, ~$55–60 a restaurant a month.
+   */
+  filmsPerMonth: 1,
+  reelsPerMonth: 4,
+  /** The strongest AI: more than Pro's 20 a week (not built yet). */
+  deepAiPerWeek: 50,
+  services: [
+    'films',
+    'ads',
+    'visit',
+    'website',
+    'brand',
+    'build',
+    'review',
+    'deepAi',
+  ] as const satisfies readonly PartnerServiceId[],
+} as const;

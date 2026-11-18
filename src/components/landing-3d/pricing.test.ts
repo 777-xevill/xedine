@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import en from '@/messages/en.json';
 import bn from '@/messages/bn.json';
 import { FEATURES } from './features';
-import { limitOf, PLAN_ROWS, PLANS, TRIAL_DAYS } from './pricing';
+import { limitOf, PARTNER, PLAN_ROWS, PLANS, TRIAL_DAYS } from './pricing';
 
 const MIGRATIONS = join(process.cwd(), 'supabase', 'migrations');
 const sql = readdirSync(MIGRATIONS)
@@ -38,10 +38,12 @@ describe('home page plans', () => {
     expect(ids.length).toBeLessThanOrEqual(18);
     const known = new Set<string>(FEATURES.map((f) => f.id));
     for (const r of PLAN_ROWS) for (const f of r.features) expect(known).toContain(f);
-    // Only the strongest AI (not built yet) and delivery apps (a till setting) stand for no A–Z feature.
+    // Only the strongest AI (not built yet), delivery apps (a till setting) and the Partner plan's team stand for
+    // no A–Z feature.
     expect(PLAN_ROWS.filter((r) => r.features.length === 0).map((r) => r.id)).toEqual([
       'deepAi',
       'deliveryApps',
+      'doneForYou',
     ]);
     expect(PLAN_ROWS.filter((r) => r.soon).map((r) => r.id)).toEqual(['deepAi']);
   });
@@ -49,7 +51,13 @@ describe('home page plans', () => {
   it('Starter: no QR code system, delivery apps or member card; 10 AI, 3 strongest, 3 posters, 3 videos a week', () => {
     const s = plan('starter');
     const out = PLAN_ROWS.filter((r) => s.without.has(r.id));
-    expect(out.map((r) => r.id)).toEqual(['tableQr', 'offers', 'memberCard', 'deliveryApps']);
+    expect(out.map((r) => r.id)).toEqual([
+      'tableQr',
+      'offers',
+      'memberCard',
+      'deliveryApps',
+      'doneForYou',
+    ]);
     // What it leaves out comes last.
     expect(PLAN_ROWS.slice(-out.length)).toEqual(out);
     expect(s.limits).toEqual([
@@ -62,11 +70,29 @@ describe('home page plans', () => {
 
   it('Pro: everything; everyday AI unlimited, strongest 20 a week, 5 posters and 2 videos a day', () => {
     const p = plan('pro');
-    expect(p.without.size).toBe(0);
+    // Everything but the Partner plan's team.
+    expect([...p.without]).toEqual(['doneForYou']);
     expect(limitOf(p, 'assistant')).toBe('unlimited');
     expect(limitOf(p, 'deepAi')).toEqual({ n: 20, per: 'week' });
     expect(limitOf(p, 'posters')).toEqual({ n: 5, per: 'day' });
     expect(limitOf(p, 'videos')).toEqual({ n: 2, per: 'day' });
+  });
+
+  it('Partner: $250, the team counted (no unlimited promises), the strongest AI above Pro', () => {
+    expect([PARTNER.minor, PARTNER.currency]).toEqual([25000, 'USD']);
+    expect([PARTNER.filmsPerMonth, PARTNER.reelsPerMonth]).toEqual([1, 4]);
+    const pro = limitOf(plan('pro'), 'deepAi');
+    expect(pro !== 'unlimited' && pro && PARTNER.deepAiPerWeek > pro.n).toBe(true);
+    expect(PARTNER.services).toEqual([
+      'films',
+      'ads',
+      'visit',
+      'website',
+      'brand',
+      'build',
+      'review',
+      'deepAi',
+    ]);
   });
 
   it('has every line in English and Bangla', () => {
@@ -85,6 +111,24 @@ describe('home page plans', () => {
         for (const l of pl.limits) expect(p.limits[l.id]).toBeTruthy();
       }
       expect(Object.keys(p.rows).sort()).toEqual(PLAN_ROWS.map((r) => r.id).sort());
+      expect(p.plans.partner?.name).toBeTruthy();
+      const partner = (
+        messages.landing3d.day.pricing as unknown as {
+          partner: Record<string, unknown> & {
+            services: Record<string, { name: string; line: string }>;
+          };
+        }
+      ).partner;
+      for (const key of ['badge', 'cta', 'mailSubject', 'places', 'plus', 'excluded']) {
+        expect(partner[key]).toBeTruthy();
+      }
+      for (const id of PARTNER.services) {
+        expect(partner.services[id]?.name).toBeTruthy();
+        expect(partner.services[id]?.line).toBeTruthy();
+      }
     }
+    // The ad money is the restaurant's, said on the card itself.
+    expect(en.landing3d.day.pricing.partner.excluded).toContain('ad money');
+    expect(en.landing3d.day.pricing.partner.services.ads.line).toContain('The ad money is yours');
   });
 });

@@ -275,3 +275,14 @@ later.
   three Pro restaurants at full use. Before selling Pro widely the tick must be triggered reliably (pg_cron →
   workflow_dispatch) and split across parallel runners, and the 10,000 free neurons (~90 pictures a day) will need
   the paid Workers AI tier.
+
+## Amendment, 2026-11-18: Partner at $250, the most powerful plan
+
+The founder (with Xegency's business brief): a third plan, Partner, $250 a month, the whole width under Starter
+and Pro with a sliding gold ring. Everything in Pro plus the founder's team every month: 1 cinematic film and 4
+reels (Higgsfield, the only paid tool, ~$55–60 a restaurant), ads run for the restaurant (the ad money is the
+restaurant's, paid straight to Meta, said on the card), a visit with AI makeover pictures, its own website, a
+brand look, one custom build, a monthly growth review and the strongest AI 50 times a week. "Talk to us" opens an
+email to support@xedine.org; "We take a few restaurants at a time". Starter and Pro gain one crossed row, "Our
+team works with you", pointing to it. Deliverables, costs, the founder's capacity (~4–5 restaurants) and what to
+build in Xedine for it: docs/PARTNER-PLAN.md.

@@ -12,7 +12,7 @@ import {
   type Locale,
 } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
-import { PLAN_PRICE, PLAN_ROWS, TRIAL_DAYS, WEEKLY_LIMITS, type PlanRowId } from './pricing';
+import { PLAN_PRICE, PLAN_ROWS, TRIAL_DAYS, WEEKLY_LIMITS } from './pricing';
 
 /** How tall the feature list is before "See more" (about five rows a column). */
 const CLOSED_PX = 232;
@@ -47,11 +47,6 @@ export const PricingSection = memo(function PricingSection() {
 
   const days = formatNumber(TRIAL_DAYS, locale);
   const n = (v: number) => formatNumber(v, locale);
-  const name = (id: PlanRowId) =>
-    id === 'deliveryChannels' || id === 'deepAi'
-      ? t(`pricing.extra.${id}`)
-      : t(`features.${id}.name`);
-  const included = PLAN_ROWS.filter((r) => r.included).length;
 
   return (
     <section
@@ -135,9 +130,7 @@ export const PricingSection = memo(function PricingSection() {
             <div className="mt-6 h-px bg-[color-mix(in_srgb,var(--brand-silver)_12%,transparent)]" />
             <div className="px-6 pt-5 pb-5 sm:px-8">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <h3 className="text-sm font-semibold">
-                  {t('pricing.allTitle', { n: n(included), total: n(PLAN_ROWS.length) })}
-                </h3>
+                <h3 className="text-sm font-semibold">{t('pricing.allTitle')}</h3>
                 <p className="flex items-center gap-3 text-xs text-[color:var(--text-muted)]">
                   <span className="flex items-center gap-1">
                     <Mark yes /> {t('pricing.legendYes')}
@@ -173,7 +166,7 @@ export const PricingSection = memo(function PricingSection() {
                             : 'text-[color:var(--text-muted)]',
                         )}
                       >
-                        {name(r.id)}
+                        {t(`pricing.rows.${r.id}`)}
                         {!r.included && <span className="sr-only"> — {t('pricing.legendNo')}</span>}
                       </span>
                       {r.perWeek !== undefined && (
@@ -200,7 +193,7 @@ export const PricingSection = memo(function PricingSection() {
                 onClick={() => setOpen((o) => !o)}
                 className="mx-auto mt-5 flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--brand-silver)_22%,transparent)] px-4 py-2 text-xs font-semibold transition-[border-color,scale] hover:border-[var(--brand-yellow)] active:scale-[0.97]"
               >
-                {open ? t('pricing.less') : t('pricing.more', { total: n(PLAN_ROWS.length) })}
+                {open ? t('pricing.less') : t('pricing.more')}
                 <ChevronDown
                   aria-hidden
                   className={cn('size-4 transition-transform duration-500', open && 'rotate-180')}

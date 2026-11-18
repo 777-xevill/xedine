@@ -248,12 +248,13 @@ and the 3D faded in wherever the scroll had got to (with dawn now short, the bri
 
 ## Amendment, 2026-11-18: one plan from $19 on the pricing
 
-The founder: the pricing shows one plan, from $19 a month (the bigger plans come later). It lists every feature on
-the A–Z list plus delivery apps and the strongest AI, each with a tick (in the plan) or a cross (a bigger plan),
-folded under "See more" so the page stays short. Not in it: the QR code system (the table QR, and the table games,
-food facts on the table menu and offer notifications that only work through it), delivery apps like foodpanda, and
-the member card. A week allows 3 posters, 3 videos, 10 AI questions and 3 answers from the strongest AI (not built
-yet, "Coming soon"). The data is `src/components/landing-3d/pricing.ts`, checked by `pricing.test.ts`.
+The founder: the pricing shows one plan, from $19 a month (the bigger plans come later). It lists Xedine's big
+features only (17 rows, best first: the AI that knows the restaurant, leaks with proof, the morning brief, the till
+and kitchen offline, profit per dish, stock, bazar by chat, posters, videos, forecast, food safety, branches), not
+every small one on the A–Z list, each with a tick or a cross ("Bigger plan"), folded under "See more". Not in it:
+the table QR (menu, games, food facts), offers on customers' phones, the member card and delivery apps like
+foodpanda, last. A week allows 10 AI questions, 3 answers from the strongest AI (not built yet, "Coming soon"),
+3 posters and 3 videos. The data is `src/components/landing-3d/pricing.ts`, checked by `pricing.test.ts`.
 - The app does not charge or enforce this plan yet: the `plans` table still holds the taka plans of ADR 0008, and
   nothing counts posters, videos or AI questions per week.
 - Motion: a yellow light runs round the card's edge, the button shines every few seconds, the limit tiles lift on

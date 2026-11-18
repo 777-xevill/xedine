@@ -5391,15 +5391,30 @@
           "assistant": "AI questions a week",
           "deepAi": "answers from the strongest AI a week"
         },
-        "allTitle": "{n} of {total} features in this plan",
+        "allTitle": "What you get",
         "legendYes": "In this plan",
         "legendNo": "Bigger plan",
-        "more": "See all {total} features",
+        "more": "See more",
         "less": "Show less",
         "note": "Prices in US dollars. Bigger plans with everything are on the way.",
-        "extra": {
-          "deliveryChannels": "Delivery apps (foodpanda and others)",
-          "deepAi": "Strongest AI for hard questions"
+        "rows": {
+          "assistant": "Ask Xedine: AI that knows your whole restaurant",
+          "deepAi": "Strongest AI for hard questions",
+          "leaks": "Where money leaks, with proof",
+          "brief": "Morning brief on your phone",
+          "till": "Till and kitchen screen, even without internet",
+          "dishProfit": "Profit on every dish",
+          "stock": "Stock that keeps count by itself",
+          "bazarChat": "Bazar by chat on Telegram",
+          "posters": "Posters from your dish photos",
+          "videos": "Short videos with music and a voice",
+          "forecast": "Forecast with weather and holidays",
+          "foodSafety": "Food safety and daily checks",
+          "branches": "Every branch side by side",
+          "tableQr": "Table QR: menu, games and food facts",
+          "offers": "Offers on your customers’ phones",
+          "memberCard": "Member card and points",
+          "deliveryApps": "Delivery apps (foodpanda and others)"
         }
       },
       "moments": {

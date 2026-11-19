@@ -129,7 +129,7 @@ describe('generator: the planted scenarios and the clean control', () => {
           const rows = generateDay(org, b, date);
           ledger.add(org, b.key, rows);
           inventory.day(org, b, date, rows);
-          seasonal.add(org, date, rows);
+          seasonal.add(org, date, rows, b.key);
           retention.add(org, b, date, rows);
         }
       }

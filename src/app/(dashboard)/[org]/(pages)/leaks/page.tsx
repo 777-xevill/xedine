@@ -116,6 +116,13 @@ export default async function LeaksPage({
             net: money(Number(e.net_over_short_poisha ?? 0)),
           }),
         ];
+      case 'orders.left_unpaid':
+        return [
+          t('evidence.leftUnpaid', {
+            count: Number(e.orders ?? 0),
+            due: money(Number(e.due_poisha ?? 0)),
+          }),
+        ];
       case 'commission.drag':
         return [
           t('evidence.commission', {

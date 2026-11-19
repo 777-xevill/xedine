@@ -38,7 +38,16 @@ export const LAYOUTS = [
 export type Layout = (typeof LAYOUTS)[number];
 
 /** Colour schemes: how the restaurant's main and accent colours are spread over the poster. */
-export const SCHEMES = ['brand', 'accent', 'paper', 'tint', 'night', 'mono', 'kraft', 'chalk'] as const;
+export const SCHEMES = [
+  'brand',
+  'accent',
+  'paper',
+  'tint',
+  'night',
+  'mono',
+  'kraft',
+  'chalk',
+] as const;
 export type Scheme = (typeof SCHEMES)[number];
 
 /** Display typefaces (the Latin face; each has a Bangla partner in poster-kit's FONTS). */
@@ -163,7 +172,17 @@ export const LAYOUT_INFO: Record<Layout, LayoutInfo> = {
     tones: [3, 2, 2],
     schemes: ['brand', 'accent', 'night', 'tint', 'chalk', 'paper'],
     types: [...BOLD_TYPES, 'righteous', 'shrikhand', 'lobster', 'dmserif', 'poppins'],
-    backdrops: ['glow', 'rays', 'dots', 'flat', 'confetti', 'gingham', 'grain', 'halftone', 'gradient'],
+    backdrops: [
+      'glow',
+      'rays',
+      'dots',
+      'flat',
+      'confetti',
+      'gingham',
+      'grain',
+      'halftone',
+      'gradient',
+    ],
     plates: ['float', 'sticker', 'podium', 'circle', 'blob'],
     decos: ['sparkles', 'stars', 'confetti', 'none', 'leaves', 'spice', 'steam'],
     heads: ['plain', 'shadow', 'sticker'],

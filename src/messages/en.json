@@ -137,7 +137,11 @@
     "socialOfferNoPrices": "Offer videos are not available in this currency yet.",
     "socialVideoKindCount": "This kind of video needs a different number of dishes.",
     "socialOccasionText": "Write your special day.",
-    "currencyLocked": "The currency cannot change after your first sale: every amount is already saved in it."
+    "currencyLocked": "The currency cannot change after your first sale: every amount is already saved in it.",
+    "plannedOrderLines": "Pick a dish and the number of plates (a whole number) for each row you fill.",
+    "plannedOrderName": "Write who the order is for, in up to 120 letters.",
+    "plannedOrderDate": "Pick today or a day in the next two months.",
+    "bazarLineExists": "That item is already on the list: change its amount there."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -461,7 +465,8 @@
     "stockHealthy": "Every ingredient has at least a week of cover.",
     "stockMore": "{count} more running low",
     "actionSetup": "Finish setup",
-    "actionSetupBody": "A short checklist: menu, recipes, staff and costs."
+    "actionSetupBody": "A short checklist: menu, recipes, staff and costs.",
+    "profitBeforeFood": "Profit before food cost"
   },
   "welcome": {
     "close": "Close",
@@ -1076,7 +1081,22 @@
     "itemNoGroups": "You have not made any extras yet. Scroll to \"Extras and choices\" at the bottom of this page and make one first.",
     "groupPlaceholder": "e.g. Extras",
     "groupRangeHint": "At least 0 means optional. At least 1 means the cashier must choose one, like a spice level.",
-    "modifierPlaceholder": "e.g. Extra egg"
+    "modifierPlaceholder": "e.g. Extra egg",
+    "sizeUses": "Uses",
+    "sizeUsesHint": "How much of the dish's ingredients one plate of this size takes. Stock and cost follow it: a half plate takes half the mutton.",
+    "sizeShare": {
+      "auto": "Work it out from the name",
+      "quarter": "¼ of the dish",
+      "half": "½ of the dish",
+      "threeQuarters": "¾ of the dish",
+      "same": "Same as the dish",
+      "oneHalf": "1½ times the dish",
+      "double": "2 times the dish",
+      "triple": "3 times the dish"
+    },
+    "sizeSharesTitle": "Ingredients per size",
+    "sizeShareSave": "Save",
+    "sizeShareSaved": "Saved. Stock and cost now use it, past sales of this size too."
   },
   "health": {
     "subtitle": "Business day {date}. Figures update as orders are completed.",
@@ -1120,7 +1140,8 @@
       "transfer_unconfirmed": "Transfer not confirmed",
       "transfer_disputed": "Transfer arrived short",
       "service_slow_slot": "Slow service at a busy time",
-      "customers_lapse": "Regular customers stopped coming"
+      "customers_lapse": "Regular customers stopped coming",
+      "orders_left_unpaid": "Orders never paid"
     },
     "insightsTitle": "Today's insights",
     "habitsTitle": "Today's habits",
@@ -1136,7 +1157,8 @@
       "coverage": "Dishes without recipes"
     },
     "recipeCogs": "Food cost from your recipes.",
-    "mixedCogs": "Food cost from recipes where they exist; {pct} assumed for dishes without one."
+    "mixedCogs": "Food cost from recipes where they exist; {pct} assumed for dishes without one.",
+    "noCogs": "Food cost is not counted yet: write your dishes' ingredients, or set a usual food cost on Costs."
   },
   "sales": {
     "title": "Sales explorer",
@@ -1253,7 +1275,8 @@
       "transfer_unconfirmed": "Transfer not confirmed",
       "transfer_disputed": "Transfer arrived short",
       "service_slow_slot": "Slow service at a busy time",
-      "customers_lapse": "Regular customers stopped coming"
+      "customers_lapse": "Regular customers stopped coming",
+      "orders_left_unpaid": "Orders never paid"
     },
     "period": "{from} – {to}",
     "impactLabel": {
@@ -1271,7 +1294,8 @@
       "transfer_unconfirmed": "Value on the way",
       "transfer_disputed": "Value missing",
       "service_slow_slot": "Sales in the slow slot",
-      "customers_lapse": "Usual spend of lapsed regulars"
+      "customers_lapse": "Usual spend of lapsed regulars",
+      "orders_left_unpaid": "Not collected"
     },
     "confidence": {
       "low": "Low confidence",
@@ -1306,7 +1330,8 @@
       "slowSlot": "{day}, {from}:00–{to}:00: {orders} orders took a median of {minutes} min to serve; the usual is {usual} min.",
       "slowComplaints": "{count, plural, one {# customer comment} other {# customer comments}} in this slot mention slow service.",
       "lapse": "{lapsed} of {regulars} regulars have not come back ({rate}; other branches {peer}).",
-      "priceChanges": "Price rises before this: {changes}."
+      "priceChanges": "Price rises before this: {changes}.",
+      "leftUnpaid": "{count, plural, one {# order} other {# orders}} went to the kitchen and were never paid or cancelled: {due} not collected."
     },
     "seeEvidence": "See every row behind this",
     "metricRefs": "Metrics: {refs}",
@@ -1348,7 +1373,8 @@
       "check_station_bottleneck": "Watch the kitchen screen in this slot to see which station holds tickets up.",
       "win_back_campaign": "Send a win-back message to these regulars (with their consent).",
       "review_price_change": "Look again at the recent price rise at this branch.",
-      "call_regulars": "Ask the manager to call a few of these regulars and ask why."
+      "call_regulars": "Ask the manager to call a few of these regulars and ask why.",
+      "close_or_cancel_unpaid": "Close every order before the day ends: take the payment, or cancel it with a reason and a manager's PIN."
     },
     "ownerNote": "Your note: {note}",
     "acknowledge": "I'm looking into it",
@@ -1484,7 +1510,15 @@
     "notePlaceholder": "For example: bonus for Eid",
     "payFirst": "Enter the pay first, then you can mark it paid.",
     "billsTotal": "Rent and bills",
-    "billsTotalHint": "every month"
+    "billsTotalHint": "every month",
+    "salCarried": "Until then, profit counts each person's last pay, so today's numbers stay right.",
+    "foodTitle": "Food cost for dishes without ingredients",
+    "foodBody": "Until every dish has its ingredients written, profit counts this share of their sales as food cost. Dishes with ingredients use their own cost from the bazar prices.",
+    "foodLabel": "% of their sales",
+    "foodSave": "Save",
+    "foodSaved": "Saved. Profit now counts it for dishes without ingredients.",
+    "foodHint": "A good first guess: a month of bazar spend divided by that month's sales.",
+    "foodNotSet": "Not set yet, so today's profit leaves food out for dishes without ingredients. A good first guess: a month of bazar spend divided by that month's sales."
   },
   "recipes": {
     "title": "Dish ingredients",
@@ -1670,7 +1704,8 @@
       "transfer_unconfirmed": "Transfer not confirmed",
       "transfer_disputed": "Transfer arrived short",
       "service_slow_slot": "Slow service at a busy time",
-      "customers_lapse": "Regular customers stopped coming"
+      "customers_lapse": "Regular customers stopped coming",
+      "orders_left_unpaid": "Orders never paid"
     },
     "forecastNone": "No forecast for {date} yet — there is not enough sales history.",
     "forecastTitle": "Expected for {date}:",
@@ -2181,12 +2216,13 @@
     "tabs": {
       "forecast": "What might sell",
       "prep": "Maybe cook",
-      "bazar": "Maybe buy"
+      "bazar": "Maybe buy",
+      "day": "Day plan"
     },
     "day": "Day",
     "tomorrow": "Tomorrow",
     "noBranch": "You have no branch to plan for yet.",
-    "flagBody": "Tell Xedine about a day that will change sales. The forecast learns from it, and the Xedine assistant can read your note.",
+    "flagBody": "Tell Xedine about a day that will change sales. The plan uses it, and the Xedine assistant can read your note.",
     "flag": {
       "holiday": "Special day",
       "cricket": "Match",
@@ -2288,7 +2324,144 @@
     "byTimeOfDay": "By time of day",
     "howAccurate": "How good is this guess?",
     "accuracyPlain": "Over the last {days} days the guess per dish was off by {model} on average; copying the same day last week was off by {naive}. Xedine shows whichever was closer.",
-    "salaryWeek": "salary week"
+    "salaryWeek": "salary week",
+    "flagBusy": "How busy will it be?",
+    "flagBusyHint": "Xedine plans these days with your answer. Left to Xedine, it learns from past days like this one once there are two of them.",
+    "busy": {
+      "auto": "Let Xedine work it out",
+      "up2": "Much busier",
+      "up1": "A bit busier",
+      "down1": "A bit quieter",
+      "down2": "Much quieter",
+      "closed": "We are closed"
+    },
+    "youSaid": "you said: {level}",
+    "closedHeadline": "{day}: closed",
+    "prepParty": "Party orders: {count} plates (exact, the orders you took)",
+    "forParty": "incl. {qty} for party orders",
+    "forDays": "for {count, plural, one {# day} other {# days}}",
+    "addedByHand": "added by hand",
+    "estimated": "≈ {qty}",
+    "estimatedHint": "≈ means an estimate for items never counted: what was bought, minus what the dishes sold used and the waste written down. Count it once to make it exact.",
+    "addLine": "Add an item the list missed",
+    "addLineItem": "Item",
+    "addLineQty": "How much",
+    "addLineSave": "Add to the list",
+    "addLineSaved": "Added. It stays on the list if you make it again.",
+    "dayPlan": {
+      "body": "The same steps every day: before you open, what to cook and buy, and before you close. Each one ticks itself from what is written in Xedine.",
+      "progress": "{done} of {total} done",
+      "progressLabel": "Steps done today",
+      "headlineUnknown": "{day}: not enough sales yet to say how busy it might be",
+      "sections": {
+        "before": "Before you open",
+        "cook": "Cooking and buying",
+        "close": "Before you close"
+      },
+      "state": {
+        "done": "Done",
+        "todo": "To do",
+        "attention": "Look at this",
+        "later": "At closing",
+        "info": "Good to know",
+        "none": "Nothing needed"
+      },
+      "steps": {
+        "party_orders": {
+          "title": "Party and pre-orders",
+          "body": "{count, plural, =0 {None for this day.} one {# order, {plates} plates: cook and buy for it on top of the usual day.} other {# orders, {plates} plates: cook and buy for them on top of the usual day.}}",
+          "link": "See them"
+        },
+        "use_first": {
+          "title": "Use these first",
+          "body": "{count, plural, =0 {Nothing is out of date or close to it.} one {# item is out of date or close to it: cook it first, or throw it away and write it down.} other {# items are out of date or close to it: cook them first, or throw them away and write it down.}}",
+          "link": "Food safety"
+        },
+        "running_low": {
+          "title": "Running low",
+          "body": "{count, plural, =0 {Every item has three days or more.} one {# item has less than three days left: put it on the list.} other {# items have less than three days left: put them on the list.}}",
+          "link": "Stock"
+        },
+        "checks": {
+          "title": "Daily checks",
+          "body": "{count, plural, =0 {Every check for now is written down.} one {# check still to write down.} other {# checks still to write down.}}",
+          "bodyNone": "No checks set up yet. Add your own on Daily checks.",
+          "link": "Daily checks"
+        },
+        "cook": {
+          "title": "What to cook",
+          "body": "Might be busy: {dishes}.",
+          "bodyNone": "Not enough sales yet to say which dishes might be busy.",
+          "link": "Maybe cook"
+        },
+        "bazar": {
+          "title": "What to buy",
+          "none": "No list for this day yet: make it from the forecast and your stock.",
+          "draft": "The list is ready ({count, plural, one {# item} other {# items}}): check it and approve it.",
+          "approved": "Approved ({count, plural, one {# item} other {# items}}): buy it, then check it against the purchases.",
+          "sent": "Sent ({count, plural, one {# item} other {# items}}): after buying, check it against the purchases.",
+          "reconciled": "Bought and checked against the purchases.",
+          "link": "Maybe buy"
+        },
+        "unpaid": {
+          "title": "Open orders",
+          "body": "{count, plural, =0 {No order is waiting for payment.} one {# order went to the kitchen and is not paid yet: take the payment or cancel it with a reason before you close.} other {# orders went to the kitchen and are not paid yet: take payment or cancel each one with a reason before you close.}}",
+          "link": "Open the till"
+        },
+        "cash_close": {
+          "title": "Close the cash drawer",
+          "body": "{count, plural, =0 {Every drawer is counted and closed.} one {# drawer is still open: count the cash and close it at the end of the day.} other {# drawers are still open: count the cash and close them at the end of the day.}}",
+          "bodyNone": "No drawer was opened today.",
+          "link": "Open the till"
+        },
+        "waste": {
+          "title": "Write down waste",
+          "body": "{count, plural, =0 {Nothing written today. Write down anything thrown away before you close.} one {# entry written today.} other {# entries written today.}}",
+          "link": "Waste"
+        },
+        "count": {
+          "title": "Count day",
+          "body": "Today is count day: count the shelf after the last order.",
+          "bodyDone": "Counted today.",
+          "link": "Count"
+        },
+        "tomorrow_bazar": {
+          "title": "Tomorrow's list",
+          "body": "Make tomorrow's bazar list before you leave.",
+          "bodyDone": "Tomorrow's bazar list is made.",
+          "link": "Make it"
+        }
+      }
+    },
+    "party": {
+      "title": "Party and pre-orders",
+      "body": "Orders already taken for this day: a wedding, an office lunch. They are added on top of the usual day in what to cook and what to buy. Ring each one through the till when it goes out.",
+      "none": "No party orders for this day.",
+      "add": "Add a party order",
+      "name": "For whom, or what",
+      "namePlaceholder": "e.g. Office lunch, Rahman & Co",
+      "readyAt": "Ready by (optional)",
+      "readyLine": "ready by {time}",
+      "note": "Note (optional)",
+      "dishes": "Dishes",
+      "dish": "Dish",
+      "pickDish": "Pick a dish",
+      "plates": "Plates",
+      "hint": "Fill one row for each dish or size. Plates are whole numbers.",
+      "save": "Save party order",
+      "saved": "Saved. It is in what to cook and what to buy.",
+      "line": "{qty} × {dish}",
+      "status": {
+        "planned": "Planned",
+        "done": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "set": {
+        "done": "Delivered",
+        "cancelled": "Cancel it",
+        "planned": "Back to planned"
+      }
+    }
   },
   "calendar": {
     "title": "Calendar",

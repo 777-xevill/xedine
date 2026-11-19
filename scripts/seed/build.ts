@@ -20,7 +20,7 @@ export async function runSeed(
         const rows = generateDay(org, b, date);
         ledger.add(org, b.key, rows);
         inventory.day(org, b, date, rows);
-        seasonal.add(org, date, rows);
+        seasonal.add(org, date, rows, b.key);
         retention.add(org, b, date, rows);
         if (onDay) await onDay(org.key, b.key, date, rows);
       }

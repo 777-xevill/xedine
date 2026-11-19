@@ -6,6 +6,7 @@ import {
   CloudLightning,
   CloudRain,
   FileDown,
+  ListChecks,
   MessageCircle,
   MapPin,
   ShoppingBasket,
@@ -15,6 +16,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ActionForm } from '@/components/action-form';
+import { DayPlan, type PartyDish } from '@/components/plan/day-plan';
 import { UnitField } from '@/components/unit-field';
 import { StatusBadge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -25,7 +27,9 @@ import {
   EmptyState,
   Hint,
   Input,
+  Label,
   PageTitle,
+  Select,
   Textarea,
 } from '@/components/ui/form';
 import { PillNav } from '@/components/ui/pill-nav';
@@ -33,6 +37,7 @@ import { createClient } from '@/lib/db/supabase-server';
 import { formatBps, formatDay, formatTime, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
 import {
+  addBazarLineAction,
   approveBazarAction,
   addSpecialDayAction,
   generateBazarAction,
@@ -40,13 +45,20 @@ import {
   sendBazarAction,
 } from '@/modules/forecasting/actions';
 import { waLink, waPhone } from '@/modules/forecasting/bazar-share';
-import { branchOutlook, forecast, prepPlan } from '@/modules/forecasting/queries';
+import { BUSY_LEVELS, busyLevel } from '@/modules/forecasting/busy';
+import {
+  branchOutlook,
+  dayPlan,
+  forecast,
+  plannedOrders,
+  prepPlan,
+} from '@/modules/forecasting/queries';
 import { formatQuantity } from '@/modules/inventory/format';
 import { businessToday } from '@/modules/metrics/queries';
-import { splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
+import { displayUnit, splitQuantity, type BaseUnit } from '@/modules/purchasing/lines';
 import { getOrgContext, pickBranch } from '@/modules/tenancy/context';
 
-const TABS = ['forecast', 'prep', 'bazar'] as const;
+const TABS = ['day', 'forecast', 'prep', 'bazar'] as const;
 type Tab = (typeof TABS)[number];
 const SKY_ICON = {
   clear: Sun,
@@ -64,7 +76,10 @@ const STATUS_TONE = {
   reconciled: 'success',
 } as const;
 
-/** Plan (ROADMAP Phase 7): what tomorrow will sell, what to cook, and what to buy. */
+/**
+ * Plan (ROADMAP Phase 7, ADR 0066): the day plan (every step of the day, before opening, cooking and buying,
+ * closing), what might sell, what to cook and what to buy.
+ */
 export default async function PlanPage({
   params,
   searchParams,
@@ -78,9 +93,7 @@ export default async function PlanPage({
   if (!['owner', 'manager', 'kitchen', 'purchaser', 'accountant'].some(has)) notFound();
   const canDraft = ['owner', 'manager', 'kitchen', 'purchaser'].some(has);
   const canApprove = has('owner') || has('manager');
-  const tab: Tab = (TABS as readonly string[]).includes(sp.tab ?? '')
-    ? (sp.tab as Tab)
-    : 'forecast';
+  const tab: Tab = (TABS as readonly string[]).includes(sp.tab ?? '') ? (sp.tab as Tab) : 'day';
   const branch = pickBranch(ctx, sp.branch);
   const [t, tu, to, tk, locale] = await Promise.all([
     getTranslations('plan'),
@@ -94,8 +107,16 @@ export default async function PlanPage({
   const label = (name: string, bn: string | null) => (loc === 'bn' && bn ? bn : name);
   if (!branch) return <EmptyState title={t('noBranch')} />;
   const { date: today } = await businessToday(ctx.org.id);
+  // The day plan opens on today; what to sell, cook and buy on tomorrow.
   const date =
-    sp.date && sp.date >= today && sp.date <= addDays(today, 7) ? sp.date : addDays(today, 1);
+    sp.date &&
+    /^\d{4}-\d{2}-\d{2}$/.test(sp.date) &&
+    sp.date >= today &&
+    sp.date <= addDays(today, 7)
+      ? sp.date
+      : tab === 'day'
+        ? today
+        : addDays(today, 1);
   const href = (over: Record<string, string>) =>
     `/${ctx.org.slug}/plan?${new URLSearchParams({ tab, branch: branch.id, date, ...over }).toString()}`;
   const hidden = (
@@ -110,6 +131,14 @@ export default async function PlanPage({
     outlook.events.filter((e) => e.kind !== 'weather' && e.starts_on <= d && e.ends_on >= d);
   const rainFlagged = (d: string) =>
     outlook.events.some((e) => e.kind === 'weather' && e.starts_on <= d && e.ends_on >= d);
+  const closedOn = (d: string) =>
+    outlook.events.some((e) => e.closed && e.starts_on <= d && e.ends_on >= d);
+  // What the owner or a manager said about how busy the day will be, if anything.
+  const saidOn = (d: string) =>
+    outlook.events
+      .filter((e) => e.expect_bps !== null && e.starts_on <= d && e.ends_on >= d)
+      .map((e) => busyLevel(e.expect_bps))
+      .filter((l) => l !== null);
   const dayLabel = (d: string) =>
     d === today
       ? to('today')
@@ -118,6 +147,37 @@ export default async function PlanPage({
         : formatDay(noonDhaka(d), loc, 'UTC');
   const n1 = (v: number) => formatNumber(v, loc, { fractionDigits: Number.isInteger(v) ? 0 : 1 });
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
+  const summary =
+    tab === 'day' || tab === 'forecast'
+      ? await (async () => {
+          const rows = await forecast(ctx.org.id, branch.id, date);
+          const items = [...new Map(rows.map((r) => [r.menu_item_id, r])).values()];
+          const total = (item: string) =>
+            rows.filter((r) => r.menu_item_id === item).reduce((s, r) => s + r.qty, 0);
+          items.sort((x, y) => total(y.menu_item_id) - total(x.menu_item_id));
+          const grand = items.reduce((sum, i) => sum + total(i.menu_item_id), 0);
+          const naive = rows.reduce((sum, r) => sum + r.naive_qty, 0);
+          // No promised count: only whether the day might be busier, quieter or the usual.
+          const mood =
+            naive > 0 && grand > naive * 1.08
+              ? 'Up'
+              : naive > 0 && grand < naive * 0.92
+                ? 'Down'
+                : 'Same';
+          const reasons = [
+            ...eventsOn(date).map((e) => e.name || tk(`kinds.${e.kind as 'holiday'}`)),
+            ...(rainFlagged(date) ? [tk('kinds.weather')] : []),
+            ...(Number(date.slice(8, 10)) <= 7 ? [t('salaryWeek')] : []),
+            ...saidOn(date).map((l) => t('youSaid', { level: t(`busy.${l}`) })),
+          ];
+          const headline = closedOn(date)
+            ? t('closedHeadline', { day: dayLabel(date) })
+            : items.length === 0
+              ? t('dayPlan.headlineUnknown', { day: dayLabel(date) })
+              : t(`forecastHeadline${mood}`, { day: dayLabel(date) });
+          return { items, mood, reasons, headline };
+        })()
+      : null;
 
   return (
     <>
@@ -279,6 +339,7 @@ export default async function PlanPage({
         label={t('sections')}
         className="mb-6"
         items={[
+          { key: 'day' as const, icon: <ListChecks /> },
           { key: 'forecast' as const, icon: <CalendarDays /> },
           { key: 'prep' as const, icon: <ChefHat /> },
           { key: 'bazar' as const, icon: <ShoppingBasket /> },
@@ -333,6 +394,28 @@ export default async function PlanPage({
                 <Input id="flag-until" name="until" type="date" />
               </div>
             </div>
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium">{t('flagBusy')}</legend>
+              <div className="flex flex-wrap gap-2">
+                {(['', ...BUSY_LEVELS, ...(ctx.isOwner ? (['closed'] as const) : [])] as const).map(
+                  (level) => (
+                    <label key={level || 'auto'} className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="busy"
+                        value={level}
+                        defaultChecked={level === ''}
+                        className="peer sr-only"
+                      />
+                      <span className="inline-flex min-h-9 items-center rounded-full border border-line px-3 text-sm font-medium peer-checked:border-purple peer-checked:bg-surface-elevated peer-checked:ring-1 peer-checked:ring-purple/40 peer-focus-visible:ring-2">
+                        {t(`busy.${level || 'auto'}`)}
+                      </span>
+                    </label>
+                  ),
+                )}
+              </div>
+              <Hint className="mt-1.5">{t('flagBusyHint')}</Hint>
+            </fieldset>
             <div>
               <label htmlFor="flag-name" className="mb-1 block font-medium">
                 {t('flagName')}
@@ -350,27 +433,62 @@ export default async function PlanPage({
         </details>
       ) : null}
 
-      {tab === 'forecast'
+      {tab === 'day' && summary
         ? await (async () => {
-            const rows = await forecast(ctx.org.id, branch.id, date);
-            const items = [...new Map(rows.map((r) => [r.menu_item_id, r])).values()];
-            const total = (item: string) =>
-              rows.filter((r) => r.menu_item_id === item).reduce((s, r) => s + r.qty, 0);
-            items.sort((x, y) => total(y.menu_item_id) - total(x.menu_item_id));
-            const grand = items.reduce((sum, i) => sum + total(i.menu_item_id), 0);
-            const naive = rows.reduce((sum, r) => sum + r.naive_qty, 0);
-            // No promised count: only whether the day might be busier, quieter or the usual.
-            const mood =
-              naive > 0 && grand > naive * 1.08
-                ? 'Up'
-                : naive > 0 && grand < naive * 0.92
-                  ? 'Down'
-                  : 'Same';
-            const reasons = [
-              ...eventsOn(date).map((e) => e.name || tk(`kinds.${e.kind as 'holiday'}`)),
-              ...(rainFlagged(date) ? [tk('kinds.weather')] : []),
-              ...(Number(date.slice(8, 10)) <= 7 ? [t('salaryWeek')] : []),
-            ];
+            const supabase = await createClient();
+            const [steps, orders, { data: menu }] = await Promise.all([
+              dayPlan(ctx.org.id, branch.id, date),
+              plannedOrders(ctx.org.id, branch.id, date),
+              canApprove
+                ? supabase
+                    .from('menu_items')
+                    .select('id, name, name_bn, item_variants(id, name, name_bn, is_active)')
+                    .eq('org_id', ctx.org.id)
+                    .eq('is_active', true)
+                    .order('name')
+                : Promise.resolve({ data: [] }),
+            ]);
+            type MenuRow = {
+              id: string;
+              name: string;
+              name_bn: string | null;
+              item_variants: {
+                id: string;
+                name: string;
+                name_bn: string | null;
+                is_active: boolean;
+              }[];
+            };
+            const dishes: PartyDish[] = ((menu ?? []) as unknown as MenuRow[]).map((m) => ({
+              id: m.id,
+              name: label(m.name, m.name_bn),
+              sizes: (m.item_variants ?? [])
+                .filter((v) => v.is_active)
+                .map((v) => ({ id: v.id, name: label(v.name, v.name_bn) })),
+            }));
+            return (
+              <DayPlan
+                orgId={ctx.org.id}
+                orgSlug={ctx.org.slug}
+                branchId={branch.id}
+                date={date}
+                today={today}
+                locale={loc}
+                canEdit={canApprove}
+                headline={summary.headline}
+                reasons={summary.reasons}
+                busyDishes={summary.items.slice(0, 3).map((i) => label(i.name, i.name_bn))}
+                steps={steps}
+                orders={orders}
+                dishes={dishes}
+              />
+            );
+          })()
+        : null}
+
+      {tab === 'forecast' && summary
+        ? await (async () => {
+            const { items, reasons } = summary;
             const w = weatherOn.get(date);
             const dish = (i: (typeof items)[number], idx: number) => (
               <li
@@ -392,9 +510,7 @@ export default async function PlanPage({
                   <EmptyState title={t('noForecast')} body={t('noForecastBody')} />
                 ) : (
                   <>
-                    <h2 className="text-xl font-bold">
-                      {t(`forecastHeadline${mood}`, { day: dayLabel(date) })}
-                    </h2>
+                    <h2 className="text-xl font-bold">{summary.headline}</h2>
                     {reasons.length > 0 ? (
                       <p className="mt-1 text-sm text-secondary">
                         {t('forecastReasons', { reasons: reasons.join(', ') })}
@@ -449,6 +565,11 @@ export default async function PlanPage({
                         <p className="mt-2 text-sm text-secondary">
                           {idx < 3 ? t('prepBusy') : t('prepMaybe')}
                         </p>
+                        {r.planned > 0 ? (
+                          <p className="mt-2 text-sm font-medium">
+                            {t('prepParty', { count: formatNumber(r.planned, loc) })}
+                          </p>
+                        ) : null}
                         {r.key_ingredients.length > 0 ? (
                           <p className="mt-3 border-t border-line pt-3 text-sm">
                             {t('prepMightNeed', {
@@ -481,7 +602,7 @@ export default async function PlanPage({
               ? await supabase
                   .from('bazar_list_lines')
                   .select(
-                    'id, suggested_qty_base, approved_qty_base, purchased_qty_base, forecast_qty, stock_qty, safety_qty, adjust_bps, suppliers(name, phone), ingredients(name, name_bn, base)',
+                    'id, suggested_qty_base, approved_qty_base, purchased_qty_base, forecast_qty, stock_qty, safety_qty, adjust_bps, stock_estimated, planned_qty, added_by_hand, suppliers(name, phone), ingredients(name, name_bn, base, bazar_days)',
                   )
                   .eq('bazar_list_id', list.id)
               : { data: [] };
@@ -494,8 +615,16 @@ export default async function PlanPage({
               stock_qty: number | null;
               safety_qty: number;
               adjust_bps: number;
+              stock_estimated: boolean;
+              planned_qty: number;
+              added_by_hand: boolean;
               suppliers: { name: string; phone: string | null } | null;
-              ingredients: { name: string; name_bn: string | null; base: BaseUnit } | null;
+              ingredients: {
+                name: string;
+                name_bn: string | null;
+                base: BaseUnit;
+                bazar_days: number;
+              } | null;
             };
             const ls = (lines ?? []) as unknown as L[];
             const status = (list?.status as keyof typeof STATUS_TONE | undefined) ?? null;
@@ -581,6 +710,66 @@ export default async function PlanPage({
                       );
                     })()
                   : null}
+                {list && status === 'draft' && canDraft
+                  ? await (async () => {
+                      const { data: ings } = await supabase
+                        .from('ingredients')
+                        .select('id, name, name_bn, base')
+                        .eq('org_id', ctx.org.id)
+                        .eq('is_active', true)
+                        .order('name');
+                      const onList = new Set(ls.map((l) => l.ingredients?.name));
+                      const choices = (
+                        (ings ?? []) as {
+                          id: string;
+                          name: string;
+                          name_bn: string | null;
+                          base: BaseUnit;
+                        }[]
+                      ).filter((i) => !onList.has(i.name));
+                      return choices.length === 0 ? null : (
+                        <details className="glass-tile mb-4 rounded-input p-4 text-sm">
+                          <summary className="cursor-pointer font-medium">{t('addLine')}</summary>
+                          <ActionForm
+                            action={addBazarLineAction}
+                            successKey="plan.addLineSaved"
+                            className="mt-3 flex flex-wrap items-end gap-2"
+                          >
+                            {hidden}
+                            <input type="hidden" name="listId" value={list.id as string} />
+                            <div className="min-w-[12rem] flex-1">
+                              <Label htmlFor="add-line-item">{t('addLineItem')}</Label>
+                              <Select
+                                id="add-line-item"
+                                name="ingredientId"
+                                required
+                                className="w-full"
+                              >
+                                {choices.map((i) => (
+                                  <option key={i.id} value={i.id}>
+                                    {`${label(i.name, i.name_bn)} (${tu(displayUnit(i.base))})`}
+                                  </option>
+                                ))}
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="add-line-qty">{t('addLineQty')}</Label>
+                              <Input
+                                id="add-line-qty"
+                                name="qty"
+                                inputMode="decimal"
+                                required
+                                className="w-24 text-end"
+                              />
+                            </div>
+                            <Button type="submit" size="sm">
+                              {t('addLineSave')}
+                            </Button>
+                          </ActionForm>
+                        </details>
+                      );
+                    })()
+                  : null}
                 {!list ? (
                   <EmptyState title={t('noList')} body={canDraft ? t('noListBody') : undefined} />
                 ) : ls.length === 0 ? (
@@ -624,20 +813,36 @@ export default async function PlanPage({
                                     {Number(l.adjust_bps) !== 0
                                       ? ` · ${t('tuned', { pct: formatBps(Number(l.adjust_bps), loc) })}`
                                       : ''}
+                                    {Number(l.ingredients?.bazar_days ?? 1) > 1
+                                      ? ` · ${t('forDays', { count: Number(l.ingredients?.bazar_days) })}`
+                                      : ''}
+                                    {l.added_by_hand ? ` · ${t('addedByHand')}` : ''}
                                   </p>
                                 </td>
                                 <td className="py-2.5 text-end tabular-nums">
-                                  {qty(Number(l.forecast_qty), b)}
+                                  {l.added_by_hand ? '—' : qty(Number(l.forecast_qty), b)}
+                                  {Number(l.planned_qty) > 0 ? (
+                                    <span className="block text-xs text-secondary">
+                                      {t('forParty', { qty: qty(Number(l.planned_qty), b) })}
+                                    </span>
+                                  ) : null}
                                   {Number(l.safety_qty) > 0 ? (
                                     <span className="block text-xs text-secondary">
                                       {t('plusSafety', { qty: qty(Number(l.safety_qty), b) })}
                                     </span>
                                   ) : null}
                                 </td>
-                                <td className="py-2.5 text-end tabular-nums">
+                                <td
+                                  className="py-2.5 text-end tabular-nums"
+                                  title={l.stock_estimated ? t('estimatedHint') : undefined}
+                                >
                                   {l.stock_qty === null
                                     ? t('notCounted')
-                                    : qty(Number(l.stock_qty), b)}
+                                    : l.stock_estimated
+                                      ? t('estimated', {
+                                          qty: qty(Math.max(Number(l.stock_qty), 0), b),
+                                        })
+                                      : qty(Number(l.stock_qty), b)}
                                 </td>
                                 <td className="py-2.5 text-end font-semibold tabular-nums">
                                   {qty(Number(l.suggested_qty_base), b)}
@@ -669,6 +874,7 @@ export default async function PlanPage({
                         </tbody>
                       </table>
                     </div>
+                    {ls.some((l) => l.stock_estimated) ? <Hint>{t('estimatedHint')}</Hint> : null}
                     {canApprove ? (
                       <>
                         <Hint>{t('approveHint')}</Hint>
@@ -693,6 +899,7 @@ export default async function PlanPage({
                               {label(l.ingredients?.name ?? '', l.ingredients?.name_bn ?? null)}
                               <span className="ms-2 text-xs text-secondary">
                                 {l.suppliers?.name ?? ''}
+                                {l.added_by_hand ? ` · ${t('addedByHand')}` : ''}
                               </span>
                             </span>
                             <span className="tabular-nums">

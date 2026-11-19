@@ -32,12 +32,30 @@ export function rainDays(org: OrgCfg): string[] {
   return out;
 }
 
+/** The 84 days the salary-week factor is learned over (m_calendar_factors at the anchor date). */
+const SALARY_WINDOW = { from: addDays(ANCHOR_DATE, -84), to: addDays(ANCHOR_DATE, -1) };
+const HOLIDAYS = CALENDAR.filter((c) => c.kind === 'holiday').map((c) => c.starts_on as string);
+
 export class Seasonal {
   private units = new Map<string, { snacks: number; all: number }>();
   private closedOrders = 0;
+  /** Units sold per org, branch and day over SALARY_WINDOW (completed orders, active lines). */
+  private daily = new Map<string, Map<string, number>>();
 
-  add(org: OrgCfg, date: string, rows: DayRows): void {
+  add(org: OrgCfg, date: string, rows: DayRows, branchKey?: string): void {
     if (EID_CLOSURES.includes(date)) this.closedOrders += rows.orders.length;
+    if (branchKey && date >= SALARY_WINDOW.from && date <= SALARY_WINDOW.to) {
+      const done = new Set(
+        rows.orders.filter((o) => o.order_status === 'completed').map((o) => String(o.id)),
+      );
+      let units = 0;
+      for (const l of rows.order_items)
+        if (l.status === 'active' && done.has(String(l.order_id))) units += Number(l.quantity);
+      const key = `${org.key}.${branchKey}`;
+      const days = this.daily.get(key) ?? new Map<string, number>();
+      days.set(date, (days.get(date) ?? 0) + units);
+      this.daily.set(key, days);
+    }
     if (org.key !== 'demo_kacchi_house') return;
     const inWindow = (w: { from: string; to: string }) => date >= w.from && date <= w.to;
     const key = inWindow(RAMADAN_WINDOW) ? 'ramadan' : inWindow(BEFORE_WINDOW) ? 'before' : null;
@@ -59,6 +77,34 @@ export class Seasonal {
     this.units.set(key, acc);
   }
 
+  /**
+   * The salary-week lift the generated orders really have, measured as m_calendar_factors does: average
+   * units on salary-week days (1st–7th) ÷ other normal days over SALARY_WINDOW, leaving out closed, rainy,
+   * holiday and Ramadan days. The planted lift is 8%; the day-to-day noise moves what a branch shows.
+   */
+  private salaryFactors(orgs: readonly OrgCfg[]): Record<string, Record<string, number>> {
+    const out: Record<string, Record<string, number>> = {};
+    for (const org of orgs) {
+      const rain = new Set(rainDays(org));
+      out[org.key] = {};
+      for (const b of org.branches) {
+        const days = this.daily.get(`${org.key}.${b.key}`) ?? new Map<string, number>();
+        const sal: number[] = [];
+        const other: number[] = [];
+        for (const [date, units] of days) {
+          const ramadan = date >= RAMADAN.starts_on && date <= RAMADAN.ends_on;
+          if (rain.has(date) || EID_CLOSURES.includes(date) || HOLIDAYS.includes(date) || ramadan)
+            continue;
+          (Number(date.slice(8, 10)) <= 7 ? sal : other).push(units);
+        }
+        const avg = (a: number[]) => a.reduce((x, y) => x + y, 0) / a.length;
+        out[org.key]![b.key] =
+          sal.length && other.length ? Math.round((avg(sal) / avg(other)) * 1e6) / 1e6 : 1;
+      }
+    }
+    return out;
+  }
+
   scenario(orgs: readonly OrgCfg[]): Scenario {
     const share = (k: string) => {
       const u = this.units.get(k) ?? { snacks: 0, all: 0 };
@@ -77,6 +123,8 @@ export class Seasonal {
         eid_closures: EID_CLOSURES,
         orders_on_closures: this.closedOrders,
         salary_week_lift_bps: 800,
+        // What each branch's orders really show (the planted 8% plus the day-to-day noise).
+        salary_week_factor_realized: this.salaryFactors(orgs),
         rain_dip_bps: 300,
         rain_days: Object.fromEntries(orgs.map((o) => [o.key, rainDays(o).length])),
         ramadan_window: RAMADAN_WINDOW,

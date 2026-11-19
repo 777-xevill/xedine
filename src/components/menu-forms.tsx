@@ -13,7 +13,9 @@ import {
   createModifierGroupAction,
   createVariantAction,
   setItemModifierGroupsAction,
+  setVariantPortionAction,
 } from '@/modules/menu/actions';
+import { SIZE_SHARES } from '@/modules/menu/size-share';
 import { initialState } from '@/modules/tenancy/form-state';
 
 export function CategoryForm({ orgId, orgSlug }: { orgId: string; orgSlug: string }) {
@@ -142,12 +144,78 @@ export function VariantForm({
           className="w-28"
         />
       </div>
+      <div>
+        <Label htmlFor={`vshare-${itemId}`}>{t('sizeUses')}</Label>
+        <Select
+          id={`vshare-${itemId}`}
+          name="portion"
+          defaultValue=""
+          aria-describedby={`vshint-${itemId}`}
+          className="w-44"
+        >
+          <option value="">{t('sizeShare.auto')}</option>
+          {SIZE_SHARES.map((s) => (
+            <option key={s.bps} value={s.bps}>
+              {t(`sizeShare.${s.key}`)}
+            </option>
+          ))}
+        </Select>
+      </div>
       <Button type="submit" size="sm">
         {t('addVariant')}
       </Button>
       <Hint id={`vhint-${itemId}`} className="basis-full">
         {t('sizePriceHint')}
       </Hint>
+      <Hint id={`vshint-${itemId}`} className="basis-full">
+        {t('sizeUsesHint')}
+      </Hint>
+    </ActionForm>
+  );
+}
+
+/** Change how much of the dish an existing size uses (owner; stock and cost follow). */
+export function VariantPortionForm({
+  orgId,
+  orgSlug,
+  variantId,
+  name,
+  portionBps,
+}: {
+  orgId: string;
+  orgSlug: string;
+  variantId: string;
+  name: string;
+  portionBps: number;
+}) {
+  const t = useTranslations('menu');
+  return (
+    <ActionForm
+      action={setVariantPortionAction}
+      successKey="menu.sizeShareSaved"
+      className="flex flex-wrap items-end gap-2"
+    >
+      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="orgSlug" value={orgSlug} />
+      <input type="hidden" name="variantId" value={variantId} />
+      <div>
+        <Label htmlFor={`vp-${variantId}`}>{name}</Label>
+        <Select
+          id={`vp-${variantId}`}
+          name="portion"
+          defaultValue={String(portionBps)}
+          className="w-44"
+        >
+          {SIZE_SHARES.map((s) => (
+            <option key={s.bps} value={s.bps}>
+              {t(`sizeShare.${s.key}`)}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <Button type="submit" size="sm" variant="secondary">
+        {t('sizeShareSave')}
+      </Button>
     </ActionForm>
   );
 }

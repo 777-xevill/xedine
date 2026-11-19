@@ -19,15 +19,16 @@ Rules: money in poisha (hundredths of the restaurant's currency, ADR 0062) · qu
 `items.qty_sold(item, window)` — windows: last_2h (rolling now−2h), today (current business_date), yesterday, last_7d, week_to_date (config week start), month_to_date, last_30d, custom. Filters: branch, channel, daypart. Rankings: top/bottom N by qty and by contribution margin.
 
 ## Costing
-- `ingredient.unit_cost` — weighted average paid price, last 14 days (config: last price / weighted avg); falls back to manual price. Today's value per kg / litre / piece, with its source (bazar or typed) and since when: `metric_ingredient_prices` (money-gated; ADR 0037).
+- `ingredient.unit_cost` — weighted average paid price, last 14 days (config: last price / weighted avg); falls back to manual price. Today's value per kg / litre / piece, with its source (bazar or typed) and since when: `metric_ingredient_prices` (money-gated; ADR 0037). A purchase recorded, back-dated or voided re-prices its own day **and every later day with a bazar price whose 14-day window holds it** (ADR 0066); a **voided** purchase also re-costs the sales it priced, each with its own sale-time recipe on its own day (`recost_sales_for_ingredient`; a sale that can no longer be priced loses its cost).
 - `recipe.cost(item)` — Σ(line qty ÷ yield × unit_cost), sub-recipes included; snapshot stored on order_items at sale time.
+- `size.portion` (ADR 0066) = `item_variants.portion_bps` ÷ 10,000: how much of the dish one plate of a size uses (half = 0.5). A size with a recipe of its own uses that recipe; otherwise its cost is the dish's recipe cost × the share (`item_unit_cost`), and its stock use the dish's recipe × the share. Changing the share (`set_variant_portion`, owner, audited) scales the cost already stored on that size's past sales by new ÷ old.
 - `food_cost.theoretical` (TFC) — Σ(qty sold × recipe-cost snapshot).
 - `food_cost.theoretical_pct` — TFC ÷ sales.net of items with recipes.
 - `recipes.coverage_pct` — sales.net of items with recipes ÷ sales.net.
 - `item.contribution_margin` — price − recipe cost; `item.margin_pct` — CM ÷ price.
 
 ## Inventory
-- `usage.theoretical(ing, period)` = Σ(qty sold × recipe qty), where "sold" for stock is every **active line of an order that was placed and not cancelled** — paid or not yet — on its business day (ADR 0037: the food leaves the shelf when the order goes to the kitchen, not when the bill is paid). Voided lines and cancelled orders take nothing. Recipe qty = line qty ÷ yield ÷ portions (`private.recipe_explode`), from the sale-time snapshot's recipe, else the item's active recipe. One implementation: `private.m_sold_for_stock` → `private.m_stock_moves`. (Sales, food cost and TFC still count completed orders only.)
+- `usage.theoretical(ing, period)` = Σ(portions sold × recipe qty), where "sold" for stock is every **active line of an order that was placed and not cancelled** — paid or not yet — on its business day (ADR 0037: the food leaves the shelf when the order goes to the kitchen, not when the bill is paid). Voided lines and cancelled orders take nothing. Portions = plates × `size.portion` when the line's recipe is the dish's own, else plates (ADR 0066). Recipe qty = line qty ÷ yield ÷ portions (`private.recipe_explode`), from the sale-time snapshot's recipe, else the item's active recipe. One implementation: `private.m_sold_for_stock` (plates and portions) → `private.m_stock_moves`. (Sales, food cost and TFC still count completed orders only.)
 - `stock.used_by_dish(period)` (ADR 0037, `metric_stock_used`): usage.theoretical per ingredient (its total) and per ingredient and dish (`dishes` = plates of that dish that took it), plus the dishes sold with no active recipe (they took nothing). Quantities; stock roles; at most 93 days
 - `stock.theoretical` = last count + purchases + transfers_in − transfers_out − usage.theoretical − waste.logged
 - `usage.actual(period between counts)` = opening count + purchases + transfers_in − transfers_out − closing count
@@ -53,7 +54,7 @@ Rules: money in poisha (hundredths of the restaurant's currency, ADR 0062) · qu
 - `price.external_gap` = vs `reference_prices` (CSV import), when available
 
 ## Costs & P&L
-- `labour.daily` = Σ(monthly salaries + allowances) ÷ days in month (per branch); `labour.pct` = labour ÷ sales.net; `sales.per_staff`
+- `labour.daily` = Σ(monthly salaries + allowances) ÷ days in month (per branch); `labour.pct` = labour ÷ sales.net; `sales.per_staff`. A person still working here (`staff.is_active`) with no salary entry for the month counts their latest entry of the 12 months before (ADR 0066), so the month's first days are not counted as free; an entry for the month always wins.
 - `fixed.daily` = Σ monthly fixed costs (rent, utilities, gas, generator/fuel, internet, other) ÷ days in month
 - `commission.value` = Σ(channel sales.net × commission % + fixed fees) + restaurant-funded platform discounts. **Rounding:** `mulBps(period net, bps)` rounded half-up **once per (branch, channel, period)**, not per order; a per-order sum differs by up to one poisha per order. The seed manifest defines it this way (ADR 0012 §7)
 - `pnl.flash.estimated_profit` = sales.net − COGS (actual for the period if counts exist, else TFC) − commission − labour.daily − fixed.daily
@@ -68,7 +69,8 @@ Per cashier / shift / branch vs trailing-28-day baseline (z-score AND absolute f
 - `refund.without_original.count`; `refund.rate`
 - `price_override.count` / value
 - `cash.share` by cashier vs branch baseline
-- `cash.over_short` per shift
+- `cash.over_short` per shift: a cashier with ≥ 3 short shifts whose net shortage is at least the floor (৳1,000) **for every week the period covers** (ADR 0066: honest mistakes add up like a random walk over a long period)
+- `orders.left_unpaid` (ADR 0066) per branch and the staff who took the order: orders of the period that are neither completed nor cancelled, unpaid or part paid, with an active line sent to the kitchen; impact = Σ(total − paid). Floor ৳500 (`unpaid_min_due_poisha`); high confidence from 3 orders
 Finding impact = excess over baseline in ৳ for the period.
 
 ## Channels
@@ -90,7 +92,10 @@ Star = high popularity, high margin · Plowhorse = high, low · Puzzle = low, hi
 
 ## Forecasting
 - `forecast.wape` = Σ|actual − forecast| ÷ Σ actual (per item group / branch, last 28 days)
-- `forecast.naive` = same weekday last week. Show the model forecast only if WAPE improves ≥ 10% vs naive.
+- `forecast.naive` = same weekday of the last week that is over (a day exactly a week ahead looks two weeks back). Show the model forecast only if WAPE improves ≥ 10% vs naive.
+- `forecast.model` (ADR 0020, 0066) = weighted same weekday of the last four weeks (4, 3, 2, 1), comparable days only, **never before the branch's first sale** (those days are unknown, not zero); salary week and learned calendar factors; for a day someone said how busy it will be (`calendar_events.expect_bps`), that expectation instead of the learned factor of those kinds. When the model is not shown, what is used is naive × that expectation.
+- `planned.portions` (ADR 0066) = plates of party and pre-orders (`planned_orders`, not cancelled) per branch, day and dish; portions = plates × `size.portion`. Certain demand **on top of** the forecast; taken out of the history the forecast and the calendar factors learn from (spread over the day's dayparts by their share).
+- `bazar.need(ingredient, list day D)` (ADR 0020 §5, 0066) = usage over the buying days + safety stock − start stock − on the way, × (1 + tuning), rounded up to the pack. Buying days: D … D + `bazar_days` − 1, except that for a list for today only the rest of today counts (today's forecast use − what was used so far). Usage = (forecast plates × portions per plate sold over the last 28 days + planned portions) × recipe qty. Start stock = stock now (`stock.theoretical`, else `stock.estimate` floored at 0, marked ≈) − the rest of today − the days strictly between today and D, floored at 0, + what lists already approved for those days will bring.
 
 ## Compliance (ADR 0023)
 - `compliance.status` per licence and the next VAT return: `expired` (days left < 0) · `urgent` (≤ 7) · `due` (≤ 30) · `upcoming` (≤ 60) · `ok`. The VAT due day is per-org config (`org_settings.vat_return_due_day`, default 15), never a hardcoded legal date — `TODO(verify)` with an accountant.
@@ -136,6 +141,9 @@ A lot is one arrival at a branch: a confirmed purchase line, or a received trans
 - `incident.age_days` = business date resolved (or today) − business date opened.
 - `incident.overdue_actions` = corrective actions not done with `due_on` < today.
 - `incident.median_hours_to_resolve` = median of (resolved_at − opened_at) in hours, over cases resolved in the last 30 days.
+
+## Day plan (ADR 0066)
+`metric_day_plan(org, branch, day, now)`: the day's steps in order, each with a state — `done` · `todo` · `attention` · `later` (at closing) · `info` · `none` (nothing needed) — and a count. Before opening: `party_orders` (planned, not cancelled), `use_first` (newest lot's `lot.safe_until` from today to the day + 2, plus `food_safety.blocked`), `running_low` (`stock.days_of_cover` band red), `checks` (`check.state` due in the current period). Cooking and buying: `bazar` (the day's list status; done only when checked against the purchases). Closing, today only: `unpaid` (orders of today as in `orders.left_unpaid`), `cash_close` (shifts still open), `waste` (waste logged today), `count` (on the count weekday), `tomorrow_bazar` (tomorrow's list exists). "N of M done" counts the done, todo, attention and later steps.
 
 ## Discipline score (per branch per day, 0–100)
 Bazar entries recorded (25) · waste log touched (15) · cash close done (20) · scheduled count done (25) · recipe coverage ≥ 90% (15).

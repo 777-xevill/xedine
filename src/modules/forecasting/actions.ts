@@ -1,13 +1,23 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { createTranslator } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatNumber, type Locale } from '@/lib/i18n/format';
 import { now } from '@/lib/time/clock';
+import bn from '@/messages/bn.json';
+import en from '@/messages/en.json';
+import { BUSY_BPS, BUSY_LEVELS } from '@/modules/forecasting/busy';
 import { formatQuantity } from '@/modules/inventory/format';
-import { isUnitChoice, parseQuantity, toBase, type BaseUnit } from '@/modules/purchasing/lines';
+import {
+  displayUnit,
+  isUnitChoice,
+  parseQuantity,
+  toBase,
+  type BaseUnit,
+} from '@/modules/purchasing/lines';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /**
@@ -102,8 +112,9 @@ export async function flagDayAction(_prev: FormState, formData: FormData): Promi
 
 /**
  * "Tell Xedine" on the Plan page: a match, a special day, rain or anything else, for one day or a few,
- * with a note in the owner's own words. The forecast learns from the flagged kinds; the assistant reads
- * the note (get_calendar).
+ * with how busy it may be and a note in the owner's own words (ADR 0066). The owner or a manager; only the
+ * owner may close the restaurant. The forecast uses the "how busy" for those days, or learns what such days
+ * did when nobody said; the assistant reads the note (get_calendar).
  */
 export async function addSpecialDayAction(
   _prev: FormState,
@@ -116,6 +127,7 @@ export async function addSpecialDayAction(
       until: z.union([z.string().regex(DATE), z.literal('')]).optional(),
       name: z.string().trim().max(120).optional(),
       note: z.string().trim().max(300).optional(),
+      busy: z.union([z.enum(BUSY_LEVELS), z.literal('closed'), z.literal('')]).optional(),
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: 'invalidInput' };
@@ -124,18 +136,100 @@ export async function addSpecialDayAction(
   if (ends < d.date) return { error: 'calendarInvalid' };
   const tk = await getTranslations('calendar');
   const supabase = await createClient();
-  const { error } = await supabase.from('calendar_events').insert({
-    org_id: d.orgId,
-    name: d.name || tk(`kinds.${d.kind}`),
-    kind: d.kind,
-    starts_on: d.date,
-    ends_on: ends,
-    note: d.note || null,
-    source: 'owner',
+  const { error } = await supabase.rpc('add_special_day', {
+    p_org: d.orgId,
+    p_kind: d.kind,
+    p_from: d.date,
+    p_to: ends,
+    p_name: d.name || tk(`kinds.${d.kind}`),
+    p_note: d.note || null,
+    p_expect_bps: d.busy && d.busy !== 'closed' ? BUSY_BPS[d.busy] : null,
+    p_closed: d.busy === 'closed',
+    p_now: now().toISOString(),
   });
   if (error) return { error: mapDbError(error) };
   refresh(d.orgSlug);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Party and pre-orders (ADR 0066)
+// ---------------------------------------------------------------------------------------------
+/** Rows a party-order form offers: dish-i ("itemId" or "itemId:sizeId") and qty-i (plates). */
+const PARTY_ROWS = 6;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export async function savePlannedOrderAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({
+      branchId: z.uuid(),
+      date: z.string().regex(DATE),
+      title: z.string().trim().min(1).max(120),
+      readyAt: z.union([z.string().regex(TIME), z.literal('')]).optional(),
+      note: z.string().trim().max(300).optional(),
+    })
+    .safeParse({
+      orgId: formData.get('orgId'),
+      orgSlug: formData.get('orgSlug'),
+      branchId: formData.get('branchId'),
+      date: formData.get('date'),
+      title: formData.get('title'),
+      readyAt: formData.get('readyAt') ?? '',
+      note: formData.get('note') ?? '',
+    });
+  if (!parsed.success) return { error: 'plannedOrderName' };
+  const lines: { menu_item_id: string; variant_id: string | null; qty: number }[] = [];
+  for (let i = 0; i < PARTY_ROWS; i++) {
+    const dish = String(formData.get(`dish-${i}`) ?? '');
+    const qtyText = String(formData.get(`qty-${i}`) ?? '').trim();
+    if (dish === '' && qtyText === '') continue;
+    const qty = parseQuantity(qtyText);
+    const [item, variant] = dish.split(':');
+    if (
+      !z.uuid().safeParse(item).success ||
+      (variant !== undefined && !z.uuid().safeParse(variant).success) ||
+      qty === null ||
+      !Number.isInteger(qty) ||
+      qty < 1 ||
+      qty > 5000
+    )
+      return { error: 'plannedOrderLines' };
+    lines.push({ menu_item_id: item!, variant_id: variant ?? null, qty });
+  }
+  if (lines.length === 0) return { error: 'plannedOrderLines' };
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('save_planned_order', {
+    p_org: d.orgId,
+    p_branch: d.branchId,
+    p_id: null,
+    p_for: d.date,
+    p_ready_at: d.readyAt || null,
+    p_title: d.title,
+    p_note: d.note || null,
+    p_lines: lines,
+    p_now: now().toISOString(),
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(d.orgSlug);
+  return { ok: true };
+}
+
+export async function setPlannedOrderStatusAction(formData: FormData): Promise<void> {
+  const parsed = base
+    .extend({ id: z.uuid(), status: z.enum(['planned', 'done', 'cancelled']) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_planned_order_status', {
+    p_id: parsed.data.id,
+    p_status: parsed.data.status,
+  });
+  if (error) console.error('planned order status', error.code);
+  refresh(parsed.data.orgSlug);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -192,6 +286,39 @@ export async function approveBazarAction(_prev: FormState, formData: FormData): 
   return { ok: true };
 }
 
+/** An item the draft list missed, with how much to buy (ADR 0066). Kept when the list is made again. */
+export async function addBazarLineAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = base.extend({ listId: z.uuid(), ingredientId: z.uuid() }).safeParse({
+    orgId: formData.get('orgId'),
+    orgSlug: formData.get('orgSlug'),
+    listId: formData.get('listId'),
+    ingredientId: formData.get('ingredientId'),
+  });
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { data: ing } = await supabase
+    .from('ingredients')
+    .select('base')
+    .eq('org_id', parsed.data.orgId)
+    .eq('id', parsed.data.ingredientId)
+    .maybeSingle();
+  if (!ing) return { error: 'invalidInput' };
+  // Typed in the item's own big unit, as the list shows it (kg, litre or pieces).
+  const qty = parseQuantity(String(formData.get('qty') ?? ''));
+  const itemBase = ing.base as BaseUnit;
+  const qtyBase = qty === null ? null : toBase(qty, displayUnit(itemBase), itemBase);
+  if (qtyBase === null) return { error: 'quantityInvalid' };
+  const { error } = await supabase.rpc('add_bazar_line', {
+    p_list: parsed.data.listId,
+    p_ingredient: parsed.data.ingredientId,
+    p_qty: qtyBase,
+    p_now: now().toISOString(),
+  });
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
+}
+
 /**
  * One WhatsApp message per supplier with a phone (their lines) and, if given, one to the purchaser (the
  * whole list), in the org's language. The outbox sends them; nothing goes out directly from here.
@@ -218,10 +345,10 @@ export async function sendBazarAction(_prev: FormState, formData: FormData): Pro
     supabase.from('org_settings').select('default_locale').eq('org_id', list.org_id).maybeSingle(),
   ]);
   const locale = ((settings?.default_locale as Locale | undefined) ?? 'bn') as Locale;
-  const [t, tu] = await Promise.all([
-    getTranslations({ locale, namespace: 'plan' }),
-    getTranslations({ locale, namespace: 'units' }),
-  ]);
+  // The restaurant's language, not the screen's: getTranslations always answers in the screen's.
+  const messagesFor = locale === 'bn' ? bn : en;
+  const t = createTranslator({ locale, messages: messagesFor, namespace: 'plan' });
+  const tu = createTranslator({ locale, messages: messagesFor, namespace: 'units' });
   type Line = {
     approved_qty_base: number;
     supplier_id: string | null;

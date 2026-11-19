@@ -8,6 +8,7 @@ import {
   ModifierForm,
   ModifierGroupForm,
   VariantForm,
+  VariantPortionForm,
 } from '@/components/menu-forms';
 import { ItemPhotoField } from '@/components/item-photo-field';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import {
   toggleModifierGroupActiveAction,
   toggleVariantActiveAction,
 } from '@/modules/menu/actions';
+import { sizeShareKey } from '@/modules/menu/size-share';
 import { getOrgContext } from '@/modules/tenancy/context';
 
 export default async function MenuPage({ params }: { params: Promise<{ org: string }> }) {
@@ -51,7 +53,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
       .order('name'),
     supabase
       .from('item_variants')
-      .select('id, menu_item_id, name, price_delta_poisha, is_active')
+      .select('id, menu_item_id, name, price_delta_poisha, portion_bps, is_active')
       .eq('org_id', ctx.org.id)
       .order('sort_order'),
     supabase
@@ -75,6 +77,7 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
     menu_item_id: string;
     name: string;
     price_delta_poisha: number;
+    portion_bps: number;
     is_active: boolean;
   }
   interface ModifierRow {
@@ -257,6 +260,11 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                               className={`glass-tile flex items-center gap-1.5 rounded-full py-1 ps-3 pe-1.5 text-sm ${v.is_active ? '' : 'text-muted line-through'}`}
                             >
                               {v.name} · {money(item.base_price_poisha + v.price_delta_poisha)}
+                              {v.portion_bps !== 10000 && sizeShareKey(v.portion_bps) ? (
+                                <span className="text-xs text-secondary">
+                                  · {t(`sizeShare.${sizeShareKey(v.portion_bps)!}`)}
+                                </span>
+                              ) : null}
                               <form action={toggleVariantActiveAction}>
                                 <input type="hidden" name="id" value={v.id} />
                                 <input type="hidden" name="orgSlug" value={ctx.org.slug} />
@@ -281,6 +289,28 @@ export default async function MenuPage({ params }: { params: Promise<{ org: stri
                         </ul>
                       ) : null}
                       <VariantForm orgId={ctx.org.id} orgSlug={ctx.org.slug} itemId={item.id} />
+                      {(variantsByItem.get(item.id) ?? []).some((v) => v.is_active) ? (
+                        <details className="mt-3 text-sm">
+                          <summary className="cursor-pointer font-medium text-purple">
+                            {t('sizeSharesTitle')}
+                          </summary>
+                          <p className="mt-2 mb-2 max-w-xl text-secondary">{t('sizeUsesHint')}</p>
+                          <div className="space-y-2">
+                            {(variantsByItem.get(item.id) ?? [])
+                              .filter((v) => v.is_active)
+                              .map((v) => (
+                                <VariantPortionForm
+                                  key={v.id}
+                                  orgId={ctx.org.id}
+                                  orgSlug={ctx.org.slug}
+                                  variantId={v.id}
+                                  name={v.name}
+                                  portionBps={v.portion_bps}
+                                />
+                              ))}
+                          </div>
+                        </details>
+                      ) : null}
                     </div>
 
                     <div>

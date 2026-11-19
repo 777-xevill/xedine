@@ -159,7 +159,7 @@ async function scenarios() {
   notes.push(`Kacchi House, full year: ${year.length} findings (${others.length} beyond S1/S2/S3)`);
 
   // S13 — the clean café. Anomaly detectors (not the structural commission cost) over the year and week by week.
-  const anomalyKinds = ['staff', 'cash_share', 'over_short'];
+  const anomalyKinds = ['staff', 'cash_share', 'over_short', 'unpaid'];
   const cafeYear = await detect(cafe, manifest.first_date, manifest.anchor_date, anomalyKinds);
   if (cafeYear.length > 0)
     failures.push(
@@ -503,9 +503,18 @@ async function phase7() {
     for (const b of o.branches) {
       const f = (key: string) =>
         factors.find((x) => x.branch_id === ids.branch(o, b) && x.factor_key === key);
+      // The learned factor must equal the lift the generated orders really have (the planted 8% plus
+      // noise, measured by the generator the same way), and that lift must be there.
       const salary = n(f('salary_week')?.factor);
-      if (salary < 1.03 || salary > 1.13)
-        failures.push(`${o.key}.${b.key}: salary-week factor ${salary} is not near 1.08`);
+      const realized = (
+        s10.salary_week_factor_realized as Record<string, Record<string, number>> | undefined
+      )?.[o.key]?.[b.key];
+      if (realized === undefined || Math.abs(salary - realized) > 0.0005)
+        failures.push(
+          `${o.key}.${b.key}: salary-week factor ${salary}, the orders show ${realized}`,
+        );
+      if (salary < 1.03)
+        failures.push(`${o.key}.${b.key}: salary-week factor ${salary} shows no salary-week lift`);
       const rain = n(f('weather')?.factor ?? 1);
       if (rain < 0.85 || rain > 1.03)
         failures.push(`${o.key}.${b.key}: rain factor ${rain} is not a small dip`);

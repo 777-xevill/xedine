@@ -382,21 +382,141 @@ export interface FontInfo {
  * font. Only the families a poster uses are loaded.
  */
 export const FONTS: Record<TypeKey, FontInfo> = {
-  anton: { css: 'Anton', family: 'Anton', bangla: 'anek', upper: true, scale: 1, lineHeight: 1, weight: 400 },
-  bebas: { css: 'Bebas+Neue', family: 'Bebas Neue', bangla: 'anek', upper: true, scale: 1.12, lineHeight: 0.92, weight: 400 },
-  oswald: { css: 'Oswald:wght@600;700', family: 'Oswald', bangla: 'anek', upper: true, scale: 0.94, lineHeight: 1.05, weight: 700 },
-  archivo: { css: 'Archivo+Black', family: 'Archivo Black', bangla: 'anek', upper: true, scale: 0.78, lineHeight: 1.02, weight: 400 },
-  bungee: { css: 'Bungee', family: 'Bungee', bangla: 'anek', upper: true, scale: 0.72, lineHeight: 1.05, weight: 400 },
-  righteous: { css: 'Righteous', family: 'Righteous', bangla: 'baloo', upper: false, scale: 0.86, lineHeight: 1.05, weight: 400 },
-  shrikhand: { css: 'Shrikhand', family: 'Shrikhand', bangla: 'baloo', upper: false, scale: 0.8, lineHeight: 1.05, weight: 400 },
-  lobster: { css: 'Lobster', family: 'Lobster', bangla: 'galada', upper: false, scale: 0.92, lineHeight: 1.1, weight: 400 },
-  pacifico: { css: 'Pacifico', family: 'Pacifico', bangla: 'galada', upper: false, scale: 0.72, lineHeight: 1.32, weight: 400 },
-  playfair: { css: 'Playfair+Display:ital,wght@0,800;1,800', family: 'Playfair Display', bangla: 'notoSerif', upper: false, scale: 0.86, lineHeight: 1.06, weight: 800 },
-  dmserif: { css: 'DM+Serif+Display', family: 'DM Serif Display', bangla: 'tiro', upper: false, scale: 0.92, lineHeight: 1.05, weight: 400 },
-  abril: { css: 'Abril+Fatface', family: 'Abril Fatface', bangla: 'notoSerif', upper: false, scale: 0.84, lineHeight: 1.06, weight: 400 },
-  fraunces: { css: 'Fraunces:opsz,wght@9..144,800', family: 'Fraunces', bangla: 'notoSerif', upper: false, scale: 0.86, lineHeight: 1.05, weight: 800 },
-  poppins: { css: 'Poppins:wght@500;600;700;800', family: 'Poppins', bangla: 'hind', upper: false, scale: 0.8, lineHeight: 1.1, weight: 800 },
-  caveat: { css: 'Caveat:wght@600;700', family: 'Caveat', bangla: 'atma', upper: false, scale: 1.08, lineHeight: 1, weight: 700 },
+  anton: {
+    css: 'Anton',
+    family: 'Anton',
+    bangla: 'anek',
+    upper: true,
+    scale: 1,
+    lineHeight: 1,
+    weight: 400,
+  },
+  bebas: {
+    css: 'Bebas+Neue',
+    family: 'Bebas Neue',
+    bangla: 'anek',
+    upper: true,
+    scale: 1.12,
+    lineHeight: 0.92,
+    weight: 400,
+  },
+  oswald: {
+    css: 'Oswald:wght@600;700',
+    family: 'Oswald',
+    bangla: 'anek',
+    upper: true,
+    scale: 0.94,
+    lineHeight: 1.05,
+    weight: 700,
+  },
+  archivo: {
+    css: 'Archivo+Black',
+    family: 'Archivo Black',
+    bangla: 'anek',
+    upper: true,
+    scale: 0.78,
+    lineHeight: 1.02,
+    weight: 400,
+  },
+  bungee: {
+    css: 'Bungee',
+    family: 'Bungee',
+    bangla: 'anek',
+    upper: true,
+    scale: 0.72,
+    lineHeight: 1.05,
+    weight: 400,
+  },
+  righteous: {
+    css: 'Righteous',
+    family: 'Righteous',
+    bangla: 'baloo',
+    upper: false,
+    scale: 0.86,
+    lineHeight: 1.05,
+    weight: 400,
+  },
+  shrikhand: {
+    css: 'Shrikhand',
+    family: 'Shrikhand',
+    bangla: 'baloo',
+    upper: false,
+    scale: 0.8,
+    lineHeight: 1.05,
+    weight: 400,
+  },
+  lobster: {
+    css: 'Lobster',
+    family: 'Lobster',
+    bangla: 'galada',
+    upper: false,
+    scale: 0.92,
+    lineHeight: 1.1,
+    weight: 400,
+  },
+  pacifico: {
+    css: 'Pacifico',
+    family: 'Pacifico',
+    bangla: 'galada',
+    upper: false,
+    scale: 0.72,
+    lineHeight: 1.32,
+    weight: 400,
+  },
+  playfair: {
+    css: 'Playfair+Display:ital,wght@0,800;1,800',
+    family: 'Playfair Display',
+    bangla: 'notoSerif',
+    upper: false,
+    scale: 0.86,
+    lineHeight: 1.06,
+    weight: 800,
+  },
+  dmserif: {
+    css: 'DM+Serif+Display',
+    family: 'DM Serif Display',
+    bangla: 'tiro',
+    upper: false,
+    scale: 0.92,
+    lineHeight: 1.05,
+    weight: 400,
+  },
+  abril: {
+    css: 'Abril+Fatface',
+    family: 'Abril Fatface',
+    bangla: 'notoSerif',
+    upper: false,
+    scale: 0.84,
+    lineHeight: 1.06,
+    weight: 400,
+  },
+  fraunces: {
+    css: 'Fraunces:opsz,wght@9..144,800',
+    family: 'Fraunces',
+    bangla: 'notoSerif',
+    upper: false,
+    scale: 0.86,
+    lineHeight: 1.05,
+    weight: 800,
+  },
+  poppins: {
+    css: 'Poppins:wght@500;600;700;800',
+    family: 'Poppins',
+    bangla: 'hind',
+    upper: false,
+    scale: 0.8,
+    lineHeight: 1.1,
+    weight: 800,
+  },
+  caveat: {
+    css: 'Caveat:wght@600;700',
+    family: 'Caveat',
+    bangla: 'atma',
+    upper: false,
+    scale: 1.08,
+    lineHeight: 1,
+    weight: 700,
+  },
 };
 
 export function fontsUrl(keys: readonly TypeKey[]): string {
@@ -805,7 +925,12 @@ export function backdrop(
           return doodle('dot', { left: x, top: y, width: 14 + Math.round(rnd() * 12) }, color);
         if (r < 0.75)
           return `<div class="abs" style="left:${x}px;top:${y}px;width:30px;height:10px;border-radius:5px;background:${color};transform:rotate(${Math.round(rnd() * 180)}deg)"></div>`;
-        return doodle('squiggle', { left: x, top: y, width: 70, height: 18 }, color, `transform:rotate(${Math.round(rnd() * 180)}deg)`);
+        return doodle(
+          'squiggle',
+          { left: x, top: y, width: 70, height: 18 },
+          color,
+          `transform:rotate(${Math.round(rnd() * 180)}deg)`,
+        );
       });
       return { bg: base, html: bits.join('') };
     }
@@ -863,7 +988,12 @@ export function decorate(kind: Deco, zones: readonly Box[], k: Colors, rnd: () =
     const top = zone.top + rnd() * Math.max(0, zone.height - h);
     const color = kind === 'steam' ? css(k.dark ? WHITE : k.muted, 0.7) : colours[i % 3]!;
     const turn = name === 'steam' ? 0 : Math.round(rnd() * 70 - 35);
-    return doodle(name, { left, top, width: size, height: h }, color, `transform:rotate(${turn}deg);opacity:.92`);
+    return doodle(
+      name,
+      { left, top, width: size, height: h },
+      color,
+      `transform:rotate(${turn}deg);opacity:.92`,
+    );
   }).join('');
 }
 
@@ -906,9 +1036,26 @@ export interface Style {
   /** The menu price in a round tag (or a starburst). */
   price(d: DishArt, left: number, top: number, size?: number, kind?: 'round' | 'burst'): string;
   /** A rounded button-like pill with words. */
-  pill(words: string, left: number, top: number, bg: Rgb, ink: Rgb, size?: number, extra?: string): string;
+  pill(
+    words: string,
+    left: number,
+    top: number,
+    bg: Rgb,
+    ink: Rgb,
+    size?: number,
+    extra?: string,
+  ): string;
   /** The whole page: fonts, the backdrop behind, then the layout. */
-  page(body: string, o?: { css?: string; fonts?: TypeKey[]; focus?: { x: number; y: number }; bg?: string; backdrop?: boolean }): string;
+  page(
+    body: string,
+    o?: {
+      css?: string;
+      fonts?: TypeKey[];
+      focus?: { x: number; y: number };
+      bg?: string;
+      backdrop?: boolean;
+    },
+  ): string;
 }
 
 function outline(color: string, w: number): string {

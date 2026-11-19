@@ -62,11 +62,18 @@ export default async function CostsPage({
   );
 
   if (tab === 'bills') {
-    const { data: fixed } = await supabase
-      .from('fixed_costs')
-      .select('id, branch_id, kind, label, monthly_poisha, effective_from, effective_to')
-      .eq('org_id', ctx.org.id)
-      .order('effective_from', { ascending: false });
+    const [{ data: fixed }, { data: costSettings }] = await Promise.all([
+      supabase
+        .from('fixed_costs')
+        .select('id, branch_id, kind, label, monthly_poisha, effective_from, effective_to')
+        .eq('org_id', ctx.org.id)
+        .order('effective_from', { ascending: false }),
+      supabase
+        .from('org_cost_settings')
+        .select('assumed_food_cost_bps')
+        .eq('org_id', ctx.org.id)
+        .maybeSingle(),
+    ]);
     const rows = (fixed ?? []).filter((f) => !f.effective_to || f.effective_to >= today);
     return (
       <>
@@ -77,6 +84,7 @@ export default async function CostsPage({
           branches={branches}
           rows={rows as unknown as FixedCostRow[]}
           place={ctx.place}
+          assumedFoodBps={(costSettings?.assumed_food_cost_bps as number | null) ?? null}
         />
       </>
     );

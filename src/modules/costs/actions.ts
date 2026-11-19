@@ -231,3 +231,26 @@ export async function copySalariesAction(formData: FormData): Promise<void> {
   if (error) console.error('copy salaries', error.code);
   refresh(parsed.data.orgSlug);
 }
+
+/**
+ * Food cost for dishes without ingredients (ADR 0066): until every dish has its ingredients, the flash P&L
+ * counts this share of their sales as food cost. Never set, it was 0% and profit read as if food were free.
+ * Owner only (RLS); the change is audited by the org_cost_settings trigger.
+ */
+export async function setAssumedFoodCostAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base.extend({ pct: z.string().trim() }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: 'invalidInput' };
+  const latin = parsed.data.pct.replace(/[০-৯]/g, (d) => String('০১২৩৪৫৬৭৮৯'.indexOf(d)));
+  if (!/^\d{1,3}(\.\d)?$/.test(latin) || Number(latin) > 100) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('org_cost_settings')
+    .update({ assumed_food_cost_bps: Math.round(Number(latin) * 100) })
+    .eq('org_id', parsed.data.orgId);
+  if (error) return { error: mapDbError(error) };
+  refresh(parsed.data.orgSlug);
+  return { ok: true };
+}

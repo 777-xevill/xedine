@@ -33,6 +33,8 @@ const NAMED_REFUSALS: Record<string, string> = {
   incident_is_resolved: 'incidentIsResolved',
   incident_needs_action_text: 'incidentNeedsActionText',
   incident_needs_reason: 'incidentNeedsReason',
+  planned_order_date: 'plannedOrderDate',
+  bazar_line_exists: 'bazarLineExists',
 };
 
 /** Map a Postgres/PostgREST error to an `errors.*` key. Never leak raw database text to the user. */

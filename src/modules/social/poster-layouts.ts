@@ -82,7 +82,13 @@ function line(
   words: string,
   box: Box,
   color: Rgb,
-  o: { size?: number; weight?: number; align?: 'left' | 'right' | 'center'; wrap?: boolean; extra?: string } = {},
+  o: {
+    size?: number;
+    weight?: number;
+    align?: 'left' | 'right' | 'center';
+    wrap?: boolean;
+    extra?: string;
+  } = {},
 ): string {
   const size = o.size ?? 32;
   return text(
@@ -574,7 +580,10 @@ ${doodle('send', { left: 334, top: imgTop + imgH + 36, width: 48 }, ink)}
 ${doodle('bookmark', { left: 848, top: imgTop + imgH + 36, width: 48 }, ink)}
 ${line(c.words.tagline, { left: 90, top: cardTop + 118 + imgH + 150, width: 900, height: 120 }, WHITE, { size: 40, wrap: true, align: 'center' })}
 ${contactLine(c) ? line(contactLine(c), { left: 90, top: 1264, width: 900, height: 40 }, WHITE, { size: 26, weight: 600, align: 'center', extra: 'opacity:.85' }) : ''}
-${s.deco([{ left: 30, top: 300, width: 110, height: 700 }, { left: 940, top: 300, width: 110, height: 700 }])}
+${s.deco([
+  { left: 30, top: 300, width: 110, height: 700 },
+  { left: 940, top: 300, width: 110, height: 700 },
+])}
 ${s.sticker(c, 700, cardTop - 40, 8)}`,
     { backdrop: false, bg: css(mix(k.bg2, INK, 0.5)) },
   );

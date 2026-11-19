@@ -59,9 +59,13 @@ describe('social variety', () => {
     const manager = await addMember(org, 'manager', [org.branchIds[0]!]);
     const kacchi = await dish(org.id, 'Kacchi');
     const mark = (who: typeof org.owner, m: string) =>
-      asUser(who, (s) => s.attempt(`select public.mark_social_dish($1, $2, $3)`, [org.id, kacchi, m]), {
-        commit: true,
-      });
+      asUser(
+        who,
+        (s) => s.attempt(`select public.mark_social_dish($1, $2, $3)`, [org.id, kacchi, m]),
+        {
+          commit: true,
+        },
+      );
     expect((await mark(org.owner, 'post')).ok).toBe(true);
     expect(await marks(org.id)).toEqual({ post_item_ids: [kacchi], never_item_ids: [] });
     expect((await mark(manager, 'never')).ok).toBe(true);

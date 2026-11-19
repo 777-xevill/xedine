@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
 import { parseTakaToPoisha } from '@/lib/money';
+import { guessSizeShare, isSizeShare } from '@/modules/menu/size-share';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
 
 /** Owner-only catalogue edits (RLS: menu tables are written by the owner). Price edits are audited by triggers. */
@@ -177,6 +178,8 @@ const variantSchema = base.extend({
   nameBn: optionalText.optional(),
   /** The size's own selling price in taka; empty means the same as the dish. */
   price: z.string(),
+  /** How much of the dish's ingredients it uses (basis points); empty = guess from the name (ADR 0066). */
+  portion: z.string().optional(),
 });
 
 export async function createVariantAction(
@@ -200,12 +203,34 @@ export async function createVariantAction(
     if (!item) return { error: 'invalidInput' };
     delta = sizePrice - (item.base_price_poisha as number);
   }
+  const picked = Number(parsed.data.portion ?? '');
+  const portion = isSizeShare(picked) ? picked : guessSizeShare(parsed.data.name);
   const { error } = await supabase.from('item_variants').insert({
     org_id: parsed.data.orgId,
     menu_item_id: parsed.data.itemId,
     name: parsed.data.name,
     name_bn: parsed.data.nameBn ?? null,
     price_delta_poisha: delta,
+    portion_bps: portion,
+  });
+  if (error) return { error: mapDbError(error) };
+  return done(parsed.data.orgSlug);
+}
+
+/** How much of the dish a size uses: stock and cost follow it (owner only, audited; ADR 0066). */
+export async function setVariantPortionAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = base
+    .extend({ variantId: z.uuid(), portion: z.coerce.number().int() })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success || !isSizeShare(parsed.data.portion)) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_variant_portion', {
+    p_org: parsed.data.orgId,
+    p_variant: parsed.data.variantId,
+    p_portion_bps: parsed.data.portion,
   });
   if (error) return { error: mapDbError(error) };
   return done(parsed.data.orgSlug);

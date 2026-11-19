@@ -21,8 +21,12 @@ const ORG = 'demo-kacchi-house';
 // The public demo login (it is in the seed, ADR 0011): synthetic data, safe to show.
 const EMAIL = 'owner@demo-kacchi.xedine.example';
 const PASSWORD = 'demo-password-123';
-const lang = process.argv.includes('--lang') ? process.argv[process.argv.indexOf('--lang') + 1] : 'en';
-const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
+const lang = process.argv.includes('--lang')
+  ? process.argv[process.argv.indexOf('--lang') + 1]
+  : 'en';
+const only = process.argv.includes('--only')
+  ? process.argv[process.argv.indexOf('--only') + 1]
+  : null;
 
 // In the order they should appear on Play: the promise first. (The till and kitchen screen need a paired
 // device, which would write to the database, so they are not shot here.)

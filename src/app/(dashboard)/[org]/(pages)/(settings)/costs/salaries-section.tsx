@@ -171,6 +171,7 @@ export async function SalariesSection({
                 <p className="text-sm font-medium">
                   {t('salNoPayLine', { n: formatNumber(missing, loc) })}
                 </p>
+                {hasPrevious ? <Hint className="basis-full">{t('salCarried')}</Hint> : null}
                 {hasPrevious ? (
                   <form action={copySalariesAction} className="flex flex-wrap items-center gap-2">
                     {hidden}

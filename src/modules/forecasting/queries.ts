@@ -95,6 +95,8 @@ export interface PrepRow {
   name: string;
   name_bn: string | null;
   portions: number;
+  /** Plates of party and pre-orders for this dish (the restaurant's own numbers, ADR 0066). */
+  planned: number;
   batch_portions: number | null;
   batch_unit: string | null;
   batches: number | null;
@@ -113,6 +115,7 @@ export async function prepPlan(orgId: string, branchId: string, date: string): P
     name: String(r.name),
     name_bn: (r.name_bn as string | null) ?? null,
     portions: num(r.portions),
+    planned: num(r.planned),
     batch_portions: numOrNull(r.batch_portions),
     batch_unit: (r.batch_unit as string | null) ?? null,
     batches: numOrNull(r.batches),
@@ -128,6 +131,9 @@ export interface OutlookEvent {
   starts_on: string;
   ends_on: string;
   auto: boolean;
+  /** How busy the owner or a manager said the day will be (basis points of a usual day), if they did. */
+  expect_bps: number | null;
+  closed: boolean;
 }
 
 export interface BranchOutlook {
@@ -166,7 +172,7 @@ export async function branchOutlook(
       .order('at'),
     supabase
       .from('calendar_events')
-      .select('name, kind, starts_on, ends_on, source')
+      .select('name, kind, starts_on, ends_on, source, expect_bps, closed')
       .eq('org_id', orgId)
       .lte('starts_on', last)
       .gte('ends_on', today)
@@ -193,7 +199,109 @@ export async function branchOutlook(
       starts_on: e.starts_on as string,
       ends_on: e.ends_on as string,
       auto: e.source === 'weather forecast',
+      expect_bps: numOrNull(e.expect_bps),
+      closed: e.closed === true,
     })),
     exactLocation: branch?.latitude !== null && branch?.latitude !== undefined,
   };
+}
+
+// ---- The day plan (ADR 0066) -------------------------------------------------------------------------------
+
+export type DayStep =
+  | 'party_orders'
+  | 'use_first'
+  | 'running_low'
+  | 'checks'
+  | 'bazar'
+  | 'unpaid'
+  | 'cash_close'
+  | 'waste'
+  | 'count'
+  | 'tomorrow_bazar';
+export type StepState = 'done' | 'todo' | 'attention' | 'later' | 'info' | 'none';
+
+export interface DayPlanStep {
+  step: DayStep;
+  state: StepState;
+  n: number;
+  info: Record<string, unknown> | null;
+}
+
+/** Every step of the day and where it stands (metric_day_plan); closing steps only for today. */
+export async function dayPlan(
+  orgId: string,
+  branchId: string,
+  date: string,
+): Promise<DayPlanStep[]> {
+  const rows = await rpc('metric_day_plan', {
+    p_org: orgId,
+    p_branch: branchId,
+    p_date: date,
+    p_now: now().toISOString(),
+  });
+  return rows.map((r) => ({
+    step: r.step as DayStep,
+    state: r.state as StepState,
+    n: num(r.n),
+    info: (r.info as Record<string, unknown> | null) ?? null,
+  }));
+}
+
+export interface PlannedOrder {
+  id: string;
+  for_date: string;
+  ready_at: string | null;
+  title: string;
+  note: string | null;
+  status: 'planned' | 'done' | 'cancelled';
+  lines: {
+    qty: number;
+    name: string;
+    name_bn: string | null;
+    size: string | null;
+    size_bn: string | null;
+  }[];
+}
+
+/** Party and pre-orders of a branch for a day, earliest first, cancelled last. */
+export async function plannedOrders(
+  orgId: string,
+  branchId: string,
+  date: string,
+): Promise<PlannedOrder[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('planned_orders')
+    .select(
+      'id, for_date, ready_at, title, note, status, planned_order_lines(qty, menu_items(name, name_bn), item_variants(name, name_bn))',
+    )
+    .eq('org_id', orgId)
+    .eq('branch_id', branchId)
+    .eq('for_date', date)
+    .order('ready_at', { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  type Line = {
+    qty: number;
+    menu_items: { name: string; name_bn: string | null } | null;
+    item_variants: { name: string; name_bn: string | null } | null;
+  };
+  const rank = { planned: 0, done: 1, cancelled: 2 } as const;
+  return (data ?? [])
+    .map((o) => ({
+      id: o.id as string,
+      for_date: o.for_date as string,
+      ready_at: (o.ready_at as string | null) ?? null,
+      title: String(o.title),
+      note: (o.note as string | null) ?? null,
+      status: o.status as PlannedOrder['status'],
+      lines: ((o.planned_order_lines ?? []) as unknown as Line[]).map((l) => ({
+        qty: num(l.qty),
+        name: l.menu_items?.name ?? '',
+        name_bn: l.menu_items?.name_bn ?? null,
+        size: l.item_variants?.name ?? null,
+        size_bn: l.item_variants?.name_bn ?? null,
+      })),
+    }))
+    .sort((a, b) => rank[a.status] - rank[b.status]);
 }

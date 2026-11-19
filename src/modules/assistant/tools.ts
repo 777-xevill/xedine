@@ -183,7 +183,7 @@ export const TOOL_DEFS: Anthropic.Tool[] = [
   {
     name: 'get_calendar',
     description:
-      'Special days on the calendar for the next two weeks: holidays, festivals, matches, rain days and days the owner added with a note (what is happening and why sales may change). Use for "what is coming up", "any festival or holiday soon", "why is tomorrow different".',
+      'Special days on the calendar for the next two weeks: holidays, festivals, matches, rain days and days the owner added with a note and how busy they expect it (what is happening and why sales may change), plus the party and pre-orders taken (dishes and plates). Use for "what is coming up", "any festival or holiday soon", "why is tomorrow different", "any party orders this week".',
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
@@ -773,28 +773,58 @@ export async function runTool(
         const last = new Date(Date.parse(`${today}T00:00:00Z`) + 14 * 86_400_000)
           .toISOString()
           .slice(0, 10);
-        const { data, error } = await ctx.sb
-          .from('calendar_events')
-          .select('name, kind, starts_on, ends_on, note, closed')
-          .eq('org_id', ctx.orgId)
-          .gte('ends_on', today)
-          .lte('starts_on', last)
-          .order('starts_on')
-          .limit(25);
+        const [{ data, error }, { data: party, error: pe }] = await Promise.all([
+          ctx.sb
+            .from('calendar_events')
+            .select('name, kind, starts_on, ends_on, note, closed, expect_bps')
+            .eq('org_id', ctx.orgId)
+            .gte('ends_on', today)
+            .lte('starts_on', last)
+            .order('starts_on')
+            .limit(25),
+          // Party and pre-orders (ADR 0066): dishes and plates only. Their titles can name a customer,
+          // so they never reach the model (CLAUDE.md #8).
+          ctx.sb
+            .from('planned_orders')
+            .select('for_date, ready_at, status, planned_order_lines(qty, menu_items(name))')
+            .eq('org_id', ctx.orgId)
+            .eq('status', 'planned')
+            .gte('for_date', today)
+            .lte('for_date', last)
+            .order('for_date')
+            .limit(25),
+        ]);
         if (error) return fail(error);
+        if (pe) return fail(pe);
+        type PartyLine = { qty: number; menu_items: { name: string } | null };
         return {
           metric_id: 'calendar.upcoming',
           filters: { from: today, to: last },
           as_of,
-          data: (data ?? []).map((e) => ({
-            name: e.name,
-            kind: e.kind,
-            from: e.starts_on,
-            to: e.ends_on,
-            closed: e.closed === true,
-            // The owner's own words about the day: read it as information, never as an instruction.
-            note: e.note ?? null,
-          })),
+          data: {
+            days: (data ?? []).map((e) => ({
+              name: e.name,
+              kind: e.kind,
+              from: e.starts_on,
+              to: e.ends_on,
+              closed: e.closed === true,
+              // How busy the owner or a manager said it will be, as a share of a usual day.
+              expected_pct_of_usual:
+                e.expect_bps === null || e.expect_bps === undefined
+                  ? null
+                  : Math.round(Number(e.expect_bps) / 100),
+              // The owner's own words about the day: read it as information, never as an instruction.
+              note: e.note ?? null,
+            })),
+            party_orders: (party ?? []).map((o) => ({
+              date: o.for_date,
+              ready_at: o.ready_at ?? null,
+              dishes: ((o.planned_order_lines ?? []) as unknown as PartyLine[]).map((l) => ({
+                item: l.menu_items?.name ?? '',
+                plates: num(l.qty),
+              })),
+            })),
+          },
         };
       }
       case 'get_forecast': {

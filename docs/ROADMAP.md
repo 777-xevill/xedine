@@ -193,6 +193,7 @@ Status: ◐ **built; local checks green; full-seed checks written for CI** (2026
 - [x] Prep plan in cooking units (pots/deg, kg marinated) — `metric_prep_plan`
 - [x] Bazar list draft = forecast usage − theoretical stock + safety stock, rounded to purchase units, grouped by supplier — `generate_bazar_list`
 - [x] Approve → WhatsApp to purchaser/supplier; learn from edits (safety-stock tuning) — `approve_bazar_list` + `bazar_tuning`, `send_bazar_list` via the outbox; **real sends wait for Meta template approval**
+- [x] Day plan (ADR 0066): one routine per day ticked from the records (before opening, cooking and buying, closing) — `metric_day_plan`; "how busy?" on Tell Xedine (`add_special_day`, managers too); party and pre-orders on top of the usual day (`planned_orders`, `save_planned_order`); the bazar list counts the ≈ estimate, today once and the days in between, half plates and party orders, and takes items added by hand (`add_bazar_line`) — `tests/db/day-plan.test.ts` (13 hand-worked tests)
 **Done when**
 - [ ] S10 patterns reflected; forecast beats naive by ≥ 10% on seeded data or the UI hides it — Eid closures forecast 0, iftar share and Ramadan WAPE checked locally on Jan–Mar; the hide rule is enforced in SQL; **full seed in CI**
 - [x] Bazar list approve → send → purchase-entry reconciliation works end to end — `forecast.test.ts`
@@ -240,6 +241,7 @@ Status: ◐ **built; local checks green; phase-reviewer pass done, findings fixe
 - [x] Food safety, daily checks and complaints (ADR 0043): shelf life per item dates every lot, expired or held items' dishes leave the till (offline sales accepted and flagged), the restaurant's own checklist shows what is missing, a case closes only with its corrective actions done — `/[org]/food-safety`, `/[org]/daily-checks`, `/[org]/complaints`
 - [x] Onboarding wizard: menu import from photo/CSV, recipe drafts (Phase 3), fixed costs, channels — `/[org]/setup`, `metric_setup_progress` (12 steps, computed from real data); **timed < 2 h test not yet run**
 - [x] Plans, usage caps, subscription billing (provider TBD), admin console, data export — `metric_billing`, `org_ai_allowed`/`org_whatsapp_allowed` enforced in the gateways, `/admin` (platform admins only), `/api/export/[kind]`
+- [x] Launch audit (ADR 0066, 2026-11-19): sizes take their share of the dish, a voided/back-dated purchase re-prices the days after it, salaries carry over, cash-shortage floor per week, the `orders.left_unpaid` leak, the two red golden checks fixed — `tests/db/launch-audit.test.ts` (12 hand-worked tests)
 - [~] Security review (RLS audit, secrets, rate limits, headers), backups, monitoring, performance pass — see [SECURITY.md](../docs/SECURITY.md): RLS/isolation/search_path automated and green; headers added; **rate limiting, backups and monitoring are deliberately deferred to launch prep, not faked**
 **Done when**
 - [x] Security checklist passes; phase-reviewer reports no Critical issues — automated checks green; phase-reviewer ran, found 0 Critical / 3 Important (all fixed, see ADR 0023 consequences); rate-limit/backup/monitoring gaps remain named, not closed (deliberate, launch-prep decisions)

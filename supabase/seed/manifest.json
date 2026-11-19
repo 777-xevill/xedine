@@ -607,6 +607,16 @@
         ],
         "orders_on_closures": 0,
         "salary_week_lift_bps": 800,
+        "salary_week_factor_realized": {
+          "demo_kacchi_house": {
+            "dhanmondi": 1.157482,
+            "mirpur": 1.100209,
+            "uttara": 1.108736
+          },
+          "demo_cafe": {
+            "gulshan": 1.062784
+          }
+        },
         "rain_dip_bps": 300,
         "rain_days": {
           "demo_kacchi_house": 34,

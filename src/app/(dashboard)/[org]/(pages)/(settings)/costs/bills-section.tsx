@@ -7,6 +7,7 @@ import { formatMoney, type Locale } from '@/lib/i18n/format';
 import {
   addFixedCostAction,
   endFixedCostAction,
+  setAssumedFoodCostAction,
   updateFixedCostAction,
 } from '@/modules/costs/actions';
 
@@ -30,12 +31,15 @@ export async function BillsSection({
   branches,
   rows,
   place,
+  assumedFoodBps,
 }: {
   orgId: string;
   orgSlug: string;
   branches: { id: string; name: string }[];
   rows: FixedCostRow[];
   place: Place;
+  /** Food cost counted for dishes without ingredients, in basis points of their sales (null = not set). */
+  assumedFoodBps: number | null;
 }) {
   const [t, locale] = await Promise.all([getTranslations('costs'), getLocale()]);
   const money = (p: number) => formatMoney(p, locale as Locale, place.currency);
@@ -58,6 +62,36 @@ export async function BillsSection({
         <p className="text-xs text-secondary">
           {t('billsTotalHint')} · {t('totalLine', { count: rows.length })}
         </p>
+      </Card>
+
+      <Card>
+        <CardTitle>{t('foodTitle')}</CardTitle>
+        <p className="-mt-2 mb-4 max-w-2xl text-sm text-secondary">{t('foodBody')}</p>
+        <ActionForm
+          action={setAssumedFoodCostAction}
+          successKey="costs.foodSaved"
+          className="flex flex-wrap items-end gap-2"
+        >
+          {hidden}
+          <div>
+            <Label htmlFor="food-pct">{t('foodLabel')}</Label>
+            <Input
+              id="food-pct"
+              name="pct"
+              inputMode="decimal"
+              required
+              defaultValue={assumedFoodBps === null ? '' : String(assumedFoodBps / 100)}
+              aria-describedby="food-hint"
+              className="w-24 text-end"
+            />
+          </div>
+          <Button type="submit" size="sm">
+            {t('foodSave')}
+          </Button>
+          <Hint id="food-hint" className="basis-full">
+            {assumedFoodBps === null || assumedFoodBps === 0 ? t('foodNotSet') : t('foodHint')}
+          </Hint>
+        </ActionForm>
       </Card>
 
       <Card>

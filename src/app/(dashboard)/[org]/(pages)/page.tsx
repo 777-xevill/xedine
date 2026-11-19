@@ -284,7 +284,12 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
               />
               {canSeeMoney && pnlTotal ? (
                 <Figure
-                  label={t('estimatedProfit')}
+                  label={
+                    // No dish ingredients and no usual food cost: say what the figure leaves out.
+                    pnlTotal.cogs_basis !== 'recipes' && pnlTotal.assumed_food_cost_bps === 0
+                      ? t('profitBeforeFood')
+                      : t('estimatedProfit')
+                  }
                   value={money(pnlTotal.estimated_profit_poisha)}
                   tone={pnlTotal.estimated_profit_poisha < 0 ? 'danger' : undefined}
                 />
@@ -305,11 +310,17 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
                 )}
                 <span className="text-muted">
                   {' · '}
-                  {pnlTotal.cogs_basis === 'recipes'
-                    ? th('recipeCogs')
-                    : pnlTotal.cogs_basis === 'mixed'
-                      ? th('mixedCogs', { pct: formatBps(pnlTotal.assumed_food_cost_bps, loc) })
-                      : th('assumedCogs', { pct: formatBps(pnlTotal.assumed_food_cost_bps, loc) })}
+                  {pnlTotal.cogs_basis === 'recipes' ? (
+                    th('recipeCogs')
+                  ) : pnlTotal.assumed_food_cost_bps === 0 ? (
+                    <Link href={`/${ctx.org.slug}/costs`} className="text-purple hover:underline">
+                      {th('noCogs')}
+                    </Link>
+                  ) : pnlTotal.cogs_basis === 'mixed' ? (
+                    th('mixedCogs', { pct: formatBps(pnlTotal.assumed_food_cost_bps, loc) })
+                  ) : (
+                    th('assumedCogs', { pct: formatBps(pnlTotal.assumed_food_cost_bps, loc) })
+                  )}
                 </span>
               </p>
             ) : null}

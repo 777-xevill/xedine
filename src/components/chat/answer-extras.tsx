@@ -126,7 +126,11 @@ function useDescribe(currency: string) {
         return {
           title: t('kinds.add_dish', { name: str(v.name), price: money(v.price_minor) }),
           ...(str(v.category)
-            ? { detail: t('detail.category', { category: str(v.category) }) }
+            ? {
+                detail: v.new_category
+                  ? t('detail.categoryNew', { category: str(v.category) })
+                  : t('detail.category', { category: str(v.category) }),
+              }
             : {}),
         };
       case 'change_price':

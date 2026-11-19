@@ -194,25 +194,29 @@ export async function prepareAction(
       const cat = catName
         ? known.find((c) => norm(c.name) === norm(catName) || norm(c.name_bn) === norm(catName))
         : undefined;
-      const proposed = (ctx.cache.get('newCategories') as string[] | undefined) ?? [];
-      if (catName && !cat && !proposed.includes(norm(catName)))
-        return fail(
-          'not_found',
-          `no menu category "${catName}": call propose_add_category first, or use one of: ${known
-            .map((c) => c.name)
-            .join(', ')}`,
-        );
+      // A group named but not on the menu is made with the dish (the list says "a new group"), so the order
+      // the model asks for the group and the dish in does not matter. The model is told which groups exist,
+      // so it can switch to one it meant.
+      const isNew = Boolean(catName && !cat);
       return ok(
         {
           name,
           name_bn: text(input.name_bn, 200),
           price_minor: price,
           category_id: cat?.id ?? null,
-          // A category proposed in the same list is made first, then found by name.
           category_name: cat ? null : catName,
         },
-        { name, price_minor: price, category: cat?.name ?? catName ?? '' },
-        `Add "${name}" at ${money(price)}${catName ? ` in ${cat?.name ?? catName}` : ''}`,
+        {
+          name,
+          price_minor: price,
+          category: cat?.name ?? catName ?? '',
+          ...(isNew ? { new_category: true } : {}),
+        },
+        `Add "${name}" at ${money(price)}${catName ? ` in ${cat?.name ?? catName}` : ''}${
+          isNew
+            ? ` (a NEW menu group; the groups now are: ${known.map((c) => c.name).join(', ') || 'none'})`
+            : ''
+        }`,
       );
     }
 
@@ -558,7 +562,10 @@ export async function runAction(
         : { error: 'notAllowed' };
 
   switch (kind) {
-    case 'add_category':
+    case 'add_category': {
+      // A dish earlier in the same list may already have made this group: then it is there, not made twice.
+      const { data: groups } = await sb.from('menu_categories').select('name').eq('org_id', orgId);
+      if ((groups ?? []).some((g) => norm(g.name) === norm(params.name))) return { ok: true };
       return done(
         (
           await sb.from('menu_categories').insert({
@@ -568,6 +575,7 @@ export async function runAction(
           })
         ).error,
       );
+    }
     case 'add_dish': {
       let categoryId = p<string | null>(params, 'category_id');
       const categoryName = p<string | null>(params, 'category_name');
@@ -577,6 +585,16 @@ export async function runAction(
           ((data ?? []) as { id: string; name: string }[]).find(
             (c) => norm(c.name) === norm(categoryName),
           )?.id ?? null;
+        // Not made by a change before it in the list: the dish's own line said "a new group".
+        if (!categoryId) {
+          const made = await sb
+            .from('menu_categories')
+            .insert({ org_id: orgId, name: categoryName })
+            .select('id')
+            .single();
+          if (made.error) return done(made.error);
+          categoryId = made.data.id as string;
+        }
       }
       return done(
         (

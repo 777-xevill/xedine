@@ -1881,6 +1881,7 @@
       },
       "detail": {
         "category": "In {category}",
+        "categoryNew": "In {category} (a new group)",
         "dates": "{from} to {to}",
         "plates": "{dish} × {count}",
         "readyAt": "ready at {time}",

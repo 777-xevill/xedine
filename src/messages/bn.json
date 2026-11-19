@@ -1881,6 +1881,7 @@
       },
       "detail": {
         "category": "{category} গ্রুপে",
+        "categoryNew": "{category} গ্রুপে (নতুন গ্রুপ)",
         "dates": "{from} থেকে {to}",
         "plates": "{dish} {count} প্লেট",
         "readyAt": "{time}-এর মধ্যে তৈরি",

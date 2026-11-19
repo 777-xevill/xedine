@@ -641,7 +641,9 @@ export default async function PlanPage({
             return (
               <Card className="p-4 sm:p-6">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="mb-0">{t('bazarTitle', { date })}</CardTitle>
+                  <CardTitle className="mb-0">
+                    {t('bazarTitle', { date: formatDay(noonDhaka(date), loc, 'UTC') })}
+                  </CardTitle>
                   <div className="flex items-center gap-2">
                     {status ? (
                       <StatusBadge tone={STATUS_TONE[status]}>{t(`status.${status}`)}</StatusBadge>

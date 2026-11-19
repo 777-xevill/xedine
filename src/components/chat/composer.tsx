@@ -40,11 +40,29 @@ export function Composer({
   }, [value]);
 
   const empty = value.trim() === '';
+  const send = (
+    <button
+      type="submit"
+      disabled={empty || pending}
+      aria-label={sendLabel}
+      title={sendLabel}
+      className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-action text-on-action glow-action transition hover:brightness-110 disabled:bg-none disabled:bg-surface-elevated disabled:text-muted disabled:shadow-none"
+    >
+      {pending ? (
+        <LoaderCircle aria-hidden className="size-5 animate-spin" />
+      ) : (
+        <ArrowUp aria-hidden className="size-5" />
+      )}
+    </button>
+  );
   return (
     <div className="composer-halo rounded-[1.625rem] shadow-lift">
       <div
         className={cn(
-          'flex items-end gap-2 rounded-[1.5625rem] bg-surface',
+          'flex rounded-[1.5625rem] bg-surface',
+          // With controls (the model button) the question has the whole width and the controls sit on a
+          // row under it (the founder's reference); without, one line with send at the end.
+          tools ? 'flex-col gap-1' : 'items-end gap-2',
           size === 'hero' ? 'p-2.5 ps-5' : 'p-2 ps-4',
         )}
       >
@@ -66,24 +84,19 @@ export function Composer({
           placeholder={placeholder}
           autoFocus={autoFocus}
           className={cn(
-            'max-h-56 min-h-10 flex-1 resize-none bg-transparent py-2 leading-6 text-foreground placeholder:text-muted focus:outline-none focus-visible:outline-none',
+            'max-h-56 min-h-10 resize-none bg-transparent py-2 leading-6 text-foreground placeholder:text-muted focus:outline-none focus-visible:outline-none',
+            tools ? 'w-full pe-2' : 'flex-1',
             size === 'hero' ? 'text-base' : 'text-[0.9375rem]',
           )}
         />
-        {tools}
-        <button
-          type="submit"
-          disabled={empty || pending}
-          aria-label={sendLabel}
-          title={sendLabel}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-action text-on-action glow-action transition hover:brightness-110 disabled:bg-none disabled:bg-surface-elevated disabled:text-muted disabled:shadow-none"
-        >
-          {pending ? (
-            <LoaderCircle aria-hidden className="size-5 animate-spin" />
-          ) : (
-            <ArrowUp aria-hidden className="size-5" />
-          )}
-        </button>
+        {tools ? (
+          <div className="flex items-center justify-end gap-1">
+            {tools}
+            {send}
+          </div>
+        ) : (
+          send
+        )}
       </div>
     </div>
   );

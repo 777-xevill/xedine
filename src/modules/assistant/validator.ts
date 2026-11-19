@@ -76,6 +76,112 @@ export function withoutListNumbers(text: string): string {
   return text.replace(/\(\s*[0-9০-৯]{1,2}\s*\)/g, ' ').replace(/^(\s*)[0-9০-৯]{1,2}[.)]\s/gm, '$1');
 }
 
+/**
+ * Money signs and words, any currency the restaurants use (ADR 0062), in English, Banglish and Bangla. A
+ * figure next to one is money.
+ */
+const MONEY_BEFORE =
+  /(?:৳|\$|€|£|₹|টাকা|(?:^|[^a-z])(?:tk\.?|taka|bdt|usd|eur|gbp|inr|rs\.?|pkr|aed|sar|qar|rm|myr|sgd))\s*$/i;
+const MONEY_AFTER = /^\s*(৳|tk\b|taka|টাকা|bdt|usd|eur|gbp|inr|pkr|aed|sar|qar|myr|sgd|\/-)/i;
+const PERCENT_AFTER = /^\s*(%|٪|percent|per cent|শতাংশ|পার্সেন্ট)/i;
+// The other end of a range: "৳300–400", "300 to 400 taka", "30-35%".
+const RANGE = String.raw`\s*\d[\d,.]*\s*(?:-|–|—|to|or|থেকে|বা)\s*`;
+const MONEY_RANGE_BEFORE = new RegExp(
+  String.raw`(?:৳|\$|€|£|₹|টাকা|(?:^|[^a-z])(?:tk\.?|taka|bdt|usd|rs\.?|aed|sar|qar|rm|sgd))` +
+    RANGE +
+    '$',
+  'i',
+);
+const RANGE_AFTER = String.raw`^\s*(?:-|–|—|to|or|থেকে|বা)\s*\d[\d,.]*`;
+const MONEY_RANGE_AFTER = new RegExp(
+  RANGE_AFTER + String.raw`\s*(৳|tk\b|taka|টাকা|bdt|usd|eur|gbp|inr|pkr|aed|sar|qar|myr|sgd|\/-)`,
+  'i',
+);
+const PERCENT_RANGE_AFTER = new RegExp(
+  RANGE_AFTER + String.raw`\s*(%|٪|percent|per cent|শতাংশ|পার্সেন্ট)`,
+  'i',
+);
+
+/**
+ * Which unsupported numbers are money or a percentage (ADR 0067). The assistant may answer from general
+ * knowledge (a cooking temperature, cups of yoghurt, a year), and such figures need no tool; but a money
+ * amount or a percentage must always have a source, so an invented price, cost or margin is still refused.
+ */
+export function strictUnsupported(answer: string, unsupported: number[]): number[] {
+  if (unsupported.length === 0) return [];
+  const wanted = new Set(unsupported.map(norm));
+  const text = toLatin(withoutListNumbers(answer));
+  const strict = new Set<number>();
+  for (const m of text.matchAll(/-?\d[\d,]*(?:\.\d+)?/g)) {
+    const n = Math.abs(Number(m[0].replace(/,/g, '')));
+    if (!Number.isFinite(n) || !wanted.has(norm(n))) continue;
+    const before = text.slice(Math.max(0, m.index - 24), m.index);
+    const after = text.slice(m.index + m[0].length, m.index + m[0].length + 30);
+    if (
+      MONEY_BEFORE.test(before) ||
+      MONEY_RANGE_BEFORE.test(before) ||
+      MONEY_AFTER.test(after) ||
+      MONEY_RANGE_AFTER.test(after) ||
+      PERCENT_AFTER.test(after) ||
+      PERCENT_RANGE_AFTER.test(after)
+    )
+      strict.add(n);
+  }
+  return [...strict];
+}
+
+/** Tools that read no restaurant figures: the web, the app guide, and the changes it prepares. */
+const NO_RECORDS = /^(web_search|read_web_page|find_page|propose_[a-z_]+)$/;
+
+export type Verdict =
+  | { ok: true; general: boolean }
+  | {
+      ok: false;
+      /** The figures to name when the model is asked to answer again. */
+      unsupported: number[];
+    };
+
+/**
+ * Where general knowledge starts in an answer that also gives the restaurant's figures: a line beginning
+ * "General knowledge:" (in Bangla "সাধারণ জ্ঞান:"), as the prompt asks.
+ */
+export const GENERAL_MARK = /^[ \t*-]*(?:general knowledge|সাধারণ জ্ঞান)\s*[:：]/im;
+
+/**
+ * The numbers check for one answer (CLAUDE.md #1, ADR 0067). What an answer says about the restaurant, when it
+ * read the records or was asked about them (`dataQuestion`: the router knows the question), is checked as
+ * always: every figure must come from a tool, the card or the question. General knowledge (a recipe, a
+ * food-safety rule, the web) may keep its own figures and is shown as such, but never an unsourced money
+ * amount or percentage. In an answer with both, the general part comes last, after the GENERAL_MARK line.
+ */
+export function judgeNumbers(
+  answer: string,
+  sources: unknown[],
+  question: string,
+  toolNames: string[],
+  dataQuestion: boolean,
+): Verdict {
+  if (validateNumbers(answer, sources, question).ok) return { ok: true, general: false };
+  const recordsRead = dataQuestion || toolNames.some((n) => !NO_RECORDS.test(n));
+  const mark = GENERAL_MARK.exec(answer);
+  const parts = mark
+    ? [
+        { text: answer.slice(0, mark.index), strict: recordsRead },
+        { text: answer.slice(mark.index), strict: false },
+      ]
+    : [{ text: answer, strict: recordsRead }];
+  const bad = new Set<number>();
+  for (const part of parts) {
+    const check = validateNumbers(part.text, sources, question);
+    if (check.ok) continue;
+    for (const x of part.strict
+      ? check.unsupported
+      : strictUnsupported(part.text, check.unsupported))
+      bad.add(x);
+  }
+  return bad.size === 0 ? { ok: true, general: true } : { ok: false, unsupported: [...bad] };
+}
+
 export function validateNumbers(
   answer: string,
   sources: unknown[],

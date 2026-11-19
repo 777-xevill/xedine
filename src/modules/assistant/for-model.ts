@@ -48,11 +48,18 @@ export function qtyText(qty: number, base: BaseUnit): string {
 
 /** A chat bubble shows plain text: Markdown bold and heading marks are taken out. */
 export function plain(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/__(.+?)__/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .trim();
+  return (
+    text
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/__(.+?)__/g, '$1')
+      .replace(/^#{1,6}\s+/gm, '')
+      // X7 (Gemini) writes more Markdown: divider lines, "* " bullets and *italics*.
+      .replace(/^[ \t]*(?:\*{3,}|-{3,}|_{3,})[ \t]*$/gm, '')
+      .replace(/^([ \t]*)[*•][ \t]+/gm, '$1- ')
+      .replace(/(^|[^*\w])\*(?=\S)([^*\n]+?)\*(?!\w)/g, '$1$2')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
 }
 
 /**

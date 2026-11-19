@@ -5,14 +5,18 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/db/supabase-server';
+import { x7Configured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
 import { mapDbError, type FormState } from '@/modules/tenancy/form-state';
-import type { Role } from '@/modules/tenancy/context';
+import { orgToday, type Role } from '@/modules/tenancy/context';
 import { getEnabledFeatures } from '@/modules/tenancy/shell';
-import { ASSISTANT_PROMPT, askAssistant } from './agent';
+import { ACTION_PAGES, isActionKind, mayDo, type ActionKind } from './action-kinds';
+import { ASSISTANT_PROMPT, askAssistant, type AssistantModel } from './agent';
+import { runAction } from './ai-actions';
 import type { Translate } from './answers';
 import type { PageLink } from './links';
+import type { WebSource } from './web';
 
 /**
  * Web chat (ROADMAP Phase 4). A conversation, its messages and the tool calls behind each answer are
@@ -31,7 +35,19 @@ const askSchema = z.object({
     .regex(/^[A-Za-z]{2,24}$/)
     .optional(),
   pageNote: z.string().trim().max(200).optional(),
+  /** The model the person picked in the composer (ADR 0067). */
+  model: z.enum(['xedine', 'x7']).optional(),
 });
+
+/** A change the assistant prepared, as the list under an answer shows it (ADR 0067). */
+export interface ActionItem {
+  id: string;
+  kind: ActionKind;
+  view: Record<string, unknown>;
+  status: 'proposed' | 'running' | 'done' | 'failed' | 'dismissed';
+  /** errors.* key when it failed. */
+  error: string | null;
+}
 
 /** One answer as a chat bubble shows it (same shape the chat page builds from stored rows). */
 export interface AskReply {
@@ -39,10 +55,20 @@ export interface AskReply {
   text: string;
   aiWritten: boolean;
   verified: boolean;
+  /** Its money and percentages are checked; other figures are general knowledge. */
+  general: boolean;
   sources: string[];
   /** Pages the answer is about, as "Open Stock" buttons. */
   links: PageLink[];
+  /** X7 answered; or why it did not although it was picked. */
+  model: AssistantModel;
+  x7Note: 'busy' | 'used_up' | null;
+  webSources: WebSource[];
+  actions: ActionItem[];
 }
+
+/** Tool names that are not metrics, so they are not listed as an answer's sources. */
+const NOT_A_SOURCE = /^(propose_|web_search$|read_web_page$)/;
 
 type AskResult = { error: string } | { conversationId: string; reply: AskReply };
 
@@ -73,6 +99,7 @@ async function ask({
   question,
   page,
   pageNote,
+  model,
   ...rest
 }: z.output<typeof askSchema>): Promise<AskResult> {
   const supabase = await createClient();
@@ -141,6 +168,21 @@ async function ask({
     .eq('is_active', true);
 
   const at = now();
+  // X7 (ADR 0067): only when it is set up and this week's allowance has one left; otherwise the everyday
+  // model answers and the reply says why.
+  let wantX7 = model === 'x7' && x7Configured();
+  let x7Note: AskReply['x7Note'] = null;
+  if (wantX7) {
+    const { data: allowance } = await supabase.rpc('x7_allowance', {
+      p_org: orgId,
+      p_now: at.toISOString(),
+    });
+    const left = Number((allowance as { left_count?: number }[] | null)?.[0]?.left_count ?? 0);
+    if (left <= 0) {
+      wantX7 = false;
+      x7Note = 'used_up';
+    }
+  }
   const { data: settings } = await supabase
     .from('org_settings')
     .select('default_cutoff_minutes, timezone')
@@ -162,7 +204,18 @@ async function ask({
     ...(page ? { page: { key: page, ...(pageNote ? { note: pageNote } : {}) } } : {}),
     translate: async (locale) =>
       (await getTranslations({ locale, namespace: 'assistant' })) as unknown as Translate,
+    model: wantX7 ? 'x7' : 'xedine',
+    allowActions: true,
   });
+  if (answer.x7Busy) x7Note = 'busy';
+  // One X7 question counted for the week, only when X7 itself answered.
+  if (answer.model === 'x7') {
+    const { error: useError } = await supabase.rpc('use_x7', {
+      p_org: orgId,
+      p_now: at.toISOString(),
+    });
+    if (useError) console.error('use_x7', useError.code);
+  }
 
   const { error: userError } = await supabase.from('ai_messages').insert({
     org_id: orgId,
@@ -179,7 +232,15 @@ async function ask({
       user_id: user.id,
       conversation_id: conversationId,
       role: 'assistant',
-      content: { text: answer.text, source: answer.source, language: answer.language },
+      content: {
+        text: answer.text,
+        source: answer.source,
+        language: answer.language,
+        model: answer.model,
+        ...(answer.modelId ? { model_id: answer.modelId } : {}),
+        ...(x7Note ? { x7_note: x7Note } : {}),
+        ...(answer.webSources.length > 0 ? { web: answer.webSources } : {}),
+      },
       numeric_check: answer.numericCheck,
       prompt_version:
         answer.source === 'llm' ? `${ASSISTANT_PROMPT.key}@${ASSISTANT_PROMPT.version}` : null,
@@ -201,8 +262,33 @@ async function ask({
       })),
     );
   }
+  // The changes it prepared, saved for the person to approve (RLS: their own rows, as proposed).
+  let actions: ActionItem[] = [];
+  if (answer.proposals.length > 0) {
+    const { data: saved, error: actionError } = await supabase
+      .from('ai_actions')
+      .insert(
+        answer.proposals.map((p, seq) => ({
+          org_id: orgId,
+          user_id: user.id,
+          conversation_id: conversationId,
+          message_id: reply.id,
+          seq,
+          kind: p.kind,
+          params: p.params,
+          view: p.view,
+          model: answer.modelId,
+        })),
+      )
+      .select('id, kind, view, status, error, seq');
+    if (actionError) console.error('ai_actions', actionError.code);
+    actions = ((saved ?? []) as (ActionItem & { seq: number })[])
+      .sort((a, b) => a.seq - b.seq)
+      .map((a) => ({ id: a.id, kind: a.kind, view: a.view, status: a.status, error: a.error }));
+  }
   const sources: string[] = [];
   for (const c of answer.toolCalls) {
+    if (NOT_A_SOURCE.test(c.name)) continue;
     const id = String(c.resultMeta.metric_id ?? c.name);
     if (!sources.includes(id)) sources.push(id);
   }
@@ -216,10 +302,141 @@ async function ask({
         answer.numericCheck === 'ok' ||
         answer.numericCheck === 'retried' ||
         answer.source === 'router',
+      general: answer.numericCheck === 'general',
       sources,
       links: answer.links,
+      model: answer.model,
+      x7Note,
+      webSources: answer.webSources,
+      actions,
     },
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Changes the assistant prepared (ADR 0067)
+// ---------------------------------------------------------------------------------------------
+const decideSchema = z.object({
+  orgId: z.uuid(),
+  orgSlug: z.string().regex(SLUG),
+  ids: z.array(z.uuid()).min(1).max(50),
+});
+
+export type ActionRunResult =
+  | { error: string }
+  | { results: { id: string; status: ActionItem['status']; error: string | null }[] };
+
+const PAGE_PATHS: Record<string, string[]> = {
+  menu: ['/menu', '/menu-profit'],
+  plan: ['/plan'],
+  purchases: ['/purchases', '/stock'],
+  stock: ['/stock'],
+  costs: ['/costs', ''],
+  settings: ['/settings/assistant'],
+};
+
+/**
+ * "Do these changes": makes each prepared change in order (a new category before the dish in it), with the
+ * person's own session. A change is claimed first (proposed → running), so a double tap cannot make it twice,
+ * and is good for 24 hours. Each one stands alone: one refused does not stop the rest.
+ */
+export async function runAiActionsAction(
+  input: z.input<typeof decideSchema>,
+): Promise<ActionRunResult> {
+  const parsed = decideSchema.safeParse(input);
+  if (!parsed.success) return { error: 'invalidInput' };
+  const { orgId, orgSlug, ids } = parsed.data;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: 'notAllowed' };
+  const [{ data: rows, error }, { data: roleRows }] = await Promise.all([
+    supabase
+      .from('ai_actions')
+      .select('id, kind, params, status, seq')
+      .eq('org_id', orgId)
+      .in('id', ids)
+      .order('seq'),
+    supabase
+      .from('memberships')
+      .select('role')
+      .eq('org_id', orgId)
+      .eq('user_id', user.id)
+      .eq('status', 'active'),
+  ]);
+  if (error) return { error: mapDbError(error) };
+  const roles = (roleRows ?? []).map((r) => r.role as Role);
+  const today = await orgToday(orgId);
+  const results: { id: string; status: ActionItem['status']; error: string | null }[] = [];
+  const pages = new Set<string>();
+  for (const row of rows ?? []) {
+    const id = row.id as string;
+    const kind = String(row.kind);
+    if (row.status !== 'proposed' || !isActionKind(kind)) {
+      results.push({ id, status: row.status as ActionItem['status'], error: null });
+      continue;
+    }
+    const nowIso = now().toISOString();
+    const claim = await supabase.rpc('decide_ai_action', {
+      p_id: id,
+      p_status: 'running',
+      p_error: null,
+      p_now: nowIso,
+    });
+    if (claim.error) {
+      results.push({ id, status: 'proposed', error: mapDbError(claim.error) });
+      continue;
+    }
+    const ran = mayDo(kind, roles)
+      ? await runAction(kind, row.params as Record<string, unknown>, {
+          sb: supabase,
+          orgId,
+          userId: user.id,
+          today,
+          nowIso,
+        })
+      : { error: 'notAllowed' };
+    const failed = 'error' in ran ? ran.error : null;
+    const { error: decideError } = await supabase.rpc('decide_ai_action', {
+      p_id: id,
+      p_status: failed ? 'failed' : 'done',
+      p_error: failed,
+      p_now: now().toISOString(),
+    });
+    if (decideError) console.error('decide_ai_action', decideError.code);
+    results.push({ id, status: failed ? 'failed' : 'done', error: failed });
+    if (!failed) pages.add(ACTION_PAGES[kind]);
+  }
+  for (const page of pages)
+    for (const path of PAGE_PATHS[page] ?? []) revalidatePath(`/${orgSlug}${path}`);
+  revalidatePath(`/${orgSlug}/assistant`);
+  return { results };
+}
+
+/** "Not now": the prepared changes are set aside and never made. */
+export async function dismissAiActionsAction(
+  input: z.input<typeof decideSchema>,
+): Promise<ActionRunResult> {
+  const parsed = decideSchema.safeParse(input);
+  if (!parsed.success) return { error: 'invalidInput' };
+  const supabase = await createClient();
+  const results: { id: string; status: ActionItem['status']; error: string | null }[] = [];
+  for (const id of parsed.data.ids) {
+    const { error } = await supabase.rpc('decide_ai_action', {
+      p_id: id,
+      p_status: 'dismissed',
+      p_error: null,
+      p_now: now().toISOString(),
+    });
+    results.push({
+      id,
+      status: error ? 'proposed' : 'dismissed',
+      error: error ? mapDbError(error) : null,
+    });
+  }
+  revalidatePath(`/${parsed.data.orgSlug}/assistant`);
+  return { results };
 }
 
 const contextSchema = z.object({

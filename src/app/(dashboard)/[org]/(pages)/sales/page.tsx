@@ -398,6 +398,7 @@ export default async function SalesPage({
       <div aria-hidden className="h-20" />
       <PageAgent
         page="sales"
+        currency={ctx.place.currency}
         pageNote={selectedBranch ? `${period}, ${selectedBranch}` : period}
         key={`${window}:${scope ?? 'all'}`}
         orgId={ctx.org.id}

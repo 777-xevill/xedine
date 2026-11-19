@@ -2,7 +2,10 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { ChatView, type ChatMessage } from '@/components/chat/chat-view';
 import { createClient } from '@/lib/db/supabase-server';
-import { aiConfigured } from '@/lib/llm-gateway';
+import { aiConfigured, x7Configured } from '@/lib/llm-gateway';
+import { now } from '@/lib/time/clock';
+import { isActionKind } from '@/modules/assistant/action-kinds';
+import type { ActionItem, AskReply } from '@/modules/assistant/actions';
 import { suggestionKeys } from '@/modules/assistant/suggestions';
 import { getOrgContext } from '@/modules/tenancy/context';
 
@@ -26,7 +29,7 @@ export default async function AssistantPage({
   const supabase = await createClient();
   const conversationId = sp.c && UUID.test(sp.c) ? sp.c : '';
 
-  const [{ data: rows }, { data: cites }] = conversationId
+  const [{ data: rows }, { data: cites }, { data: actionRows }] = conversationId
     ? await Promise.all([
         supabase
           .from('ai_messages')
@@ -37,10 +40,36 @@ export default async function AssistantPage({
           .from('ai_tool_calls')
           .select('message_id, tool_name, result_meta')
           .eq('conversation_id', conversationId),
+        supabase
+          .from('ai_actions')
+          .select('id, message_id, kind, view, status, error, seq')
+          .eq('conversation_id', conversationId)
+          .order('seq'),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
+  // X7 this week (ADR 0067): the composer's switch shows what is left.
+  const { data: allowance } = x7Configured()
+    ? await supabase.rpc('x7_allowance', { p_org: ctx.org.id, p_now: now().toISOString() })
+    : { data: null };
+  const week = (
+    allowance as { per_week: number; left_count: number; resets_on: string }[] | null
+  )?.[0];
+  const actionsBy = new Map<string, ActionItem[]>();
+  for (const a of actionRows ?? []) {
+    if (!isActionKind(String(a.kind))) continue;
+    const list = actionsBy.get(a.message_id as string) ?? [];
+    list.push({
+      id: a.id as string,
+      kind: a.kind as ActionItem['kind'],
+      view: (a.view ?? {}) as Record<string, unknown>,
+      status: a.status as ActionItem['status'],
+      error: (a.error as string | null) ?? null,
+    });
+    actionsBy.set(a.message_id as string, list);
+  }
   const sourcesBy = new Map<string, string[]>();
   for (const c of cites ?? []) {
+    if (/^(propose_|web_search$|read_web_page$)/.test(String(c.tool_name))) continue;
     const id = String((c.result_meta as { metric_id?: string } | null)?.metric_id ?? c.tool_name);
     const list = sourcesBy.get(c.message_id as string) ?? [];
     if (!list.includes(id)) list.push(id);
@@ -49,7 +78,13 @@ export default async function AssistantPage({
   const messages: ChatMessage[] = (rows ?? [])
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => {
-      const content = (m.content ?? {}) as { text?: string; source?: string };
+      const content = (m.content ?? {}) as {
+        text?: string;
+        source?: string;
+        model?: AskReply['model'];
+        x7_note?: AskReply['x7Note'];
+        web?: AskReply['webSources'];
+      };
       return {
         id: m.id as string,
         role: m.role as ChatMessage['role'],
@@ -61,6 +96,11 @@ export default async function AssistantPage({
             m.numeric_check === 'retried' ||
             content.source === 'router'),
         sources: sourcesBy.get(m.id as string) ?? [],
+        general: m.numeric_check === 'general',
+        model: content.model === 'x7' ? ('x7' as const) : ('xedine' as const),
+        x7Note: content.x7_note ?? null,
+        webSources: Array.isArray(content.web) ? content.web : [],
+        actions: actionsBy.get(m.id as string) ?? [],
       };
     });
 
@@ -76,6 +116,12 @@ export default async function AssistantPage({
       aiOn={aiConfigured()}
       initialQuestion={typeof sp.ask === 'string' ? sp.ask.slice(0, 1000) : undefined}
       firstName={ctx.fullName.split(/\s+/)[0] ?? ''}
+      x7={
+        week && week.per_week > 0
+          ? { perWeek: week.per_week, left: week.left_count, resetsOn: week.resets_on }
+          : null
+      }
+      currency={ctx.place.currency}
     />
   );
 }

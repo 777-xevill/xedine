@@ -141,7 +141,9 @@
     "plannedOrderLines": "Pick a dish and the number of plates (a whole number) for each row you fill.",
     "plannedOrderName": "Write who the order is for, in up to 120 letters.",
     "plannedOrderDate": "Pick today or a day in the next two months.",
-    "bazarLineExists": "That item is already on the list: change its amount there."
+    "bazarLineExists": "That item is already on the list: change its amount there.",
+    "aiActionExpired": "This was prepared more than a day ago. Ask again for a fresh one.",
+    "aiActionState": "This change was already handled."
   },
   "auth": {
     "signInTitle": "Welcome back",
@@ -1817,7 +1819,7 @@
     "hello": "Hi {name}",
     "greeting": "What would you like to know today?",
     "homePlaceholder": "Ask Xedine anything about your restaurant…",
-    "footnote": "Every number comes from your own data and is checked before you see it.",
+    "footnote": "Numbers about your restaurant come from your own data and are checked. General knowledge is marked, and nothing changes until you tap.",
     "suggestionsLabel": "Try asking",
     "suggestions": {
       "sales": "How are sales today?",
@@ -1833,7 +1835,73 @@
     "aiOn": "On",
     "aiOff": "Off",
     "aiOnBody": "Xedine answers your questions on the website and in Telegram. It is written by {provider} from your data, and every number is checked against it.",
-    "noRules": "No goals or rules yet."
+    "x7Body": "X7, the strongest AI, is written by {provider}. Pick it above the chat box for hard questions and many changes at once; your plan gives a number each week.",
+    "noRules": "No goals or rules yet.",
+    "x7": {
+      "name": "X7",
+      "badge": "X7",
+      "pickLabel": "Which AI answers",
+      "everyday": "Xedine",
+      "everydayHint": "everyday",
+      "left": "{count} left this week",
+      "usedUp": "used up, back {day}",
+      "note": {
+        "busy": "X7 was busy, so Xedine answered. This one was not counted.",
+        "used_up": "X7 is used up this week, so Xedine answered."
+      }
+    },
+    "generalKnowledge": "General knowledge",
+    "webSources": "From the web:",
+    "actions": {
+      "title": "Ready to do",
+      "body": "Xedine prepared these changes. Nothing has changed yet: check them, then tap.",
+      "bodyDone": "The changes Xedine prepared.",
+      "doThese": "Do these changes ({count})",
+      "notNow": "Not now",
+      "status": {
+        "done": "Done",
+        "failed": "Not done",
+        "dismissed": "Set aside",
+        "running": "Working"
+      },
+      "kinds": {
+        "add_category": "Add the menu group “{name}”",
+        "add_dish": "Add {name} to the menu at {price}",
+        "change_price": "{dish}: price from {from} to {to}",
+        "dish_on": "Put {dish} back on the menu",
+        "dish_off": "Take {dish} off the menu",
+        "add_special_day": "Tell Xedine: {name}, {dates}",
+        "add_party_order": "Party order: {title}, {date}",
+        "record_purchase": "Record the bazar of {date}: {total}",
+        "log_waste": "Write down waste: {qty} {item}",
+        "add_supplier": "Add the supplier “{name}”",
+        "add_fixed_cost": "Monthly cost: {name}, {amount} a month",
+        "set_food_cost": "Usual food cost: {pct}% of sales",
+        "remember_rule": "Remember: {text}"
+      },
+      "detail": {
+        "category": "In {category}",
+        "dates": "{from} to {to}",
+        "plates": "{dish} × {count}",
+        "readyAt": "ready at {time}",
+        "newItem": "new item"
+      },
+      "busy": {
+        "much_busier": "Much busier than usual",
+        "busier": "A bit busier",
+        "quieter": "A bit quieter",
+        "much_quieter": "Much quieter",
+        "closed": "Closed that day"
+      },
+      "fixedKinds": {
+        "rent": "Rent",
+        "utilities": "Electricity and water",
+        "gas": "Gas",
+        "fuel": "Fuel",
+        "internet": "Internet",
+        "other": "Other"
+      }
+    }
   },
   "briefs": {
     "morningSales": "Yesterday: net sales {net} from {orders} orders (same day last week: {lastWeek}).",
@@ -6034,7 +6102,7 @@
         "showPlan": "Show {name}",
         "rows": {
           "assistant": "Ask Xedine: AI that knows your whole restaurant",
-          "deepAi": "Strongest AI for hard questions",
+          "deepAi": "X7, the strongest AI, for hard questions and many changes at once",
           "leaks": "Where money leaks, with proof",
           "brief": "Morning brief on your phone",
           "till": "Till and kitchen screen, even without internet",
@@ -6082,7 +6150,7 @@
             "brand": "Your brand look: logo, menu, posts",
             "build": "One custom build a month",
             "review": "Monthly growth review on a call",
-            "deepAi": "Strongest AI, {n} a week"
+            "deepAi": "X7, the strongest AI, {n} a week"
           },
           "everything": "Everything in Pro"
         },
@@ -6118,6 +6186,8 @@
     "requests": "{count} AI requests",
     "monthAi": "AI requests this month",
     "monthMessages": "Messages queued this month",
-    "moreLimits": "The daily AI allowance is the only limit. Your branches and price are on Billing."
+    "moreLimits": "The daily AI allowance and X7's questions this week are the limits. Your branches and price are on Billing.",
+    "x7Title": "X7 this week",
+    "x7Body": "{used} of {perWeek} X7 questions used. It starts again on {day}."
   }
 }

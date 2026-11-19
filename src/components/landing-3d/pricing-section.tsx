@@ -174,7 +174,6 @@ export const PricingSection = memo(function PricingSection() {
                 key: id,
                 has: true,
                 text: t(`partner.services.${id}`, counts),
-                tag: id === 'deepAi' ? t('soon') : undefined,
               })),
             ]}
             foot={t('partner.excluded')}

@@ -6,7 +6,9 @@ import { now } from '@/lib/time/clock';
 import { businessDate } from '@/lib/time/business-date';
 import {
   AiError,
+  costUsdMicros,
   createGateway,
+  maskPii,
   type ChatTransport,
   type SpeechTransport,
   type Transport,
@@ -24,6 +26,7 @@ import {
   usage,
   type OpenAiCompletion,
 } from './openai';
+import { groundingSources } from './grounding';
 
 export {
   AiError,
@@ -47,6 +50,8 @@ export {
  *   uncounted (ADR 0008).
  */
 type Provider = 'openai' | 'groq' | 'anthropic';
+/** The OpenAI wire format: OpenAI itself, Groq, and Gemini's OpenAI-compatible endpoint (X7). */
+type Wire = 'openai' | 'groq' | 'gemini';
 
 function provider(): Provider | null {
   const chosen = process.env.AI_PROVIDER;
@@ -58,7 +63,14 @@ function provider(): Provider | null {
 }
 
 /** Where an OpenAI-format provider lives and which key it uses. */
-function wire(p: 'openai' | 'groq'): { baseUrl: string; key: string | undefined; name: string } {
+function wire(p: Wire): { baseUrl: string; key: string | undefined; name: string } {
+  if (p === 'gemini')
+    return {
+      baseUrl:
+        process.env.GEMINI_BASE_URL ?? 'https://generativelanguage.googleapis.com/v1beta/openai',
+      key: process.env.GEMINI_API_KEY,
+      name: 'gemini',
+    };
   return p === 'groq'
     ? {
         baseUrl: process.env.GROQ_BASE_URL ?? 'https://api.groq.com/openai/v1',
@@ -70,6 +82,71 @@ function wire(p: 'openai' | 'groq'): { baseUrl: string; key: string | undefined;
         key: process.env.OPENAI_API_KEY,
         name: 'openai',
       };
+}
+
+/**
+ * X7, the strongest model (ADR 0067): its own provider and model, apart from the everyday assistant's.
+ * X7_PROVIDER = openai | gemini | anthropic | groq. Default: OpenAI when OPENAI_API_KEY is set (the founder's
+ * choice for X7), else Gemini when GEMINI_API_KEY is set (the test until then). X7_MODEL overrides the model.
+ * With none, X7 is off and the composer offers only the everyday assistant.
+ */
+type X7Provider = 'openai' | 'gemini' | 'anthropic' | 'groq';
+const X7_KEYS: Record<X7Provider, string> = {
+  openai: 'OPENAI_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  groq: 'GROQ_API_KEY',
+};
+function x7Provider(): X7Provider | null {
+  const chosen = process.env.X7_PROVIDER as X7Provider | undefined;
+  if (chosen && chosen in X7_KEYS) return process.env[X7_KEYS[chosen]] ? chosen : null;
+  if (process.env.OPENAI_API_KEY) return 'openai';
+  if (process.env.GEMINI_API_KEY) return 'gemini';
+  return null;
+}
+// TODO(verify): the founder's free Gemini key on 2026-11-19: Pro models have no free quota; 3.5, 3.7 and 3.8
+// Flash took about 60 s even to say "hi" (queued); 3.5 Flash-Lite answered a 45-tool question in ~5 s and
+// 3.1 Flash-Lite in ~1.5 s. So X7 runs on 3.5 Flash-Lite for the test; set X7_MODEL=gemini-3.5-flash when it
+// answers in time (or a paid key), or move X7 to OpenAI. Busy answers (429/503) go to the fallbacks in turn
+// (X7_FALLBACK_MODELS, comma-separated).
+const X7_DEFAULT_MODELS: Record<X7Provider, string> = {
+  openai: 'gpt-5',
+  gemini: 'gemini-3.5-flash-lite',
+  anthropic: 'claude-sonnet-5',
+  groq: 'openai/gpt-oss-120b',
+};
+const X7_DEFAULT_FALLBACKS: Partial<Record<X7Provider, string>> = {
+  gemini: 'gemini-3.1-flash-lite',
+};
+
+export function x7Configured(): boolean {
+  return x7Provider() !== null;
+}
+
+/** The model X7 runs on, for the record (ai_actions.model, the message's content). */
+export function x7Model(): string {
+  const p = x7Provider();
+  return process.env.X7_MODEL ?? (p ? X7_DEFAULT_MODELS[p] : '');
+}
+
+/** The provider's display name for X7, for Settings → Assistant. */
+export function x7ProviderName(): string {
+  const p = x7Provider();
+  return p === 'gemini'
+    ? 'Google Gemini'
+    : p === 'anthropic'
+      ? 'Anthropic'
+      : p === 'groq'
+        ? 'Groq'
+        : 'OpenAI';
+}
+
+function x7Fallbacks(): string[] {
+  const p = x7Provider();
+  return (process.env.X7_FALLBACK_MODELS ?? (p ? (X7_DEFAULT_FALLBACKS[p] ?? '') : ''))
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 // TODO(verify): model ids and list prices against each provider's pricing page when the key is added.
@@ -92,6 +169,13 @@ const RATES: Record<string, { input: number; output: number }> = {
   'qwen/qwen3.8-27b': { input: 0.29, output: 0.59 },
   'openai/gpt-oss-120b': { input: 0.15, output: 0.6 },
   'openai/gpt-oss-20b': { input: 0.075, output: 0.3 },
+  // X7 on Gemini (ADR 0067). The founder's key is on the free tier, so Google charges nothing; the list
+  // prices still count toward the daily allowance so a paid key never runs uncounted. TODO(verify) against
+  // ai.google.dev/pricing: 3.5 Flash is priced as 3 Flash was ($0.50 / $3), the Lites as 3.1 Flash-Lite.
+  'gemini-3.5-flash': { input: 0.5, output: 3 },
+  'gemini-3.5-flash-lite': { input: 0.1, output: 0.4 },
+  'gemini-3.1-flash-lite': { input: 0.1, output: 0.4 },
+  'gemini-3.1-pro-preview': { input: 2, output: 12 },
 };
 
 function extraRates(): Record<string, { input: number; output: number }> {
@@ -184,7 +268,11 @@ const anthropicChatTransport: ChatTransport = async (req) => {
 };
 
 // --- OpenAI and Groq (Chat Completions over fetch: no SDK dependency) -------------------------------
-async function post(w: ReturnType<typeof wire>, body: Record<string, unknown>): Promise<Response> {
+async function post(
+  w: ReturnType<typeof wire>,
+  body: Record<string, unknown>,
+  timeoutMs = 90_000,
+): Promise<Response> {
   try {
     return await fetch(`${w.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -193,7 +281,7 @@ async function post(w: ReturnType<typeof wire>, body: Record<string, unknown>): 
         Authorization: `Bearer ${w.key}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     // Network failure or timeout: an AiError, so callers fall back (the assistant to its router).
@@ -252,10 +340,52 @@ function retryAfterMs(res: Response): number | null {
   return Number(m[1] ?? 0) * 60_000 + Number(m[2] ?? 0) * 1000 + Number(m[3] ?? 0);
 }
 
-async function openAiComplete(
-  p: 'openai' | 'groq',
+/** Which model a question's X7 calls are on: set by the first model that answers, then kept. */
+interface Sticky {
+  model?: string;
+}
+
+/**
+ * X7 on Gemini: the chosen model, then each fallback, when Google answers busy (429, 500, 503) or not within
+ * 45 s. Once one has answered, the rest of the question stays on it: a thought signature belongs to the model
+ * that wrote it, and another model refuses it.
+ */
+async function geminiComplete(
   request: Record<string, unknown>,
+  sticky: Sticky,
 ): Promise<OpenAiCompletion> {
+  const w = wire('gemini');
+  const chain = sticky.model
+    ? [sticky.model]
+    : [...new Set([String(request.model), ...x7Fallbacks()])];
+  for (const model of chain) {
+    let res: Response;
+    try {
+      res = await post(w, { ...request, model }, 45_000);
+    } catch {
+      console.error('gemini', model, 'timeout');
+      continue;
+    }
+    if (res.ok) {
+      const json = (await res.json()) as OpenAiCompletion;
+      if (!json.choices?.[0])
+        throw new AiError('invalid_output', 'the AI provider returned no answer');
+      sticky.model = model;
+      return json;
+    }
+    console.error('gemini', model, res.status);
+    if (![429, 500, 503].includes(res.status))
+      throw new AiError('invalid_output', `the AI provider returned ${res.status}`);
+  }
+  throw new AiError('rate_limited', 'X7 is busy; try again in a minute');
+}
+
+async function openAiComplete(
+  p: Wire,
+  request: Record<string, unknown>,
+  sticky: Sticky = {},
+): Promise<OpenAiCompletion> {
+  if (p === 'gemini') return geminiComplete(request, sticky);
   const w = wire(p);
   let body = request;
   // A photo on Groq goes to the model that can see it, whatever the tier asked for.
@@ -312,15 +442,21 @@ async function openAiComplete(
 }
 
 const reasoningEffort = () => process.env.AI_REASONING_EFFORT ?? 'low';
+/** X7 thinks harder than the everyday assistant (X7_REASONING: low | medium | high). */
+const x7ReasoningEffort = () => process.env.X7_REASONING ?? 'medium';
 
 const openAiTransport =
-  (p: 'openai' | 'groq'): Transport =>
+  (p: Wire, effort = reasoningEffort, sticky: Sticky = {}): Transport =>
   async (req) => {
-    const completion = await openAiComplete(p, {
-      ...completionBody(req, reasoningEffort()),
-      messages: toOpenAiMessages([req.system], [{ role: 'user', content: req.content }]),
-      response_format: responseFormat(req.schema),
-    });
+    const completion = await openAiComplete(
+      p,
+      {
+        ...completionBody(req, effort()),
+        messages: toOpenAiMessages([req.system], [{ role: 'user', content: req.content }]),
+        response_format: responseFormat(req.schema),
+      },
+      sticky,
+    );
     const choice = completion.choices[0]!;
     return {
       parsed: parsedJson(choice) as never,
@@ -330,9 +466,9 @@ const openAiTransport =
   };
 
 const openAiChatTransport =
-  (p: 'openai' | 'groq'): ChatTransport =>
+  (p: Wire, effort = reasoningEffort, sticky: Sticky = {}): ChatTransport =>
   async (req) => {
-    const completion = await openAiComplete(p, chatBody(req, reasoningEffort()));
+    const completion = await openAiComplete(p, chatBody(req, effort()), sticky);
     const choice = completion.choices[0]!;
     return {
       content: toContentBlocks(choice),
@@ -428,7 +564,110 @@ const supabaseUsageStore: UsageStore = {
   },
 };
 
-export function gateway() {
+/**
+ * Google Search through Gemini (ADR 0067) for the assistant's web_search, when the founder turns it on
+ * (X7_GOOGLE_SEARCH=on; the free tier has no quota for it). Like every call: the plan and the daily allowance
+ * are checked, the question is PII-masked, and tokens plus the search fee are costed in ai_usage. Returns the
+ * short answer with the pages it cites, or null when Google gave nothing.
+ */
+export async function groundedSearch(
+  orgId: string,
+  query: string,
+): Promise<{ text: string; sources: { title: string; url: string }[] } | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  const model = process.env.X7_SEARCH_MODEL ?? 'gemini-3.5-flash-lite';
+  const today = businessDate(now());
+  if (!(await supabaseUsageStore.planAllowsAi!(orgId)))
+    throw new AiError('not_in_plan', "this restaurant's plan does not include AI");
+  if ((await supabaseUsageStore.spentTodayUsdMicros(orgId, today)) >= DAILY_CAP_USD_MICROS)
+    throw new AiError('cap_exceeded', 'the daily AI allowance for this restaurant is used up');
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: `Search the web and answer in a few short sentences, giving figures exactly as the sources state them: ${maskPii(query)}`,
+              },
+            ],
+          },
+        ],
+        tools: [{ google_search: {} }],
+      }),
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+  if (!res.ok) {
+    console.error('google search', res.status);
+    return null;
+  }
+  const json = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] }; groundingMetadata?: unknown }[];
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      thoughtsTokenCount?: number;
+    };
+  };
+  const u = json.usageMetadata ?? {};
+  const tokens = {
+    input: u.promptTokenCount ?? 0,
+    output: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0),
+    cacheRead: 0,
+    cacheWrite: 0,
+  };
+  // TODO(verify): Google's price per grounded search; $0.035 counted until checked.
+  const searchFee = Number(process.env.GOOGLE_SEARCH_USD_MICROS ?? 35_000);
+  await supabaseUsageStore.record({
+    orgId,
+    date: today,
+    model,
+    feature: 'web_search',
+    usage: tokens,
+    costUsdMicros: costUsdMicros({ ...RATES, ...extraRates() }, model, tokens) + searchFee,
+  });
+  const candidate = json.candidates?.[0];
+  const text = (candidate?.content?.parts ?? [])
+    .map((p) => p.text ?? '')
+    .join('')
+    .trim();
+  if (!text) return null;
+  return { text: text.slice(0, 3000), sources: groundingSources(candidate?.groundingMetadata) };
+}
+
+/**
+ * The gateway on the everyday provider, or with `{ x7: true }` on X7's (ADR 0067). Both count toward the same
+ * daily allowance and plan check; X7's weekly questions are counted by the assistant (`use_x7`).
+ */
+export function gateway(opts: { x7?: boolean } = {}) {
+  if (opts.x7) {
+    const x = x7Provider();
+    if (!x) throw new AiError('not_configured', 'no X7 provider key is set');
+    const model = x7Model();
+    // One sticky model per gateway, so per question (the assistant makes a gateway per question).
+    const sticky: Sticky = {};
+    return createGateway({
+      transport:
+        x === 'anthropic' ? anthropicTransport : openAiTransport(x, x7ReasoningEffort, sticky),
+      chatTransport:
+        x === 'anthropic'
+          ? anthropicChatTransport
+          : openAiChatTransport(x, x7ReasoningEffort, sticky),
+      store: supabaseUsageStore,
+      config: {
+        models: { assistant: model, fast: model },
+        rates: { ...RATES, ...extraRates() },
+        dailyCapUsdMicros: DAILY_CAP_USD_MICROS,
+        today: () => businessDate(now()),
+      },
+    });
+  }
   const p = provider();
   if (!p || !aiConfigured()) throw new AiError('not_configured', 'no AI provider key is set');
   const defaults = DEFAULT_MODELS[p];

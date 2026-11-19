@@ -39,6 +39,10 @@ describe('i18n message catalogues', () => {
     const allowedLatin = new Set([
       'common.appName',
       'common.english',
+      // The assistant's two models are brand names (ADR 0067).
+      'assistantPage.x7.name',
+      'assistantPage.x7.badge',
+      'assistantPage.x7.everyday',
       // Key names on the keyboard are printed in Latin letters.
       'nav.settingsShortcut',
       'onboarding.slugPrefix',

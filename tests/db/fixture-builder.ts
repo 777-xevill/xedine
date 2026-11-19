@@ -156,6 +156,14 @@ const OVERRIDES: Record<string, Override> = {
     p256dh: `B${'A'.repeat(86)}`,
     auth: 'A'.repeat(22),
   }),
+  // a known change kind, as the assistant writes them; one per message place (ADR 0067)
+  ai_actions: () => ({
+    kind: 'add_dish',
+    seq: next() % 50,
+    status: 'proposed',
+    error: null,
+    decided_at: null,
+  }),
 };
 
 let counter = 0;

@@ -14,6 +14,12 @@ import type { ChatTransportRequest, TokenUsage, TransportRequest } from './core'
 export type OpenAiContentPart =
   { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
 
+/**
+ * Provider data a tool call carries and needs back on the next turn. Gemini 3 (X7, ADR 0067) signs each call
+ * with `extra_content.google.thought_signature` and refuses the next turn with a 400 when it is missing.
+ */
+export type ExtraContent = Record<string, unknown>;
+
 export type OpenAiMessage =
   | { role: 'system'; content: string }
   | { role: 'user'; content: string | OpenAiContentPart[] }
@@ -24,6 +30,7 @@ export type OpenAiMessage =
         id: string;
         type: 'function';
         function: { name: string; arguments: string };
+        extra_content?: ExtraContent;
       }[];
     }
   | { role: 'tool'; tool_call_id: string; content: string };
@@ -42,9 +49,13 @@ export interface OpenAiChoice {
       id: string;
       type: string;
       function: { name: string; arguments: string };
+      extra_content?: ExtraContent;
     }[];
   };
 }
+
+/** A tool-use block that keeps its provider data (the gateway's blocks are Anthropic-shaped). */
+type SignedToolUse = { extra_content?: ExtraContent };
 
 export interface OpenAiUsage {
   prompt_tokens: number;
@@ -103,11 +114,15 @@ export function toOpenAiMessages(
         .trim();
       const calls = m.content
         .filter((b): b is Anthropic.ToolUseBlockParam => b.type === 'tool_use')
-        .map((b) => ({
-          id: b.id,
-          type: 'function' as const,
-          function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) },
-        }));
+        .map((b) => {
+          const extra = (b as SignedToolUse).extra_content;
+          return {
+            id: b.id,
+            type: 'function' as const,
+            function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) },
+            ...(extra ? { extra_content: extra } : {}),
+          };
+        });
       out.push({
         role: 'assistant',
         content: text || null,
@@ -155,7 +170,7 @@ export function responseFormat(schema: z.ZodType): {
 
 /** Reasoning models spend completion tokens thinking; give them headroom beyond the answer budget. */
 export function isReasoningModel(model: string): boolean {
-  return /^(gpt-5|o\d|openai\/gpt-oss)/.test(model);
+  return /^(gpt-5|o\d|openai\/gpt-oss|gemini-)/.test(model);
 }
 
 export function completionBody(
@@ -225,13 +240,16 @@ export function toContentBlocks(choice: OpenAiChoice): Anthropic.ContentBlock[] 
     blocks.push({ type: 'text', text: choice.message.content, citations: null });
   for (const call of choice.message.tool_calls ?? []) {
     if (call.type !== 'function') continue;
-    blocks.push({
+    const block: Anthropic.ToolUseBlock & SignedToolUse = {
       type: 'tool_use',
       id: call.id,
       name: call.function.name,
       input: parseArguments(call.function.arguments),
       caller: { type: 'direct' },
-    });
+    };
+    // Kept on the block so the next turn sends it back (toOpenAiMessages).
+    if (call.extra_content) block.extra_content = call.extra_content;
+    blocks.push(block);
   }
   return blocks;
 }

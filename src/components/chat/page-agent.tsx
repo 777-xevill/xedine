@@ -7,6 +7,7 @@ import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/form';
 import { askHereAction, type AskReply } from '@/modules/assistant/actions';
+import { ActionList, AnswerBadges, WebSources } from './answer-extras';
 import { AssistantAvatar, Thinking } from './chat-view';
 import { Composer } from './composer';
 
@@ -35,9 +36,12 @@ export function PageAgent({
   aiOn,
   page,
   pageNote,
+  currency,
 }: {
   orgId: string;
   orgSlug: string;
+  /** The restaurant's currency, for the amounts in prepared changes. */
+  currency: string;
   labels: AgentLabels;
   /** Asked automatically the first time the panel opens. */
   summaryQuestion: string;
@@ -100,8 +104,13 @@ export function PageAgent({
           text: q,
           aiWritten: false,
           verified: false,
+          general: false,
           sources: [],
           links: [],
+          model: 'xedine',
+          x7Note: null,
+          webSources: [],
+          actions: [],
         },
         { ...res.reply, role: 'assistant' },
       ]);
@@ -175,6 +184,13 @@ export function PageAgent({
                 <AssistantAvatar />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-6 whitespace-pre-line">{m.text}</p>
+                  <WebSources sources={m.webSources} />
+                  <ActionList
+                    orgId={orgId}
+                    orgSlug={orgSlug}
+                    currency={currency}
+                    actions={m.actions}
+                  />
                   {m.links.length > 0 ? (
                     <ul className="mt-3 flex flex-wrap gap-2">
                       {m.links.map((l) => (
@@ -191,8 +207,9 @@ export function PageAgent({
                       ))}
                     </ul>
                   ) : null}
-                  {m.aiWritten || m.verified ? (
+                  {m.aiWritten || m.verified || m.general ? (
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <AnswerBadges model={m.model} x7Note={m.x7Note} general={m.general} />
                       {m.aiWritten ? (
                         <Badge tone="accent" icon={<Sparkles />}>
                           {ta('aiWritten')}

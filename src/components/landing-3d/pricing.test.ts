@@ -51,14 +51,13 @@ describe('home page plans', () => {
     expect(ids.length).toBeLessThanOrEqual(18);
     const known = new Set<string>(FEATURES.map((f) => f.id));
     for (const r of PLAN_ROWS) for (const f of r.features) expect(known).toContain(f);
-    // Only the strongest AI (not built yet), delivery apps (a till setting) and the Partner plan's team stand for
-    // no A–Z feature.
+    // Only delivery apps (a till setting) and the Partner plan's team stand for no A–Z feature; X7, the
+    // strongest AI, is the assistant's second model (ADR 0067) and nothing is "coming soon" any more.
     expect(PLAN_ROWS.filter((r) => r.features.length === 0).map((r) => r.id)).toEqual([
-      'deepAi',
       'deliveryApps',
       'doneForYou',
     ]);
-    expect(PLAN_ROWS.filter((r) => r.soon).map((r) => r.id)).toEqual(['deepAi']);
+    expect(PLAN_ROWS.filter((r) => r.soon).map((r) => r.id)).toEqual([]);
   });
 
   it('Starter: no QR code system, delivery apps or member card; 10 AI, 3 strongest, 3 posters, 3 videos a week', () => {

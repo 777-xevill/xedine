@@ -18,11 +18,14 @@ export function GlobalAgent({
   orgSlug,
   aiOn,
   canSeeMoney,
+  currency,
 }: {
   orgId: string;
   orgSlug: string;
   aiOn: boolean;
   canSeeMoney: boolean;
+  /** The restaurant's currency, for the amounts in prepared changes. */
+  currency: string;
 }) {
   const t = useTranslations('agent');
   const tn = useTranslations('nav');
@@ -45,6 +48,7 @@ export function GlobalAgent({
       <PageAgent
         orgId={orgId}
         orgSlug={orgSlug}
+        currency={currency}
         aiOn={aiOn}
         {...(key ? { page: key } : {})}
         labels={{

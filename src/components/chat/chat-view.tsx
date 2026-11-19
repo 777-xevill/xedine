@@ -8,8 +8,16 @@ import { flushSync } from 'react-dom';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
-import { askAction } from '@/modules/assistant/actions';
+import { askAction, type AskReply } from '@/modules/assistant/actions';
 import { initialState } from '@/modules/tenancy/form-state';
+import {
+  ActionList,
+  AnswerBadges,
+  ModelPicker,
+  useModelChoice,
+  WebSources,
+  type X7State,
+} from './answer-extras';
 import { Composer } from './composer';
 
 export interface ChatMessage {
@@ -22,6 +30,12 @@ export interface ChatMessage {
   verified: boolean;
   /** The metric ids the answer cites. */
   sources: string[];
+  /** ADR 0067: the model, general knowledge, web pages and prepared changes. */
+  general: boolean;
+  model: AskReply['model'];
+  x7Note: AskReply['x7Note'];
+  webSources: AskReply['webSources'];
+  actions: AskReply['actions'];
 }
 
 /**
@@ -50,16 +64,19 @@ function Hidden({
   orgId,
   orgSlug,
   conversationId,
+  model,
 }: {
   orgId: string;
   orgSlug: string;
   conversationId: string;
+  model?: 'xedine' | 'x7';
 }) {
   return (
     <>
       <input type="hidden" name="orgId" value={orgId} />
       <input type="hidden" name="orgSlug" value={orgSlug} />
       <input type="hidden" name="conversationId" value={conversationId} />
+      {model ? <input type="hidden" name="model" value={model} /> : null}
     </>
   );
 }
@@ -131,6 +148,8 @@ export function ChatView({
   aiOn,
   initialQuestion,
   firstName,
+  x7,
+  currency,
 }: {
   orgId: string;
   orgSlug: string;
@@ -140,11 +159,16 @@ export function ChatView({
   aiOn: boolean;
   initialQuestion?: string;
   firstName: string;
+  /** X7 this week (ADR 0067), or null when it is not set up. */
+  x7: X7State | null;
+  /** The restaurant's currency, for the prepared changes' amounts. */
+  currency: string;
 }) {
   const t = useTranslations('assistantPage');
   const te = useTranslations('errors');
   const formRef = React.useRef<HTMLFormElement>(null);
   const ask = useAsk(formRef, initialQuestion);
+  const pick = useModelChoice(x7);
   const endRef = React.useRef<HTMLDivElement>(null);
   const isNew = messages.length === 0;
   // Played once per new chat. It stays mounted (same place in both layouts below) when the first
@@ -169,7 +193,8 @@ export function ChatView({
       aria-busy={ask.pending}
       onSubmit={() => ask.setInFlight(ask.value.trim())}
     >
-      <Hidden orgId={orgId} orgSlug={orgSlug} conversationId={conversationId} />
+      <Hidden orgId={orgId} orgSlug={orgSlug} conversationId={conversationId} model={pick.model} />
+      <ModelPicker x7={x7} model={pick.model} onChange={pick.choose} />
       <Composer
         size={size}
         value={ask.value}
@@ -257,8 +282,20 @@ export function ChatView({
                   <AssistantAvatar />
                   <div className="min-w-0 flex-1">
                     <p className="leading-7 whitespace-pre-line">{m.text}</p>
-                    {m.aiWritten || m.verified || m.sources.length > 0 ? (
+                    <WebSources sources={m.webSources} />
+                    <ActionList
+                      orgId={orgId}
+                      orgSlug={orgSlug}
+                      currency={currency}
+                      actions={m.actions}
+                    />
+                    {m.aiWritten ||
+                    m.verified ||
+                    m.sources.length > 0 ||
+                    m.model === 'x7' ||
+                    m.x7Note ? (
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <AnswerBadges model={m.model} x7Note={m.x7Note} general={m.general} />
                         {m.aiWritten ? (
                           <Badge tone="accent" icon={<Sparkles />}>
                             {t('aiWritten')}

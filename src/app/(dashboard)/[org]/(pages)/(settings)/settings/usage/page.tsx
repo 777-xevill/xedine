@@ -7,7 +7,7 @@ import { Card, CardTitle, Hint, PageTitle, Stat } from '@/components/ui/form';
 import { APP_COOKIE, isAppCookie } from '@/lib/android-app';
 import { createClient } from '@/lib/db/supabase-server';
 import { formatBps, formatDay, formatNumber, formatTime, type Locale } from '@/lib/i18n/format';
-import { aiDailyCapUsdMicros } from '@/lib/llm-gateway';
+import { aiDailyCapUsdMicros, x7Configured } from '@/lib/llm-gateway';
 import { now } from '@/lib/time/clock';
 import { cn } from '@/lib/utils';
 import { getOrgContext } from '@/modules/tenancy/context';
@@ -40,7 +40,7 @@ export default async function UsagePage({ params }: { params: Promise<{ org: str
   const inApp = isAppCookie(jar.get(APP_COOKIE)?.value);
   const supabase = await createClient();
   const at = now().toISOString();
-  const [{ data: usage }, { data: billing }] = await Promise.all([
+  const [{ data: usage }, { data: billing }, { data: x7 }] = await Promise.all([
     supabase.rpc('metric_ai_usage', {
       p_org: ctx.org.id,
       p_now: at,
@@ -48,7 +48,14 @@ export default async function UsagePage({ params }: { params: Promise<{ org: str
       p_days: 7,
     }),
     supabase.rpc('metric_billing', { p_org: ctx.org.id, p_now: at }),
+    // X7 this week (ADR 0067): its own allowance, counted per question.
+    x7Configured()
+      ? supabase.rpc('x7_allowance', { p_org: ctx.org.id, p_now: at })
+      : Promise.resolve({ data: null }),
   ]);
+  const week = (
+    x7 as { per_week: number; used: number; left_count: number; resets_on: string }[] | null
+  )?.[0];
   const days = ((usage ?? []) as Day[]).map((d) => ({
     ...d,
     requests: Number(d.requests),
@@ -111,6 +118,41 @@ export default async function UsagePage({ params }: { params: Promise<{ org: str
             </Link>
           </p>
         )}
+        {today.ai_allowed && week && week.per_week > 0 ? (
+          <div className="mt-5 grid items-center gap-x-6 gap-y-2 sm:grid-cols-[12rem_minmax(0,1fr)_auto]">
+            <div>
+              <p className="text-sm font-semibold">{t('x7Title')}</p>
+              <p className="text-xs text-secondary">
+                {t('x7Body', {
+                  used: n(week.used),
+                  perWeek: n(week.per_week),
+                  day: dayLabel(week.resets_on),
+                })}
+              </p>
+            </div>
+            <div
+              className="h-2.5 overflow-hidden rounded-full bg-line"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={week.per_week}
+              aria-valuenow={Math.min(week.used, week.per_week)}
+              aria-label={t('x7Title')}
+            >
+              <div
+                className={cn(
+                  'h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700',
+                  week.left_count === 0 ? 'bg-warning-bright' : 'bg-brand-yellow',
+                )}
+                style={{
+                  width: `${Math.min(100, Math.round((week.used * 100) / week.per_week))}%`,
+                }}
+              />
+            </div>
+            <p className="text-sm text-secondary tabular-nums sm:text-end">
+              {n(week.used)}/{n(week.per_week)}
+            </p>
+          </div>
+        ) : null}
         <Hint className="mt-4">
           {full ? t('fullBody', { time: resets }) : t('aiBody', { count: n(today.requests) })}
         </Hint>

@@ -15,7 +15,7 @@ import {
   Select,
 } from '@/components/ui/form';
 import { createClient } from '@/lib/db/supabase-server';
-import { aiConfigured, aiProvider } from '@/lib/llm-gateway';
+import { aiConfigured, aiProvider, x7Configured, x7ProviderName } from '@/lib/llm-gateway';
 import { addContextAction, removeContextAction } from '@/modules/assistant/actions';
 import { getOrgContext } from '@/modules/tenancy/context';
 
@@ -71,6 +71,11 @@ export default async function AssistantSettingsPage({
             <p className="text-sm text-secondary">
               {on ? t('aiOnBody', { provider: aiProvider() }) : t('routerMode')}
             </p>
+            {on && x7Configured() ? (
+              <p className="mt-1 text-sm text-secondary">
+                {t('x7Body', { provider: x7ProviderName() })}
+              </p>
+            ) : null}
           </div>
         </div>
         <StatusBadge tone={on ? 'success' : 'neutral'}>{on ? t('aiOn') : t('aiOff')}</StatusBadge>

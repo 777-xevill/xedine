@@ -51,4 +51,15 @@ describe('plain', () => {
       'লস\n- চিনিগুড়া চাল – ৳9237.9\n- Beef',
     );
   });
+
+  it('takes out the rest of what X7 writes: dividers, star bullets and italics, never a multiplication', () => {
+    expect(
+      plain(
+        'Ready.\n\n***\n\n### Borhani\n* **Yoghurt:** 4 cups\n  * Mint\n*Why it matters:* *Bacillus cereus* grows.',
+      ),
+    ).toBe(
+      'Ready.\n\nBorhani\n- Yoghurt: 4 cups\n  - Mint\nWhy it matters: Bacillus cereus grows.',
+    );
+    expect(plain('30 × Kacchi, 2*3 plates')).toBe('30 × Kacchi, 2*3 plates');
+  });
 });

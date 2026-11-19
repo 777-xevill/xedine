@@ -12,11 +12,12 @@
 - `audit_log`, `order_events` and `price_history` are append-only (triggers reject UPDATE/DELETE/TRUNCATE).
 - Access shown is the role list from the policy engine; "service role only" means jobs and webhooks, always with explicit `org_id` filters.
 
-## Tables (127)
+## Tables (128)
 
 | Table | Purpose | Scope | Access | Key columns | Written by · Phase |
 |---|---|---|---|---|---|
 | `advances` | Staff advances ledger. Money-gated. | org + branch | read: owner, accountant; write: owner (money-gated (ADR 0007)) | PK id · → branches, staff | staff · P10 |
+| `ai_actions` | Changes the assistant prepared in a chat, made only when the person taps "Do these changes". | org | custom — private to the user who asked; inserted as proposed, moved only by decide_ai_action (ADR 0067) | PK id · → ai_conversations, ai_messages | assistant · P4 |
 | `ai_conversations` | Assistant conversations, private per user. | org | custom — private to the user who owns the conversation | PK id | assistant · P4 |
 | `ai_messages` | Messages with numeric-validator outcome. | org | custom — private to the user who owns the conversation | PK id · → ai_conversations | assistant · P4 |
 | `ai_tool_calls` | Tool calls with the metric_id/filters/as_of they cite. | org | custom — private to the user who owns the conversation | PK id · → ai_conversations, ai_messages | assistant · P4 |
@@ -144,7 +145,7 @@
 | `weather_hours` | Weather forecast per branch per hour (MET Norway). | org + branch | read: owner, manager, cashier, kitchen, purchaser, accountant; write: service role only (weather for the branch; everyone at the branch reads, only the weather job writes (ADR 0051)) | PK org_id, branch_id, at · → branches | forecasting · P11 |
 | `webhook_events` | Inbound webhook log, idempotent per provider event. Service-only. | org · service only | no client access | PK id | messaging · P4 |
 
-## RPC functions (213)
+## RPC functions (216)
 
 Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_path` and checks the caller inside.
 
@@ -197,6 +198,7 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `create_chat_link` | `p_org uuid, p_user uuid, p_branch uuid, p_channel chat_channel` |
 | `create_invitation` | `p_org uuid, p_email text, p_role app_role, p_branch_ids uuid[] DEFAULT '{}'::uuid[]` |
 | `create_organization` | `p_name text, p_slug text, p_branches jsonb DEFAULT '[]'::jsonb, p_locale locale_code DEFAULT 'bn'::locale_code` |
+| `decide_ai_action` | `p_id uuid, p_status ai_action_status, p_error text, p_now timestamp with time zone` |
 | `delete_customer` | `p_org uuid, p_customer uuid` |
 | `discard_purchase_draft` | `p_draft uuid, p_reason text DEFAULT NULL::text` |
 | `discount_code_uses` | `p_org uuid` |
@@ -359,7 +361,9 @@ Signed-in users call these; each is `SECURITY DEFINER` with a pinned `search_pat
 | `update_fixed_cost` | `p_org uuid, p_id uuid, p_kind fixed_cost_kind, p_label text, p_monthly bigint, p_today date` |
 | `update_incident` | `p_org uuid, p_incident uuid, p_status text, p_severity text, p_root_cause text DEFAULT NULL::text, p_customer_resolution text DEFAULT NULL::text` |
 | `update_membership` | `p_membership uuid, p_role app_role DEFAULT NULL::app_role, p_branch_ids uuid[] DEFAULT NULL::uuid[]` |
+| `use_x7` | `p_org uuid, p_now timestamp with time zone` |
 | `void_order_item` | `p_org uuid, p_branch uuid, p_order_item uuid, p_reason_code uuid, p_reason_note text, p_device uuid, p_staff uuid, p_approval uuid DEFAULT NULL::uuid` |
 | `void_purchase` | `p_purchase uuid, p_reason text` |
 | `web_push_keys_get` |  |
 | `web_push_keys_put` | `p_public text, p_private_jwk text` |
+| `x7_allowance` | `p_org uuid, p_now timestamp with time zone` |

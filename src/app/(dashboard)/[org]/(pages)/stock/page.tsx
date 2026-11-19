@@ -1314,6 +1314,7 @@ export default async function StockPage({
           <div aria-hidden className="h-20" />
           <PageAgent
             page="stock"
+            currency={ctx.place.currency}
             pageNote={`${tab} tab, ${branch.name}`}
             key={`${tab}:${branch.id}`}
             orgId={ctx.org.id}

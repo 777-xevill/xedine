@@ -62,6 +62,7 @@ export default async function OrgLayout({
             orgSlug={ctx.org.slug}
             aiOn={aiConfigured()}
             canSeeMoney={ctx.roles.some((r) => r === 'owner' || r === 'accountant')}
+            currency={ctx.place.currency}
           />
         ) : null}
       </AppShell>

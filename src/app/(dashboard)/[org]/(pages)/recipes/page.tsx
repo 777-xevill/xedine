@@ -220,6 +220,7 @@ export default async function DishIngredientsPage({
           <div aria-hidden className="h-20" />
           <PageAgent
             page="recipes"
+            currency={ctx.place.currency}
             pageNote={`${written} of ${dishes.length} dishes written`}
             orgId={ctx.org.id}
             orgSlug={ctx.org.slug}

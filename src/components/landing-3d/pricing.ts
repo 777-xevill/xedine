@@ -50,7 +50,8 @@ export type PlanRow = {
 /** The big features, best first; what Starter leaves out comes last. */
 export const PLAN_ROWS: readonly PlanRow[] = [
   { id: 'assistant', features: ['assistant'] },
-  { id: 'deepAi', features: [], soon: true },
+  // X7 (ADR 0067): the strongest model, counted per week by plan (plans.limits.x7_per_week).
+  { id: 'deepAi', features: ['assistant'] },
   { id: 'leaks', features: ['leaks', 'loss'] },
   { id: 'brief', features: ['brief', 'home'] },
   { id: 'till', features: ['pos', 'offline', 'tillHelper', 'kds'] },
@@ -142,7 +143,7 @@ export const PARTNER = {
    */
   filmsPerMonth: 1,
   reelsPerMonth: 4,
-  /** The strongest AI: more than Pro's 20 a week (not built yet). */
+  /** X7, the strongest AI: more than Pro's 20 a week (ADR 0067). */
   deepAiPerWeek: 50,
   services: [
     'films',

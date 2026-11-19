@@ -11,14 +11,19 @@ import './globals.css';
  * ADR 0063: Inter for Latin letters and digits (with its optical sizes, so large titles get the
  * tighter display cut), Noto Sans Bengali for Bangla. Self-hosted by next/font.
  */
+// `subsets` only picks the files preloaded with every page; the others still load when a letter needs them.
+// Preloading all three cost 309 KB before the page's code on a slow phone (the founder's video, 2026-11-19):
+// now only basic Latin (72 KB). Latin-ext (131 KB: ā, ş, ₫…) and Bangla (106 KB) come when used, and
+// until the Bangla font arrives an Android phone shows its own Bangla letters (display: swap).
 const inter = Inter({
-  subsets: ['latin', 'latin-ext'],
+  subsets: ['latin'],
   axes: ['opsz'],
   variable: '--font-inter',
   display: 'swap',
 });
 const bengali = Noto_Sans_Bengali({
   subsets: ['bengali'],
+  preload: false,
   variable: '--font-bengali',
   display: 'swap',
 });

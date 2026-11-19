@@ -26,7 +26,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl';
 import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { formatDay, formatMoney, type Locale } from '@/lib/i18n/format';
+import { formatDay, formatMoney, formatNumber, type Locale } from '@/lib/i18n/format';
 import { cn } from '@/lib/utils';
 import type { ActionKind } from '@/modules/assistant/action-kinds';
 import {
@@ -155,7 +155,9 @@ function useDescribe(currency: string) {
       }
       case 'add_party_order': {
         const lines = Array.isArray(v.lines) ? (v.lines as { dish: string; plates: number }[]) : [];
-        const parts = lines.map((l) => t('detail.plates', { dish: l.dish, count: l.plates }));
+        const parts = lines.map((l) =>
+          t('detail.plates', { dish: l.dish, count: formatNumber(l.plates, locale) }),
+        );
         if (str(v.ready_at)) parts.push(t('detail.readyAt', { time: str(v.ready_at) }));
         return {
           title: t('kinds.add_party_order', { title: str(v.title), date: day(v.date, locale) }),
@@ -194,7 +196,7 @@ function useDescribe(currency: string) {
           }),
         };
       case 'set_food_cost':
-        return { title: t('kinds.set_food_cost', { pct: num(v.pct) }) };
+        return { title: t('kinds.set_food_cost', { pct: formatNumber(num(v.pct), locale) }) };
       case 'remember_rule':
         return { title: t('kinds.remember_rule', { text: str(v.text) }) };
     }
@@ -215,6 +217,7 @@ export function ActionList({
 }) {
   const t = useTranslations('assistantPage.actions');
   const te = useTranslations('errors');
+  const locale = useLocale() as Locale;
   const describe = useDescribe(currency);
   const [actions, setActions] = React.useState(initial);
   const [picked, setPicked] = React.useState<Set<string>>(
@@ -331,7 +334,7 @@ export function ActionList({
             className="inline-flex items-center gap-2 rounded-full bg-action px-4 py-2 text-sm font-semibold text-on-action glow-action transition hover:brightness-110 disabled:bg-none disabled:bg-surface-elevated disabled:text-muted disabled:shadow-none"
           >
             {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-            {t('doThese', { count: chosen.length })}
+            {t('doThese', { count: formatNumber(chosen.length, locale) })}
           </button>
           <button
             type="button"
@@ -447,7 +450,9 @@ export function ModelPicker({
       {option(
         'x7',
         t('name'),
-        usedUp ? t('usedUp', { day: day(x7.resetsOn, locale) }) : t('left', { count: x7.left }),
+        usedUp
+          ? t('usedUp', { day: day(x7.resetsOn, locale) })
+          : t('left', { count: formatNumber(x7.left, locale) }),
         <Zap className="size-3.5 text-brand-yellow" aria-hidden />,
       )}
     </div>

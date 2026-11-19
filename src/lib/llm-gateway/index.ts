@@ -87,7 +87,8 @@ function wire(p: Wire): { baseUrl: string; key: string | undefined; name: string
 /**
  * X7, the strongest model (ADR 0067): its own provider and model, apart from the everyday assistant's.
  * X7_PROVIDER = openai | gemini | anthropic | groq. Default: OpenAI when OPENAI_API_KEY is set (the founder's
- * choice for X7), else Gemini when GEMINI_API_KEY is set (the test until then). X7_MODEL overrides the model.
+ * choice for X7), else Gemini when GEMINI_API_KEY is set. Live since 2026-11-19: groq (the founder's choice,
+ * wrangler.jsonc), gpt-oss-120b thinking harder with more steps. X7_MODEL overrides the model.
  * With none, X7 is off and the composer offers only the everyday assistant.
  */
 type X7Provider = 'openai' | 'gemini' | 'anthropic' | 'groq';
@@ -121,6 +122,17 @@ const X7_DEFAULT_FALLBACKS: Partial<Record<X7Provider, string>> = {
 
 export function x7Configured(): boolean {
   return x7Provider() !== null;
+}
+
+/**
+ * Whether X7 may carry every tool on every call. Not on Groq: its free tier allows 8,000 tokens a minute per
+ * model and the full set is ~9,000 (2026-11-19), so there X7 picks the tools the question needs, as the
+ * everyday model does. X7_TOOLS=all (a paid Groq plan) or =some overrides.
+ */
+export function x7AllTools(): boolean {
+  if (process.env.X7_TOOLS === 'all') return true;
+  if (process.env.X7_TOOLS === 'some') return false;
+  return x7Provider() !== 'groq';
 }
 
 /** The model X7 runs on, for the record (ai_actions.model, the message's content). */
@@ -290,14 +302,20 @@ async function post(
 }
 
 /**
- * Groq limits tokens per minute per model (8,000 on the founder's account) and one assistant question
- * is two calls of about 2,800 tokens. On a 429 a text request is retried once on a second model, which
- * has its own allowance; a request with a photo stays on the first (the text models cannot read it).
- * GROQ_FALLBACK_MODEL changes it, an empty value turns it off.
+ * Groq limits tokens per minute per model (8,000 on the founder's account, for the whole platform) and one
+ * assistant step resends the conversation (about 3,000–6,000 tokens). On a 429 a text request is retried on
+ * the other text models in turn, each with its own allowance (X7 on Groq, ADR 0067, takes several steps); a
+ * request with a photo stays on the first (only Qwen reads photos). GROQ_FALLBACK_MODEL (comma-separated)
+ * changes the list, an empty value turns it off.
  */
-const GROQ_FALLBACK_MODEL = (model: unknown) =>
-  process.env.GROQ_FALLBACK_MODEL ??
-  (model === 'openai/gpt-oss-120b' ? 'qwen/qwen3.8-27b' : 'openai/gpt-oss-120b');
+const GROQ_TEXT_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+const GROQ_FALLBACKS = (model: unknown): string[] =>
+  process.env.GROQ_FALLBACK_MODEL !== undefined
+    ? process.env.GROQ_FALLBACK_MODEL.split(',')
+        .map((m) => m.trim())
+        .filter((m) => m && m !== model)
+    : GROQ_TEXT_MODELS.filter((m) => m !== model);
+const GROQ_FALLBACK_MODEL = (model: unknown) => GROQ_FALLBACKS(model)[0];
 const GROQ_VISION_MODEL = () => process.env.GROQ_VISION_MODEL ?? 'qwen/qwen3.8-27b';
 const hasImage = (body: Record<string, unknown>) =>
   JSON.stringify(body.messages).includes('"image_url"');
@@ -380,10 +398,20 @@ async function geminiComplete(
   throw new AiError('rate_limited', 'X7 is busy; try again in a minute');
 }
 
+/** How long a call may wait for the provider's per-minute allowance to come back. */
+interface Patience {
+  rounds: number;
+  maxWaitMs: number;
+}
+const EVERYDAY_PATIENCE: Patience = { rounds: 1, maxWaitMs: 15_000 };
+/** X7 takes several steps and each resends the conversation: on Groq's free tier it waits rather than fail. */
+const X7_PATIENCE: Patience = { rounds: 3, maxWaitMs: 45_000 };
+
 async function openAiComplete(
   p: Wire,
   request: Record<string, unknown>,
   sticky: Sticky = {},
+  patience: Patience = EVERYDAY_PATIENCE,
 ): Promise<OpenAiCompletion> {
   if (p === 'gemini') return geminiComplete(request, sticky);
   const w = wire(p);
@@ -392,31 +420,35 @@ async function openAiComplete(
   if (p === 'groq' && hasImage(body) && body.model !== GROQ_VISION_MODEL())
     body = forModel(body, GROQ_VISION_MODEL());
   if (p === 'groq' && body.model === GROQ_VISION_MODEL()) body = visionBudget(body);
-  let res = await post(w, body);
   const fallback = GROQ_FALLBACK_MODEL(body.model);
-  if (
-    res.status === 429 &&
-    p === 'groq' &&
-    fallback &&
-    fallback !== body.model &&
-    !hasImage(body)
-  ) {
-    console.error(w.name, 429, 'retrying on', fallback);
-    const second = await post(w, forModel(body, fallback));
-    // Only a good answer replaces the first reply: a second model's own error must not hide the limit.
-    if (second.ok) res = second;
+  /** The model, then (Groq, text) each other text model on a 429; and the soonest reset among the refusals. */
+  const round = async (): Promise<{ res: Response; waitMs: number | null }> => {
+    const first = await post(w, body);
+    let waitMs = first.status === 429 ? retryAfterMs(first) : null;
+    if (first.status === 429 && p === 'groq' && !hasImage(body)) {
+      for (const other of GROQ_FALLBACKS(body.model)) {
+        console.error(w.name, 429, 'retrying on', other);
+        const next = await post(w, forModel(body, other));
+        // Only a good answer replaces the first reply: another model's own error must not hide the limit.
+        if (next.ok) return { res: next, waitMs: null };
+        if (next.status !== 429) break;
+        const soon = retryAfterMs(next);
+        if (soon !== null && (waitMs === null || soon < waitMs)) waitMs = soon;
+      }
+    }
+    return { res: first, waitMs };
+  };
+  let { res, waitMs } = await round();
+  // Every allowance used up this minute: wait for the soonest reset when it is close, then try again
+  // (the everyday assistant once within 15 s; X7 on Groq up to three times within 45 s, ADR 0067).
+  for (let i = 0; res.status === 429 && i < patience.rounds; i++) {
+    if (waitMs === null || waitMs > patience.maxWaitMs) break;
+    await new Promise((resolve) => setTimeout(resolve, waitMs! + 250));
+    ({ res, waitMs } = await round());
   }
   if (res.status === 429) {
-    // Both allowances used up this minute: wait for the reset when it is close, then try once more.
-    const wait = retryAfterMs(res);
-    if (wait !== null && wait <= 15_000) {
-      await new Promise((resolve) => setTimeout(resolve, wait + 250));
-      res = await post(w, body);
-    }
-    if (res.status === 429) {
-      console.error(w.name, 429);
-      throw new AiError('rate_limited', 'the AI provider is busy; try again in a minute');
-    }
+    console.error(w.name, 429);
+    throw new AiError('rate_limited', 'the AI provider is busy; try again in a minute');
   }
   // A 400 from Groq is usually the model writing a tool call it cannot parse (it differs per model and
   // per run): the other model gets one try before the question fails.
@@ -446,7 +478,12 @@ const reasoningEffort = () => process.env.AI_REASONING_EFFORT ?? 'low';
 const x7ReasoningEffort = () => process.env.X7_REASONING ?? 'medium';
 
 const openAiTransport =
-  (p: Wire, effort = reasoningEffort, sticky: Sticky = {}): Transport =>
+  (
+    p: Wire,
+    effort = reasoningEffort,
+    sticky: Sticky = {},
+    patience = EVERYDAY_PATIENCE,
+  ): Transport =>
   async (req) => {
     const completion = await openAiComplete(
       p,
@@ -456,6 +493,7 @@ const openAiTransport =
         response_format: responseFormat(req.schema),
       },
       sticky,
+      patience,
     );
     const choice = completion.choices[0]!;
     return {
@@ -466,9 +504,14 @@ const openAiTransport =
   };
 
 const openAiChatTransport =
-  (p: Wire, effort = reasoningEffort, sticky: Sticky = {}): ChatTransport =>
+  (
+    p: Wire,
+    effort = reasoningEffort,
+    sticky: Sticky = {},
+    patience = EVERYDAY_PATIENCE,
+  ): ChatTransport =>
   async (req) => {
-    const completion = await openAiComplete(p, chatBody(req, effort()), sticky);
+    const completion = await openAiComplete(p, chatBody(req, effort()), sticky, patience);
     const choice = completion.choices[0]!;
     return {
       content: toContentBlocks(choice),
@@ -654,11 +697,13 @@ export function gateway(opts: { x7?: boolean } = {}) {
     const sticky: Sticky = {};
     return createGateway({
       transport:
-        x === 'anthropic' ? anthropicTransport : openAiTransport(x, x7ReasoningEffort, sticky),
+        x === 'anthropic'
+          ? anthropicTransport
+          : openAiTransport(x, x7ReasoningEffort, sticky, X7_PATIENCE),
       chatTransport:
         x === 'anthropic'
           ? anthropicChatTransport
-          : openAiChatTransport(x, x7ReasoningEffort, sticky),
+          : openAiChatTransport(x, x7ReasoningEffort, sticky, X7_PATIENCE),
       store: supabaseUsageStore,
       config: {
         models: { assistant: model, fast: model },

@@ -41,6 +41,20 @@ and anything AI-made that changes data waits for a person's approval (#4).
   Starter has `ai: false` in this database (ADR 0008's plans), so it has no X7 until the plans are reconciled
   with the home page's.
 
+### 1b. X7 on Groq (the founder, later the same day)
+The founder moved X7 to Groq (`X7_PROVIDER=groq` in wrangler.jsonc; the Gemini key stays set). Groq's account
+has three text models — gpt-oss-120b (the strongest, also the everyday model), Qwen 3.8 27B, gpt-oss-20b — each
+allowing **8,000 tokens a minute for the whole platform** (Qwen 7,000 input). One X7 step resends the
+conversation (~4,500–5,000 tokens) and X7 with every tool would be ~9,000, so on Groq:
+- X7 is gpt-oss-120b thinking harder (`X7_REASONING=medium`) with up to 16 steps, and **picks the tools the
+  question needs** like the everyday model (`x7AllTools()`; `X7_TOOLS=all` on a paid Groq plan).
+- A refused (429) call goes to each other text model in turn, each with its own allowance (every Groq call,
+  not only X7's); when all are used up, X7 **waits** for the soonest reset Groq gives, up to 45 s, three times,
+  instead of failing (the everyday assistant waits once, up to 15 s).
+- The prompt (v9) asks for every tool the model already knows it needs in one turn: fewer turns, fewer tokens.
+- Measured 2026-11-19: the multi-part request (dish, price, party order, borhani) ~30 s with three changes
+  prepared; a Bangla sales question ~14 s; a food-safety question ~2 s.
+
 ### 2. It knows the world
 - The prompt (v8) tells it to answer general questions fully, as ChatGPT does: cooking and recipes, food
   safety, nutrition, hospitality, marketing, business, Bangladesh and the world, writing.
@@ -87,8 +101,8 @@ and anything AI-made that changes data waits for a person's approval (#4).
   tell me how to make borhani" and get the recipe plus a list of changes to tap.
 - CLAUDE.md #1 now reads, in practice: figures about the restaurant only from tools; general knowledge may
   carry its own figures, labelled, never money or percentages without a source.
-- Free tiers are the limit for the test: Groq allows a few thousand tokens a minute (the everyday model gets
-  only the change tools its words point at), and Gemini's free models are slow or busy at times. An X7
-  question takes ~12–35 s.
-- Open for the founder: the X7 provider for real customers (OpenAI, or Gemini with billing for 3.5 Flash and
-  Google Search); Partner's 50 a week and Starter's 3 once the plans table matches the home page.
+- Free tiers are the limit for the test: Groq allows 8,000 tokens a minute per model for all restaurants
+  together, so X7 picks its tools and waits for the allowance; a big X7 request takes ~30 s, longer when other
+  restaurants are asking at the same time. Groq's Dev tier (paid) lifts this and lets X7 carry every tool.
+- Open for the founder: the X7 provider for real customers (a paid Groq tier, OpenAI, or Gemini with billing for
+  3.5 Flash and Google Search); Partner's 50 a week and Starter's 3 once the plans table matches the home page.

@@ -20,5 +20,7 @@
     "PHONE_SIGN_IN": "off",
     "FACEBOOK_SIGN_IN": "off",
     "META_HELPER_NAME": "Araf Rahman Rafi",
+    // X7, the strongest model (ADR 0067): on Groq by the founder's choice (2026-11-19); Gemini's key stays set.
+    "X7_PROVIDER": "groq",
   },
 }

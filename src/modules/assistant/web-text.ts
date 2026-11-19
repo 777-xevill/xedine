@@ -89,16 +89,18 @@ export interface WebSource {
 
 /**
  * The links an answer leaned on, for the "From the web" line under it: a page the person linked always; a
- * search result only when the answer talks about it (a word of five letters or more from its title is in the
- * answer), so pages the search found but the answer did not use are not shown as its sources.
+ * search result only when the answer talks about it (more than half the words of four letters or more in its
+ * title are in the answer), so pages the search found but the answer did not use are not shown as sources.
  */
 export function webSourcesOf(results: unknown[], answer: string): WebSource[] {
   const said = answer.toLowerCase();
-  const used = (title: string) =>
-    title
+  const used = (title: string) => {
+    const words = title
       .toLowerCase()
       .split(/[^\p{L}\p{N}]+/u)
-      .some((w) => w.length >= 5 && said.includes(w));
+      .filter((w) => w.length >= 4);
+    return words.length > 0 && words.filter((w) => said.includes(w)).length * 2 > words.length;
+  };
   const out: WebSource[] = [];
   for (const r of results) {
     const res = r as { source?: string; results?: WebSource[] } | null;

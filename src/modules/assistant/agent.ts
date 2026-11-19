@@ -5,6 +5,7 @@ import {
   AiError,
   aiConfigured,
   gateway,
+  x7AllTools,
   x7Configured,
   x7Model,
   type PromptVersion,
@@ -36,7 +37,7 @@ import { placeOfOrg } from '@/modules/tenancy/place';
  */
 export const ASSISTANT_PROMPT: PromptVersion = {
   key: 'assistant',
-  version: 8,
+  version: 9,
   body: [
     'You are Xedine, the AI manager of this restaurant. You work for the owner and know the business like a',
     'sharp operations manager: sales, menu, recipes, stock, loss, waste, purchases, money leaks, staff',
@@ -51,7 +52,9 @@ export const ASSISTANT_PROMPT: PromptVersion = {
     'How to work:',
     '- Broad questions ("what should I do", "how are we doing", "what is wrong"): call get_today_brief',
     '  first, then dig into the biggest thing with another tool if you have one (the cause, not just the',
-    '  symptom). Use as many tools as the question needs, one after another, like a person checking pages.',
+    '  symptom). Use as many tools as the question needs, like a person checking pages.',
+    '- Call together, in one turn, every tool you already know you need (several reads, all the changes asked',
+    '  for, a web search): each extra turn makes the person wait longer.',
     '- End advice with what to do next: one to three concrete steps, most important first, each with the page',
     '  to do it on. Unsure of a page name or "where do I...": call find_page. A page that is switched off is',
     '  switched on by the owner in Settings → Features; if the role cannot open it, say so.',
@@ -286,8 +289,10 @@ export async function askAssistant(args: {
       const attempt = async (x7: boolean): Promise<AssistantAnswer | null> => {
         const proposals: ProposedAction[] = [];
         const web: unknown[] = [];
+        // X7 carries every tool unless its provider's limits are small (Groq's free tier: x7AllTools).
+        const wide = x7 && x7AllTools();
         const allowedActions = canAct
-          ? x7
+          ? wide
             ? ACTION_TOOL_DEFS.filter((d) => {
                 const k = actionKindOfTool(d.name);
                 return k !== null && mayDo(k, roles);
@@ -295,8 +300,8 @@ export async function askAssistant(args: {
             : actionToolsFor(args.question, roles)
           : [];
         const tools = [
-          ...(x7 ? TOOL_DEFS : selectTools(args.question, args.page?.key)),
-          ...(x7 || urlIn(args.question) ? WEB_TOOL_DEFS : WEB_TOOL_DEFS.slice(0, 1)),
+          ...(wide ? TOOL_DEFS : selectTools(args.question, args.page?.key)),
+          ...(wide || urlIn(args.question) ? WEB_TOOL_DEFS : WEB_TOOL_DEFS.slice(0, 1)),
           ...allowedActions,
         ];
         const gw = gateway(x7 ? { x7: true } : {});

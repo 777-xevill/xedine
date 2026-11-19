@@ -319,7 +319,12 @@ describe('web pages for the assistant', () => {
       source: 'page',
       results: [{ title: 'Menu', url: 'https://x.example/m', text: '' }],
     };
-    expect(webSourcesOf([found, linked], 'Borhani is a spiced yoghurt drink.')).toEqual([
+    expect(
+      webSourcesOf(
+        [found, linked],
+        'Borhani is a spiced yoghurt drink, served with Chicken Tehari.',
+      ),
+    ).toEqual([
       { title: 'Borhani', url: 'https://en.wikipedia.org/wiki/Borhani' },
       { title: 'Menu', url: 'https://x.example/m' },
     ]);

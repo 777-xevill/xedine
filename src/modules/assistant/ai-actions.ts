@@ -142,7 +142,10 @@ function findBranch(ctx: ActionContext, name: unknown): { id: string; name: stri
   const n = norm(name);
   if (!n) {
     if (ctx.branches.length === 1) return ctx.branches[0]!;
-    return fail('ambiguous', `which branch: ${ctx.branches.map((b) => b.name).join(', ')}`);
+    return fail(
+      'ambiguous',
+      `which branch: ${ctx.branches.map((b) => b.name).join(', ')}. Ask the person; never pick one yourself`,
+    );
   }
   const b =
     ctx.branches.find((x) => norm(x.name) === n) ??

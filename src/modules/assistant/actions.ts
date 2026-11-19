@@ -94,6 +94,24 @@ export async function askHereAction(input: z.input<typeof askSchema>): Promise<A
   return ask(parsed.data);
 }
 
+/**
+ * X7 this week for the docked helpers (the chat bubble on every page, Sales, Stock, Recipes), which have
+ * no page load of their own to read it: null when X7 is not set up or the plan has none (ADR 0067).
+ */
+export async function x7WeekAction(
+  orgId: string,
+): Promise<{ perWeek: number; left: number; resetsOn: string } | null> {
+  if (!z.uuid().safeParse(orgId).success || !x7Configured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('x7_allowance', {
+    p_org: orgId,
+    p_now: now().toISOString(),
+  });
+  const week = (data as { per_week: number; left_count: number; resets_on: string }[] | null)?.[0];
+  if (error || !week || week.per_week <= 0) return null;
+  return { perWeek: week.per_week, left: week.left_count, resetsOn: week.resets_on };
+}
+
 async function ask({
   orgId,
   question,

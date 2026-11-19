@@ -6,8 +6,15 @@ import { useTranslations } from 'next-intl';
 import * as React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/form';
-import { askHereAction, type AskReply } from '@/modules/assistant/actions';
-import { ActionList, AnswerBadges, WebSources } from './answer-extras';
+import { askHereAction, x7WeekAction, type AskReply } from '@/modules/assistant/actions';
+import {
+  ActionList,
+  AnswerBadges,
+  ModelPicker,
+  useModelChoice,
+  WebSources,
+  type X7State,
+} from './answer-extras';
 import { AssistantAvatar, Thinking } from './chat-view';
 import { Composer } from './composer';
 
@@ -63,6 +70,10 @@ export function PageAgent({
   const [error, setError] = React.useState('');
   const [pending, startTransition] = React.useTransition();
   const endRef = React.useRef<HTMLDivElement>(null);
+  // X7 this week (ADR 0067), read when the panel first opens; the same switch as the full chat.
+  const [x7, setX7] = React.useState<X7State | null>(null);
+  const x7Asked = React.useRef(false);
+  const pick = useModelChoice(x7);
 
   React.useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
@@ -75,18 +86,22 @@ export function PageAgent({
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
-  const send = (question: string) => {
+  const send = (question: string, auto = false) => {
     const q = question.trim();
     if (!q || pending) return;
     setError('');
     setInFlight(q);
     setValue('');
+    // The page's own summary (asked by itself on opening) stays on the everyday model, so it never uses an
+    // X7 question the person did not ask.
+    const model = auto ? 'xedine' : pick.model;
     startTransition(async () => {
       const res = await askHereAction({
         orgId,
         orgSlug,
         conversationId,
         question: q,
+        model,
         ...(page ? { page } : {}),
         ...(pageNote ? { pageNote } : {}),
       });
@@ -94,6 +109,11 @@ export function PageAgent({
         setError(res.error);
         setValue(q);
         return;
+      }
+      if (res.reply.model === 'x7' || res.reply.x7Note === 'used_up') {
+        setX7((w) =>
+          w ? { ...w, left: res.reply.x7Note === 'used_up' ? 0 : Math.max(0, w.left - 1) } : w,
+        );
       }
       setConversationId(res.conversationId);
       setMessages((m) => [
@@ -119,7 +139,11 @@ export function PageAgent({
 
   const openPanel = () => {
     setOpen(true);
-    if (messages.length === 0 && !pending) send(summaryQuestion);
+    if (!x7Asked.current) {
+      x7Asked.current = true;
+      void x7WeekAction(orgId).then(setX7, () => setX7(null));
+    }
+    if (messages.length === 0 && !pending) send(summaryQuestion, true);
   };
 
   const asked = new Set(messages.filter((m) => m.role === 'user').map((m) => m.text));
@@ -270,6 +294,7 @@ export function PageAgent({
             send(value);
           }}
         >
+          <ModelPicker x7={x7} model={pick.model} onChange={pick.choose} />
           <Composer
             value={value}
             onChange={setValue}

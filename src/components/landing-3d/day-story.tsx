@@ -104,10 +104,6 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
     glideRef.current = performance.now() + GLIDE_DELAY_MS;
     updateRef.current();
   }, []);
-  // The first view's picture matches the 3D exactly, so it needs no loading chip, unless someone scrolls
-  // before the 3D is in (the picture cannot move with them).
-  const [moved, setMoved] = useState(false);
-
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
     still.current = query.matches;
@@ -137,7 +133,6 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
         targetRef.current = still.current ? Math.floor(p) + 0.62 : p;
         // The card changes halfway between two moments, as the next room comes into view.
         setActive(cardAt(p));
-        if (real > 0.05) setMoved(true);
         setShowCity(p > 14.6 && p < 17.6);
         // The moment's card shows while the 3D day fills the screen, not over the A–Z list after it.
         setInStory(el.getBoundingClientRect().bottom > window.innerHeight * 0.55);
@@ -209,9 +204,11 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
               />
             </div>
           )}
-          {can3d && !ready && moved && (
+          {can3d && !ready && (
             <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center sm:top-auto sm:bottom-6">
-              {/* It moves, so nobody thinks the page froze (the founder, 2026-11-18). */}
+              {/* From the first paint until the café is in, in the place of "Scroll to start the day": the
+                  picture looks ready but cannot move yet (the founder, 2026-11-19). It moves, so nobody thinks
+                  the page froze (2026-11-18). */}
               <p
                 role="status"
                 className="xedine-chip cafe-loading animate-rise-in relative flex items-center gap-2 overflow-hidden rounded-full py-1.5 pr-4 pl-2.5 text-xs font-semibold"
@@ -306,8 +303,8 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
           ))}
         </div>
       </div>
-      {active === 0 && (
-        <p className="xedine-chip pointer-events-none fixed bottom-6 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1 text-xs sm:flex">
+      {active === 0 && (ready || can3d === false) && (
+        <p className="xedine-chip animate-rise-in pointer-events-none fixed bottom-6 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1 text-xs sm:flex">
           {t('intro.scroll')} <ChevronDown aria-hidden className="size-3.5" />
         </p>
       )}

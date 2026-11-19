@@ -194,8 +194,8 @@ export function ChatView({
       onSubmit={() => ask.setInFlight(ask.value.trim())}
     >
       <Hidden orgId={orgId} orgSlug={orgSlug} conversationId={conversationId} model={pick.model} />
-      <ModelPicker x7={x7} model={pick.model} onChange={pick.choose} />
       <Composer
+        tools={<ModelPicker x7={x7} model={pick.model} onChange={pick.choose} />}
         size={size}
         value={ask.value}
         onChange={ask.setValue}

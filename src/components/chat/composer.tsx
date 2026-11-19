@@ -18,6 +18,7 @@ export function Composer({
   pending,
   autoFocus,
   size = 'default',
+  tools,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -27,6 +28,8 @@ export function Composer({
   pending: boolean;
   autoFocus?: boolean;
   size?: 'default' | 'hero';
+  /** Small controls beside send (the model button). */
+  tools?: React.ReactNode;
 }) {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   React.useLayoutEffect(() => {
@@ -67,6 +70,7 @@ export function Composer({
             size === 'hero' ? 'text-base' : 'text-[0.9375rem]',
           )}
         />
+        {tools}
         <button
           type="submit"
           disabled={empty || pending}

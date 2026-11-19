@@ -3,7 +3,9 @@
 import {
   BookmarkPlus,
   CalendarDays,
+  Check,
   CheckCircle2,
+  ChevronDown,
   Circle,
   CircleSlash,
   Eye,
@@ -417,48 +419,92 @@ export function ModelPicker({
 }) {
   const t = useTranslations('assistantPage.x7');
   const locale = useLocale() as Locale;
+  const [open, setOpen] = React.useState(false);
+  const boxRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [open]);
+
   if (!x7 || x7.perWeek <= 0) return null;
   const usedUp = x7.left <= 0;
-  const option = (value: 'xedine' | 'x7', label: string, hint: string, icon: React.ReactNode) => (
+  const x7Hint = usedUp
+    ? t('usedUp', { day: day(x7.resetsOn, locale) })
+    : t('left', { count: formatNumber(x7.left, locale) });
+  const icon = (m: 'xedine' | 'x7', size = 'size-3.5') =>
+    m === 'x7' ? (
+      <Zap className={cn(size, 'text-brand-yellow')} aria-hidden />
+    ) : (
+      <Sparkles className={size} aria-hidden />
+    );
+  const row = (value: 'xedine' | 'x7', label: string, hint: string) => (
     <button
       type="button"
-      role="radio"
+      role="menuitemradio"
       aria-checked={model === value}
       disabled={value === 'x7' && usedUp}
-      onClick={() => onChange(value)}
+      onClick={() => {
+        onChange(value);
+        setOpen(false);
+      }}
       className={cn(
-        'inline-flex min-w-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-start text-xs transition',
-        model === value
-          ? 'bg-surface text-foreground shadow-soft ring-1 ring-edge'
-          : 'text-secondary hover:text-foreground',
+        'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-start transition hover:bg-surface-elevated',
         value === 'x7' && usedUp && 'cursor-not-allowed opacity-60',
       )}
     >
-      {icon}
-      <span className="font-semibold">{label}</span>
-      <span className="truncate text-muted">{hint}</span>
+      {icon(value, 'size-4')}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-foreground">{label}</span>
+        <span className="block truncate text-xs text-muted">{hint}</span>
+      </span>
+      {model === value ? <Check className="size-4 text-foreground" aria-hidden /> : null}
     </button>
   );
+
+  // A small button in the composer, beside send; the menu opens above it and only picks the model.
   return (
-    <div
-      role="radiogroup"
-      aria-label={t('pickLabel')}
-      className="mb-2 inline-flex max-w-full items-center gap-1 rounded-full bg-surface-elevated/70 p-1"
-    >
-      {option(
-        'xedine',
-        t('everyday'),
-        t('everydayHint'),
-        <Sparkles className="size-3.5" aria-hidden />,
-      )}
-      {option(
-        'x7',
-        t('name'),
-        usedUp
-          ? t('usedUp', { day: day(x7.resetsOn, locale) })
-          : t('left', { count: formatNumber(x7.left, locale) }),
-        <Zap className="size-3.5 text-brand-yellow" aria-hidden />,
-      )}
+    <div ref={boxRef} className="relative shrink-0">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t('pickLabel')}
+        title={t('pickLabel')}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-secondary transition hover:bg-surface-elevated hover:text-foreground"
+      >
+        {icon(model)}
+        {model === 'x7' ? t('name') : t('everyday')}
+        <ChevronDown
+          className={cn('size-3.5 transition-transform', open && 'rotate-180')}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          aria-label={t('pickLabel')}
+          className="glass-strong absolute end-0 bottom-full z-50 mb-2 w-60 animate-[sheet-in_0.25s_var(--ease-spring)_both] rounded-card p-1.5 shadow-lift"
+        >
+          {row('xedine', t('everyday'), t('everydayHint'))}
+          {row('x7', t('name'), x7Hint)}
+        </div>
+      ) : null}
     </div>
   );
 }

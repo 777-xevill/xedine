@@ -294,8 +294,8 @@ export function PageAgent({
             send(value);
           }}
         >
-          <ModelPicker x7={x7} model={pick.model} onChange={pick.choose} />
           <Composer
+            tools={<ModelPicker x7={x7} model={pick.model} onChange={pick.choose} />}
             value={value}
             onChange={setValue}
             pending={pending}

@@ -463,6 +463,50 @@
     "actionSetup": "Finish setup",
     "actionSetupBody": "A short checklist: menu, recipes, staff and costs."
   },
+  "welcome": {
+    "close": "Close",
+    "setupTitle": "Welcome to Xedine, {name}!",
+    "setupBody": "Let’s get {restaurant} ready. Each step ticks itself as you do it. Steps left: {left}.",
+    "progress": "Setup done",
+    "firstSteps": "Start here",
+    "setupHint": "You can close this and come back any time from Settings → Setup.",
+    "later": "Later",
+    "startSetup": "Start setup",
+    "readyTitle": "You’re all set up 🎉",
+    "readyBody": "{restaurant} is ready. Here is how to get the most out of Xedine every day.",
+    "letsGo": "Let’s go",
+    "tipsKicker": "Welcome to Xedine",
+    "tipsTitle": "Tips for getting started",
+    "tipsProgress": "{done} of {total} done",
+    "hideTips": "Hide tips",
+    "helpLine": "Stuck anywhere? Press “Ask Xedine” at the bottom of any page and ask how to do it.",
+    "tips": {
+      "ask": {
+        "title": "Ask Xedine anything",
+        "body": "Type in the box at the top, like “How did we do today?” or “What is running out?”"
+      },
+      "till": {
+        "title": "Sell on the till",
+        "body": "Ring up every order there, so your numbers are real."
+      },
+      "bazar": {
+        "title": "Write down the bazar",
+        "body": "Add what you buy each day, or send it to the Telegram bot."
+      },
+      "stock": {
+        "title": "Check stock every morning",
+        "body": "See what runs out soon before the rush."
+      },
+      "brief": {
+        "title": "Get your daily brief",
+        "body": "Link Telegram for the morning summary and the night close."
+      },
+      "leaks": {
+        "title": "See where money leaks",
+        "body": "Once a week, open Leaks and fix the biggest one first."
+      }
+    }
+  },
   "team": {
     "title": "Team",
     "subtitle": "Invite managers and staff, and choose which branches they can see.",

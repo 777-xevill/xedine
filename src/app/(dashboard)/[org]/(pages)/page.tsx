@@ -14,8 +14,11 @@ import { BarList } from '@/components/metrics/bar-list';
 import { StatusBadge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/form';
 import { RollingFigure } from '@/components/ui/rolling-figure';
+import { WelcomeGuide, type WelcomeTip } from '@/components/welcome/welcome-guide';
+import { createClient } from '@/lib/db/supabase-server';
 import { formatMoney, formatBps, formatDate, formatNumber, type Locale } from '@/lib/i18n/format';
 import { addDays } from '@/lib/time/business-date';
+import { now } from '@/lib/time/clock';
 import { cn } from '@/lib/utils';
 import {
   discipline,
@@ -33,6 +36,7 @@ import {
   type PaceRow,
 } from '@/modules/metrics/queries';
 import { getOrgContext } from '@/modules/tenancy/context';
+import { parseSetupRows, SETUP_HREF, summarizeSetup } from '@/modules/tenancy/setup-health';
 
 const RAG_TONE = { green: 'success', amber: 'warning', red: 'danger', none: 'neutral' } as const;
 const BAND_TONE: Record<CoverBand, 'success' | 'warning' | 'danger' | 'neutral'> = {
@@ -56,6 +60,7 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
     getTranslations('stock'),
     getLocale(),
   ]);
+  const [tw, tsu] = await Promise.all([getTranslations('welcome'), getTranslations('setup')]);
   const loc = locale as Locale;
   const money = (p: number) => formatMoney(p, loc, ctx.place.currency, { poisha: 'never' });
   const has = (r: (typeof ctx.roles)[number]) => ctx.roles.includes(r);
@@ -125,6 +130,45 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
       ? ts('noUsage')
       : ts('days', { days: formatNumber(r.days_of_cover, loc, { fractionDigits: 1 }) });
 
+  // First run (the welcome message and the tips): ticks and the percentage come from metric_setup_health.
+  const setupRows = ctx.isOwner
+    ? parseSetupRows(
+        (
+          await (
+            await createClient()
+          ).rpc('metric_setup_health', {
+            p_org: ctx.org.id,
+            p_now: now().toISOString(),
+          })
+        ).data,
+      )
+    : [];
+  const setup = summarizeSetup(setupRows);
+  const stepDone = (step: string) => setupRows.some((r) => r.step === step && r.done);
+  const stepHref = (step: string) => {
+    const to = SETUP_HREF[step];
+    if (to === undefined || to === '') return null;
+    return to.startsWith('/') ? to : `${base}/${to}`;
+  };
+  const welcomeMode = ctx.isOwner && setupRows.length > 0 && setup.health < 100 ? 'setup' : 'ready';
+  const tip = (key: string, href: string | null, done = false): WelcomeTip => ({
+    key,
+    title: tw(`tips.${key}.title`),
+    body: tw(`tips.${key}.body`),
+    href,
+    done,
+  });
+  const sells = ctx.isOwner || has('manager') || has('cashier');
+  const buys = ctx.isOwner || has('manager') || has('purchaser');
+  const tips: WelcomeTip[] = [
+    ...(canChat ? [tip('ask', null)] : []),
+    ...(sells ? [tip('till', '/pos', stepDone('first_order') || hasAnySales)] : []),
+    ...(buys ? [tip('bazar', `${base}/purchases`, stepDone('ingredient_prices'))] : []),
+    ...(seesStock ? [tip('stock', `${base}/stock`, stepDone('opening_count'))] : []),
+    ...(ctx.isOwner ? [tip('brief', `${base}/settings/telegram`, stepDone('owner_whatsapp'))] : []),
+    ...(canSeeMoney ? [tip('leaks', `${base}/leaks`)] : []),
+  ];
+
   const subtitle = today
     ? th('subtitle', { date: formatDate(new Date(`${today.date}T12:00:00Z`), loc, 'UTC') })
     : t('subtitle');
@@ -155,6 +199,25 @@ export default async function HomePage({ params }: { params: Promise<{ org: stri
         <div className="max-w-3xl">
           <AskBox orgId={ctx.org.id} orgSlug={ctx.org.slug} />
         </div>
+      ) : null}
+
+      {welcomeMode === 'setup' || tips.length > 0 ? (
+        <WelcomeGuide
+          orgId={ctx.org.id}
+          mode={welcomeMode}
+          name={ctx.fullName}
+          restaurant={ctx.org.name}
+          health={setup.health}
+          left={setup.missing.length}
+          steps={setup.missing.slice(0, 3).map((r) => ({
+            key: r.step,
+            title: tsu(`items.${r.step}.title`),
+            body: tsu(`items.${r.step}.what`),
+            href: stepHref(r.step),
+          }))}
+          tips={tips}
+          setupHref={`${base}/setup`}
+        />
       ) : null}
 
       {seesSales && !hasAnySales ? (

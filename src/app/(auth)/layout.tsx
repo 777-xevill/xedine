@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { AllMessages } from '@/components/all-messages';
 import { BrandMark } from '@/components/brand-mark';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 
@@ -15,7 +16,9 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         </Link>
         <LocaleSwitcher />
       </header>
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <AllMessages>{children}</AllMessages>
+      </main>
       <footer className="mt-8 flex justify-center gap-4 text-xs text-muted">
         <Link href="/privacy" className="hover:underline">
           {tl('privacyLink')}

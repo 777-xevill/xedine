@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, ChevronDown, FastForward, SendHorizontal, Sparkles } from 'lucide-react';
+import { ArrowRight, Box, ChevronDown, FastForward, SendHorizontal, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
@@ -23,6 +23,7 @@ import { type FeatureId } from './features';
 import { PricingSection } from './pricing-section';
 import { AzSection } from './az-section';
 import { MomentsMenu } from './moments-menu';
+import { isLiteVisit } from './lite';
 import { BEAT_SCROLL_VH, BEATS, cardAt, momentP, pToScroll, scrollToP, STORY_VH } from './story';
 import { type DemoCurrency } from './story-ledger';
 import { useAnswers, useCityText, useScreenText } from './story-text';
@@ -30,8 +31,9 @@ import { useAnswers, useCityText, useScreenText } from './story-text';
 // Memoised (like the cards and lists below): the moment's card changing must not re-render the whole 3D scene,
 // which froze a slow phone for ~0.2 s at each change (the founder, 2026-11-18).
 const DayStage = memo(dynamic(() => import('./day-stage'), { ssr: false }));
-// The 3D code starts downloading as soon as this page's script runs, not after the page has hydrated.
-if (typeof window !== 'undefined') void import('./day-stage');
+// The 3D code starts downloading as soon as this page's script runs, not after the page has hydrated; a
+// light visit (a slow phone, lite.ts) never downloads it unless the visitor asks for the 3D.
+if (typeof window !== 'undefined' && !isLiteVisit()) void import('./day-stage');
 
 type Props = {
   /** The language switch (a server component, passed in by the page). */
@@ -51,6 +53,12 @@ const GLIDE_MS = 1400;
 const GLIDE_DELAY_MS = 600;
 /** Beyond this point in the story (p) the 3D goes straight to the scroll instead of gliding. */
 const GLIDE_MAX_P = 2;
+/**
+ * The longest the story waits at the first view for the 3D. After that the cards follow the scroll over the
+ * picture and the 3D fades in where the visitor is when it arrives (the founder's phone video, 2026-11-19:
+ * on a slow link the page stood still for half a minute and every scroll and tap did nothing).
+ */
+const HOLD_MAX_MS = 2500;
 
 let webgl: boolean | undefined;
 /** Can this browser draw 3D? Asked once; the server says "not yet" (null) so the first paint matches. */
@@ -65,6 +73,8 @@ function webglOk() {
   }
   return webgl;
 }
+/** Draw the 3D at once: a browser that can, on a visit that is not light (lite.ts). */
+const want3d = () => webglOk() && !isLiteVisit();
 const noSubscribe = () => () => {};
 
 /**
@@ -85,7 +95,10 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
   const [active, setActive] = useState(0);
   const [showCity, setShowCity] = useState(false);
   const [inStory, setInStory] = useState(true);
-  const can3d = useSyncExternalStore(noSubscribe, webglOk, () => null);
+  const auto3d = useSyncExternalStore(noSubscribe, want3d, () => null);
+  // A light visit can still ask for the 3D ("See the café in 3D").
+  const [asked3d, setAsked3d] = useState(false);
+  const can3d = auto3d === null ? null : auto3d || (asked3d && webglOk());
   const bar = useRef<HTMLDivElement>(null);
   // The loading chip shows until the street is drawn; the other rooms arrive while the visitor reads.
   const [ready, setReady] = useState(false);
@@ -99,15 +112,26 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
   const updateRef = useRef<() => void>(() => undefined);
   const onReady = useCallback(() => {
     setReady(true);
-    holdRef.current = false;
-    // After the fade has mostly happened, so the picture and the 3D still match while they cross.
-    glideRef.current = performance.now() + GLIDE_DELAY_MS;
+    if (holdRef.current) {
+      holdRef.current = false;
+      // After the fade has mostly happened, so the picture and the 3D still match while they cross.
+      glideRef.current = performance.now() + GLIDE_DELAY_MS;
+    } else {
+      // The story already moved on over the picture: the 3D comes in where the visitor is, no glide back.
+      easedRef.current = targetRef.current;
+    }
     updateRef.current();
   }, []);
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
     still.current = query.matches;
     let frame = 0;
+    // No 3D coming (a light visit, no WebGL): nothing to wait for. Otherwise wait HOLD_MAX_MS at most.
+    if (!want3d()) holdRef.current = false;
+    const release = window.setTimeout(() => {
+      holdRef.current = false;
+      updateRef.current();
+    }, HOLD_MAX_MS);
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
@@ -118,7 +142,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
         const real = Math.min(BEATS.length - 0.001, scrollToP(scrolledVh));
         // What the 3D and the card show: the first view while the 3D loads, then a glide to the scroll.
         let p = real;
-        if (holdRef.current && webglOk()) p = 0;
+        if (holdRef.current) p = 0;
         else if (glideRef.current !== null && real > GLIDE_MAX_P) {
           // Far down already (a reload halfway, a hard flick): straight there, not a race through the rooms.
           glideRef.current = null;
@@ -145,6 +169,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
     window.addEventListener('resize', onScroll);
     return () => {
       cancelAnimationFrame(frame);
+      window.clearTimeout(release);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
@@ -184,7 +209,16 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
       <div ref={story} className="relative" style={{ height: `${STORY_VH}vh` }}>
         <div className="sticky top-0 h-dvh w-full overflow-hidden">
           {/* The first view as a picture, there at once; the live 3D fades in over it when ready. */}
-          <div className="xedine-stage-bg absolute inset-0">{backdrop}</div>
+          <div
+            className={cn(
+              'xedine-stage-bg absolute inset-0 transition-opacity duration-700',
+              // The story moved on without the 3D (a light visit, or it is still on its way): the street
+              // picture steps back behind the cards, so it does not pretend to be the kitchen.
+              !ready && active > 0 ? 'opacity-45' : 'opacity-100',
+            )}
+          >
+            {backdrop}
+          </div>
           {can3d && (
             <div
               className={cn(
@@ -224,6 +258,19 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
                   <span className="cafe-loading-dot" />
                 </span>
               </p>
+            </div>
+          )}
+          {auto3d === false && !asked3d && webglOk() && (
+            <div className="absolute inset-x-0 top-16 z-30 flex justify-center sm:top-auto sm:bottom-6">
+              {/* A light visit: the story runs over the picture; the 3D (about 4.5 MB) only if asked. */}
+              <button
+                type="button"
+                onClick={() => setAsked3d(true)}
+                className="xedine-chip animate-rise-in flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+              >
+                <Box aria-hidden className="size-3.5 text-[var(--brand-yellow)]" />
+                {t('intro.see3d')}
+              </button>
             </div>
           )}
           {corner && <div className="absolute top-3 left-3 z-30">{corner}</div>}
@@ -303,7 +350,7 @@ export function DayStory({ corner, footer, backdrop, currency, taxName, home, co
           ))}
         </div>
       </div>
-      {active === 0 && (ready || can3d === false) && (
+      {active === 0 && (ready || can3d === false) && !(auto3d === false && webglOk()) && (
         <p className="xedine-chip animate-rise-in pointer-events-none fixed bottom-6 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-1 rounded-full px-3 py-1 text-xs sm:flex">
           {t('intro.scroll')} <ChevronDown aria-hidden className="size-3.5" />
         </p>

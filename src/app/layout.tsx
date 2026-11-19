@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { Inter, Noto_Sans_Bengali } from 'next/font/google';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import { AppServiceWorker } from '@/components/app-service-worker';
 import { PointerLight } from '@/components/pointer-light';
 import { cn } from '@/lib/utils';
@@ -42,8 +42,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * The browser gets only `common` here. Each part of the app sends its own words from its own layout
+ * (`AllMessages`), and the home page only the 3D day's: this layout stays mounted when a visitor moves
+ * between parts, so the words cannot be trimmed here per page, and sending all of them made the home page
+ * 486 KB in English and 729 KB in Bangla before any picture (the founder's phone video, 2026-11-19).
+ */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale();
+  const [locale, messages] = await Promise.all([getLocale(), getMessages()]);
   return (
     <html lang={locale} className={cn(inter.variable, bengali.variable)} suppressHydrationWarning>
       <body>
@@ -53,7 +59,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         <PointerLight />
         <AppServiceWorker />
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider messages={{ common: messages.common }}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 import { SquarePen } from 'lucide-react';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { AllMessages } from '@/components/all-messages';
 import { BrandMark } from '@/components/brand-mark';
 import { GlobalAgent } from '@/components/chat/global-agent';
 import { AppShell } from '@/components/shell/app-shell';
@@ -30,7 +31,7 @@ export default async function OrgLayout({
   const chats = nav.canChat ? await recentChats(ctx.org.id, ctx.user.id) : [];
 
   return (
-    <>
+    <AllMessages>
       <AppShell
         openLabel={t('openMenu')}
         closeLabel={t('closeMenu')}
@@ -64,6 +65,6 @@ export default async function OrgLayout({
           />
         ) : null}
       </AppShell>
-    </>
+    </AllMessages>
   );
 }

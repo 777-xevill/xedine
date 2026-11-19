@@ -1,6 +1,7 @@
 import { getImageProps } from 'next/image';
 import { headers } from 'next/headers';
-import { getLocale, getTranslations } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n/format';
@@ -8,6 +9,7 @@ import { countryName, currencyOf, TARGET_COUNTRIES } from '@/modules/social/cult
 import { taxLabel } from '@/modules/tenancy/tax-label';
 import { landingAsset } from './asset-version';
 import { DayStory } from './day-story';
+import { liteScript } from './lite';
 import { COUNTRY_PLACES } from './story';
 import { demoCurrency } from './story-ledger';
 
@@ -32,7 +34,7 @@ export async function DayPage({
     currency: currencyOf(c),
     ...(COUNTRY_PLACES[c] ?? { lat: 0, lng: 0 }),
   });
-  await getTranslations('landing3d.day');
+  const [messages] = await Promise.all([getMessages(), getTranslations('landing3d.day')]);
   // The first view as a picture, shown at once. Three shapes, each framed and anchored like the 3D camera
   // (frameCamera): wide screens keep the height with the subject 66% across, squarer ones keep the width,
   // upright phones keep the width with the subject a third down. So the 3D fades in without a jump.
@@ -70,26 +72,26 @@ export async function DayPage({
   );
   return (
     <>
-      {/* The first picture (the street and Xedine) starts downloading with the page, before the 3D code runs. */}
-      {['world-st.glb', 'xedine.glb'].map((file) => (
-        <link
-          key={file}
-          rel="preload"
-          href={landingAsset(file)}
-          as="fetch"
-          crossOrigin="anonymous"
-          fetchPriority="high"
-        />
-      ))}
-      <DayStory
-        corner={<LocaleSwitcher />}
-        footer={footer}
-        backdrop={backdrop}
-        currency={demoCurrency(currencyOf(country))}
-        taxName={taxLabel(locale, country)}
-        home={pin(country)}
-        countries={TARGET_COUNTRIES.map(pin)}
+      {/* The first 3D files (the street and Xedine) start downloading with the page, before the 3D code
+          runs, at low priority so the page's own code comes first; a slow phone skips them (lite.ts). */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: liteScript(['world-st.glb', 'xedine.glb'].map(landingAsset)),
+        }}
       />
+      {/* Only the words this page's browser code uses (the root layout sends `common` alone): the whole
+          app's words made the HTML 486 KB in English and 729 KB in Bangla. */}
+      <NextIntlClientProvider messages={{ common: messages.common, landing3d: messages.landing3d }}>
+        <DayStory
+          corner={<LocaleSwitcher />}
+          footer={footer}
+          backdrop={backdrop}
+          currency={demoCurrency(currencyOf(country))}
+          taxName={taxLabel(locale, country)}
+          home={pin(country)}
+          countries={TARGET_COUNTRIES.map(pin)}
+        />
+      </NextIntlClientProvider>
     </>
   );
 }

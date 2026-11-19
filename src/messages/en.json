@@ -5240,7 +5240,8 @@
         "skipShort": "Skip",
         "loading": "Opening the café",
         "chapter": "Moment {n} of {total}",
-        "skipping": "Skipping to the plans"
+        "skipping": "Skipping to the plans",
+        "see3d": "See the café in 3D"
       },
       "beats": {
         "dawn": {
